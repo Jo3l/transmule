@@ -44,8 +44,8 @@ NITRO_REQUEST_DELAY=1500
 
 Once the server is running, open:
 
-- **Scalar UI:** [http://localhost:3000/\_nitro/scalar](http://localhost:3000/_nitro/scalar)
-- **OpenAPI JSON:** [http://localhost:3000/\_nitro/openapi.json](http://localhost:3000/_nitro/openapi.json)
+- **Scalar UI:** [http://localhost:3000/\_scalar](http://localhost:3000/_scalar)
+- **OpenAPI JSON:** [http://localhost:3000/\_openapi.json](http://localhost:3000/_openapi.json)
 
 ## Endpoints
 

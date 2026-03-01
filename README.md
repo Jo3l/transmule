@@ -68,7 +68,7 @@ docker compose up -d
 ### 3. Open
 
 - **Frontend:** http://localhost:3001
-- **Middleware API / Swagger:** [http://localhost:3000/_nitro/scalar](http://localhost:3000/_nitro/scalar)
+- **Middleware API / Swagger:** [http://localhost:3000/\_scalar](http://localhost:3000/_scalar)
 
 On first run you will be prompted to create an admin account.
 

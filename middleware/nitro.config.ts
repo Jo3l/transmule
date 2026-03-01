@@ -19,8 +19,8 @@ export default defineNitroConfig({
         "- `/api/pyload/*`        — pyLoad NG download manager\n" +
         "- `/api/torrent-search`  — Public torrent index search\n" +
         "- `/api/admin/*`         — Admin management\n\n" +
-        "**Swagger UI:** available at `/_nitro/scalar`\n\n" +
-        "**OpenAPI spec:** available at `/_nitro/openapi.json`",
+        "**Swagger UI:** available at `/_scalar`\n\n" +
+        "**OpenAPI spec:** available at `/_openapi.json`",
       version: "4.0.0",
     },
   },
