@@ -1,0 +1,142 @@
+# ─── TransMule — Docker Compose ────────────────────────────────────────────────
+# Brings up aMule, Transmission, pyLoad, the API middleware and the frontend.
+#
+# Usage:
+#   cp .env.example .env        # edit passwords / paths
+#   docker compose up -d        # start all services
+#   docker compose logs -f      # follow logs
+#
+# Ports exposed to host:
+#   3001  → Frontend (Nuxt SPA via nginx)
+#   3000  → Middleware API (Nitro.js)
+#   4662  → aMule TCP (ED2K)       — configurable via AMULE_ED2K_TCP_PORT
+#   4672  → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
+#   4665  → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
+#   51413 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
+#
+# Internal only (Docker network, not exposed to host):
+#   4711  → aMule web UI (accessible by middleware)
+#   4712  → aMule EC protocol (accessible by middleware)
+#   9091  → Transmission RPC (accessible by middleware)
+#   8000  → pyLoad web UI + API (accessible by middleware)
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── aMule daemon ────────────────────────────────────────────────────────────
+  amule:
+    image: ngosang/amule:latest
+    container_name: transmule-amule
+    restart: unless-stopped
+    ports:
+      - "${AMULE_ED2K_TCP_PORT:-4662}:4662" # ED2K TCP
+      - "${AMULE_ED2K_UDP_PORT:-4672}:4672/udp" # ED2K UDP
+      - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp" # Kademlia
+    expose:
+      - "4711" # aMule web UI — internal only (middleware)
+    volumes:
+      - amule-config:/home/amule/.aMule
+      - ${DOWNLOAD_DIR:-./downloads}:/incoming
+      - ${INCOMPLETE_DIR:-./incomplete}:/temp
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      GUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
+      WEBUI_PWD: ${AMULE_WEBUI_PASSWORD:-hLETKciXJlnMAN0Z}
+    networks:
+      - transmule
+
+  # ── Transmission daemon ─────────────────────────────────────────────────────
+  transmission:
+    image: lscr.io/linuxserver/transmission:latest
+    container_name: transmule-transmission
+    restart: unless-stopped
+    ports:
+      - "${TRANSMISSION_PEER_PORT:-51413}:51413" # Peer TCP
+      - "${TRANSMISSION_PEER_PORT:-51413}:51413/udp" # Peer UDP
+    expose:
+      - "9091" # Transmission RPC — internal only (middleware)
+    volumes:
+      - transmission-config:/config
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads
+      - ${INCOMPLETE_DIR:-./incomplete}:/incomplete
+      - ./docker/transmission/custom-cont-init.d:/custom-cont-init.d:ro
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Madrid}
+      USER: ${TRANSMISSION_USER:-}
+      PASS: ${TRANSMISSION_PASS:-}
+    networks:
+      - transmule
+
+  # ── pyLoad NG download manager ──────────────────────────────────────────────
+  pyload:
+    image: lscr.io/linuxserver/pyload-ng:latest
+    container_name: transmule-pyload
+    restart: unless-stopped
+    expose:
+      - "8000" # pyLoad web UI + API — internal only (middleware)
+    volumes:
+      - pyload-config:/config
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-Europe/Madrid}
+    networks:
+      - transmule
+
+  # ── API Middleware (Nitro.js) ───────────────────────────────────────────────
+  middleware:
+    build:
+      context: ./middleware
+      dockerfile: Dockerfile
+    container_name: transmule-middleware
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${DATA_DIR:-./data}:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      NITRO_AMULE_HOST: amule
+      NITRO_AMULE_PORT: 4712
+      NITRO_AMULE_PASSWORD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
+      NITRO_TRANSMISSION_URL: http://transmission:9091/transmission/rpc
+      NITRO_TRANSMISSION_USERNAME: ${TRANSMISSION_USER:-}
+      NITRO_TRANSMISSION_PASSWORD: ${TRANSMISSION_PASS:-}
+      NITRO_PYLOAD_URL: http://pyload:8000
+      NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
+      NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
+      NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
+    depends_on:
+      - amule
+      - transmission
+      - pyload
+    networks:
+      - transmule
+
+  # ── Frontend (Nuxt 3 SPA via nginx) ────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NUXT_PUBLIC_API_BASE: ${API_BASE_URL:-http://localhost:3000}
+    container_name: transmule-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    depends_on:
+      - middleware
+    networks:
+      - transmule
+
+volumes:
+  amule-config:
+  transmission-config:
+  pyload-config:
+
+networks:
+  transmule:
+    driver: bridge

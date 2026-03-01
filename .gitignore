@@ -1,0 +1,15 @@
+# ─── TransMule ────────────────────────────────────────────────────────────────
+node_modules/
+.env
+
+# Build outputs
+.nuxt/
+.nitro/
+.output/
+
+# Middleware SQLite database (user-specific, bind-mounted)
+data/
+
+# aMule download data (bind-mounted volumes)
+downloads/
+incomplete/

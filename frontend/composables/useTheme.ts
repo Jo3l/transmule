@@ -1,0 +1,89 @@
+const THEMES = ["sark", "light", "matrix", "xp"] as const;
+export type ThemeId = (typeof THEMES)[number];
+
+export const THEME_META: Record<
+  ThemeId,
+  { name: string; icon: string; description: string }
+> = {
+  sark: {
+    name: "Sark (Tron)",
+    icon: "mdi-chip",
+    description: "Dark neon circuits from the Grid",
+  },
+  light: {
+    name: "Light",
+    icon: "mdi-white-balance-sunny",
+    description: "Clean white & grey gradients",
+  },
+  matrix: {
+    name: "Matrix",
+    icon: "mdi-matrix",
+    description: "Dark green terminal hacker mode",
+  },
+  xp: {
+    name: "Windows XP",
+    icon: "mdi-microsoft-windows",
+    description: "Classic Luna UI with Tahoma, 3D buttons & blue title bars",
+  },
+};
+
+export function useTheme() {
+  const currentTheme = useState<ThemeId>("theme", () => "sark");
+
+  function setTheme(id: ThemeId) {
+    currentTheme.value = id;
+    if (import.meta.client) {
+      document.documentElement.setAttribute("data-theme", id);
+      localStorage.setItem("sark-theme", id);
+    }
+  }
+
+  function loadTheme() {
+    if (import.meta.client) {
+      const saved = localStorage.getItem("sark-theme") as ThemeId | null;
+      if (saved && THEMES.includes(saved)) {
+        setTheme(saved);
+      }
+    }
+  }
+
+  /** Sync theme from server preference (called after login) */
+  async function syncFromServer() {
+    try {
+      const { data } = await useFetch("/api/users/preferences", {
+        baseURL: useRuntimeConfig().public.apiBase as string,
+        headers: { Authorization: `Bearer ${useCookie("token").value}` },
+      });
+      if (data.value && (data.value as any).theme) {
+        const t = (data.value as any).theme as ThemeId;
+        if (THEMES.includes(t)) setTheme(t);
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  /** Save theme preference to server */
+  async function saveToServer(id: ThemeId) {
+    try {
+      await $fetch("/api/users/preferences", {
+        baseURL: useRuntimeConfig().public.apiBase as string,
+        method: "POST",
+        headers: { Authorization: `Bearer ${useCookie("token").value}` },
+        body: { theme: id },
+      });
+    } catch {
+      /* silent */
+    }
+  }
+
+  return {
+    currentTheme,
+    setTheme,
+    loadTheme,
+    syncFromServer,
+    saveToServer,
+    THEME_META,
+    themes: THEMES,
+  };
+}

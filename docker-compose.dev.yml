@@ -1,0 +1,22 @@
+# ─── Docker Compose — DEV overrides ──────────────────────────────────────────
+# Used by dev.sh only.  Exposes internal service ports to the host so the
+# middleware (running outside Docker in dev mode) can reach aMule, Transmission
+# and pyLoad.  These ports are NOT exposed in production.
+#
+# Extra ports exposed to host (loopback only):
+#   4712  → aMule EC protocol
+#   9091  → Transmission RPC
+#   8000  → pyLoad web UI + API
+
+services:
+  amule:
+    ports:
+      - "127.0.0.1:4712:4712" # aMule EC protocol — dev only
+
+  transmission:
+    ports:
+      - "127.0.0.1:9091:9091" # Transmission RPC — dev only
+
+  pyload:
+    ports:
+      - "127.0.0.1:8000:8000" # pyLoad web UI + API — dev only

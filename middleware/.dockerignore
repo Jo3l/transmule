@@ -1,0 +1,7 @@
+node_modules
+.output
+.nitro
+.env
+data/*.db
+*.log
+.git
