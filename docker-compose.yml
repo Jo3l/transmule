@@ -15,7 +15,6 @@
 #   51413 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
 #
 # Internal only (Docker network, not exposed to host):
-#   4711  → aMule web UI (accessible by middleware)
 #   4712  → aMule EC protocol (accessible by middleware)
 #   9091  → Transmission RPC (accessible by middleware)
 #   8000  → pyLoad web UI + API (accessible by middleware)
@@ -31,8 +30,6 @@ services:
       - "${AMULE_ED2K_TCP_PORT:-4662}:4662" # ED2K TCP
       - "${AMULE_ED2K_UDP_PORT:-4672}:4672/udp" # ED2K UDP
       - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp" # Kademlia
-    expose:
-      - "4711" # aMule web UI — internal only (middleware)
     volumes:
       - amule-config:/home/amule/.aMule
       - ${DOWNLOAD_DIR:-./downloads}:/incoming
@@ -41,7 +38,7 @@ services:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       GUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
-      WEBUI_PWD: ${AMULE_WEBUI_PASSWORD:-hLETKciXJlnMAN0Z}
+      WEBUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
     networks:
       - transmule
 

@@ -1,14 +1,12 @@
-# aMule API Middleware
+# TransMule Middleware
 
-A [Nitro](https://nitro.unjs.io/) server that acts as a REST API middleware for the aMule web interface, solving its key limitations:
+A [Nitro](https://nitro.unjs.io/) REST API server that bridges the TransMule frontend with aMule, Transmission and pyLoad NG.
 
-| Problem                                                                        | Solution                                                                       |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| **Single-threaded** — concurrent requests hang/crash the web server            | All requests are serialised through a FIFO queue with configurable delay       |
-| **No CORS** — browsers block cross-origin calls                                | CORS headers added to every response                                           |
-| **Awkward auth flow** — `login.php` logs you _out_ if accessed while logged in | Middleware manages the session cookie internally; auto-re-login on expiry      |
-| **Always HTTP 200** — even errors come back as 200                             | Middleware returns proper status codes (401, 400, etc.)                        |
-| **Legacy PHP URLs** — `amuleweb-main-dload.php?command=pause&{hash}=on`        | Clean REST endpoints: `POST /api/downloads { action: "pause", hashes: [...] }` |
+- Talks to **aMule** via its binary EC (External Connector) protocol on port 4712 — no dependency on aMule's PHP web server
+- Talks to **Transmission** via its JSON-RPC API
+- Talks to **pyLoad NG** via its HTTP API
+- JWT-based multi-user authentication with SQLite storage
+- CORS handling and clean REST endpoints
 
 ## Quick Start
 
@@ -29,16 +27,26 @@ npm run preview
 Create a `.env` file (or set environment variables):
 
 ```env
-NITRO_AMULE_URL=http://192.168.31.89:4711
-NITRO_AMULE_PASSWORD=your_password
-NITRO_REQUEST_DELAY=1500
+NITRO_AMULE_HOST=127.0.0.1
+NITRO_AMULE_PORT=4712
+NITRO_AMULE_PASSWORD=your_ec_password
+NITRO_TRANSMISSION_URL=http://127.0.0.1:9091/transmission/rpc
+NITRO_PYLOAD_URL=http://127.0.0.1:8000
+NITRO_JWT_SECRET=change-me
 ```
 
-| Variable               | Default                     | Description                                      |
-| ---------------------- | --------------------------- | ------------------------------------------------ |
-| `NITRO_AMULE_URL`      | `http://192.168.31.89:4711` | aMule web interface URL                          |
-| `NITRO_AMULE_PASSWORD` | _(empty)_                   | Web interface password                           |
-| `NITRO_REQUEST_DELAY`  | `1500`                      | Minimum ms between consecutive requests to aMule |
+| Variable                      | Default                                        | Description                         |
+| ----------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `NITRO_AMULE_HOST`            | `192.168.31.89`                                | aMule host (EC protocol, port 4712) |
+| `NITRO_AMULE_PORT`            | `4712`                                         | aMule EC port                       |
+| `NITRO_AMULE_PASSWORD`        | _(empty)_                                      | aMule EC password                   |
+| `NITRO_TRANSMISSION_URL`      | `http://192.168.31.89:9091/transmission/rpc`   | Transmission RPC endpoint           |
+| `NITRO_TRANSMISSION_USERNAME` | _(empty)_                                      | Transmission RPC username           |
+| `NITRO_TRANSMISSION_PASSWORD` | _(empty)_                                      | Transmission RPC password           |
+| `NITRO_PYLOAD_URL`            | `http://pyload:8000`                           | pyLoad NG API base URL              |
+| `NITRO_PYLOAD_USERNAME`       | `pyload`                                       | pyLoad username                     |
+| `NITRO_PYLOAD_PASSWORD`       | `pyload`                                       | pyLoad password                     |
+| `NITRO_JWT_SECRET`            | `amule-middleware-change-this-secret`          | Secret for signing JWT tokens       |
 
 ## API Documentation (Swagger)
 
@@ -156,15 +164,11 @@ await fetch(`${BASE}/api/search`, {
 ## Architecture
 
 ```
-Client  ──►  Nitro Middleware  ──►  aMule Web Server (PHP)
-              │                      │
-              ├─ CORS headers        ├─ Single-threaded
-              ├─ Request queue       ├─ No CORS
-              ├─ Session mgmt        ├─ Cookie auth
-              ├─ Clean REST API      ├─ Legacy PHP URLs
-              └─ Swagger docs        └─ Always HTTP 200
+Frontend (Nuxt)  ──►  Nitro Middleware  ──►  aMule (EC :4712)
+                            │            ──►  Transmission RPC (:9091)
+                            │            ──►  pyLoad NG API (:8000)
+                            │
+                    ├─ JWT auth (SQLite)
+                    ├─ CORS headers
+                    └─ Swagger docs (/_scalar)
 ```
-
-## License
-
-Same as [AmuleWebUI-Reloaded](../AmuleWebUI-Reloaded/LICENSE).

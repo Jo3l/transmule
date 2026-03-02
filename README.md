@@ -29,13 +29,13 @@ Browser
   │
   └─ Nitro Middleware API (port 3000)
         ├─ JWT auth + user management (SQLite)
-        ├─ CORS, request serialisation, session management
-        ├─► aMule web UI          (internal :4711 / EC :4712)
+        ├─ CORS handling
+        ├─► aMule EC protocol      (internal :4712)
         ├─► Transmission RPC      (internal :9091)
         └─► pyLoad NG API         (internal :8000)
 ```
 
-The middleware solves several limitations of the underlying clients (especially aMule's single-threaded PHP web server and absent CORS headers) by acting as a queued, session-aware REST proxy.
+The middleware talks to aMule directly via its binary EC (External Connector) protocol on port 4712 — no dependency on aMule's built-in PHP web server.
 
 ---
 
@@ -53,7 +53,6 @@ Edit `.env` — at minimum set your passwords and file paths:
 
 ```env
 AMULE_GUI_PASSWORD=your_amule_password
-AMULE_WEBUI_PASSWORD=your_amule_webui_password
 JWT_SECRET=a-long-random-string
 PYLOAD_USER=pyload
 PYLOAD_PASSWORD=pyload
@@ -85,7 +84,7 @@ On first run you will be prompted to create an admin account.
 | `4665` (UDP) | aMule Kademlia         | Configurable via `AMULE_KAD_UDP_PORT`     |
 | `51413`      | Transmission peers     | Configurable via `TRANSMISSION_PEER_PORT` |
 
-All service-to-service communication (aMule web UI, Transmission RPC, pyLoad API) happens on the internal Docker network and is **not** exposed to the host.
+All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) happens on the internal Docker network and is **not** exposed to the host.
 
 ---
 
@@ -97,8 +96,7 @@ All service-to-service communication (aMule web UI, Transmission RPC, pyLoad API
 | `TZ`                                      | `Europe/Madrid`         | Timezone                                     |
 | `DOWNLOAD_DIR`                            | `./downloads`           | Completed downloads host path                |
 | `INCOMPLETE_DIR`                          | `./incomplete`          | In-progress downloads host path              |
-| `AMULE_GUI_PASSWORD`                      | —                       | aMule EC protocol password                   |
-| `AMULE_WEBUI_PASSWORD`                    | —                       | aMule web UI password                        |
+| `AMULE_GUI_PASSWORD`                      | —                       | aMule EC protocol password (port 4712)       |
 | `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_               | Transmission RPC credentials                 |
 | `DATA_DIR`                                | `./data`                | Middleware SQLite database directory         |
 | `JWT_SECRET`                              | `change-me`             | Secret for signing JWT tokens                |
