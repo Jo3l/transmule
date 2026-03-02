@@ -18,10 +18,9 @@
         <div style="display: flex; align-items: center; gap: 0.75rem">
           <ServiceDropdown />
           <span class="has-text-grey-dark is-size-7">
-            <span class="mdi mdi-account" /> {{ user?.username }}
-            <STag v-if="user?.isAdmin" size="sm" class="ml-1">{{
-              $t("app.admin")
-            }}</STag>
+            <STag size="sm" class="ml-1">
+              <span class="mdi mdi-account" /> {{ user?.username }}
+            </STag>
           </span>
           <SButton size="sm" @click="doLogout">
             <span class="mdi mdi-logout" />

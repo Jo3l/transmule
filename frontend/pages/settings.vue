@@ -61,6 +61,51 @@
         </div>
       </STabPane>
 
+      <!-- Account: change own password -->
+      <STabPane
+        name="account"
+        :label="$t('settings.account')"
+        :active="activeTab === 'account'"
+      >
+        <div class="box" style="max-width: 480px">
+          <h3 class="subtitle is-6 mb-4">
+            {{ $t("settings.changePassword") }}
+          </h3>
+          <SFormItem :label="$t('settings.currentPassword')">
+            <SInput
+              v-model="selfPwCurrent"
+              type="password"
+              style="max-width: 320px"
+            />
+          </SFormItem>
+          <SFormItem :label="$t('settings.newPassword')">
+            <SInput
+              v-model="selfPwNew"
+              type="password"
+              style="max-width: 320px"
+            />
+          </SFormItem>
+          <SFormItem :label="$t('settings.confirmPassword')">
+            <SInput
+              v-model="selfPwConfirm"
+              type="password"
+              style="max-width: 320px"
+            />
+          </SFormItem>
+          <p v-if="selfPwError" class="has-text-danger is-size-7 mb-3">
+            {{ selfPwError }}
+          </p>
+          <SButton
+            variant="primary"
+            :loading="savingSelfPw"
+            @click="submitSelfPw"
+          >
+            <span class="mdi mdi-content-save mr-1" />
+            {{ $t("settings.save") }}
+          </SButton>
+        </div>
+      </STabPane>
+
       <!-- Folders (admin only) -->
       <STabPane
         v-if="isAdmin"
@@ -125,16 +170,63 @@
               }}</STag>
             </template>
             <template #cell-actions="{ row }">
-              <SButton
-                v-if="row.id !== currentUserId"
-                variant="danger"
-                size="sm"
-                @click="removeUser(row.id)"
-              >
-                <span class="mdi mdi-delete" />
-              </SButton>
+              <div class="is-flex" style="gap: 6px">
+                <SButton
+                  variant="warning"
+                  size="sm"
+                  :title="$t('settings.changePassword')"
+                  @click="openChangePw(row)"
+                >
+                  <span class="mdi mdi-key" />
+                </SButton>
+                <SButton
+                  v-if="row.id !== currentUserId"
+                  variant="danger"
+                  size="sm"
+                  @click="removeUser(row.id)"
+                >
+                  <span class="mdi mdi-delete" />
+                </SButton>
+              </div>
             </template>
           </STable>
+
+          <!-- Change password dialog -->
+          <SDialog
+            v-model="pwDialog"
+            :title="$t('settings.changePwFor', { username: pwUsername })"
+            width="400px"
+          >
+            <SFormItem :label="$t('settings.newPassword')">
+              <SInput
+                v-model="pwNew"
+                type="password"
+                size="sm"
+                style="max-width: 280px"
+              />
+            </SFormItem>
+            <SFormItem :label="$t('settings.confirmPassword')">
+              <SInput
+                v-model="pwConfirm"
+                type="password"
+                size="sm"
+                style="max-width: 280px"
+              />
+            </SFormItem>
+            <p v-if="pwMismatch" class="has-text-danger is-size-7 mt-1">
+              {{ $t("settings.passwordsDoNotMatch") }}
+            </p>
+            <template #footer>
+              <SButton
+                variant="primary"
+                :loading="savingPw"
+                @click="submitChangePw"
+              >
+                <span class="mdi mdi-content-save mr-1" />
+                {{ $t("settings.save") }}
+              </SButton>
+            </template>
+          </SDialog>
 
           <SDivider />
           <h3 class="subtitle is-6">{{ $t("settings.addUser") }}</h3>
@@ -231,6 +323,7 @@ async function applyLocale() {
 const tabPanes = computed<TabPaneDef[]>(() => {
   const p: TabPaneDef[] = [{ name: "theme", label: t("settings.theme") }];
   p.push({ name: "language", label: t("settings.language") });
+  p.push({ name: "account", label: t("settings.account") });
   if (isAdmin.value) {
     p.push({ name: "folders", label: t("settings.folders") });
     p.push({ name: "users", label: t("settings.users") });
@@ -243,7 +336,7 @@ const userCols = computed<STableColumn[]>(() => [
   { prop: "username", label: t("settings.columns.username") },
   { key: "role", label: t("settings.columns.role"), width: 100 },
   { prop: "created_at", label: t("settings.columns.created"), width: 160 },
-  { key: "actions", label: "", width: 60 },
+  { key: "actions", label: "", width: 120 },
 ]);
 
 // Folders
@@ -252,11 +345,87 @@ const folders = reactive({
   incompleteDir: "",
 });
 
+// Account: change own password
+const selfPwCurrent = ref("");
+const selfPwNew = ref("");
+const selfPwConfirm = ref("");
+const savingSelfPw = ref(false);
+const selfPwError = ref("");
+
+async function submitSelfPw() {
+  selfPwError.value = "";
+  if (!selfPwCurrent.value) {
+    selfPwError.value = t("settings.currentPasswordRequired");
+    return;
+  }
+  if (selfPwNew.value.length < 4) {
+    selfPwError.value = t("settings.passwordTooShort");
+    return;
+  }
+  if (selfPwNew.value !== selfPwConfirm.value) {
+    selfPwError.value = t("settings.passwordsDoNotMatch");
+    return;
+  }
+  savingSelfPw.value = true;
+  try {
+    await apiFetch("/api/users/password", {
+      method: "PATCH",
+      body: {
+        currentPassword: selfPwCurrent.value,
+        newPassword: selfPwNew.value,
+      },
+    });
+    selfPwCurrent.value = "";
+    selfPwNew.value = "";
+    selfPwConfirm.value = "";
+  } catch (err: any) {
+    selfPwError.value =
+      err?.data?.statusMessage ||
+      err?.statusMessage ||
+      t("settings.saveFailed");
+  } finally {
+    savingSelfPw.value = false;
+  }
+}
+
 // Admin: Users
 const users = ref<any[]>([]);
 const newUsername = ref("");
 const newPassword = ref("");
 const newIsAdmin = ref(false);
+
+// Change-password dialog
+const pwDialog = ref(false);
+const pwUserId = ref<number | null>(null);
+const pwUsername = ref("");
+const pwNew = ref("");
+const pwConfirm = ref("");
+const savingPw = ref(false);
+const pwMismatch = ref(false);
+
+function openChangePw(row: any) {
+  pwUserId.value = row.id;
+  pwUsername.value = row.username;
+  pwNew.value = "";
+  pwConfirm.value = "";
+  pwMismatch.value = false;
+  pwDialog.value = true;
+}
+
+async function submitChangePw() {
+  pwMismatch.value = pwNew.value !== pwConfirm.value;
+  if (pwMismatch.value || !pwNew.value) return;
+  savingPw.value = true;
+  try {
+    await apiFetch(`/api/admin/users/${pwUserId.value}`, {
+      method: "PATCH",
+      body: { password: pwNew.value },
+    });
+    pwDialog.value = false;
+  } finally {
+    savingPw.value = false;
+  }
+}
 
 async function loadFolders() {
   if (!isAdmin.value) return;

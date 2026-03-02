@@ -5,8 +5,11 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# Build tools required to compile better-sqlite3 from source on Alpine/musl.
+RUN apk add --no-cache python3 make g++ sqlite-dev
+
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm_config_build_from_source=true npm ci
 
 COPY . .
 RUN npm run build
@@ -15,8 +18,10 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
-# better-sqlite3 needs these at runtime
-RUN apk add --no-cache libstdc++
+# better-sqlite3 and libstdc++ runtime deps
+# gcompat: glibc compatibility layer for Alpine/musl — provides fcntl64 and
+# other glibc symbols required by better-sqlite3's native addon.
+RUN apk add --no-cache libstdc++ sqlite-libs gcompat
 
 # Copy built output and the external native modules
 COPY --from=builder /app/.output .output

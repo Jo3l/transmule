@@ -499,7 +499,17 @@
       "username": "Username",
       "role": "Role",
       "created": "Created"
-    }
+    },
+    "changePassword": "Change Password",
+    "changePwFor": "Change password for {username}",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "account": "Account",
+    "currentPassword": "Current Password",
+    "currentPasswordRequired": "Current password is required",
+    "passwordTooShort": "Password must be at least 4 characters",
+    "saveFailed": "Failed to save"
   },
   "themes": {
     "sark": {

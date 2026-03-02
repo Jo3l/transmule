@@ -562,11 +562,16 @@ a {
     font-weight: 700;
     border-bottom: 1px solid var(--s-sidebar-border);
     display: flex;
-    align-items: center;
+    align-items: end;
     gap: 0.5rem;
     color: var(--s-accent);
-    .mdi {
-      font-size: 1.4rem;
+    .sidebar-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      flex-shrink: 0;
+      vertical-align: middle;
+      display: block;
     }
   }
 
@@ -2118,9 +2123,6 @@ textarea.s-input {
       color: #ffffff;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
       font-size: 1.1rem;
-      .mdi {
-        color: #80c0ff;
-      }
     }
 
     .menu .menu-list a {

@@ -35,18 +35,18 @@ NITRO_PYLOAD_URL=http://127.0.0.1:8000
 NITRO_JWT_SECRET=change-me
 ```
 
-| Variable                      | Default                                        | Description                         |
-| ----------------------------- | ---------------------------------------------- | ----------------------------------- |
-| `NITRO_AMULE_HOST`            | `192.168.31.89`                                | aMule host (EC protocol, port 4712) |
-| `NITRO_AMULE_PORT`            | `4712`                                         | aMule EC port                       |
-| `NITRO_AMULE_PASSWORD`        | _(empty)_                                      | aMule EC password                   |
-| `NITRO_TRANSMISSION_URL`      | `http://192.168.31.89:9091/transmission/rpc`   | Transmission RPC endpoint           |
-| `NITRO_TRANSMISSION_USERNAME` | _(empty)_                                      | Transmission RPC username           |
-| `NITRO_TRANSMISSION_PASSWORD` | _(empty)_                                      | Transmission RPC password           |
-| `NITRO_PYLOAD_URL`            | `http://pyload:8000`                           | pyLoad NG API base URL              |
-| `NITRO_PYLOAD_USERNAME`       | `pyload`                                       | pyLoad username                     |
-| `NITRO_PYLOAD_PASSWORD`       | `pyload`                                       | pyLoad password                     |
-| `NITRO_JWT_SECRET`            | `amule-middleware-change-this-secret`          | Secret for signing JWT tokens       |
+| Variable                      | Default                                      | Description                         |
+| ----------------------------- | -------------------------------------------- | ----------------------------------- |
+| `NITRO_AMULE_HOST`            | `192.168.31.89`                              | aMule host (EC protocol, port 4712) |
+| `NITRO_AMULE_PORT`            | `4712`                                       | aMule EC port                       |
+| `NITRO_AMULE_PASSWORD`        | _(empty)_                                    | aMule EC password                   |
+| `NITRO_TRANSMISSION_URL`      | `http://192.168.31.89:9091/transmission/rpc` | Transmission RPC endpoint           |
+| `NITRO_TRANSMISSION_USERNAME` | _(empty)_                                    | Transmission RPC username           |
+| `NITRO_TRANSMISSION_PASSWORD` | _(empty)_                                    | Transmission RPC password           |
+| `NITRO_PYLOAD_URL`            | `http://pyload:8000`                         | pyLoad NG API base URL              |
+| `NITRO_PYLOAD_USERNAME`       | `pyload`                                     | pyLoad username                     |
+| `NITRO_PYLOAD_PASSWORD`       | `pyload`                                     | pyLoad password                     |
+| `NITRO_JWT_SECRET`            | `amule-middleware-change-this-secret`        | Secret for signing JWT tokens       |
 
 ## API Documentation (Swagger)
 

@@ -24,18 +24,21 @@ A unified self-hosted web interface for managing downloads across **aMule** (ED2
 ```
 Browser
   │
-  ├─ Nuxt SPA (port 3001, served by nginx)
-  │     └─ calls ──►
-  │
-  └─ Nitro Middleware API (port 3000)
-        ├─ JWT auth + user management (SQLite)
-        ├─ CORS handling
-        ├─► aMule EC protocol      (internal :4712)
-        ├─► Transmission RPC      (internal :9091)
-        └─► pyLoad NG API         (internal :8000)
+  └─ transmule-app (port 3001)
+        │  nginx — serves Nuxt SPA
+        │        — proxies /api/* and /_scalar → 127.0.0.1:3000
+        │
+        └─ Nitro API (127.0.0.1:3000, loopback only)
+              ├─ JWT auth + user management (SQLite)
+              ├─ CORS handling
+              ├─► aMule EC protocol      (internal :4712)
+              ├─► Transmission RPC      (internal :9091)
+              └─► pyLoad NG API         (internal :8000)
 ```
 
-The middleware talks to aMule directly via its binary EC (External Connector) protocol on port 4712 — no dependency on aMule's built-in PHP web server.
+The frontend SPA and the Nitro API share a single container managed by
+supervisord. nginx handles static file serving and proxies API traffic to Nitro
+on the loopback interface — no IP address is ever baked into the image.
 
 ---
 
@@ -66,8 +69,8 @@ docker compose up -d
 
 ### 3. Open
 
-- **Frontend:** http://localhost:3001
-- **Middleware API / Swagger:** [http://localhost:3000/\_scalar](http://localhost:3000/_scalar)
+- **Frontend / API:** http://localhost:3001
+- **Swagger docs:** [http://localhost:3001/\_scalar](http://localhost:3001/_scalar)
 
 On first run you will be prompted to create an admin account.
 
@@ -75,33 +78,31 @@ On first run you will be prompted to create an admin account.
 
 ## Ports
 
-| Port         | Service                | Note                                      |
-| ------------ | ---------------------- | ----------------------------------------- |
-| `3001`       | Frontend (nginx)       | Main UI                                   |
-| `3000`       | Middleware API (Nitro) | REST API + Swagger                        |
-| `4662` (TCP) | aMule ED2K             | Configurable via `AMULE_ED2K_TCP_PORT`    |
-| `4672` (UDP) | aMule ED2K             | Configurable via `AMULE_ED2K_UDP_PORT`    |
-| `4665` (UDP) | aMule Kademlia         | Configurable via `AMULE_KAD_UDP_PORT`     |
-| `51413`      | Transmission peers     | Configurable via `TRANSMISSION_PEER_PORT` |
+| Port         | Service             | Note                                      |
+| ------------ | ------------------- | ----------------------------------------- |
+| `3001`       | App (nginx + Nitro) | UI + proxied API + Swagger (`/_scalar`)   |
+| `4662` (TCP) | aMule ED2K          | Configurable via `AMULE_ED2K_TCP_PORT`    |
+| `4672` (UDP) | aMule ED2K          | Configurable via `AMULE_ED2K_UDP_PORT`    |
+| `4665` (UDP) | aMule Kademlia      | Configurable via `AMULE_KAD_UDP_PORT`     |
+| `51413`      | Transmission peers  | Configurable via `TRANSMISSION_PEER_PORT` |
 
-All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) happens on the internal Docker network and is **not** exposed to the host.
+All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) happens on the internal Docker network and is **not** exposed to the host. Nitro listens on `127.0.0.1:3000` inside the app container and is not exposed externally.
 
 ---
 
 ## Environment Variables
 
-| Variable                                  | Default                 | Description                                  |
-| ----------------------------------------- | ----------------------- | -------------------------------------------- |
-| `PUID` / `PGID`                           | `1000`                  | Host user/group IDs for file permissions     |
-| `TZ`                                      | `Europe/Madrid`         | Timezone                                     |
-| `DOWNLOAD_DIR`                            | `./downloads`           | Completed downloads host path                |
-| `INCOMPLETE_DIR`                          | `./incomplete`          | In-progress downloads host path              |
-| `AMULE_GUI_PASSWORD`                      | —                       | aMule EC protocol password (port 4712)       |
-| `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_               | Transmission RPC credentials                 |
-| `DATA_DIR`                                | `./data`                | Middleware SQLite database directory         |
-| `JWT_SECRET`                              | `change-me`             | Secret for signing JWT tokens                |
-| `PYLOAD_USER` / `PYLOAD_PASSWORD`         | `pyload`                | pyLoad NG credentials                        |
-| `API_BASE_URL`                            | `http://localhost:3000` | URL the browser uses to reach the middleware |
+| Variable                                  | Default         | Description                              |
+| ----------------------------------------- | --------------- | ---------------------------------------- |
+| `PUID` / `PGID`                           | `1000`          | Host user/group IDs for file permissions |
+| `TZ`                                      | `Europe/Madrid` | Timezone                                 |
+| `DOWNLOAD_DIR`                            | `./downloads`   | Completed downloads host path            |
+| `INCOMPLETE_DIR`                          | `./incomplete`  | In-progress downloads host path          |
+| `AMULE_GUI_PASSWORD`                      | —               | aMule EC protocol password (port 4712)   |
+| `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_       | Transmission RPC credentials             |
+| `DATA_DIR`                                | `./data`        | Middleware SQLite database directory     |
+| `JWT_SECRET`                              | `change-me`     | Secret for signing JWT tokens            |
+| `PYLOAD_USER` / `PYLOAD_PASSWORD`         | `pyload`        | pyLoad NG credentials                    |
 
 ---
 
@@ -130,13 +131,13 @@ Or use the convenience script at the root:
 
 ## Tech Stack
 
-| Layer               | Technology                                                                            |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| Frontend            | [Nuxt 3](https://nuxt.com/) + Vue 3, custom SCSS                                      |
-| Middleware          | [Nitro](https://nitro.unjs.io/) (Node.js)                                             |
-| Database            | SQLite via `better-sqlite3`                                                           |
-| Auth                | JWT (jose)                                                                            |
-| aMule client        | EC binary protocol (custom implementation)                                            |
-| Transmission client | Transmission RPC JSON API                                                             |
-| pyLoad client       | pyLoad NG HTTP API                                                                    |
-| Containers          | Docker Compose — `ngosang/amule`, `linuxserver/transmission`, `linuxserver/pyload-ng` |
+| Layer               | Technology                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Frontend            | [Nuxt 3](https://nuxt.com/) + Vue 3, custom SCSS                                                                                           |
+| Middleware          | [Nitro](https://nitro.unjs.io/) (Node.js)                                                                                                  |
+| Database            | SQLite via `better-sqlite3`                                                                                                                |
+| Auth                | JWT (jose)                                                                                                                                 |
+| aMule client        | EC binary protocol (custom implementation)                                                                                                 |
+| Transmission client | Transmission RPC JSON API                                                                                                                  |
+| pyLoad client       | pyLoad NG HTTP API                                                                                                                         |
+| Containers          | Docker Compose — `ngosang/amule`, `linuxserver/transmission`, `linuxserver/pyload-ng` + combined app image (nginx + Nitro via supervisord) |

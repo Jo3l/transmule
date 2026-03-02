@@ -498,7 +498,17 @@
       "username": "Usuario",
       "role": "Rol",
       "created": "Creado"
-    }
+    },
+    "changePassword": "Cambiar contraseña",
+    "changePwFor": "Cambiar contraseña de {username}",
+    "newPassword": "Nueva contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden",
+    "account": "Cuenta",
+    "currentPassword": "Contraseña actual",
+    "currentPasswordRequired": "La contraseña actual es obligatoria",
+    "passwordTooShort": "La contraseña debe tener al menos 4 caracteres",
+    "saveFailed": "Error al guardar"
   },
   "themes": {
     "sark": {

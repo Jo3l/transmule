@@ -29,11 +29,27 @@ export default defineNuxtConfig({
     port: 3001,
   },
 
+  // In dev mode, Vite proxies /api/* → middleware, mirroring what nginx does
+  // in production. No NUXT_PUBLIC_API_BASE override needed for local dev.
+  vite: {
+    server: {
+      proxy: {
+        "/api": {
+          target: "http://localhost:3000",
+          changeOrigin: true,
+        },
+      },
+    },
+  },
+
   css: ["~/assets/scss/main.scss"],
 
   runtimeConfig: {
     public: {
-      apiBase: "http://localhost:3000",
+      // Empty string = relative URL (same origin).
+      // In production: nginx proxies /api/* → middleware container.
+      // In dev: Vite's server.proxy below proxies /api/* → localhost:3000.
+      apiBase: "",
     },
   },
 

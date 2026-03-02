@@ -7,17 +7,17 @@
 #   docker compose logs -f      # follow logs
 #
 # Ports exposed to host:
-#   3001  → Frontend (Nuxt SPA via nginx)
-#   3000  → Middleware API (Nitro.js)
+#   3001  → App (Nuxt SPA + API via nginx)
 #   4662  → aMule TCP (ED2K)       — configurable via AMULE_ED2K_TCP_PORT
 #   4672  → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
 #   4665  → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
 #   51413 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
 #
 # Internal only (Docker network, not exposed to host):
-#   4712  → aMule EC protocol (accessible by middleware)
-#   9091  → Transmission RPC (accessible by middleware)
-#   8000  → pyLoad web UI + API (accessible by middleware)
+#   4712  → aMule EC protocol (accessible by app container)
+#   9091  → Transmission RPC (accessible by app container)
+#   8000  → pyLoad web UI + API (accessible by app container)
+#   3000  → Nitro API — loopback inside app container, never on Docker network
 # ──────────────────────────────────────────────────────────────────────────────
 
 services:
@@ -83,15 +83,17 @@ services:
     networks:
       - transmule
 
-  # ── API Middleware (Nitro.js) ───────────────────────────────────────────────
-  middleware:
+  # ── App (Nitro API + Nuxt SPA via nginx) ──────────────────────────────────
+  # Single container: supervisord runs nginx (port 3001) and Nitro (loopback).
+  # nginx reverse-proxies /api/* and /_scalar to Nitro internally.
+  app:
     build:
-      context: ./middleware
+      context: .
       dockerfile: Dockerfile
-    container_name: transmule-middleware
+    container_name: transmule-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3001"
     volumes:
       - ${DATA_DIR:-./data}:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -110,22 +112,6 @@ services:
       - amule
       - transmission
       - pyload
-    networks:
-      - transmule
-
-  # ── Frontend (Nuxt 3 SPA via nginx) ────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NUXT_PUBLIC_API_BASE: ${API_BASE_URL:-http://localhost:3000}
-    container_name: transmule-frontend
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    depends_on:
-      - middleware
     networks:
       - transmule
 

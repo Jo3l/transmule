@@ -1,10 +1,7 @@
 <template>
   <div class="box">
     <div class="has-text-centered mb-5">
-      <span
-        class="mdi mdi-cog"
-        style="font-size: 3rem; color: var(--s-accent)"
-      />
+      <img src="~/assets/logo/logo128.png" alt="TransMule" class="auth-logo" />
       <h1 class="title is-4 mt-2">{{ $t("setup.title") }}</h1>
       <p class="subtitle is-6 has-text-grey">
         {{ $t("setup.subtitle") }}
@@ -107,3 +104,12 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.auth-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+</style>

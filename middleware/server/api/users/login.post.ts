@@ -31,14 +31,18 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
 
   if (!body?.username || !body?.password) {
-    setResponseStatus(event, 400);
-    return { error: "Missing required fields: username, password" };
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Missing required fields: username, password",
+    });
   }
 
   const user = getUserByUsername(body.username);
   if (!user || !bcrypt.compareSync(body.password, user.password_hash)) {
-    setResponseStatus(event, 401);
-    return { error: "Invalid username or password" };
+    throw createError({
+      statusCode: 401,
+      statusMessage: "Invalid username or password",
+    });
   }
 
   const token = signToken({

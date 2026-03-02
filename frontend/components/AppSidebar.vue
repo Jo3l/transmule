@@ -1,7 +1,11 @@
 <template>
   <nav class="app-sidebar" :class="{ 'is-open': open }">
     <div class="sidebar-brand">
-      <span class="mdi mdi-download-network"></span>
+      <img
+        src="~/assets/logo/logo64.png"
+        alt="TransMule"
+        class="sidebar-logo"
+      />
       {{ $t("app.title") }}
     </div>
     <div class="menu">

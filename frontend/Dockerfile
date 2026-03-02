@@ -10,10 +10,10 @@ RUN npm ci
 
 COPY . .
 
-# The API base URL is baked into the SPA at build time.
-# In Docker the browser still talks to the middleware via the host-mapped port,
-# but we use a relative path so it works behind any reverse proxy.
-ARG NUXT_PUBLIC_API_BASE=http://localhost:3000
+# API base URL — empty so the SPA uses relative /api/* paths.
+# nginx (in this image) reverse-proxies /api/* → middleware at runtime.
+# No IP address is ever baked into the image.
+ARG NUXT_PUBLIC_API_BASE=
 ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 
 RUN npm run generate

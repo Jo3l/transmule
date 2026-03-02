@@ -1,10 +1,7 @@
 <template>
   <div class="box">
     <div class="has-text-centered mb-5">
-      <span
-        class="mdi mdi-download-network"
-        style="font-size: 3rem; color: var(--s-accent)"
-      />
+      <img src="~/assets/logo/logo128.png" alt="TransMule" class="auth-logo" />
       <h1 class="title is-4 mt-2">{{ $t("login.title") }}</h1>
       <p class="subtitle is-6 has-text-grey">{{ $t("login.subtitle") }}</p>
     </div>
@@ -67,7 +64,12 @@ async function doLogin() {
     auth.setAuth(data.token, data.user);
     navigateTo("/");
   } catch (err: any) {
-    error.value = err?.data?.error || err?.message || t("login.failed");
+    error.value =
+      err?.statusMessage ||
+      err?.data?.statusMessage ||
+      err?.data?.message ||
+      err?.message ||
+      t("login.failed");
   } finally {
     loading.value = false;
   }
@@ -80,3 +82,12 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style scoped>
+.auth-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+</style>

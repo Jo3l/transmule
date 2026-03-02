@@ -128,6 +128,14 @@ export function deleteUser(id: number): boolean {
   return result.changes > 0;
 }
 
+export function updateUserPassword(id: number, passwordHash: string): boolean {
+  const db = useDatabase();
+  const result = db
+    .prepare("UPDATE users SET password_hash = ? WHERE id = ?")
+    .run(passwordHash, id);
+  return result.changes > 0;
+}
+
 // ─── User preference helpers ────────────────────────────────────────────────
 
 export function getUserPreference(
