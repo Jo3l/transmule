@@ -13,7 +13,16 @@ defineRouteMeta({
 
 export default defineEventHandler(async () => {
   const client = useAmuleClient();
-  const stats = await client.getStats();
+
+  let stats: Awaited<ReturnType<typeof client.getStats>>;
+  try {
+    stats = await client.getStats();
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 
   // Derive connection status from stats
   const ed2kConnected = !!stats.connectedServer?.ip;

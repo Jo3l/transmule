@@ -51,61 +51,69 @@ export default defineEventHandler(async (event) => {
     return { error: "Missing required field: action" };
   }
 
-  const client = useAmuleClient();
+  try {
+    const client = useAmuleClient();
 
-  switch (body.action) {
-    case "pause":
-      if (Array.isArray(body.hashes)) {
-        for (const hash of body.hashes) {
-          await client.pauseDownload(hexToHash(hash));
+    switch (body.action) {
+      case "pause":
+        if (Array.isArray(body.hashes)) {
+          for (const hash of body.hashes) {
+            await client.pauseDownload(hexToHash(hash));
+          }
         }
-      }
-      return { success: true, action: "pause" };
+        return { success: true, action: "pause" };
 
-    case "resume":
-      if (Array.isArray(body.hashes)) {
-        for (const hash of body.hashes) {
-          await client.resumeDownload(hexToHash(hash));
+      case "resume":
+        if (Array.isArray(body.hashes)) {
+          for (const hash of body.hashes) {
+            await client.resumeDownload(hexToHash(hash));
+          }
         }
-      }
-      return { success: true, action: "resume" };
+        return { success: true, action: "resume" };
 
-    case "stop":
-      if (Array.isArray(body.hashes)) {
-        for (const hash of body.hashes) {
-          await client.stopDownload(hexToHash(hash));
+      case "stop":
+        if (Array.isArray(body.hashes)) {
+          for (const hash of body.hashes) {
+            await client.stopDownload(hexToHash(hash));
+          }
         }
-      }
-      return { success: true, action: "stop" };
+        return { success: true, action: "stop" };
 
-    case "cancel":
-      if (Array.isArray(body.hashes)) {
-        for (const hash of body.hashes) {
-          await client.deleteDownload(hexToHash(hash));
+      case "cancel":
+        if (Array.isArray(body.hashes)) {
+          for (const hash of body.hashes) {
+            await client.deleteDownload(hexToHash(hash));
+          }
         }
-      }
-      return { success: true, action: "cancel" };
+        return { success: true, action: "cancel" };
 
-    case "add":
-      if (!body.ed2k_link) {
+      case "add":
+        if (!body.ed2k_link) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'ed2k_link' for add action" };
+        }
+        await client.downloadEd2kLink(body.ed2k_link.trim());
+        return { success: true, action: "add" };
+
+      case "category":
+        if (!Array.isArray(body.hashes) || body.category === undefined) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'hashes' and 'category' for category action" };
+        }
+        for (const hash of body.hashes) {
+          await client.setFileCategory(hexToHash(hash), Number(body.category));
+        }
+        return { success: true, action: "category" };
+
+      default:
         setResponseStatus(event, 400);
-        return { error: "Missing 'ed2k_link' for add action" };
-      }
-      await client.downloadEd2kLink(body.ed2k_link.trim());
-      return { success: true, action: "add" };
-
-    case "category":
-      if (!Array.isArray(body.hashes) || body.category === undefined) {
-        setResponseStatus(event, 400);
-        return { error: "Missing 'hashes' and 'category' for category action" };
-      }
-      for (const hash of body.hashes) {
-        await client.setFileCategory(hexToHash(hash), Number(body.category));
-      }
-      return { success: true, action: "category" };
-
-    default:
-      setResponseStatus(event, 400);
-      return { error: `Unknown action: ${body.action}` };
+        return { error: `Unknown action: ${body.action}` };
+    }
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
   }
 });

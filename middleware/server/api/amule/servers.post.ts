@@ -45,22 +45,30 @@ export default defineEventHandler(async (event) => {
     return { error: "Missing required field: action" };
   }
 
-  const client = useAmuleClient();
+  try {
+    const client = useAmuleClient();
 
-  switch (body.action) {
-    case "connect":
-      await client.connectToServer(
-        body.ip,
-        body.port ? Number(body.port) : undefined,
-      );
-      return { success: true, action: "connect" };
+    switch (body.action) {
+      case "connect":
+        await client.connectToServer(
+          body.ip,
+          body.port ? Number(body.port) : undefined,
+        );
+        return { success: true, action: "connect" };
 
-    case "disconnect":
-      await client.disconnectFromServer();
-      return { success: true, action: "disconnect" };
+      case "disconnect":
+        await client.disconnectFromServer();
+        return { success: true, action: "disconnect" };
 
-    default:
-      setResponseStatus(event, 400);
-      return { error: `Unknown action: ${body.action}` };
+      default:
+        setResponseStatus(event, 400);
+        return { error: `Unknown action: ${body.action}` };
+    }
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
   }
 });

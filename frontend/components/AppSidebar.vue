@@ -28,16 +28,24 @@
       </ul>
 
       <!-- aMule collapsible section -->
-      <div class="sidebar-section" :class="{ 'is-expanded': amuleOpen }">
-        <a class="sidebar-section-header" @click="amuleOpen = !amuleOpen">
+      <div
+        class="sidebar-section"
+        :class="{ 'is-expanded': amuleOpen, 'is-disabled': amuleDisabled }"
+      >
+        <a
+          class="sidebar-section-header"
+          @click="!amuleDisabled && (amuleOpen = !amuleOpen)"
+        >
           <span class="mdi mdi-server-network"></span>
           {{ $t("nav.amule") }}
+          <span v-if="amuleDisabled" class="sidebar-section-badge">{{ $t("nav.disabled") }}</span>
           <span
+            v-else
             class="mdi sidebar-section-chevron"
             :class="amuleOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
           />
         </a>
-        <ul v-show="amuleOpen" class="menu-list sidebar-section-list">
+        <ul v-show="amuleOpen && !amuleDisabled" class="menu-list sidebar-section-list">
           <li>
             <NuxtLink to="/search" @click="$emit('close')">
               <span class="mdi mdi-magnify"></span> {{ $t("nav.search") }}
@@ -79,19 +87,24 @@
       </div>
 
       <!-- Transmission collapsible section -->
-      <div class="sidebar-section" :class="{ 'is-expanded': transmissionOpen }">
+      <div
+        class="sidebar-section"
+        :class="{ 'is-expanded': transmissionOpen, 'is-disabled': transmissionDisabled }"
+      >
         <a
           class="sidebar-section-header"
-          @click="transmissionOpen = !transmissionOpen"
+          @click="!transmissionDisabled && (transmissionOpen = !transmissionOpen)"
         >
           <span class="mdi mdi-magnet"></span>
           {{ $t("nav.transmission") }}
+          <span v-if="transmissionDisabled" class="sidebar-section-badge">{{ $t("nav.disabled") }}</span>
           <span
+            v-else
             class="mdi sidebar-section-chevron"
             :class="transmissionOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
           />
         </a>
-        <ul v-show="transmissionOpen" class="menu-list sidebar-section-list">
+        <ul v-show="transmissionOpen && !transmissionDisabled" class="menu-list sidebar-section-list">
           <li>
             <NuxtLink to="/transmission/search" @click="$emit('close')">
               <span class="mdi mdi-magnify"></span>
@@ -134,16 +147,24 @@
         </ul>
       </div>
       <!-- pyLoad collapsible section -->
-      <div class="sidebar-section" :class="{ 'is-expanded': pyloadOpen }">
-        <a class="sidebar-section-header" @click="pyloadOpen = !pyloadOpen">
+      <div
+        class="sidebar-section"
+        :class="{ 'is-expanded': pyloadOpen, 'is-disabled': pyloadDisabled }"
+      >
+        <a
+          class="sidebar-section-header"
+          @click="!pyloadDisabled && (pyloadOpen = !pyloadOpen)"
+        >
           <span class="mdi mdi-cloud-download"></span>
           {{ $t("nav.pyload") }}
+          <span v-if="pyloadDisabled" class="sidebar-section-badge">{{ $t("nav.disabled") }}</span>
           <span
+            v-else
             class="mdi sidebar-section-chevron"
             :class="pyloadOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
           />
         </a>
-        <ul v-show="pyloadOpen" class="menu-list sidebar-section-list">
+        <ul v-show="pyloadOpen && !pyloadDisabled" class="menu-list sidebar-section-list">
           <li>
             <NuxtLink to="/pyload" @click="$emit('close')">
               <span class="mdi mdi-download-multiple"></span>
@@ -163,4 +184,18 @@ defineEmits<{ close: [] }>();
 const amuleOpen = ref(true);
 const transmissionOpen = ref(true);
 const pyloadOpen = ref(true);
+
+const { services, loaded } = useServices();
+
+// A section is disabled only once we have data and the service is not running.
+// While loading (loaded=false) or for non-admin users (services=null), show all.
+const amuleDisabled = computed(
+  () => loaded.value && services.value !== null && !services.value.amule.running,
+);
+const transmissionDisabled = computed(
+  () => loaded.value && services.value !== null && !services.value.transmission.running,
+);
+const pyloadDisabled = computed(
+  () => loaded.value && services.value !== null && !services.value.pyload.running,
+);
 </script>

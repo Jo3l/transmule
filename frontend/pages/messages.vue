@@ -168,6 +168,7 @@
 <script setup lang="ts">
 const { t } = useI18n();
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const friends = ref<any[]>([]);
 const loading = ref(false);
 const selectedFriend = ref<any>(null);
@@ -180,6 +181,7 @@ const friendCols = computed(() => [
 ]);
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const res = await apiFetch<any>("/api/amule/friends");

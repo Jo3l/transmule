@@ -35,8 +35,14 @@ export default defineEventHandler(async (event) => {
     };
   }
 
-  const client = useAmuleClient();
-  await client.setPreferences(body);
-
-  return { success: true };
+  try {
+    const client = useAmuleClient();
+    await client.setPreferences(body);
+    return { success: true };
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 });

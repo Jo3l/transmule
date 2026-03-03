@@ -104,6 +104,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
 
@@ -243,6 +244,7 @@ async function doSearch() {
 // ── Track existing Transmission torrents ────────────────────────────────────
 
 async function fetchExistingHashes() {
+  if (!transmissionRunning.value) return;
   try {
     const res = await apiFetch<any>("/api/transmission/torrents");
     const torrents = res?.torrents ?? [];

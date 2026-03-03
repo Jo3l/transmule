@@ -172,6 +172,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { transmissionRunning } = useServiceGuard();
 const loading = ref(true);
 
 const session = reactive({ version: "", rpcVersion: "", downloadDir: "" });
@@ -234,6 +235,7 @@ function formatDuration(seconds: number) {
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 async function fetchStats() {
+  if (!transmissionRunning.value) return;
   try {
     const { raw, stats } = await apiFetch<any>("/api/transmission/session");
     session.version = raw.version || "";

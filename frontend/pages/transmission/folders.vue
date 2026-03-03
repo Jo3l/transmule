@@ -92,6 +92,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { transmissionRunning } = useServiceGuard();
 const loading = ref(true);
 const freeSpace = ref<number | null>(null);
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -121,6 +122,7 @@ function formatSize(bytes: number) {
 }
 
 async function fetchSession() {
+  if (!transmissionRunning.value) return;
   loading.value = true;
   try {
     const { raw } = await apiFetch<any>("/api/transmission/session");

@@ -248,6 +248,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { pyloadRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
 
@@ -372,6 +373,7 @@ async function fetchPackages() {
 }
 
 async function refresh() {
+  if (!pyloadRunning.value) return;
   await Promise.all([fetchStatus(), fetchPackages()]);
 }
 

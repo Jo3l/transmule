@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const kadConnected = ref(false);
 const kadUsers = ref(0);
 const kadFiles = ref(0);
@@ -86,6 +87,7 @@ const bootstrapPort = ref("");
 const loading = ref(false);
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const res = await apiFetch<any>("/api/amule/kad");

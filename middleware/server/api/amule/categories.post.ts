@@ -46,50 +46,58 @@ export default defineEventHandler(async (event) => {
     return { error: "Missing required field: action" };
   }
 
-  const client = useAmuleClient();
+  try {
+    const client = useAmuleClient();
 
-  switch (body.action) {
-    case "create": {
-      if (!body.name) {
-        setResponseStatus(event, 400);
-        return { error: "Missing 'name' for create action" };
+    switch (body.action) {
+      case "create": {
+        if (!body.name) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'name' for create action" };
+        }
+        await client.createCategory({
+          name: body.name,
+          path: body.path || "",
+          comment: body.comment || "",
+          color: body.color || 0,
+          priority: body.priority || 0,
+        });
+        return { success: true, action: "create" };
       }
-      await client.createCategory({
-        name: body.name,
-        path: body.path || "",
-        comment: body.comment || "",
-        color: body.color || 0,
-        priority: body.priority || 0,
-      });
-      return { success: true, action: "create" };
-    }
 
-    case "update": {
-      if (body.id === undefined) {
-        setResponseStatus(event, 400);
-        return { error: "Missing 'id' for update action" };
+      case "update": {
+        if (body.id === undefined) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'id' for update action" };
+        }
+        await client.updateCategory(Number(body.id), {
+          name: body.name || "",
+          path: body.path || "",
+          comment: body.comment || "",
+          color: body.color || 0,
+          priority: body.priority || 0,
+        });
+        return { success: true, action: "update" };
       }
-      await client.updateCategory(Number(body.id), {
-        name: body.name || "",
-        path: body.path || "",
-        comment: body.comment || "",
-        color: body.color || 0,
-        priority: body.priority || 0,
-      });
-      return { success: true, action: "update" };
-    }
 
-    case "delete": {
-      if (body.id === undefined) {
-        setResponseStatus(event, 400);
-        return { error: "Missing 'id' for delete action" };
+      case "delete": {
+        if (body.id === undefined) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'id' for delete action" };
+        }
+        await client.deleteCategory(Number(body.id));
+        return { success: true, action: "delete" };
       }
-      await client.deleteCategory(Number(body.id));
-      return { success: true, action: "delete" };
-    }
 
-    default:
-      setResponseStatus(event, 400);
-      return { error: `Unknown action: ${body.action}` };
+      default:
+        setResponseStatus(event, 400);
+        return { error: `Unknown action: ${body.action}` };
+    }
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
   }
 });

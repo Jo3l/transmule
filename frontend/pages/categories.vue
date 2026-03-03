@@ -82,6 +82,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 const categories = ref<any[]>([]);
 const loading = ref(false);
@@ -106,6 +107,7 @@ const columns = computed(() => [
 const form = ref({ id: 0, name: "", path: "", comment: "", priority: 1 });
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const res = await apiFetch<any>("/api/amule/categories");

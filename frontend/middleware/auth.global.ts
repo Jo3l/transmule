@@ -13,7 +13,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
       if (to.path === "/login" && !status.hasUsers) return navigateTo("/setup");
       if (to.path === "/setup" && status.hasUsers) return navigateTo("/login");
     } catch {
-      /* API unreachable — stay on the current page */
+      /* API unreachable — if on /login, go to /setup since we can't authenticate */
+      if (to.path === "/login") return navigateTo("/setup");
     }
     return;
   }
@@ -38,9 +39,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
       if (!status.hasUsers) {
         return navigateTo("/setup");
       }
+      return navigateTo("/login");
     } catch {
-      // API unreachable — go to login anyway
+      // API unreachable — no way to log in, go to setup
+      return navigateTo("/setup");
     }
-    return navigateTo("/login");
   }
 });

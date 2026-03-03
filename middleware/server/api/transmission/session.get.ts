@@ -14,11 +14,19 @@ defineRouteMeta({
 export default defineEventHandler(async () => {
   const client = useTransmissionClient();
 
-  const [session, stats, raw] = await Promise.all([
-    client.getSession(),
-    client.getSessionStats(),
-    client.getSessionRaw(),
-  ]);
+  let session: any, stats: any, raw: any;
+  try {
+    [session, stats, raw] = await Promise.all([
+      client.getSession(),
+      client.getSessionStats(),
+      client.getSessionRaw(),
+    ]);
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `Transmission unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 
   return { session, stats, raw };
 });

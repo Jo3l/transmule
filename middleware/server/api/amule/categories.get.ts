@@ -11,17 +11,24 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async () => {
-  const client = useAmuleClient();
-  const categories = await client.getCategories();
+  try {
+    const client = useAmuleClient();
+    const categories = await client.getCategories();
 
-  return {
-    categories: categories.map((c) => ({
-      id: c.id ?? 0,
-      name: c.name || "",
-      path: c.path || "",
-      comment: c.comment || "",
-      color: c.color ?? 0,
-      priority: c.priority ?? 0,
-    })),
-  };
+    return {
+      categories: categories.map((c) => ({
+        id: c.id ?? 0,
+        name: c.name || "",
+        path: c.path || "",
+        comment: c.comment || "",
+        color: c.color ?? 0,
+        priority: c.priority ?? 0,
+      })),
+    };
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 });

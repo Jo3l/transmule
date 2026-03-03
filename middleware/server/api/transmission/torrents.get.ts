@@ -11,43 +11,50 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async () => {
-  const client = useTransmissionClient();
+  try {
+    const client = useTransmissionClient();
 
-  const [torrents, stats] = await Promise.all([
-    client.getTorrents(),
-    client.getSessionStats(),
-  ]);
+    const [torrents, stats] = await Promise.all([
+      client.getTorrents(),
+      client.getSessionStats(),
+    ]);
 
-  // Compute totals
-  let totalDown = 0;
-  let totalUp = 0;
-  let totalSize = 0;
-  let totalDone = 0;
+    // Compute totals
+    let totalDown = 0;
+    let totalUp = 0;
+    let totalSize = 0;
+    let totalDone = 0;
 
-  for (const t of torrents) {
-    totalDown += t.rateDownload;
-    totalUp += t.rateUpload;
-    totalSize += t.sizeWhenDone;
-    totalDone += t.sizeWhenDone - t.leftUntilDone;
-  }
+    for (const t of torrents) {
+      totalDown += t.rateDownload;
+      totalUp += t.rateUpload;
+      totalSize += t.sizeWhenDone;
+      totalDone += t.sizeWhenDone - t.leftUntilDone;
+    }
 
-  return {
-    torrents: {
-      count: torrents.length,
-      files: torrents,
-      totals: {
-        speed_down: totalDown,
-        speed_down_fmt: fmtSpeed(totalDown),
-        speed_up: totalUp,
-        speed_up_fmt: fmtSpeed(totalUp),
-        size: totalSize,
-        size_fmt: fmtBytes(totalSize),
-        size_done: totalDone,
-        size_done_fmt: fmtBytes(totalDone),
+    return {
+      torrents: {
+        count: torrents.length,
+        files: torrents,
+        totals: {
+          speed_down: totalDown,
+          speed_down_fmt: fmtSpeed(totalDown),
+          speed_up: totalUp,
+          speed_up_fmt: fmtSpeed(totalUp),
+          size: totalSize,
+          size_fmt: fmtBytes(totalSize),
+          size_done: totalDone,
+          size_done_fmt: fmtBytes(totalDone),
+        },
       },
-    },
-    session: stats,
-  };
+      session: stats,
+    };
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `Transmission unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 });
 
 function fmtBytes(bytes: number): string {

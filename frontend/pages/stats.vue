@@ -141,6 +141,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 
 const stats = ref<any>(null);
 const connStatus = ref<any>(null);
@@ -148,6 +149,7 @@ const statsTree = ref<any[]>([]);
 const loading = ref(false);
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const [statsRes, treeRes] = await Promise.all([

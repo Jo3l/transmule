@@ -113,6 +113,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 
 const sizeUnits = computed(() => [
@@ -222,6 +223,7 @@ function stopPolling() {
 }
 
 async function fetchResults() {
+  if (!amuleRunning.value) { stopPolling(); return; }
   try {
     const res = await apiFetch<any>("/api/amule/search");
     const incoming = res?.results?.files || [];

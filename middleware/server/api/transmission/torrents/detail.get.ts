@@ -35,15 +35,23 @@ export default defineEventHandler(async (event) => {
   const id =
     typeof rawId === "string" && /^\d+$/.test(rawId) ? Number(rawId) : rawId;
 
-  const client = useTransmissionClient();
-  const torrent = await client.getTorrentDetail(id as number | string);
+  try {
+    const client = useTransmissionClient();
+    const torrent = await client.getTorrentDetail(id as number | string);
 
-  if (!torrent) {
+    if (!torrent) {
+      throw createError({
+        statusCode: 404,
+        statusMessage: "Torrent not found",
+      });
+    }
+
+    return { torrent };
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
     throw createError({
-      statusCode: 404,
-      statusMessage: "Torrent not found",
+      statusCode: 503,
+      statusMessage: `Transmission unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
     });
   }
-
-  return { torrent };
 });

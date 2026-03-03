@@ -648,6 +648,26 @@ a {
       transition: transform 0.2s;
     }
 
+    .sidebar-section.is-disabled {
+      opacity: 0.45;
+      .sidebar-section-header {
+        cursor: default;
+        pointer-events: none;
+      }
+    }
+
+    .sidebar-section-badge {
+      margin-left: auto;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--s-sidebar-section-text);
+      border: 1px solid currentColor;
+      border-radius: 3px;
+      padding: 0.05em 0.35em;
+    }
+
     .sidebar-section-list a {
       padding-left: 1.5rem;
       font-size: 0.85rem;

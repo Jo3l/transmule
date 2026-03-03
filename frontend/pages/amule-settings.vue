@@ -95,29 +95,6 @@
 
           <div class="columns is-multiline">
             <div class="column is-6">
-              <SFormItem :label="$t('amuleSettings.tcpPort')">
-                <SInput
-                  v-model.number="form.connection.tcpPort"
-                  type="number"
-                  style="max-width: 160px"
-                />
-              </SFormItem>
-            </div>
-            <div class="column is-6">
-              <SFormItem :label="$t('amuleSettings.udpPort')">
-                <SInput
-                  v-model.number="form.connection.udpPort"
-                  type="number"
-                  style="max-width: 160px"
-                />
-              </SFormItem>
-            </div>
-          </div>
-
-          <SDivider />
-
-          <div class="columns is-multiline">
-            <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxFileSources')">
                 <SInput
                   v-model.number="form.connection.maxFileSources"
@@ -371,8 +348,6 @@ interface PrefsConnection {
   maxUploadSpeed: number;
   maxDownloadSpeed: number;
   slotAllocation: number;
-  tcpPort: number;
-  udpPort: number;
   maxFileSources: number;
   maxConnections: number;
   autoconnect: boolean;
@@ -427,8 +402,6 @@ const form = reactive<AmulePreferences>({
     maxUploadSpeed: 0,
     maxDownloadSpeed: 0,
     slotAllocation: 2,
-    tcpPort: 4662,
-    udpPort: 4672,
     maxFileSources: 300,
     maxConnections: 500,
     autoconnect: false,

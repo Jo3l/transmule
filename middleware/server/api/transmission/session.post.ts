@@ -18,29 +18,37 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Body required" });
   }
 
-  const client = useTransmissionClient();
+  try {
+    const client = useTransmissionClient();
 
-  // Separate special actions from session-set fields
-  const { _action, ...settings } = body;
+    // Separate special actions from session-set fields
+    const { _action, ...settings } = body;
 
-  if (_action === "blocklist-update") {
-    const size = await client.updateBlocklist();
-    return { ok: true, blocklistSize: size };
-  }
+    if (_action === "blocklist-update") {
+      const size = await client.updateBlocklist();
+      return { ok: true, blocklistSize: size };
+    }
 
-  if (_action === "port-test") {
-    const open = await client.testPort();
-    return { ok: true, portIsOpen: open };
-  }
+    if (_action === "port-test") {
+      const open = await client.testPort();
+      return { ok: true, portIsOpen: open };
+    }
 
-  // Regular session-set
-  if (Object.keys(settings).length === 0) {
+    // Regular session-set
+    if (Object.keys(settings).length === 0) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "No settings provided",
+      });
+    }
+
+    await client.setSession(settings);
+    return { ok: true };
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
     throw createError({
-      statusCode: 400,
-      statusMessage: "No settings provided",
+      statusCode: 503,
+      statusMessage: `Transmission unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
     });
   }
-
-  await client.setSession(settings);
-  return { ok: true };
 });

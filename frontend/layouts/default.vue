@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout">
-    <AppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
+    <LazyAppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
 
     <div class="app-main">
       <div class="app-topbar">
@@ -12,11 +12,11 @@
           >
             <span class="mdi mdi-menu" />
           </SButton>
-          <ConnectionStatus class="is-hidden-mobile" />
+          <LazyConnectionStatus class="is-hidden-mobile" />
         </div>
 
         <div style="display: flex; align-items: center; gap: 0.75rem">
-          <ServiceDropdown />
+          <LazyServiceDropdown />
           <span class="has-text-grey-dark is-size-7">
             <STag size="sm" class="ml-1">
               <span class="mdi mdi-account" /> {{ user?.username }}
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <SToastContainer />
+    <LazySToastContainer />
   </div>
 </template>
 

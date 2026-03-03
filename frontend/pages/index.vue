@@ -5,13 +5,13 @@
         <h1 class="title is-4 mb-0">{{ $t("downloads.title") }}</h1>
       </div>
       <div class="level-right" style="gap: 0.5rem; display: flex">
-        <SButton variant="primary" size="sm" @click="showAddTorrent = true">
+        <SButton variant="primary" size="sm" :disabled="transmissionStopped" @click="showAddTorrent = true">
           <span class="mdi mdi-magnet mr-1" /> {{ $t("downloads.addTorrent") }}
         </SButton>
-        <SButton variant="primary" size="sm" @click="showAddLink = true">
+        <SButton variant="primary" size="sm" :disabled="amuleStopped" @click="showAddLink = true">
           <span class="mdi mdi-donkey mr-1" /> {{ $t("downloads.addEd2k") }}
         </SButton>
-        <SButton variant="primary" size="sm" @click="showAddPyload = true">
+        <SButton variant="primary" size="sm" :disabled="pyloadStopped" @click="showAddPyload = true">
           <span class="mdi mdi-download mr-1" /> {{ $t("downloads.addPyload") }}
         </SButton>
       </div>
@@ -1639,7 +1639,17 @@ import type { TabPaneDef } from "~/components/s/STabs.vue";
 const { apiFetch } = useApi();
 const { t } = useI18n();
 const { addToast } = useToast();
-const { lastStopped } = useServices();
+const { lastStopped, services, loaded } = useServices();
+
+const amuleStopped = computed(
+  () => loaded.value && services.value !== null && !services.value.amule.running,
+);
+const transmissionStopped = computed(
+  () => loaded.value && services.value !== null && !services.value.transmission.running,
+);
+const pyloadStopped = computed(
+  () => loaded.value && services.value !== null && !services.value.pyload.running,
+);
 
 // Clear the relevant list immediately when a service is stopped
 watch(lastStopped, (ev) => {
@@ -2131,6 +2141,7 @@ async function fetchAllChunks() {
 }
 
 async function refreshAmule() {
+  if (amuleStopped.value) return;
   try {
     const res = await apiFetch<any>("/api/amule/downloads");
     amuleData.value = res;
@@ -2148,6 +2159,7 @@ async function refreshAmule() {
 }
 
 async function refreshTorrents() {
+  if (transmissionStopped.value) return;
   try {
     const res = await apiFetch<any>("/api/transmission/torrents");
     torrentData.value = res;
@@ -2165,6 +2177,7 @@ async function refreshTorrents() {
 }
 
 async function refreshPyload() {
+  if (pyloadStopped.value) return;
   try {
     const res = await apiFetch<any>("/api/pyload/packages");
     const raw = res?.packages ?? [];

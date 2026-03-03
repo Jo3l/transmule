@@ -122,6 +122,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const loading = ref(true);
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -160,6 +161,7 @@ function fmtTime(mins: number) {
 }
 
 async function fetchSession() {
+  if (!transmissionRunning.value) return;
   loading.value = true;
   try {
     const { raw } = await apiFetch<any>("/api/transmission/session");

@@ -21,6 +21,10 @@ for dir in middleware frontend; do
   fi
 done
 
+# ── Rebuild native addons for the current Node version ───────────────────────
+echo -e "${CYAN}▸ Rebuilding native addons…${NC}"
+(cd "$ROOT/middleware" && npm rebuild better-sqlite3 2>/dev/null || true)
+
 # ── Ensure data directory exists ──────────────────────────────────────────────
 mkdir -p "$ROOT/data"
 export NITRO_DB_PATH="$ROOT/data/amule-middleware.db"
@@ -63,7 +67,7 @@ MW_PID=$!
 
 # ── Start frontend ───────────────────────────────────────────────────────────
 echo -e "${CYAN}▸ Starting frontend  (Nuxt)  on :3001${NC}"
-(cd "$ROOT/frontend" && npm run dev) &
+(cd "$ROOT/frontend" && NUXT_TELEMETRY_DISABLED=1 npm run dev) &
 FE_PID=$!
 
 echo -e "${GREEN}Both services running. Press Ctrl-C to stop.${NC}"

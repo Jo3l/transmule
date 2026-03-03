@@ -71,51 +71,59 @@ export default defineEventHandler(async (event) => {
     return { error: "Missing required field: action" };
   }
 
-  const client = useAmuleClient();
+  try {
+    const client = useAmuleClient();
 
-  switch (body.action) {
-    case "search": {
-      if (!body.query) {
+    switch (body.action) {
+      case "search": {
+        if (!body.query) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'query' for search action" };
+        }
+
+        // Map type string to SearchType enum
+        const typeMap: Record<string, SearchType> = {
+          Local: SearchType.LOCAL,
+          Global: SearchType.GLOBAL,
+          KAD: SearchType.KAD,
+        };
+        const searchType = typeMap[body.type] ?? SearchType.GLOBAL;
+
+        const filters: Record<string, any> = {};
+        if (body.avail) filters.minAvailability = Number(body.avail);
+        if (body.min_size) filters.minSize = Number(body.min_size);
+        if (body.max_size) filters.maxSize = Number(body.max_size);
+        if (body.file_type) filters.fileType = body.file_type;
+        if (body.extension) filters.extension = body.extension;
+
+        await client.searchAsync(body.query, searchType, filters);
+        return { success: true, action: "search", query: body.query };
+      }
+
+      case "download": {
+        if (!Array.isArray(body.hashes) || body.hashes.length === 0) {
+          setResponseStatus(event, 400);
+          return { error: "Missing 'hashes' array for download action" };
+        }
+        for (const hash of body.hashes) {
+          await client.downloadSearchResult(hexToHash(hash));
+        }
+        return { success: true, action: "download", count: body.hashes.length };
+      }
+
+      case "stop":
+        await client.searchStop();
+        return { success: true, action: "stop" };
+
+      default:
         setResponseStatus(event, 400);
-        return { error: "Missing 'query' for search action" };
-      }
-
-      // Map type string to SearchType enum
-      const typeMap: Record<string, SearchType> = {
-        Local: SearchType.LOCAL,
-        Global: SearchType.GLOBAL,
-        KAD: SearchType.KAD,
-      };
-      const searchType = typeMap[body.type] ?? SearchType.GLOBAL;
-
-      const filters: Record<string, any> = {};
-      if (body.avail) filters.minAvailability = Number(body.avail);
-      if (body.min_size) filters.minSize = Number(body.min_size);
-      if (body.max_size) filters.maxSize = Number(body.max_size);
-      if (body.file_type) filters.fileType = body.file_type;
-      if (body.extension) filters.extension = body.extension;
-
-      await client.searchAsync(body.query, searchType, filters);
-      return { success: true, action: "search", query: body.query };
+        return { error: `Unknown action: ${body.action}` };
     }
-
-    case "download": {
-      if (!Array.isArray(body.hashes) || body.hashes.length === 0) {
-        setResponseStatus(event, 400);
-        return { error: "Missing 'hashes' array for download action" };
-      }
-      for (const hash of body.hashes) {
-        await client.downloadSearchResult(hexToHash(hash));
-      }
-      return { success: true, action: "download", count: body.hashes.length };
-    }
-
-    case "stop":
-      await client.searchStop();
-      return { success: true, action: "stop" };
-
-    default:
-      setResponseStatus(event, 400);
-      return { error: `Unknown action: ${body.action}` };
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
   }
 });

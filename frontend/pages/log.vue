@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 
 const activeTab = ref("amule");
 const amuleLog = ref("");
@@ -62,6 +63,7 @@ const serverLog = ref("");
 const loading = ref(false);
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const res = await apiFetch<any>("/api/amule/log");

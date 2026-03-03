@@ -12,11 +12,12 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async () => {
-  const client = useAmuleClient();
-  const stats = await client.getStats();
+  try {
+    const client = useAmuleClient();
+    const stats = await client.getStats();
 
-  // Build a basic stats tree from available data
-  return {
+    // Build a basic stats tree from available data
+    return {
     stats_tree: [
       {
         type: "folder",
@@ -94,5 +95,11 @@ export default defineEventHandler(async () => {
         ],
       },
     ],
-  };
+    };
+  } catch (err: any) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
+  }
 });

@@ -134,3 +134,24 @@ export function useServices() {
     refresh,
   };
 }
+
+/**
+ * Lightweight composable for pages that only need to know whether a service
+ * is running before making API calls. Uses the same shared module-level state
+ * as useServices() — no extra polling or API calls.
+ *
+ * Logic: treat as "running" while data is not yet loaded or user is non-admin
+ * (services === null), so pages behave normally until we have authoritative info.
+ */
+export function useServiceGuard() {
+  const amuleRunning = computed(
+    () => !_loaded.value || _services.value === null || _services.value.amule.running,
+  );
+  const transmissionRunning = computed(
+    () => !_loaded.value || _services.value === null || _services.value.transmission.running,
+  );
+  const pyloadRunning = computed(
+    () => !_loaded.value || _services.value === null || _services.value.pyload.running,
+  );
+  return { amuleRunning, transmissionRunning, pyloadRunning };
+}

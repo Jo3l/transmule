@@ -23,7 +23,8 @@
     "amuleSettings": "aMule Settings",
     "torrentSearch": "Search",
     "pyload": "pyLoad",
-    "pyloadDownloads": "Downloads"
+    "pyloadDownloads": "Downloads",
+    "disabled": "Stopped"
   },
   "connection": {
     "amule": "aMule",

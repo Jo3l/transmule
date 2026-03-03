@@ -106,55 +106,6 @@
         </div>
       </STabPane>
 
-      <!-- Folders (admin only) -->
-      <STabPane
-        v-if="isAdmin"
-        name="folders"
-        :label="$t('settings.folders')"
-        :active="activeTab === 'folders'"
-      >
-        <div class="box">
-          <p class="has-text-grey is-size-7 mb-4">
-            {{ $t("settings.foldersDescription") }}
-          </p>
-
-          <SFormItem :label="$t('settings.downloadDir')">
-            <SInput
-              v-model="folders.downloadDir"
-              :placeholder="$t('settings.downloadDirPlaceholder')"
-              style="max-width: 500px"
-            />
-            <p class="is-size-7 has-text-grey mt-1">
-              {{ $t("settings.downloadDirHelp") }}
-            </p>
-          </SFormItem>
-
-          <SDivider />
-
-          <SFormItem :label="$t('settings.tempDir')">
-            <SInput
-              v-model="folders.incompleteDir"
-              :placeholder="$t('settings.tempDirPlaceholder')"
-              style="max-width: 500px"
-            />
-            <p class="is-size-7 has-text-grey mt-1">
-              {{ $t("settings.tempDirHelp") }}
-            </p>
-          </SFormItem>
-
-          <SDivider />
-
-          <SButton
-            variant="primary"
-            :loading="savingFolders"
-            @click="saveFolders"
-          >
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("settings.saveFolders") }}
-          </SButton>
-        </div>
-      </STabPane>
-
       <!-- Admin: Users -->
       <STabPane
         v-if="isAdmin"
@@ -270,7 +221,6 @@ const { currentTheme, setTheme, saveToServer, THEME_META } = useTheme();
 
 const activeTab = ref("theme");
 const loading = ref(false);
-const savingFolders = ref(false);
 const savingTheme = ref(false);
 const savingLocale = ref(false);
 
@@ -325,7 +275,6 @@ const tabPanes = computed<TabPaneDef[]>(() => {
   p.push({ name: "language", label: t("settings.language") });
   p.push({ name: "account", label: t("settings.account") });
   if (isAdmin.value) {
-    p.push({ name: "folders", label: t("settings.folders") });
     p.push({ name: "users", label: t("settings.users") });
   }
   return p;
@@ -338,12 +287,6 @@ const userCols = computed<STableColumn[]>(() => [
   { prop: "created_at", label: t("settings.columns.created"), width: 160 },
   { key: "actions", label: "", width: 120 },
 ]);
-
-// Folders
-const folders = reactive({
-  downloadDir: "",
-  incompleteDir: "",
-});
 
 // Account: change own password
 const selfPwCurrent = ref("");
@@ -427,33 +370,6 @@ async function submitChangePw() {
   }
 }
 
-async function loadFolders() {
-  if (!isAdmin.value) return;
-  try {
-    const res = await apiFetch<any>("/api/admin/folders");
-    folders.downloadDir = res?.downloadDir || "";
-    folders.incompleteDir = res?.incompleteDir || "";
-  } catch {
-    /* handled */
-  }
-}
-
-async function saveFolders() {
-  savingFolders.value = true;
-  try {
-    await apiFetch("/api/admin/folders", {
-      method: "POST",
-      body: {
-        downloadDir: folders.downloadDir,
-        incompleteDirEnabled: true,
-        incompleteDir: folders.incompleteDir,
-      },
-    });
-  } finally {
-    savingFolders.value = false;
-  }
-}
-
 async function loadUsers() {
   if (!isAdmin.value) return;
   try {
@@ -495,7 +411,7 @@ async function removeUser(id: number) {
 
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([loadFolders(), loadUsers()]);
+  await Promise.all([loadUsers()]);
   loading.value = false;
 });
 </script>

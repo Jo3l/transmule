@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 const data = ref<any>(null);
 const files = ref<any[]>([]);
@@ -77,6 +78,7 @@ const columns = computed(() => [
 ]);
 
 async function refresh() {
+  if (!amuleRunning.value) return;
   loading.value = true;
   try {
     const res = await apiFetch<any>("/api/amule/shared");

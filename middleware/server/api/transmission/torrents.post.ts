@@ -16,9 +16,10 @@ defineRouteMeta({
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const action = body?.action;
-  const client = useTransmissionClient();
+  try {
+    const client = useTransmissionClient();
 
-  switch (action) {
+    switch (action) {
     case "add": {
       // Add torrent by magnet/URL or base64-encoded metainfo
       const filename = body.filename || body.url || body.magnet;
@@ -109,6 +110,13 @@ export default defineEventHandler(async (event) => {
         statusCode: 400,
         statusMessage: `Unknown action: ${action}. Valid: add, start, stop, remove, remove_data, verify, reannounce, set`,
       });
+  }
+  } catch (err: any) {
+    if ((err as any).statusCode && (err as any).statusCode < 500) throw err;
+    throw createError({
+      statusCode: 503,
+      statusMessage: `Transmission unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+    });
   }
 });
 
