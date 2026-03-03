@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-settings" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("settings.title") }}</h1>
 
     <STabs v-model="activeTab" variant="card" :panes="tabPanes">
@@ -14,11 +14,11 @@
             {{ $t("settings.themeDescription") }}
           </p>
           <SFormItem :label="$t('settings.theme')">
-            <select v-model="selectedTheme" class="s-select">
+            <SSelect v-model="selectedTheme">
               <option v-for="th in themes" :key="th.key" :value="th.key">
                 {{ th.label }}
               </option>
-            </select>
+            </SSelect>
           </SFormItem>
 
           <SButton variant="primary" :loading="savingTheme" @click="applyTheme">
@@ -39,7 +39,7 @@
             {{ $t("settings.languageDescription") }}
           </p>
           <SFormItem :label="$t('settings.language')">
-            <select v-model="selectedLocale" class="s-select">
+            <SSelect v-model="selectedLocale">
               <option
                 v-for="lang in availableLocales"
                 :key="lang.code"
@@ -47,7 +47,7 @@
               >
                 {{ lang.name }}
               </option>
-            </select>
+            </SSelect>
           </SFormItem>
 
           <SButton
@@ -67,7 +67,7 @@
         :label="$t('settings.account')"
         :active="activeTab === 'account'"
       >
-        <div class="box" style="max-width: 480px">
+        <div class="box">
           <h3 class="subtitle is-6 mb-4">
             {{ $t("settings.changePassword") }}
           </h3>
@@ -75,21 +75,21 @@
             <SInput
               v-model="selfPwCurrent"
               type="password"
-              style="max-width: 320px"
+              class="mw-320"
             />
           </SFormItem>
           <SFormItem :label="$t('settings.newPassword')">
             <SInput
               v-model="selfPwNew"
               type="password"
-              style="max-width: 320px"
+              class="mw-320"
             />
           </SFormItem>
           <SFormItem :label="$t('settings.confirmPassword')">
             <SInput
               v-model="selfPwConfirm"
               type="password"
-              style="max-width: 320px"
+              class="mw-320"
             />
           </SFormItem>
           <p v-if="selfPwError" class="has-text-danger is-size-7 mb-3">
@@ -103,6 +103,50 @@
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("settings.save") }}
           </SButton>
+        </div>
+      </STabPane>
+
+      <!-- Admin: Integrations -->
+      <STabPane
+        v-if="isAdmin"
+        name="integrations"
+        :label="$t('settings.integrations')"
+        :active="activeTab === 'integrations'"
+      >
+        <div class="box">
+          <h3 class="subtitle is-6 mb-2">{{ $t('settings.tvdbTitle') }}</h3>
+          <p class="is-size-7 mb-3 text-muted">
+            {{ $t('settings.tvdbDescription') }}
+            <a href="https://thetvdb.com/api-information" target="_blank" rel="noopener">
+              thetvdb.com/api-information
+            </a>
+          </p>
+
+          <SAlert v-if="tvdbKeySet" variant="success" class="mb-3" size="sm">
+            {{ $t('settings.tvdbKeySet') }}
+          </SAlert>
+          <SAlert v-else variant="warning" class="mb-3" size="sm">
+            {{ $t('settings.tvdbKeyNotSet') }}
+          </SAlert>
+
+          <SFormItem :label="$t('settings.tvdbApiKey')">
+            <SInput
+              v-model="tvdbKeyInput"
+              :placeholder="$t('settings.tvdbKeyPlaceholder')"
+              class="mw-420"
+            />
+          </SFormItem>
+
+          <div class="stt-btn-row">
+            <SButton variant="primary" :loading="savingTvdb" @click="saveTvdbKey">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t('settings.save') }}
+            </SButton>
+            <SButton v-if="tvdbKeySet" variant="danger" :loading="savingTvdb" @click="clearTvdbKey">
+              <span class="mdi mdi-delete mr-1" />
+              {{ $t('settings.tvdbKeyClear') }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -121,7 +165,7 @@
               }}</STag>
             </template>
             <template #cell-actions="{ row }">
-              <div class="is-flex" style="gap: 6px">
+              <div class="stt-actions">
                 <SButton
                   variant="warning"
                   size="sm"
@@ -153,7 +197,7 @@
                 v-model="pwNew"
                 type="password"
                 size="sm"
-                style="max-width: 280px"
+                class="mw-280"
               />
             </SFormItem>
             <SFormItem :label="$t('settings.confirmPassword')">
@@ -161,7 +205,7 @@
                 v-model="pwConfirm"
                 type="password"
                 size="sm"
-                style="max-width: 280px"
+                class="mw-280"
               />
             </SFormItem>
             <p v-if="pwMismatch" class="has-text-danger is-size-7 mt-1">
@@ -275,6 +319,7 @@ const tabPanes = computed<TabPaneDef[]>(() => {
   p.push({ name: "language", label: t("settings.language") });
   p.push({ name: "account", label: t("settings.account") });
   if (isAdmin.value) {
+    p.push({ name: "integrations", label: t("settings.integrations") });
     p.push({ name: "users", label: t("settings.users") });
   }
   return p;
@@ -409,31 +454,55 @@ async function removeUser(id: number) {
   }
 }
 
+// Integrations: TVDB
+const tvdbKeySet = ref(false);
+const tvdbKeyInput = ref("");
+const savingTvdb = ref(false);
+
+async function loadIntegrations() {
+  if (!isAdmin.value) return;
+  try {
+    const res = await apiFetch<{ tvdbApiKeySet: boolean }>("/api/admin/integrations");
+    tvdbKeySet.value = res?.tvdbApiKeySet ?? false;
+  } catch { /* handled */ }
+}
+
+async function saveTvdbKey() {
+  savingTvdb.value = true;
+  try {
+    await apiFetch("/api/admin/integrations", {
+      method: "POST",
+      body: { tvdbApiKey: tvdbKeyInput.value },
+    });
+    tvdbKeyInput.value = "";
+    await loadIntegrations();
+  } finally {
+    savingTvdb.value = false;
+  }
+}
+
+async function clearTvdbKey() {
+  savingTvdb.value = true;
+  try {
+    await apiFetch("/api/admin/integrations", {
+      method: "POST",
+      body: { tvdbApiKey: "" },
+    });
+    tvdbKeyInput.value = "";
+    await loadIntegrations();
+  } finally {
+    savingTvdb.value = false;
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([loadUsers()]);
+  await Promise.all([loadUsers(), loadIntegrations()]);
   loading.value = false;
 });
 </script>
 
 <style scoped>
-.s-select {
-  display: block;
-  width: 100%;
-  max-width: 340px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
-  color: var(--s-text);
-  background: var(--s-bg);
-  border: 1px solid var(--s-border);
-  border-radius: var(--s-radius);
-  appearance: auto;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.s-select:focus {
-  outline: none;
-  border-color: var(--s-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 25%, transparent);
-}
+.stt-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.stt-actions { display: flex; gap: 6px; }
 </style>

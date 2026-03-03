@@ -22,9 +22,11 @@
     "network": "Rete",
     "amuleSettings": "Impostazioni aMule",
     "torrentSearch": "Cerca",
+    "transmissionSettings": "Impostazioni Transmission",
     "pyload": "pyLoad",
     "pyloadDownloads": "Download",
-    "disabled": "Fermo"
+    "disabled": "Fermo",
+    "files": "File"
   },
   "connection": {
     "amule": "aMule",
@@ -509,12 +511,24 @@
     "currentPassword": "Password attuale",
     "currentPasswordRequired": "La password attuale è obbligatoria",
     "passwordTooShort": "La password deve essere di almeno 4 caratteri",
-    "saveFailed": "Salvataggio fallito"
+    "saveFailed": "Salvataggio fallito",
+    "integrations": "Integrazioni",
+    "tvdbTitle": "Integrazione TVDB",
+    "tvdbDescription": "Il rinomino intelligente usa TheTVDB per cercare i nomi canonici di serie e film. Ottieni una chiave API gratuita su ",
+    "tvdbApiKey": "Chiave API",
+    "tvdbKeyPlaceholder": "Incolla qui la tua chiave API TVDB",
+    "tvdbKeySet": "Una chiave API TVDB è configurata. Il rinomino intelligente userà TVDB.",
+    "tvdbKeyNotSet": "Nessuna chiave API TVDB configurata. Il rinomino intelligente userà solo i pattern.",
+    "tvdbKeyClear": "Cancella chiave"
   },
   "themes": {
-    "sark": {
-      "name": "TransMule (Tron)",
+    "tron": {
+      "name": "Tron",
       "description": "Circuiti al neon scuri dalla Griglia"
+    },
+    "sark": {
+      "name": "Sark",
+      "description": "Circuiti al neon rosso-viola scuri"
     },
     "light": {
       "name": "Chiaro",
@@ -538,6 +552,7 @@
     "connectionRestored": "Connessione ad aMule ripristinata"
   },
   "transmission": {
+    "settings": { "title": "Impostazioni Transmission" },
     "speed": {
       "title": "Limiti velocità",
       "normal": "Limiti velocità normali",
@@ -566,7 +581,7 @@
       }
     },
     "folders": {
-      "title": "Cartelle",
+      "title": "Opzioni di download",
       "downloadDir": "Cartella download",
       "downloadDirPlaceholder": "/percorso/a/download",
       "free": "liberi",
@@ -777,5 +792,41 @@
       "speed": "Velocità",
       "status": "Stato"
     }
+  },
+  "fileManager": {
+    "title": "File",
+    "root": "Download",
+    "name": "Nome",
+    "size": "Dimensione",
+    "modified": "Modificato",
+    "newFolder": "Nuova cartella",
+    "upload": "Carica",
+    "download": "Scarica",
+    "rename": "Rinomina",
+    "delete": "Elimina",
+    "deleteSelected": "Elimina ({count})",
+    "folderName": "Nome cartella",
+    "folderNamePlaceholder": "Nuova cartella",
+    "newName": "Nuovo nome",
+    "goUp": "Cartella superiore",
+    "empty": "Questa cartella è vuota",
+    "dropToUpload": "Trascina i file qui per caricarli",
+    "uploading": "Caricamento…",
+    "confirmDelete": "Eliminare \"{ name }\"?",
+    "confirmDeleteMultiple": "Eliminare {count} elementi?",
+    "notConfigured": "La directory dei download non è configurata. Imposta la variabile d'ambiente NITRO_DOWNLOADS_DIR.",
+    "cancel": "Annulla",
+    "create": "Crea",
+    "ok": "Rinomina",
+    "smartRename": "Rinomina intelligente",
+    "smartRenameSelected": "Rinomina intelligente ({count})",
+    "smartRenameTitle": "Rinomina intelligente",
+    "smartRenameHint": "I nomi suggeriti vengono rilevati automaticamente dai pattern TV/film e da TVDB. Puoi modificarli prima di applicarli.",
+    "smartRenameLoading": "Ricerca dei nomi multimediali…",
+    "smartRenameApply": "Applica ridenominazione",
+    "srOriginal": "Nome originale",
+    "srSuggested": "Nuovo nome",
+    "ctxOpen": "Apri",
+    "ctxSelected": "{count} elementi selezionati"
   }
 }

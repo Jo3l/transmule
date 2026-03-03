@@ -1,10 +1,10 @@
 <template>
-  <div class="app-layout">
+  <div id="layout-default" class="app-layout">
     <LazyAppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
 
     <div class="app-main">
       <div class="app-topbar">
-        <div style="display: flex; align-items: center; gap: 0.75rem">
+        <div class="flex-center gap-md">
           <SButton
             size="sm"
             class="is-hidden-tablet"
@@ -15,7 +15,7 @@
           <LazyConnectionStatus class="is-hidden-mobile" />
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.75rem">
+        <div class="flex-center gap-md">
           <LazyServiceDropdown />
           <span class="has-text-grey-dark is-size-7">
             <STag size="sm" class="ml-1">

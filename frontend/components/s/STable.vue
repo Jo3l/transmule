@@ -64,8 +64,7 @@
                 </template>
                 <template v-else-if="col.type === 'expand'">
                   <button
-                    class="s-btn s-btn--text s-btn--sm"
-                    style="padding: 0.15rem 0.3rem"
+                    class="s-btn s-btn--text s-btn--sm s-expand-btn"
                     @click.stop="toggleExpand(rowKeyFn(row, idx))"
                   >
                     <span
@@ -286,3 +285,7 @@ watch(
   },
 );
 </script>
+
+<style scoped>
+.s-expand-btn { padding: 0.15rem 0.3rem; }
+</style>

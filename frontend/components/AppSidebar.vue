@@ -1,5 +1,5 @@
 <template>
-  <nav class="app-sidebar" :class="{ 'is-open': open }">
+  <nav id="comp-app-sidebar" class="app-sidebar" :class="{ 'is-open': open }">
     <div class="sidebar-brand">
       <img
         src="~/assets/logo/logo64.png"
@@ -18,6 +18,11 @@
         <li>
           <NuxtLink to="/uploads" @click="$emit('close')">
             <span class="mdi mdi-upload"></span> {{ $t("nav.uploads") }}
+          </NuxtLink>
+        </li>
+        <li>
+          <NuxtLink to="/files" @click="$emit('close')">
+            <span class="mdi mdi-folder-multiple"></span> {{ $t("nav.files") }}
           </NuxtLink>
         </li>
         <li>
@@ -47,38 +52,38 @@
         </a>
         <ul v-show="amuleOpen && !amuleDisabled" class="menu-list sidebar-section-list">
           <li>
-            <NuxtLink to="/search" @click="$emit('close')">
+            <NuxtLink to="/amule/search" @click="$emit('close')">
               <span class="mdi mdi-magnify"></span> {{ $t("nav.search") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/servers" @click="$emit('close')">
+            <NuxtLink to="/amule/servers" @click="$emit('close')">
               <span class="mdi mdi-server"></span> {{ $t("nav.servers") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/shared" @click="$emit('close')">
+            <NuxtLink to="/amule/shared" @click="$emit('close')">
               <span class="mdi mdi-folder-network"></span>
               {{ $t("nav.sharedFiles") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/stats" @click="$emit('close')">
+            <NuxtLink to="/amule/stats" @click="$emit('close')">
               <span class="mdi mdi-chart-bar"></span> {{ $t("nav.statistics") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/kad" @click="$emit('close')">
+            <NuxtLink to="/amule/kad" @click="$emit('close')">
               <span class="mdi mdi-wan"></span> {{ $t("nav.kad") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/log" @click="$emit('close')">
+            <NuxtLink to="/amule/log" @click="$emit('close')">
               <span class="mdi mdi-text-box-outline"></span> {{ $t("nav.log") }}
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/amule-settings" @click="$emit('close')">
+            <NuxtLink to="/amule/settings" @click="$emit('close')">
               <span class="mdi mdi-cog-outline"></span>
               {{ $t("nav.amuleSettings") }}
             </NuxtLink>
@@ -112,36 +117,15 @@
             </NuxtLink>
           </li>
           <li>
-            <NuxtLink to="/transmission/speed" @click="$emit('close')">
-              <span class="mdi mdi-speedometer"></span>
-              {{ $t("nav.speedLimits") }}
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/transmission/folders" @click="$emit('close')">
-              <span class="mdi mdi-folder-cog"></span> {{ $t("nav.folders") }}
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/transmission/sharing" @click="$emit('close')">
-              <span class="mdi mdi-share-variant"></span>
-              {{ $t("nav.sharing") }}
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/transmission/privacy" @click="$emit('close')">
-              <span class="mdi mdi-shield-lock"></span> {{ $t("nav.privacy") }}
-            </NuxtLink>
-          </li>
-          <li>
-            <NuxtLink to="/transmission/network" @click="$emit('close')">
-              <span class="mdi mdi-lan"></span> {{ $t("nav.network") }}
-            </NuxtLink>
-          </li>
-          <li>
             <NuxtLink to="/transmission/stats" @click="$emit('close')">
               <span class="mdi mdi-chart-line"></span>
               {{ $t("nav.statistics") }}
+            </NuxtLink>
+          </li>
+          <li>
+            <NuxtLink to="/transmission/settings" @click="$emit('close')">
+              <span class="mdi mdi-cog-outline"></span>
+              {{ $t("nav.transmissionSettings") }}
             </NuxtLink>
           </li>
         </ul>

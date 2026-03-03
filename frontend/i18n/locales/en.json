@@ -22,9 +22,11 @@
     "network": "Network",
     "amuleSettings": "aMule Settings",
     "torrentSearch": "Search",
+    "transmissionSettings": "Transmission Settings",
     "pyload": "pyLoad",
     "pyloadDownloads": "Downloads",
-    "disabled": "Stopped"
+    "disabled": "Stopped",
+    "files": "Files"
   },
   "connection": {
     "amule": "aMule",
@@ -510,12 +512,24 @@
     "currentPassword": "Current Password",
     "currentPasswordRequired": "Current password is required",
     "passwordTooShort": "Password must be at least 4 characters",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "integrations": "Integrations",
+    "tvdbTitle": "TVDB Integration",
+    "tvdbDescription": "Smart Rename uses TheTVDB to look up canonical TV show and movie names. Get a free API key at ",
+    "tvdbApiKey": "API Key",
+    "tvdbKeyPlaceholder": "Paste your TVDB API key here",
+    "tvdbKeySet": "A TVDB API key is configured. Smart Rename will use TVDB for name lookup.",
+    "tvdbKeyNotSet": "No TVDB API key configured. Smart Rename will use pattern matching only.",
+    "tvdbKeyClear": "Clear Key"
   },
   "themes": {
-    "sark": {
-      "name": "TransMule (Tron)",
+    "tron": {
+      "name": "Tron",
       "description": "Dark neon circuits from the Grid"
+    },
+    "sark": {
+      "name": "Sark",
+      "description": "Dark red-purple neon circuits"
     },
     "light": {
       "name": "Light",
@@ -539,6 +553,7 @@
     "connectionRestored": "aMule connection restored"
   },
   "transmission": {
+    "settings": { "title": "Transmission Settings" },
     "speed": {
       "title": "Speed Limits",
       "normal": "Normal Speed Limits",
@@ -567,7 +582,7 @@
       }
     },
     "folders": {
-      "title": "Folders",
+      "title": "Download Options",
       "downloadDir": "Download directory",
       "downloadDirPlaceholder": "/path/to/downloads",
       "free": "free",
@@ -778,5 +793,41 @@
       "speed": "Speed",
       "status": "Status"
     }
+  },
+  "fileManager": {
+    "title": "Files",
+    "root": "Downloads",
+    "name": "Name",
+    "size": "Size",
+    "modified": "Modified",
+    "newFolder": "New Folder",
+    "upload": "Upload",
+    "download": "Download",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteSelected": "Delete ({count})",
+    "folderName": "Folder name",
+    "folderNamePlaceholder": "New folder",
+    "newName": "New name",
+    "goUp": "Parent folder",
+    "empty": "This folder is empty",
+    "dropToUpload": "Drop files here to upload",
+    "uploading": "Uploading…",
+    "confirmDelete": "Delete \"{ name }\"?",
+    "confirmDeleteMultiple": "Delete {count} items?",
+    "notConfigured": "Downloads directory is not configured. Set the NITRO_DOWNLOADS_DIR environment variable.",
+    "cancel": "Cancel",
+    "create": "Create",
+    "ok": "Rename",
+    "smartRename": "Smart Rename",
+    "smartRenameSelected": "Smart Rename ({count})",
+    "smartRenameTitle": "Smart Rename",
+    "smartRenameHint": "Suggested names are auto-detected from TV/movie patterns and TVDB. You can edit them before applying.",
+    "smartRenameLoading": "Looking up media names…",
+    "smartRenameApply": "Apply Renames",
+    "srOriginal": "Original name",
+    "srSuggested": "New name",
+    "ctxOpen": "Open",
+    "ctxSelected": "{count} items selected"
   }
 }

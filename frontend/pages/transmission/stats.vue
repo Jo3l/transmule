@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-transmission-stats" :loading="loading">
     <h1 class="title is-4 mb-4">
       <span class="mdi mdi-chart-bar mr-1" />
       {{ $t("transmission.stats.title") }}

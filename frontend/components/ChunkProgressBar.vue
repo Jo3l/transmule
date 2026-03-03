@@ -1,5 +1,5 @@
 <template>
-  <div class="chunk-bar-wrapper">
+  <div id="comp-chunk-progress-bar" class="chunk-bar-wrapper">
     <div class="chunk-bar" :title="summaryTitle">
       <span
         v-for="(seg, i) in segments"

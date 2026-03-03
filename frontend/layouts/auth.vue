@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-layout">
+  <div id="layout-auth" class="auth-layout">
     <div class="auth-card">
       <slot />
     </div>

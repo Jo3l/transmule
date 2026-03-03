@@ -13,7 +13,7 @@
         <SSelect
           v-model="form.encryption"
           :options="encryptionOptions"
-          style="width: 200px"
+          class="w-200"
           @update:model-value="save"
         />
       </SFormItem>
@@ -47,7 +47,7 @@
           <SInput
             v-model="form.blocklistUrl"
             placeholder="https://..."
-            style="max-width: 400px"
+            class="mw-400"
             @blur="save"
           />
         </SFormItem>
@@ -158,3 +158,4 @@ async function updateBlocklist() {
 
 onMounted(() => fetchSession());
 </script>
+

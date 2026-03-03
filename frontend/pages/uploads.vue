@@ -1,12 +1,12 @@
 <template>
-  <div>
+  <div id="page-uploads">
     <h1 class="title is-4 mb-4">{{ $t("uploads.title") }}</h1>
 
     <!-- Totals bar -->
     <div class="box py-3 mb-4" v-if="clients.length > 0">
       <div class="totals-bar">
         <div class="total-item" v-if="amuleCount > 0">
-          <span class="mdi mdi-donkey" style="font-size: 1.1em" />
+          <span class="mdi mdi-donkey icon-sm" />
           <strong>{{ amuleSpeedFmt }}</strong>
           <span class="has-text-grey is-size-7 ml-1"
             >({{ amuleCount }} {{ $t("uploads.peers") }})</span
@@ -96,7 +96,7 @@
       </template>
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
-          <span class="mdi mdi-upload-off" style="font-size: 2rem" />
+          <span class="mdi mdi-upload-off icon-lg" />
           <p>{{ $t("uploads.noClients") }}</p>
         </div>
       </template>

@@ -39,6 +39,19 @@ if cfg.get("rpc-whitelist-enabled", True):
     cfg["rpc-whitelist-enabled"] = False
     changed = True
 
+# Lock download and incomplete directories to mounted container paths
+if cfg.get("download-dir", "") != "/downloads":
+    cfg["download-dir"] = "/downloads"
+    changed = True
+
+if not cfg.get("incomplete-dir-enabled", False):
+    cfg["incomplete-dir-enabled"] = True
+    changed = True
+
+if cfg.get("incomplete-dir", "") != "/incomplete":
+    cfg["incomplete-dir"] = "/incomplete"
+    changed = True
+
 if changed:
     with open(path, "w") as f:
         json.dump(cfg, f, indent=4, sort_keys=True)

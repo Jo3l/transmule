@@ -17,8 +17,7 @@
           :min="0"
           :step="0.1"
           :precision="2"
-          class="ml-3"
-          style="width: 140px"
+          class="ml-3 w-140"
           @update:model-value="save"
         />
       </SFormItem>
@@ -38,8 +37,7 @@
           v-model="form.idleSeedingLimit"
           :min="1"
           :step="5"
-          class="ml-3"
-          style="width: 140px"
+          class="ml-3 w-140"
           @update:model-value="save"
         />
         <span
@@ -62,8 +60,7 @@
           v-model="form.downloadQueueSize"
           :min="1"
           :step="1"
-          class="ml-3"
-          style="width: 120px"
+          class="ml-3 w-120"
           @update:model-value="save"
         />
       </SFormItem>
@@ -74,8 +71,7 @@
           v-model="form.seedQueueSize"
           :min="1"
           :step="1"
-          class="ml-3"
-          style="width: 120px"
+          class="ml-3 w-120"
           @update:model-value="save"
         />
       </SFormItem>
@@ -89,8 +85,7 @@
           v-model="form.queueStalledMinutes"
           :min="1"
           :step="5"
-          class="ml-3"
-          style="width: 120px"
+          class="ml-3 w-120"
           @update:model-value="save"
         />
         <span
@@ -172,3 +167,4 @@ async function doSave() {
 
 onMounted(() => fetchSession());
 </script>
+

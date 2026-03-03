@@ -14,7 +14,7 @@
           v-model="form.peerPort"
           :min="1024"
           :max="65535"
-          style="width: 140px"
+          class="w-140"
           @update:model-value="save"
         />
         <SButton
@@ -63,7 +63,7 @@
           v-model="form.peerLimitGlobal"
           :min="1"
           :step="10"
-          style="width: 140px"
+          class="w-140"
           @update:model-value="save"
         />
       </SFormItem>
@@ -72,7 +72,7 @@
           v-model="form.peerLimitPerTorrent"
           :min="1"
           :step="5"
-          style="width: 140px"
+          class="w-140"
           @update:model-value="save"
         />
       </SFormItem>
@@ -161,3 +161,4 @@ async function testPort() {
 
 onMounted(() => fetchSession());
 </script>
+

@@ -85,7 +85,7 @@
       <!-- Empty state -->
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
-          <span class="mdi mdi-file-search-outline" style="font-size: 2rem" />
+          <span class="mdi mdi-file-search-outline icon-lg" />
           <p>
             {{
               searched

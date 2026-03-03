@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-pyload">
     <h1 class="title is-4 mb-4">
       <span class="mdi mdi-download-circle-outline mr-1" />
       {{ $t("pyload.title") }}
@@ -8,7 +8,7 @@
     <!-- Status bar -->
     <div v-if="status" class="box mb-4">
       <div
-        style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap"
+        class="flex-center gap-lg flex-wrap"
       >
         <div>
           <span class="has-text-grey is-size-7"
@@ -34,12 +34,12 @@
           </span>
           <strong>{{ status.freeSpace_fmt }}</strong>
         </div>
-        <div v-if="status.version" style="margin-left: auto">
+        <div v-if="status.version" class="ml-auto">
           <span class="has-text-grey is-size-7">v{{ status.version }}</span>
         </div>
 
         <!-- Controls -->
-        <div style="display: flex; gap: 0.5rem; margin-left: auto">
+        <div class="flex-row gap-sm ml-auto">
           <SButton
             :variant="status.paused ? 'success' : 'warning'"
             size="sm"
@@ -118,21 +118,13 @@
         v-if="packages.length === 0 && !loadingPackages"
         class="has-text-centered py-5 has-text-grey"
       >
-        <span class="mdi mdi-download-off-outline" style="font-size: 2rem" />
+          <span class="mdi mdi-download-off-outline icon-lg" />
         <p class="mt-2">{{ $t("pyload.noPackages") }}</p>
       </div>
 
       <div v-for="pkg in packages" :key="pkg.pid" class="box mb-3">
         <!-- Package header -->
-        <div
-          style="
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            margin-bottom: 0.5rem;
-          "
-        >
+        <div class="flex-center gap-md flex-wrap mb-2">
           <span class="mdi mdi-package-variant-closed" />
           <strong>{{ pkg.name }}</strong>
           <STag :variant="destVariant(pkg.dest)" size="sm">
@@ -165,7 +157,7 @@
           </STag>
 
           <!-- Package actions -->
-          <div style="margin-left: auto; display: flex; gap: 0.5rem">
+          <div class="flex-row gap-sm ml-auto">
             <SButton
               v-if="pkg.dest === 'collector'"
               variant="primary"
@@ -219,7 +211,7 @@
           :columns="linkColumns"
           row-key="fid"
           size="sm"
-          style="margin-top: 0.5rem"
+          class="mt-2"
         >
           <template #cell-status="{ row }">
             <STag :variant="statusVariant(row.statusCode)" size="sm">

@@ -1,5 +1,8 @@
 <template>
-  <div class="box">
+  <Teleport to="body">
+    <canvas id="c" aria-label="Scene" role="img">Scene</canvas>
+  </Teleport>
+  <div id="page-setup" class="box">
     <div class="has-text-centered mb-5">
       <img src="~/assets/logo/logo128.png" alt="TransMule" class="auth-logo" />
       <h1 class="title is-4 mt-2">{{ $t("setup.title") }}</h1>
@@ -66,6 +69,9 @@ const passwordConfirm = ref("");
 const loading = ref(false);
 const error = ref("");
 
+let destroyScene: (() => void) | null = null;
+onUnmounted(() => destroyScene?.());
+
 async function doSetup() {
   error.value = "";
   if (password.value !== passwordConfirm.value) {
@@ -93,6 +99,9 @@ async function doSetup() {
 }
 
 onMounted(async () => {
+  const canvas = document.getElementById('c');
+  const { init } = await import('~/assets/scenes/scene.js');
+  destroyScene = init(canvas);
   try {
     const config = useRuntimeConfig();
     const status = await $fetch<{ hasUsers: boolean }>("/api/users/status", {
@@ -106,10 +115,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.auth-logo {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  margin-bottom: 0.5rem;
+#c {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#page-setup {
+  position: relative;
+  z-index: 1;
 }
 </style>
+

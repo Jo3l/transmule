@@ -2,13 +2,18 @@
   <div class="s-select">
     <select :value="modelValue" :disabled="disabled" @change="onChange">
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
-      <option
-        v-for="opt in normalizedOptions"
-        :key="opt.value"
-        :value="opt.value"
-      >
-        {{ opt.label }}
-      </option>
+      <template v-if="hasSlot">
+        <slot />
+      </template>
+      <template v-else>
+        <option
+          v-for="opt in normalizedOptions"
+          :key="opt.value"
+          :value="opt.value"
+        >
+          {{ opt.label }}
+        </option>
+      </template>
     </select>
   </div>
 </template>
@@ -23,14 +28,20 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
     clearable?: boolean;
+    /** Cast emitted value to Number (for numeric v-models) */
+    number?: boolean;
   }>(),
   {
     modelValue: "",
     options: () => [],
+    number: false,
   },
 );
 
 const emit = defineEmits<{ "update:modelValue": [val: string | number] }>();
+
+const slots = useSlots();
+const hasSlot = computed(() => !!slots.default);
 
 const normalizedOptions = computed(() =>
   props.options.map((o) =>
@@ -39,6 +50,7 @@ const normalizedOptions = computed(() =>
 );
 
 function onChange(e: Event) {
-  emit("update:modelValue", (e.target as HTMLSelectElement).value);
+  const raw = (e.target as HTMLSelectElement).value;
+  emit("update:modelValue", props.number ? Number(raw) : raw);
 }
 </script>

@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <div id="page-downloads">
     <div class="level mb-4">
       <div class="level-left">
         <h1 class="title is-4 mb-0">{{ $t("downloads.title") }}</h1>
       </div>
-      <div class="level-right" style="gap: 0.5rem; display: flex">
+      <div class="level-right flex-row gap-sm">
         <SButton variant="primary" size="sm" :disabled="transmissionStopped" @click="showAddTorrent = true">
           <span class="mdi mdi-magnet mr-1" /> {{ $t("downloads.addTorrent") }}
         </SButton>
@@ -24,7 +24,7 @@
     >
       <div class="totals-bar">
         <div class="total-item" v-if="amuleTotals">
-          <span class="mdi mdi-donkey" style="font-size: 1.1em" />
+          <span class="mdi mdi-donkey icon-sm" />
           <strong>{{ amuleTotals.speed_fmt || "0" }}</strong>
           <span class="has-text-grey is-size-7 ml-1"
             >({{ amuleCount }} {{ $t("downloads.files") }})</span
@@ -64,7 +64,7 @@
             :options="sourceOptions"
             clearable
             :placeholder="$t('downloads.filter.all')"
-            style="width: 130px"
+            class="w-130"
             @update:model-value="applyFilter"
           />
         </SFormItem>
@@ -76,7 +76,7 @@
             :options="statusOptions"
             clearable
             :placeholder="$t('downloads.filter.all')"
-            style="width: 150px"
+            class="w-150"
             @update:model-value="applyFilter"
           />
         </SFormItem>
@@ -88,7 +88,7 @@
             :options="sortOptions"
             clearable
             :placeholder="$t('downloads.filter.default')"
-            style="width: 140px"
+            class="w-140"
             @update:model-value="applyFilter"
           />
         </SFormItem>
@@ -98,13 +98,13 @@
     <!-- Mobile cards (≤768px) -->
     <div class="is-hidden-tablet">
       <div v-if="loading" class="has-text-centered py-5 has-text-grey">
-        <span class="mdi mdi-loading mdi-spin" style="font-size: 2rem" />
+        <span class="mdi mdi-loading mdi-spin icon-lg" />
       </div>
       <div
         v-else-if="filteredFiles.length === 0"
         class="has-text-centered py-5 has-text-grey"
       >
-        <span class="mdi mdi-tray-alert" style="font-size: 2rem" />
+        <span class="mdi mdi-tray-alert icon-lg" />
         <p>{{ $t("downloads.noDownloads") }}</p>
       </div>
       <div v-else class="mobile-cards">
@@ -113,18 +113,15 @@
           <div class="card-header-row">
             <span
               v-if="row._type === 'amule'"
-              class="mdi mdi-donkey card-type-icon"
-              style="color: var(--s-warning)"
+              class="mdi mdi-donkey card-type-icon text-warning"
             />
             <span
               v-else-if="row._type === 'torrent'"
-              class="mdi mdi-magnet card-type-icon"
-              style="color: var(--s-accent)"
+              class="mdi mdi-magnet card-type-icon text-accent"
             />
             <span
               v-else
-              class="mdi mdi-cloud-download card-type-icon"
-              style="color: var(--s-info)"
+              class="mdi mdi-cloud-download card-type-icon text-info"
             />
             <span class="card-name">{{ row.name }}</span>
             <STag
@@ -353,21 +350,18 @@
         <template #cell-icon="{ row }">
           <span
             v-if="row._type === 'amule'"
-            class="mdi mdi-donkey type-icon"
+            class="mdi mdi-donkey type-icon text-warning"
             :title="$t('downloads.tooltip.amule')"
-            style="color: var(--s-warning)"
           />
           <span
             v-else-if="row._type === 'torrent'"
-            class="mdi mdi-magnet type-icon"
+            class="mdi mdi-magnet type-icon text-accent"
             :title="$t('downloads.tooltip.torrent')"
-            style="color: var(--s-accent)"
           />
           <span
             v-else
-            class="mdi mdi-cloud-download type-icon"
+            class="mdi mdi-cloud-download type-icon text-info"
             :title="$t('downloads.tooltip.pyload')"
-            style="color: var(--s-info)"
           />
         </template>
 
@@ -976,8 +970,7 @@
                 :active="detailTab[row._uid] === 'sources'"
               >
                 <div
-                  class="mb-2"
-                  style="display: flex; align-items: center; gap: 0.5rem"
+                  class="mb-2 flex-center gap-sm"
                 >
                   <span
                     v-if="sourceLoading[row.hash]"
@@ -1402,7 +1395,7 @@
 
         <template #empty>
           <div class="has-text-centered py-5 has-text-grey">
-            <span class="mdi mdi-tray-alert" style="font-size: 2rem" />
+            <span class="mdi mdi-tray-alert icon-lg" />
             <p>{{ $t("downloads.noDownloads") }}</p>
           </div>
         </template>
@@ -1519,12 +1512,6 @@
           type="textarea"
           :placeholder="$t('downloads.addTorrentDialog.placeholder')"
           :rows="3"
-        />
-      </SFormItem>
-      <SFormItem :label="$t('downloads.addTorrentDialog.downloadDir')">
-        <SInput
-          v-model="torrentForm.downloadDir"
-          :placeholder="$t('downloads.addTorrentDialog.downloadDirPlaceholder')"
         />
       </SFormItem>
       <SCheckbox
@@ -1812,7 +1799,7 @@ const showAddLink = ref(false);
 const ed2kLink = ref("");
 const addingLink = ref(false);
 const showAddTorrent = ref(false);
-const torrentForm = reactive({ url: "", downloadDir: "", paused: false });
+const torrentForm = reactive({ url: "", paused: false });
 const addingTorrent = ref(false);
 const showAddPyload = ref(false);
 const pyloadForm = reactive({ name: "", links: "" });
@@ -2343,12 +2330,10 @@ async function addTorrent() {
       body: {
         action: "add",
         filename: torrentForm.url.trim(),
-        download_dir: torrentForm.downloadDir || undefined,
         paused: torrentForm.paused,
       },
     });
     torrentForm.url = "";
-    torrentForm.downloadDir = "";
     torrentForm.paused = false;
     showAddTorrent.value = false;
     await refresh();
@@ -2425,16 +2410,6 @@ onUnmounted(() => {
   font-size: 1rem;
   width: 1.25rem;
   text-align: center;
-}
-.totals-bar {
-  display: flex;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.total-item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 .source-cards {
   display: flex;
@@ -2614,4 +2589,5 @@ onUnmounted(() => {
   gap: 0.35rem;
   padding-top: 0.15rem;
 }
+
 </style>

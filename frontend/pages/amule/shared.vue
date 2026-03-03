@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-amule-shared">
     <div class="level mb-4">
       <div class="level-left">
         <h1 class="title is-4 mb-0">{{ $t("shared.title") }}</h1>

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-amule-servers">
     <h1 class="title is-4 mb-4">{{ $t("servers.title") }}</h1>
 
     <STable :data="servers" :columns="columns" :loading="loading">

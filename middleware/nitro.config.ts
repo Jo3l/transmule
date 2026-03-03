@@ -35,5 +35,6 @@ export default defineNitroConfig({
     pyloadUsername: "pyload",
     pyloadPassword: "pyload",
     jwtSecret: "amule-middleware-change-this-secret",
+    downloadsDir: "",
   },
 });

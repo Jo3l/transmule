@@ -1,14 +1,19 @@
-const THEMES = ["sark", "light", "matrix", "xp"] as const;
+const THEMES = ["tron", "sark", "light", "matrix", "xp"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export const THEME_META: Record<
   ThemeId,
   { name: string; icon: string; description: string }
 > = {
-  sark: {
-    name: "Sark (Tron)",
+  tron: {
+    name: "Tron",
     icon: "mdi-chip",
     description: "Dark neon circuits from the Grid",
+  },
+  sark: {
+    name: "Sark",
+    icon: "mdi-sine-wave",
+    description: "Dark red-purple neon circuits",
   },
   light: {
     name: "Light",
@@ -28,7 +33,7 @@ export const THEME_META: Record<
 };
 
 export function useTheme() {
-  const currentTheme = useState<ThemeId>("theme", () => "sark");
+  const currentTheme = useState<ThemeId>("theme", () => "tron");
 
   function setTheme(id: ThemeId) {
     currentTheme.value = id;

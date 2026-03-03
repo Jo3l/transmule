@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isAdmin && loaded" class="service-dropdown" ref="dropdownRef">
+  <div id="comp-service-dropdown" v-if="isAdmin && loaded" class="service-dropdown" ref="dropdownRef">
     <SButton size="sm" @click="open = !open">
       <span class="mdi mdi-server-network" />
       <span class="service-dropdown__label">{{ $t("services.title") }}</span>

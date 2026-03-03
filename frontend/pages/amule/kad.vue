@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-amule-kad" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("kad.title") }}</h1>
 
     <div class="box mb-4">

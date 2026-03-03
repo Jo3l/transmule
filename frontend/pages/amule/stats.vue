@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-amule-stats" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("stats.title") }}</h1>
 
     <div class="columns is-multiline" v-if="stats">

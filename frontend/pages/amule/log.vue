@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-amule-log" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("log.title") }}</h1>
 
     <STabs

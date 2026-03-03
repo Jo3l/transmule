@@ -96,6 +96,7 @@ services:
       - "3001:3001"
     volumes:
       - ${DATA_DIR:-./data}:/app/data
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       NITRO_AMULE_HOST: amule
@@ -108,6 +109,7 @@ services:
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
+      NITRO_DOWNLOADS_DIR: /downloads
     depends_on:
       - amule
       - transmission

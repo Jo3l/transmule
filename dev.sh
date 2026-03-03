@@ -42,6 +42,13 @@ export NITRO_TRANSMISSION_URL="http://127.0.0.1:9091/transmission/rpc"
 export NITRO_PYLOAD_URL="http://127.0.0.1:8000"
 export NITRO_PYLOAD_USERNAME="${PYLOAD_USER:-pyload}"
 export NITRO_PYLOAD_PASSWORD="${PYLOAD_PASSWORD:-pyload}"
+# Resolve downloads dir to absolute path for the local middleware process
+_dl_raw="${DOWNLOAD_DIR:-./downloads}"
+if [[ "$_dl_raw" = /* ]]; then
+  export NITRO_DOWNLOADS_DIR="$_dl_raw"
+else
+  export NITRO_DOWNLOADS_DIR="$ROOT/${_dl_raw#./}"
+fi
 
 COMPOSE="docker compose -f $ROOT/docker-compose.yml -f $ROOT/docker-compose.dev.yml"
 

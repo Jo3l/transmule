@@ -1,5 +1,5 @@
 <template>
-  <SLoading :loading="loading">
+  <SLoading id="page-amule-settings" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("amuleSettings.title") }}</h1>
 
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
@@ -16,7 +16,7 @@
       >
         <div class="box">
           <SFormItem :label="$t('amuleSettings.userNick')">
-            <SInput v-model="form.general.userNick" style="max-width: 400px" />
+            <SInput v-model="form.general.userNick" class="mw-400" />
           </SFormItem>
 
           <SDivider />
@@ -41,7 +41,7 @@
                 <SInput
                   v-model.number="form.connection.downloadCapacity"
                   type="number"
-                  style="max-width: 200px"
+                  class="mw-200"
                 />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.capacityHelp") }}
@@ -53,7 +53,7 @@
                 <SInput
                   v-model.number="form.connection.uploadCapacity"
                   type="number"
-                  style="max-width: 200px"
+                  class="mw-200"
                 />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.capacityHelp") }}
@@ -70,7 +70,7 @@
                 <SInput
                   v-model.number="form.connection.maxDownloadSpeed"
                   type="number"
-                  style="max-width: 200px"
+                  class="mw-200"
                 />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.speedLimitHelp") }}
@@ -82,7 +82,7 @@
                 <SInput
                   v-model.number="form.connection.maxUploadSpeed"
                   type="number"
-                  style="max-width: 200px"
+                  class="mw-200"
                 />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.speedLimitHelp") }}
@@ -99,7 +99,7 @@
                 <SInput
                   v-model.number="form.connection.maxFileSources"
                   type="number"
-                  style="max-width: 160px"
+                  class="w-160"
                 />
               </SFormItem>
             </div>
@@ -108,7 +108,7 @@
                 <SInput
                   v-model.number="form.connection.maxConnections"
                   type="number"
-                  style="max-width: 160px"
+                  class="w-160"
                 />
               </SFormItem>
             </div>
@@ -120,7 +120,7 @@
             <SInput
               v-model.number="form.connection.slotAllocation"
               type="number"
-              style="max-width: 160px"
+              class="w-160"
             />
           </SFormItem>
 
@@ -184,7 +184,7 @@
             <SInput
               v-model.number="form.servers.deadRetries"
               type="number"
-              style="max-width: 120px"
+              class="w-120"
             />
           </SFormItem>
 
@@ -203,7 +203,7 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.updateUrl')">
-            <SInput v-model="form.servers.updateUrl" style="max-width: 500px" />
+            <SInput v-model="form.servers.updateUrl" class="mw-500" />
           </SFormItem>
 
           <SDivider />
@@ -223,9 +223,9 @@
       >
         <div class="box">
           <SFormItem :label="$t('amuleSettings.canSeeShares')">
-            <select
-              v-model.number="form.security.canSeeShares"
-              class="s-select"
+            <SSelect
+              v-model="form.security.canSeeShares"
+              :number="true"
             >
               <option :value="0">{{ $t("amuleSettings.sharesNobody") }}</option>
               <option :value="1">
@@ -234,7 +234,7 @@
               <option :value="2">
                 {{ $t("amuleSettings.sharesEveryone") }}
               </option>
-            </select>
+            </SSelect>
           </SFormItem>
 
           <SDivider />
@@ -272,7 +272,7 @@
           <SFormItem :label="$t('amuleSettings.ipFilterUpdateUrl')">
             <SInput
               v-model="form.security.ipFilterUpdateUrl"
-              style="max-width: 500px"
+              class="mw-500"
             />
           </SFormItem>
 
@@ -282,7 +282,7 @@
             <SInput
               v-model.number="form.security.ipFilterLevel"
               type="number"
-              style="max-width: 120px"
+              class="w-120"
             />
             <p class="is-size-7 has-text-grey mt-1">
               {{ $t("amuleSettings.ipFilterLevelHelp") }}
@@ -477,24 +477,3 @@ async function save(section: keyof AmulePreferences) {
 onMounted(() => loadPrefs());
 </script>
 
-<style scoped>
-.s-select {
-  display: block;
-  width: 100%;
-  max-width: 340px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
-  color: var(--s-text);
-  background: var(--s-bg);
-  border: 1px solid var(--s-border);
-  border-radius: var(--s-radius);
-  appearance: auto;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-.s-select:focus {
-  outline: none;
-  border-color: var(--s-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 25%, transparent);
-}
-</style>

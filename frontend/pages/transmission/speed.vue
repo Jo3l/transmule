@@ -15,8 +15,7 @@
           v-model="form.dlSpeed"
           :min="0"
           :step="50"
-          class="ml-3"
-          style="width: 160px"
+          class="ml-3 w-160"
           @update:model-value="save"
         />
         <span v-if="form.dlEnabled" class="ml-2 has-text-grey is-size-7">{{
@@ -31,8 +30,7 @@
           v-model="form.ulSpeed"
           :min="0"
           :step="50"
-          class="ml-3"
-          style="width: 160px"
+          class="ml-3 w-160"
           @update:model-value="save"
         />
         <span v-if="form.ulEnabled" class="ml-2 has-text-grey is-size-7">{{
@@ -55,7 +53,7 @@
           v-model="form.altDown"
           :min="0"
           :step="10"
-          style="width: 160px"
+          class="w-160"
           @update:model-value="save"
         />
         <span class="ml-2 has-text-grey is-size-7">{{
@@ -68,7 +66,7 @@
           v-model="form.altUp"
           :min="0"
           :step="10"
-          style="width: 160px"
+          class="w-160"
           @update:model-value="save"
         />
         <span class="ml-2 has-text-grey is-size-7">{{
@@ -86,7 +84,7 @@
             v-model="form.altTimeBegin"
             :min="0"
             :max="1439"
-            style="width: 160px"
+            class="w-160"
             @update:model-value="save"
           />
           <span class="ml-2 has-text-grey is-size-7">{{
@@ -99,7 +97,7 @@
             v-model="form.altTimeEnd"
             :min="0"
             :max="1439"
-            style="width: 160px"
+            class="w-160"
             @update:model-value="save"
           />
           <span class="ml-2 has-text-grey is-size-7">{{
@@ -111,7 +109,7 @@
           <SSelect
             v-model="form.altTimeDay"
             :options="dayOptions"
-            style="width: 200px"
+            class="w-200"
             @update:model-value="save"
           />
         </SFormItem>
@@ -211,3 +209,4 @@ async function doSave() {
 
 onMounted(() => fetchSession());
 </script>
+

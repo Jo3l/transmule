@@ -1,5 +1,5 @@
 <template>
-  <ul class="stats-tree">
+  <ul id="comp-stats-tree" class="stats-tree">
     <li v-for="(node, i) in nodes" :key="i">
       <template v-if="node.type === 'folder'">
         <span class="folder-toggle" @click="toggle(i)">

@@ -19,6 +19,20 @@ export default defineEventHandler((event) => {
   ];
   if (publicRoutes.some((r) => path === r)) return;
 
+  // Allow ?token= query parameter for file download endpoint
+  // (browser anchor tags can't set Authorization headers)
+  if (path === "/api/files/download") {
+    const qToken = getRequestURL(event).searchParams.get("token");
+    if (qToken) {
+      const payload = verifyToken(qToken);
+      if (!payload) {
+        throw createError({ statusCode: 401, statusMessage: "Invalid token" });
+      }
+      event.context.user = payload;
+      return;
+    }
+  }
+
   // Require Bearer token
   const auth = getHeader(event, "authorization");
   if (!auth?.startsWith("Bearer ")) {

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-amule-messages">
     <h1 class="title is-4 mb-4">{{ $t("messages.title") }}</h1>
 
     <div class="columns">
@@ -15,7 +15,7 @@
             @current-change="selectFriend"
           >
             <template #cell-name="{ row }">
-              <div style="display: flex; align-items: center; gap: 0.5rem">
+              <div class="flex-center gap-sm">
                 <span class="mdi mdi-account" />
                 <span class="has-text-weight-medium">{{ row.name }}</span>
                 <STag v-if="row.friendSlot" size="sm">{{
@@ -30,7 +30,7 @@
             </template>
             <template #empty>
               <div class="has-text-centered py-4 has-text-grey">
-                <span class="mdi mdi-account-off" style="font-size: 2rem" />
+                <span class="mdi mdi-account-off icon-lg" />
                 <p>{{ $t("messages.noFriends") }}</p>
               </div>
             </template>
@@ -114,7 +114,7 @@
                 v-if="messages.length === 0"
                 class="has-text-centered has-text-grey py-4"
               >
-                <span class="mdi mdi-chat-outline" style="font-size: 1.5rem" />
+                <span class="mdi mdi-chat-outline icon-md" />
                 <p class="is-size-7 mt-1">{{ $t("messages.noMessages") }}</p>
               </div>
               <div
@@ -133,7 +133,7 @@
               </div>
             </div>
             <div class="chat-input">
-              <div style="display: flex; gap: 0.5rem">
+              <div class="flex-row gap-sm">
                 <SInput
                   v-model="chatMessage"
                   :placeholder="$t('messages.placeholder')"
@@ -157,7 +157,7 @@
           </div>
         </div>
         <div v-else class="box has-text-centered py-6 has-text-grey">
-          <span class="mdi mdi-message-text-outline" style="font-size: 3rem" />
+          <span class="mdi mdi-message-text-outline icon-2xl" />
           <p class="mt-2">{{ $t("messages.selectFriend") }}</p>
         </div>
       </div>

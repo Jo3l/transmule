@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-amule-categories">
     <div class="level mb-4">
       <div class="level-left">
         <h1 class="title is-4 mb-0">{{ $t("categories.title") }}</h1>
@@ -34,7 +34,7 @@
       </template>
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
-          <span class="mdi mdi-tag-off" style="font-size: 2rem" />
+          <span class="mdi mdi-tag-off icon-lg" />
           <p>{{ $t("categories.noCategories") }}</p>
         </div>
       </template>

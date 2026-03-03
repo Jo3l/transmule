@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="page-amule-search">
     <h1 class="title is-4 mb-4">{{ $t("search.title") }}</h1>
 
     <div class="box mb-4">
@@ -31,7 +31,7 @@
           </div>
           <div class="column is-3">
             <SFormItem :label="$t('search.minSize')">
-              <div style="display: flex; gap: 0.5rem">
+              <div class="flex-row gap-sm">
                 <SInput v-model="minSize" type="number" placeholder="0" />
                 <SSelect v-model="minSizeUnit" :options="sizeUnits" />
               </div>
@@ -39,14 +39,14 @@
           </div>
           <div class="column is-3">
             <SFormItem :label="$t('search.maxSize')">
-              <div style="display: flex; gap: 0.5rem">
+              <div class="flex-row gap-sm">
                 <SInput v-model="maxSize" type="number" placeholder="0" />
                 <SSelect v-model="maxSizeUnit" :options="sizeUnits" />
               </div>
             </SFormItem>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 0.75rem">
+        <div class="flex-center gap-md">
           <SButton
             variant="primary"
             native-type="submit"
@@ -101,7 +101,7 @@
       </template>
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
-          <span class="mdi mdi-file-search-outline" style="font-size: 2rem" />
+          <span class="mdi mdi-file-search-outline icon-lg" />
           <p>
             {{ searched ? $t("search.noResults") : $t("search.enterSearch") }}
           </p>

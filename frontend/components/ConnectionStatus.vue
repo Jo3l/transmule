@@ -1,7 +1,5 @@
 <template>
-  <div
-    style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: nowrap"
-  >
+  <div id="comp-connection-status" class="flex-center gap-md">
     <template v-if="loaded">
       <!-- aMule middleware connection -->
       <STag :variant="amuleVariant" size="sm">

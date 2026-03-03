@@ -11,11 +11,7 @@
   </div>
   <span
     v-if="showText && height < 14"
-    style="
-      font-size: 0.75rem;
-      margin-left: 0.35rem;
-      color: var(--s-text-secondary);
-    "
+    class="s-progress-text"
     >{{ clampedPct }}%</span
   >
 </template>
@@ -46,3 +42,11 @@ const barColor = computed(() => {
   return "var(--s-info)";
 });
 </script>
+
+<style scoped>
+.s-progress-text {
+  font-size: 0.75rem;
+  margin-left: 0.35rem;
+  color: var(--s-text-secondary);
+}
+</style>
