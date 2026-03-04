@@ -69,12 +69,12 @@ trap cleanup EXIT INT TERM
 
 # ── Start middleware ──────────────────────────────────────────────────────────
 echo -e "${CYAN}▸ Starting middleware (Nitro) on :3000${NC}"
-(cd "$ROOT/middleware" && npm run dev) &
+(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 npm run dev) &
 MW_PID=$!
 
 # ── Start frontend ───────────────────────────────────────────────────────────
 echo -e "${CYAN}▸ Starting frontend  (Nuxt)  on :3001${NC}"
-(cd "$ROOT/frontend" && NUXT_TELEMETRY_DISABLED=1 npm run dev) &
+(cd "$ROOT/frontend" && NUXT_TELEMETRY_DISABLED=1 NITRO_HOST=0.0.0.0 npm run dev -- --host 0.0.0.0) &
 FE_PID=$!
 
 echo -e "${GREEN}Both services running. Press Ctrl-C to stop.${NC}"

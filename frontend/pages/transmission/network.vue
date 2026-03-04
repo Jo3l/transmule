@@ -5,7 +5,7 @@
     </h1>
 
     <div class="box">
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.network.listeningPort") }}
       </h6>
 
@@ -17,12 +17,7 @@
           class="w-140"
           @update:model-value="save"
         />
-        <SButton
-          size="sm"
-          class="ml-3"
-          :loading="testingPort"
-          @click="testPort"
-        >
+        <SButton size="sm" class="ml-3" :loading="testingPort" @click="testPort">
           <span class="mdi mdi-lan-check mr-1" />
           {{ $t("transmission.network.testPort") }}
         </SButton>
@@ -32,11 +27,7 @@
           size="sm"
           class="ml-2"
         >
-          {{
-            portTestResult
-              ? $t("transmission.network.open")
-              : $t("transmission.network.closed")
-          }}
+          {{ portTestResult ? $t("transmission.network.open") : $t("transmission.network.closed") }}
         </STag>
       </SFormItem>
       <SFormItem :label="$t('transmission.network.randomizePort')">
@@ -48,14 +39,14 @@
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">{{ $t("transmission.network.protocol") }}</h6>
+      <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.protocol") }}</h6>
       <SFormItem :label="$t('transmission.network.enableUtp')">
         <SSwitch v-model="form.utpEnabled" @update:model-value="save" />
       </SFormItem>
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.network.peerLimits") }}
       </h6>
       <SFormItem :label="$t('transmission.network.globalPeerLimit')">
@@ -147,9 +138,7 @@ async function testPort() {
     });
     portTestResult.value = res.portIsOpen ?? false;
     showToast(
-      res.portIsOpen
-        ? t("transmission.network.portOpen")
-        : t("transmission.network.portClosed"),
+      res.portIsOpen ? t("transmission.network.portOpen") : t("transmission.network.portClosed"),
       res.portIsOpen ? "success" : "warning",
     );
   } catch {
@@ -161,4 +150,3 @@ async function testPort() {
 
 onMounted(() => fetchSession());
 </script>
-

@@ -17,8 +17,8 @@ const TRACKERS = [
   .map((t) => `&tr=${encodeURIComponent(t)}`)
   .join("");
 
-function buildMagnet(hash: string, title: string): string {
-  return `magnet:?xt=urn:btih:${hash.toUpperCase()}&dn=${encodeURIComponent(title)}${TRACKERS}`;
+function buildMagnet(hash: string, title: string, extraTrackers = ""): string {
+  return `magnet:?xt=urn:btih:${hash.toUpperCase()}&dn=${encodeURIComponent(title)}${TRACKERS}${extraTrackers}`;
 }
 
 interface YtsTorrent {
@@ -47,6 +47,7 @@ interface YtsResponse {
 export async function searchYts(
   query: string,
   limit: number,
+  extraTrackers = "",
 ): Promise<TorrentSearchResult[]> {
   const url = `https://yts.mx/api/v2/list_movies.json?query_term=${encodeURIComponent(query)}&limit=50&page=1`;
 
@@ -70,7 +71,7 @@ export async function searchYts(
       const label = `${movie.title_long} [${t.quality} ${t.type}]`;
       results.push({
         name: label,
-        magnet: buildMagnet(t.hash, label),
+        magnet: buildMagnet(t.hash, label, extraTrackers),
         infoHash: t.hash,
         size: t.size_bytes || null,
         seeders: t.seeds || 0,

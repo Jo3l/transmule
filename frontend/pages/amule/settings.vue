@@ -3,9 +3,7 @@
     <h1 class="title is-4 mb-4">{{ $t("amuleSettings.title") }}</h1>
 
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
-    <SAlert v-if="saved" variant="success" class="mb-4">{{
-      $t("amuleSettings.saved")
-    }}</SAlert>
+    <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("amuleSettings.saved") }}</SAlert>
 
     <STabs v-model="activeTab" variant="card" :panes="tabPanes">
       <!-- General -->
@@ -15,6 +13,7 @@
         :active="activeTab === 'general'"
       >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionIdentity") }}</h6>
           <SFormItem :label="$t('amuleSettings.userNick')">
             <SInput v-model="form.general.userNick" class="mw-400" />
           </SFormItem>
@@ -35,6 +34,7 @@
         :active="activeTab === 'connection'"
       >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionBandwidth") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.downloadCapacity')">
@@ -64,6 +64,7 @@
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionSpeedLimits") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxDownloadSpeed')">
@@ -93,6 +94,7 @@
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionLimits") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxFileSources')">
@@ -117,15 +119,12 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.slotAllocation')">
-            <SInput
-              v-model.number="form.connection.slotAllocation"
-              type="number"
-              class="w-160"
-            />
+            <SInput v-model.number="form.connection.slotAllocation" type="number" class="w-160" />
           </SFormItem>
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionBehavior") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.autoconnect')">
@@ -141,6 +140,7 @@
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionNetworks") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.networkED2K')">
@@ -156,11 +156,7 @@
 
           <SDivider />
 
-          <SButton
-            variant="primary"
-            :loading="saving"
-            @click="save('connection')"
-          >
+          <SButton variant="primary" :loading="saving" @click="save('connection')">
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("amuleSettings.save") }}
           </SButton>
@@ -174,6 +170,7 @@
         :active="activeTab === 'servers'"
       >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionServerManagement") }}</h6>
           <SFormItem :label="$t('amuleSettings.removeDead')">
             <SSwitch v-model="form.servers.removeDead" />
           </SFormItem>
@@ -181,11 +178,7 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.deadRetries')">
-            <SInput
-              v-model.number="form.servers.deadRetries"
-              type="number"
-              class="w-120"
-            />
+            <SInput v-model.number="form.servers.deadRetries" type="number" class="w-120" />
           </SFormItem>
 
           <SDivider />
@@ -202,6 +195,7 @@
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionServerList") }}</h6>
           <SFormItem :label="$t('amuleSettings.updateUrl')">
             <SInput v-model="form.servers.updateUrl" class="mw-500" />
           </SFormItem>
@@ -222,11 +216,9 @@
         :active="activeTab === 'security'"
       >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionAccessControl") }}</h6>
           <SFormItem :label="$t('amuleSettings.canSeeShares')">
-            <SSelect
-              v-model="form.security.canSeeShares"
-              :number="true"
-            >
+            <SSelect v-model="form.security.canSeeShares" :number="true">
               <option :value="0">{{ $t("amuleSettings.sharesNobody") }}</option>
               <option :value="1">
                 {{ $t("amuleSettings.sharesFriends") }}
@@ -239,9 +231,7 @@
 
           <SDivider />
 
-          <h3 class="subtitle is-6">
-            {{ $t("amuleSettings.ipFilter") }}
-          </h3>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.ipFilter") }}</h6>
 
           <div class="columns is-multiline">
             <div class="column is-4">
@@ -270,20 +260,13 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.ipFilterUpdateUrl')">
-            <SInput
-              v-model="form.security.ipFilterUpdateUrl"
-              class="mw-500"
-            />
+            <SInput v-model="form.security.ipFilterUpdateUrl" class="mw-500" />
           </SFormItem>
 
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.ipFilterLevel')">
-            <SInput
-              v-model.number="form.security.ipFilterLevel"
-              type="number"
-              class="w-120"
-            />
+            <SInput v-model.number="form.security.ipFilterLevel" type="number" class="w-120" />
             <p class="is-size-7 has-text-grey mt-1">
               {{ $t("amuleSettings.ipFilterLevelHelp") }}
             </p>
@@ -291,9 +274,7 @@
 
           <SDivider />
 
-          <h3 class="subtitle is-6">
-            {{ $t("amuleSettings.protocolObfuscation") }}
-          </h3>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.protocolObfuscation") }}</h6>
 
           <div class="columns is-multiline">
             <div class="column is-4">
@@ -315,17 +296,14 @@
 
           <SDivider />
 
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionSecureIdent") }}</h6>
           <SFormItem :label="$t('amuleSettings.useSecIdent')">
             <SSwitch v-model="form.security.useSecIdent" />
           </SFormItem>
 
           <SDivider />
 
-          <SButton
-            variant="primary"
-            :loading="saving"
-            @click="save('security')"
-          >
+          <SButton variant="primary" :loading="saving" @click="save('security')">
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("amuleSettings.save") }}
           </SButton>
@@ -476,4 +454,3 @@ async function save(section: keyof AmulePreferences) {
 
 onMounted(() => loadPrefs());
 </script>
-

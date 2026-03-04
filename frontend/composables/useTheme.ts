@@ -1,10 +1,7 @@
 const THEMES = ["tron", "sark", "light", "matrix", "xp"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
-export const THEME_META: Record<
-  ThemeId,
-  { name: string; icon: string; description: string }
-> = {
+export const THEME_META: Record<ThemeId, { name: string; icon: string; description: string }> = {
   tron: {
     name: "Tron",
     icon: "mdi-chip",
@@ -34,12 +31,21 @@ export const THEME_META: Record<
 
 export function useTheme() {
   const currentTheme = useState<ThemeId>("theme", () => "tron");
+  const canvasEnabled = useState<boolean>("canvas-enabled", () => true);
+
+  function setCanvasEnabled(v: boolean) {
+    canvasEnabled.value = v;
+    if (import.meta.client) {
+      localStorage.setItem("canvas-effects", String(v));
+    }
+  }
 
   function setTheme(id: ThemeId) {
     currentTheme.value = id;
     if (import.meta.client) {
       document.documentElement.setAttribute("data-theme", id);
       localStorage.setItem("sark-theme", id);
+      window.dispatchEvent(new CustomEvent("app-theme-change", { detail: id }));
     }
   }
 
@@ -84,6 +90,8 @@ export function useTheme() {
 
   return {
     currentTheme,
+    canvasEnabled,
+    setCanvasEnabled,
     setTheme,
     loadTheme,
     syncFromServer,

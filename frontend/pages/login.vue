@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <canvas id="c" aria-label="Scene" role="img">Scene</canvas>
+    <canvas v-if="canvasEnabled" id="c" aria-label="Scene" role="img">Scene</canvas>
   </Teleport>
   <div id="page-login" class="box">
     <div class="has-text-centered mb-5">
@@ -19,22 +19,12 @@
       </SFormItem>
 
       <SFormItem :label="$t('login.password')">
-        <SInput
-          v-model="password"
-          type="password"
-          :placeholder="$t('login.password')"
-        >
+        <SInput v-model="password" type="password" :placeholder="$t('login.password')">
           <template #prefix><span class="mdi mdi-lock" /></template>
         </SInput>
       </SFormItem>
 
-      <SButton
-        variant="primary"
-        native-type="submit"
-        :loading="loading"
-        block
-        class="mt-4"
-      >
+      <SButton variant="primary" native-type="submit" :loading="loading" block class="mt-4">
         {{ $t("login.signIn") }}
       </SButton>
     </form>
@@ -53,6 +43,8 @@ const password = ref("");
 const loading = ref(false);
 const error = ref("");
 
+const { canvasEnabled } = useTheme();
+
 let destroyScene: (() => void) | null = null;
 onUnmounted(() => destroyScene?.());
 
@@ -60,13 +52,10 @@ async function doLogin() {
   loading.value = true;
   error.value = "";
   try {
-    const data = await apiFetch<{ token: string; user: any }>(
-      "/api/users/login",
-      {
-        method: "POST",
-        body: { username: username.value, password: password.value },
-      },
-    );
+    const data = await apiFetch<{ token: string; user: any }>("/api/users/login", {
+      method: "POST",
+      body: { username: username.value, password: password.value },
+    });
     auth.setAuth(data.token, data.user);
     navigateTo("/");
   } catch (err: any) {
@@ -82,9 +71,11 @@ async function doLogin() {
 }
 
 onMounted(async () => {
-  const canvas = document.getElementById('c');
-  const { init } = await import('~/assets/scenes/scene.js');
-  destroyScene = init(canvas);
+  const canvas = document.getElementById("c");
+  if (canvas && canvasEnabled.value) {
+    const { init } = await import("~/assets/scenes/scene.js");
+    destroyScene = init(canvas);
+  }
   if (auth.token.value) {
     const valid = await auth.fetchUser();
     if (valid) navigateTo("/");
@@ -106,4 +97,3 @@ onMounted(async () => {
   z-index: 1;
 }
 </style>
-

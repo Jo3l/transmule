@@ -45,13 +45,18 @@ function extractTag(xml: string, tag: string): string {
   return m ? (m[1] ?? m[2] ?? "").trim() : "";
 }
 
-function buildMagnet(infoHash: string, name: string): string {
-  return `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(name)}${TRACKERS}`;
+function buildMagnet(
+  infoHash: string,
+  name: string,
+  extraTrackers = "",
+): string {
+  return `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(name)}${TRACKERS}${extraTrackers}`;
 }
 
 export async function searchNyaa(
   query: string,
   limit: number,
+  extraTrackers = "",
 ): Promise<TorrentSearchResult[]> {
   const url = `https://nyaa.si/?page=rss&q=${encodeURIComponent(query)}&c=0_0&f=0`;
 
@@ -83,7 +88,9 @@ export async function searchNyaa(
 
     if (!title || (!infoHash && !magnetLink)) continue;
 
-    const magnet = magnetLink || (infoHash ? buildMagnet(infoHash, title) : "");
+    const magnet =
+      magnetLink ||
+      (infoHash ? buildMagnet(infoHash, title, extraTrackers) : "");
     if (!magnet) continue;
 
     results.push({

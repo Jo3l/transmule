@@ -11,12 +11,12 @@
 services:
   amule:
     ports:
-      - "127.0.0.1:4712:4712" # aMule EC protocol — dev only
+      - "4712:4712" # aMule EC protocol — dev only
 
   transmission:
     ports:
-      - "127.0.0.1:9091:9091" # Transmission RPC — dev only
+      - "9091:9091" # Transmission RPC — dev only
 
   pyload:
     ports:
-      - "127.0.0.1:8000:8000" # pyLoad web UI + API — dev only
+      - "8000:8000" # pyLoad web UI + API — dev only

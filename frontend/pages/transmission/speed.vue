@@ -6,7 +6,7 @@
     </h1>
 
     <div class="box">
-      <h6 class="title is-6 mb-3">{{ $t("transmission.speed.normal") }}</h6>
+      <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.speed.normal") }}</h6>
 
       <SFormItem :label="$t('transmission.speed.limitDown')">
         <SSwitch v-model="form.dlEnabled" @update:model-value="save" />
@@ -40,7 +40,7 @@
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         <span class="mdi mdi-turtle mr-1" /> {{ $t("transmission.speed.alt") }}
       </h6>
 
@@ -56,9 +56,7 @@
           class="w-160"
           @update:model-value="save"
         />
-        <span class="ml-2 has-text-grey is-size-7">{{
-          $t("transmission.speed.kbs")
-        }}</span>
+        <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
       </SFormItem>
 
       <SFormItem :label="$t('transmission.speed.altUp')">
@@ -69,9 +67,7 @@
           class="w-160"
           @update:model-value="save"
         />
-        <span class="ml-2 has-text-grey is-size-7">{{
-          $t("transmission.speed.kbs")
-        }}</span>
+        <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
       </SFormItem>
 
       <SFormItem :label="$t('transmission.speed.scheduleAlt')">
@@ -87,9 +83,7 @@
             class="w-160"
             @update:model-value="save"
           />
-          <span class="ml-2 has-text-grey is-size-7">{{
-            fmtTime(form.altTimeBegin)
-          }}</span>
+          <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(form.altTimeBegin) }}</span>
         </SFormItem>
 
         <SFormItem :label="$t('transmission.speed.endTime')">
@@ -100,9 +94,7 @@
             class="w-160"
             @update:model-value="save"
           />
-          <span class="ml-2 has-text-grey is-size-7">{{
-            fmtTime(form.altTimeEnd)
-          }}</span>
+          <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(form.altTimeEnd) }}</span>
         </SFormItem>
 
         <SFormItem :label="$t('transmission.speed.scheduledDays')">
@@ -209,4 +201,3 @@ async function doSave() {
 
 onMounted(() => fetchSession());
 </script>
-

@@ -7,7 +7,7 @@
 
     <!-- Session info -->
     <div class="box mb-4">
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         <span class="mdi mdi-information mr-1" />
         {{ $t("transmission.stats.sessionInfo") }}
       </h6>
@@ -17,15 +17,11 @@
           ><span class="stat-value">{{ session.version }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">{{
-            $t("transmission.stats.rpcVersion")
-          }}</span
+          <span class="stat-label">{{ $t("transmission.stats.rpcVersion") }}</span
           ><span class="stat-value">{{ session.rpcVersion }}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">{{
-            $t("transmission.stats.downloadDir")
-          }}</span
+          <span class="stat-label">{{ $t("transmission.stats.downloadDir") }}</span
           ><span class="stat-value is-size-7">{{ session.downloadDir }}</span>
         </div>
       </div>
@@ -35,77 +31,49 @@
       <!-- Current session -->
       <div class="column is-6">
         <div class="box">
-          <h6 class="title is-6 mb-3">
+          <h6 class="title is-6 mb-3 mt-3">
             <span class="mdi mdi-clock-outline mr-1" />
             {{ $t("transmission.stats.currentSession") }}
           </h6>
           <div class="stat-grid">
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.activeTorrents")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.activeTorrents") }}</span
               ><span class="stat-value">{{ live.activeTorrentCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.pausedTorrents")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.pausedTorrents") }}</span
               ><span class="stat-value">{{ live.pausedTorrentCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.totalTorrents")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.totalTorrents") }}</span
               ><span class="stat-value">{{ live.torrentCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.downloadSpeed")
-              }}</span
-              ><span class="stat-value has-text-success">{{
-                live.downloadSpeed_fmt
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.downloadSpeed") }}</span
+              ><span class="stat-value has-text-success">{{ live.downloadSpeed_fmt }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.uploadSpeed")
-              }}</span
-              ><span class="stat-value has-text-info">{{
-                live.uploadSpeed_fmt
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.uploadSpeed") }}</span
+              ><span class="stat-value has-text-info">{{ live.uploadSpeed_fmt }}</span>
             </div>
           </div>
           <SDivider />
           <div class="stat-grid">
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.downloaded")
-              }}</span
-              ><span class="stat-value">{{
-                formatSize(currentStats.downloadedBytes)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.downloaded") }}</span
+              ><span class="stat-value">{{ formatSize(currentStats.downloadedBytes) }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.uploaded")
-              }}</span
-              ><span class="stat-value">{{
-                formatSize(currentStats.uploadedBytes)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.uploaded") }}</span
+              ><span class="stat-value">{{ formatSize(currentStats.uploadedBytes) }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.filesAdded")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.filesAdded") }}</span
               ><span class="stat-value">{{ currentStats.filesAdded }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.activeTime")
-              }}</span
-              ><span class="stat-value">{{
-                formatDuration(currentStats.secondsActive)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.activeTime") }}</span
+              ><span class="stat-value">{{ formatDuration(currentStats.secondsActive) }}</span>
             </div>
           </div>
         </div>
@@ -114,53 +82,33 @@
       <!-- Cumulative -->
       <div class="column is-6">
         <div class="box">
-          <h6 class="title is-6 mb-3">
+          <h6 class="title is-6 mb-3 mt-3">
             <span class="mdi mdi-chart-timeline-variant mr-1" />
             {{ $t("transmission.stats.allTime") }}
           </h6>
           <div class="stat-grid">
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.downloaded")
-              }}</span
-              ><span class="stat-value">{{
-                formatSize(cumulativeStats.downloadedBytes)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.downloaded") }}</span
+              ><span class="stat-value">{{ formatSize(cumulativeStats.downloadedBytes) }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.uploaded")
-              }}</span
-              ><span class="stat-value">{{
-                formatSize(cumulativeStats.uploadedBytes)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.uploaded") }}</span
+              ><span class="stat-value">{{ formatSize(cumulativeStats.uploadedBytes) }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.filesAdded")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.filesAdded") }}</span
               ><span class="stat-value">{{ cumulativeStats.filesAdded }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.activeTime")
-              }}</span
-              ><span class="stat-value">{{
-                formatDuration(cumulativeStats.secondsActive)
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.activeTime") }}</span
+              ><span class="stat-value">{{ formatDuration(cumulativeStats.secondsActive) }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.sessionsStarted")
-              }}</span
-              ><span class="stat-value">{{
-                cumulativeStats.sessionCount
-              }}</span>
+              <span class="stat-label">{{ $t("transmission.stats.sessionsStarted") }}</span
+              ><span class="stat-value">{{ cumulativeStats.sessionCount }}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">{{
-                $t("transmission.stats.ratioAllTime")
-              }}</span
+              <span class="stat-label">{{ $t("transmission.stats.ratioAllTime") }}</span
               ><span class="stat-value">{{ allTimeRatio }}</span>
             </div>
           </div>
@@ -202,9 +150,7 @@ const cumulativeStats = reactive({
 
 const allTimeRatio = computed(() => {
   if (cumulativeStats.downloadedBytes === 0) return "\u2014";
-  return (
-    cumulativeStats.uploadedBytes / cumulativeStats.downloadedBytes
-  ).toFixed(3);
+  return (cumulativeStats.uploadedBytes / cumulativeStats.downloadedBytes).toFixed(3);
 });
 
 function formatSize(bytes: number) {
@@ -248,8 +194,7 @@ async function fetchStats() {
       live.downloadSpeed_fmt = stats.downloadSpeed_fmt || "0 B/s";
       live.uploadSpeed_fmt = stats.uploadSpeed_fmt || "0 B/s";
       if (stats.currentStats) Object.assign(currentStats, stats.currentStats);
-      if (stats.cumulativeStats)
-        Object.assign(cumulativeStats, stats.cumulativeStats);
+      if (stats.cumulativeStats) Object.assign(cumulativeStats, stats.cumulativeStats);
     }
     loading.value = false;
   } catch {

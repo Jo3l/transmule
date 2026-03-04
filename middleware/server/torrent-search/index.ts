@@ -19,6 +19,8 @@ export interface TorrentSearchOptions {
   source: TorrentSource | "all";
   /** Max results per provider (default 50) */
   limit?: number;
+  /** Pre-encoded extra tracker params (e.g. "&tr=...&tr=...") appended to magnet links */
+  extraTrackers?: string;
 }
 
 /** Run a single provider, catching errors silently. */
@@ -35,19 +37,19 @@ async function safeSearch(
 export async function searchTorrents(
   opts: TorrentSearchOptions,
 ): Promise<TorrentSearchResult[]> {
-  const { query, source, limit = 50 } = opts;
+  const { query, source, limit = 50, extraTrackers = "" } = opts;
 
   // Build list of providers to run
   const tasks: Promise<TorrentSearchResult[]>[] = [];
 
   if (source === "all" || source === "tpb") {
-    tasks.push(safeSearch(() => searchPirateBay(query, limit)));
+    tasks.push(safeSearch(() => searchPirateBay(query, limit, extraTrackers)));
   }
   if (source === "all" || source === "nyaa") {
-    tasks.push(safeSearch(() => searchNyaa(query, limit)));
+    tasks.push(safeSearch(() => searchNyaa(query, limit, extraTrackers)));
   }
   if (source === "all" || source === "yts") {
-    tasks.push(safeSearch(() => searchYts(query, limit)));
+    tasks.push(safeSearch(() => searchYts(query, limit, extraTrackers)));
   }
 
   const batches = await Promise.all(tasks);

@@ -9,15 +9,15 @@
 // =============================================================================
 
 export function init(canvas) {
-  'use strict';
+  "use strict";
 
   // --------------------------------------------------------------------------
   // Canvas / GL
   // --------------------------------------------------------------------------
-  const gl = canvas.getContext('webgl2', { antialias: false });
+  const gl = canvas.getContext("webgl2", { antialias: false });
 
   if (!gl) {
-    console.error('WebGL2 is required – please use a modern browser.');
+    console.error("WebGL2 is required – please use a modern browser.");
     return null;
   }
 
@@ -27,43 +27,59 @@ export function init(canvas) {
   function readBgColor() {
     for (const el of [document.documentElement, document.body]) {
       const c = getComputedStyle(el).backgroundColor;
-      if (c && c !== 'transparent' && c !== 'rgba(0, 0, 0, 0)') {
+      if (c && c !== "transparent" && c !== "rgba(0, 0, 0, 0)") {
         const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (m) return [+m[1]/255, +m[2]/255, +m[3]/255];
+        if (m) return [+m[1] / 255, +m[2] / 255, +m[3] / 255];
       }
     }
     return [0, 0, 0];
   }
-  const bgColor = readBgColor();
+  let bgColor = readBgColor();
+  // Perceived luminance (BT.601)
+  let bgLuminance = bgColor[0] * 0.299 + bgColor[1] * 0.587 + bgColor[2] * 0.114;
 
   function readAccentColor() {
-    const raw = getComputedStyle(document.documentElement)
-      .getPropertyValue('--s-accent').trim();
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--s-accent").trim();
     // parse hex (#rrggbb or #rgb) or rgb(...)
-    if (raw.startsWith('#')) {
-      const hex = raw.length === 4
-        ? raw.replace(/#(.)(.)(.)/, '#$1$1$2$2$3$3')
-        : raw;
+    if (raw.startsWith("#")) {
+      const hex = raw.length === 4 ? raw.replace(/#(.)(.)(.)/, "#$1$1$2$2$3$3") : raw;
       const n = parseInt(hex.slice(1), 16);
-      return [(n >> 16 & 255)/255, (n >> 8 & 255)/255, (n & 255)/255];
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
     }
     const m = raw.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    if (m) return [+m[1]/255, +m[2]/255, +m[3]/255];
+    if (m) return [+m[1] / 255, +m[2] / 255, +m[3] / 255];
     return [0, 0.831, 1.0]; // fallback: #00d4ff
   }
-  const accentColor = readAccentColor();
+  let accentColor = readAccentColor();
+
+  function refreshColors() {
+    const newBg = readBgColor();
+    bgColor[0] = newBg[0];
+    bgColor[1] = newBg[1];
+    bgColor[2] = newBg[2];
+    bgLuminance = newBg[0] * 0.299 + newBg[1] * 0.587 + newBg[2] * 0.114;
+    const newAccent = readAccentColor();
+    accentColor[0] = newAccent[0];
+    accentColor[1] = newAccent[1];
+    accentColor[2] = newAccent[2];
+  }
+
+  function onThemeChange() {
+    // Wait 1s for CSS transitions and data-theme variables to fully settle
+    setTimeout(refreshColors, 300);
+  }
+
+  window.addEventListener("app-theme-change", onThemeChange);
 
   // --------------------------------------------------------------------------
-  // Helpers
-  // --------------------------------------------------------------------------
-  const identity = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+  const identity = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
   function compileShader(src, type) {
     const sh = gl.createShader(type);
     gl.shaderSource(sh, src);
     gl.compileShader(sh);
     if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-      console.error('Shader error:', gl.getShaderInfoLog(sh), '\n', src.slice(0,300));
+      console.error("Shader error:", gl.getShaderInfoLog(sh), "\n", src.slice(0, 300));
       gl.deleteShader(sh);
       return null;
     }
@@ -78,14 +94,14 @@ export function init(canvas) {
     gl.attachShader(prog, fs);
     gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-      console.error('Link error:', gl.getProgramInfoLog(prog));
+      console.error("Link error:", gl.getProgramInfoLog(prog));
     }
     return prog;
   }
 
   // Try to use half-float for better precision; fall back to RGBA8
-  const extCBF = gl.getExtension('EXT_color_buffer_float') ||
-                 gl.getExtension('EXT_color_buffer_half_float');
+  const extCBF =
+    gl.getExtension("EXT_color_buffer_float") || gl.getExtension("EXT_color_buffer_half_float");
   const USE_FLOAT = !!extCBF;
 
   function createTexture(w, h) {
@@ -105,7 +121,7 @@ export function init(canvas) {
 
   function createFBO(w, h) {
     const tex = createTexture(w, h);
-    const fb  = gl.createFramebuffer();
+    const fb = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -119,7 +135,8 @@ export function init(canvas) {
     } else {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     }
-    fbo.w = w; fbo.h = h;
+    fbo.w = w;
+    fbo.h = h;
     gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
@@ -127,18 +144,15 @@ export function init(canvas) {
   // Fullscreen quad
   // --------------------------------------------------------------------------
   const quadVerts = new Float32Array([
-    -1, -1, 0,   0, 0,
-     1, -1, 0,   1, 0,
-    -1,  1, 0,   0, 1,
-     1,  1, 0,   1, 1,
+    -1, -1, 0, 0, 0, 1, -1, 0, 1, 0, -1, 1, 0, 0, 1, 1, 1, 0, 1, 1,
   ]);
   const quadBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
   gl.bufferData(gl.ARRAY_BUFFER, quadVerts, gl.STATIC_DRAW);
 
   function bindQuad(prog) {
-    const posLoc = gl.getAttribLocation(prog, 'aVertexPosition');
-    const uvLoc  = gl.getAttribLocation(prog, 'aTextureCoord');
+    const posLoc = gl.getAttribLocation(prog, "aVertexPosition");
+    const uvLoc = gl.getAttribLocation(prog, "aTextureCoord");
     gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 20, 0);
@@ -149,11 +163,11 @@ export function init(canvas) {
   }
 
   function setUniMatrices(prog) {
-    const mv = gl.getUniformLocation(prog, 'uMVMatrix');
-    const p  = gl.getUniformLocation(prog, 'uPMatrix');
-    const tm = gl.getUniformLocation(prog, 'uTextureMatrix');
+    const mv = gl.getUniformLocation(prog, "uMVMatrix");
+    const p = gl.getUniformLocation(prog, "uPMatrix");
+    const tm = gl.getUniformLocation(prog, "uTextureMatrix");
     if (mv) gl.uniformMatrix4fv(mv, false, identity);
-    if (p)  gl.uniformMatrix4fv(p,  false, identity);
+    if (p) gl.uniformMatrix4fv(p, false, identity);
     if (tm) gl.uniformMatrix4fv(tm, false, identity);
   }
 
@@ -200,12 +214,15 @@ in vec2 vTextureCoord;
 uniform float uTime;
 uniform vec2 uMousePos;
 uniform vec3 uBgColor;
+uniform float uBgLuminance;
 
 vec3 getColor(int index) {
-  // stop 0: slightly lighter variant of bg; stops 1+2: exact bg color
-  vec3 lighter = min(uBgColor * 1.6 + vec3(0.05), vec3(1.0));
+  // For dark bg: stop0 is lighter. For light bg: stop0 is darker/tinted.
+  vec3 variant = uBgLuminance > 0.5
+    ? max(uBgColor * 0.70, vec3(0.0))          // darken on light bg
+    : min(uBgColor * 1.6 + vec3(0.05), vec3(1.0)); // lighten on dark bg
   switch(index) {
-    case 0: return lighter;
+    case 0: return variant;
     case 1: return uBgColor;
     case 2: return uBgColor;
     default: return vec3(0.0);
@@ -401,6 +418,7 @@ in vec3 vVertexPosition;
 uniform sampler2D uTexture;
 uniform sampler2D uPingPongTexture;
 uniform vec3 uTintColor;
+uniform float uBgLuminance;
 
 uvec2 pcg2d(uvec2 v) {
   v = v * 1664525u + 1013904223u;
@@ -436,8 +454,15 @@ void main() {
   // tint: uses page accent color via uTintColor uniform
   vec3 tintedTrail = vec3(strength * mix(mouseRgb, uTintColor, 0.5));
   float dither = (randFibo(gl_FragCoord.xy) - 0.5) / 255.0;
-  // blend mode 1 = add
-  vec3 blendedRgb = tintedTrail + dither + bg.rgb;
+  // On dark bg: additive (brightens). On light bg: multiply-darken.
+  vec3 blendedRgb;
+  if (uBgLuminance > 0.5) {
+    // Darken: trail subtracts from bg, tinted by accent
+    vec3 darkTrail = tintedTrail * 1.8 + dither;
+    blendedRgb = bg.rgb * (1.0 - darkTrail) + darkTrail * uTintColor * 0.35;
+  } else {
+    blendedRgb = tintedTrail + dither + bg.rgb;
+  }
   fragColor = vec4(mix(bg.rgb, blendedRgb, mouseTrail.z), 1.0);
 }`;
 
@@ -514,19 +539,19 @@ void main() {
   // Programs
   // --------------------------------------------------------------------------
   const programs = {
-    gradient : createProgram(VS_SIMPLE,  FS_GRADIENT),
-    pingpong : createProgram(VS_SIMPLE,  FS_PINGPONG),
-    blend    : createProgram(VS_TEXMAT,  FS_BLEND),
-    fbm      : createProgram(VS_TEXMAT,  FS_FBM),
+    gradient: createProgram(VS_SIMPLE, FS_GRADIENT),
+    pingpong: createProgram(VS_SIMPLE, FS_PINGPONG),
+    blend: createProgram(VS_TEXMAT, FS_BLEND),
+    fbm: createProgram(VS_TEXMAT, FS_FBM),
   };
 
   // --------------------------------------------------------------------------
   // Framebuffers
   // --------------------------------------------------------------------------
-  let W = canvas.clientWidth  | 0;
+  let W = canvas.clientWidth | 0;
   let H = canvas.clientHeight | 0;
 
-  canvas.width  = W;
+  canvas.width = W;
   canvas.height = H;
 
   // Gradient renders at 0.5 downsample → half res
@@ -540,7 +565,7 @@ void main() {
   // --------------------------------------------------------------------------
   // Input state
   // --------------------------------------------------------------------------
-  let mousePos  = { x: 0.5, y: 0.5 };
+  let mousePos = { x: 0.5, y: 0.5 };
   let prevMouse = { x: 0.5, y: 0.5 };
   let startTime = performance.now();
 
@@ -548,9 +573,9 @@ void main() {
   // Resize
   // --------------------------------------------------------------------------
   function resize() {
-    W = canvas.clientWidth  | 0;
+    W = canvas.clientWidth | 0;
     H = canvas.clientHeight | 0;
-    canvas.width  = W;
+    canvas.width = W;
     canvas.height = H;
     resizeFBO(fb_gradient, W >> 1, H >> 1);
     resizeFBO(pingpong[0], W >> 1, H >> 1);
@@ -563,7 +588,7 @@ void main() {
   // --------------------------------------------------------------------------
   function onMouseMove(e) {
     const r = canvas.getBoundingClientRect();
-    mousePos.x = (e.clientX - r.left)  / r.width;
+    mousePos.x = (e.clientX - r.left) / r.width;
     mousePos.y = 1.0 - (e.clientY - r.top) / r.height;
   }
   function onTouchMove(e) {
@@ -574,9 +599,9 @@ void main() {
     mousePos.y = 1.0 - (t.clientY - r.top) / r.height;
   }
 
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('touchmove', onTouchMove, { passive: false });
-  window.addEventListener('resize', resize);
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("touchmove", onTouchMove, { passive: false });
+  window.addEventListener("resize", resize);
 
   // --------------------------------------------------------------------------
   // Render helpers
@@ -601,7 +626,7 @@ void main() {
   // --------------------------------------------------------------------------
   let rafId;
   function render() {
-    const now  = performance.now();
+    const now = performance.now();
     const time = (now - startTime) * 0.001; // seconds
 
     // ---- Pass 0: gradient --------------------------------
@@ -609,9 +634,10 @@ void main() {
     gl.useProgram(gProg);
     bindQuad(gProg);
     setUniMatrices(gProg);
-    gl.uniform1f(gl.getUniformLocation(gProg, 'uTime'), time);
-    gl.uniform2f(gl.getUniformLocation(gProg, 'uMousePos'), mousePos.x, mousePos.y);
-    gl.uniform3f(gl.getUniformLocation(gProg, 'uBgColor'), bgColor[0], bgColor[1], bgColor[2]);
+    gl.uniform1f(gl.getUniformLocation(gProg, "uTime"), time);
+    gl.uniform2f(gl.getUniformLocation(gProg, "uMousePos"), mousePos.x, mousePos.y);
+    gl.uniform3f(gl.getUniformLocation(gProg, "uBgColor"), bgColor[0], bgColor[1], bgColor[2]);
+    gl.uniform1f(gl.getUniformLocation(gProg, "uBgLuminance"), bgLuminance);
     renderTo(fb_gradient);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -622,11 +648,11 @@ void main() {
     bindQuad(ppProg);
     setUniMatrices(ppProg);
     useTexture(0, pingpong[pp].tex);
-    gl.uniform1i(gl.getUniformLocation(ppProg, 'uPingPongTexture'), 0);
-    gl.uniform1f(gl.getUniformLocation(ppProg, 'uTime'),              time);
-    gl.uniform2f(gl.getUniformLocation(ppProg, 'uMousePos'),          mousePos.x,  mousePos.y);
-    gl.uniform2f(gl.getUniformLocation(ppProg, 'uPreviousMousePos'),  prevMouse.x, prevMouse.y);
-    gl.uniform2f(gl.getUniformLocation(ppProg, 'uResolution'),        W, H);
+    gl.uniform1i(gl.getUniformLocation(ppProg, "uPingPongTexture"), 0);
+    gl.uniform1f(gl.getUniformLocation(ppProg, "uTime"), time);
+    gl.uniform2f(gl.getUniformLocation(ppProg, "uMousePos"), mousePos.x, mousePos.y);
+    gl.uniform2f(gl.getUniformLocation(ppProg, "uPreviousMousePos"), prevMouse.x, prevMouse.y);
+    gl.uniform2f(gl.getUniformLocation(ppProg, "uResolution"), W, H);
     renderTo(pingpong[ppWrite]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     pp = ppWrite;
@@ -638,9 +664,15 @@ void main() {
     setUniMatrices(blProg);
     useTexture(0, fb_gradient.tex);
     useTexture(1, pingpong[pp].tex);
-    gl.uniform1i(gl.getUniformLocation(blProg, 'uTexture'),         0);
-    gl.uniform1i(gl.getUniformLocation(blProg, 'uPingPongTexture'), 1);
-    gl.uniform3f(gl.getUniformLocation(blProg, 'uTintColor'), accentColor[0], accentColor[1], accentColor[2]);
+    gl.uniform1i(gl.getUniformLocation(blProg, "uTexture"), 0);
+    gl.uniform1i(gl.getUniformLocation(blProg, "uPingPongTexture"), 1);
+    gl.uniform3f(
+      gl.getUniformLocation(blProg, "uTintColor"),
+      accentColor[0],
+      accentColor[1],
+      accentColor[2],
+    );
+    gl.uniform1f(gl.getUniformLocation(blProg, "uBgLuminance"), bgLuminance);
     renderTo(fb_blend);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -650,10 +682,10 @@ void main() {
     bindQuad(fbmProg);
     setUniMatrices(fbmProg);
     useTexture(0, fb_blend.tex);
-    gl.uniform1i(gl.getUniformLocation(fbmProg, 'uTexture'),    0);
-    gl.uniform1f(gl.getUniformLocation(fbmProg, 'uTime'),       time);
-    gl.uniform2f(gl.getUniformLocation(fbmProg, 'uMousePos'),   mousePos.x, mousePos.y);
-    gl.uniform2f(gl.getUniformLocation(fbmProg, 'uResolution'), W, H);
+    gl.uniform1i(gl.getUniformLocation(fbmProg, "uTexture"), 0);
+    gl.uniform1f(gl.getUniformLocation(fbmProg, "uTime"), time);
+    gl.uniform2f(gl.getUniformLocation(fbmProg, "uMousePos"), mousePos.x, mousePos.y);
+    gl.uniform2f(gl.getUniformLocation(fbmProg, "uResolution"), W, H);
     renderTo(null);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -668,10 +700,11 @@ void main() {
 
   return function destroy() {
     cancelAnimationFrame(rafId);
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('touchmove', onTouchMove);
-    window.removeEventListener('resize', resize);
-    const ext = gl.getExtension('WEBGL_lose_context');
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("touchmove", onTouchMove);
+    window.removeEventListener("resize", resize);
+    window.removeEventListener("app-theme-change", onThemeChange);
+    const ext = gl.getExtension("WEBGL_lose_context");
     if (ext) ext.loseContext();
   };
 }

@@ -6,7 +6,7 @@
     </h1>
 
     <div class="box">
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.sharing.seedRatio") }}
       </h6>
       <SFormItem :label="$t('transmission.sharing.stopAtRatio')">
@@ -24,14 +24,11 @@
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.sharing.idleSeeding") }}
       </h6>
       <SFormItem :label="$t('transmission.sharing.stopIfIdle')">
-        <SSwitch
-          v-model="form.idleSeedingLimitEnabled"
-          @update:model-value="save"
-        />
+        <SSwitch v-model="form.idleSeedingLimitEnabled" @update:model-value="save" />
         <SInputNumber
           v-if="form.idleSeedingLimitEnabled"
           v-model="form.idleSeedingLimit"
@@ -40,21 +37,16 @@
           class="ml-3 w-140"
           @update:model-value="save"
         />
-        <span
-          v-if="form.idleSeedingLimitEnabled"
-          class="ml-2 has-text-grey is-size-7"
-          >{{ $t("transmission.sharing.minutes") }}</span
-        >
+        <span v-if="form.idleSeedingLimitEnabled" class="ml-2 has-text-grey is-size-7">{{
+          $t("transmission.sharing.minutes")
+        }}</span>
       </SFormItem>
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">{{ $t("transmission.sharing.queue") }}</h6>
+      <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.queue") }}</h6>
       <SFormItem :label="$t('transmission.sharing.limitDownQueue')">
-        <SSwitch
-          v-model="form.downloadQueueEnabled"
-          @update:model-value="save"
-        />
+        <SSwitch v-model="form.downloadQueueEnabled" @update:model-value="save" />
         <SInputNumber
           v-if="form.downloadQueueEnabled"
           v-model="form.downloadQueueSize"
@@ -76,10 +68,7 @@
         />
       </SFormItem>
       <SFormItem :label="$t('transmission.sharing.stalledHandling')">
-        <SSwitch
-          v-model="form.queueStalledEnabled"
-          @update:model-value="save"
-        />
+        <SSwitch v-model="form.queueStalledEnabled" @update:model-value="save" />
         <SInputNumber
           v-if="form.queueStalledEnabled"
           v-model="form.queueStalledMinutes"
@@ -88,11 +77,9 @@
           class="ml-3 w-120"
           @update:model-value="save"
         />
-        <span
-          v-if="form.queueStalledEnabled"
-          class="ml-2 has-text-grey is-size-7"
-          >{{ $t("transmission.sharing.minutesStalled") }}</span
-        >
+        <span v-if="form.queueStalledEnabled" class="ml-2 has-text-grey is-size-7">{{
+          $t("transmission.sharing.minutesStalled")
+        }}</span>
       </SFormItem>
     </div>
   </SLoading>
@@ -122,8 +109,7 @@ async function fetchSession() {
   loading.value = true;
   try {
     const { raw } = await apiFetch<any>("/api/transmission/session");
-    form.seedRatioLimited =
-      raw.seedRatioLimited ?? raw["seed-ratio-limited"] ?? false;
+    form.seedRatioLimited = raw.seedRatioLimited ?? raw["seed-ratio-limited"] ?? false;
     form.seedRatioLimit = raw.seedRatioLimit ?? raw["seed-ratio-limit"] ?? 2.0;
     form.idleSeedingLimitEnabled = raw["idle-seeding-limit-enabled"] ?? false;
     form.idleSeedingLimit = raw["idle-seeding-limit"] ?? 30;
@@ -167,4 +153,3 @@ async function doSave() {
 
 onMounted(() => fetchSession());
 </script>
-

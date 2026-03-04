@@ -6,11 +6,14 @@
     </h1>
 
     <STabs v-model="activeTab" variant="card" :panes="tabPanes">
-
       <!-- ── Speed ── -->
-      <STabPane name="speed" :label="$t('transmission.speed.title')" :active="activeTab === 'speed'">
+      <STabPane
+        name="speed"
+        :label="$t('transmission.speed.title')"
+        :active="activeTab === 'speed'"
+      >
         <div class="box">
-          <h6 class="title is-6 mb-3">{{ $t("transmission.speed.normal") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.speed.normal") }}</h6>
 
           <SFormItem :label="$t('transmission.speed.limitDown')">
             <SSwitch v-model="speed.dlEnabled" @update:model-value="saveSpeed" />
@@ -44,7 +47,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">
+          <h6 class="title is-6 mb-3 mt-3">
             <span class="mdi mdi-turtle mr-1" />{{ $t("transmission.speed.alt") }}
           </h6>
 
@@ -110,8 +113,15 @@
       </STabPane>
 
       <!-- ── Folders ── -->
-      <STabPane name="folders" :label="$t('transmission.folders.title')" :active="activeTab === 'folders'">
+      <STabPane
+        name="folders"
+        :label="$t('transmission.folders.title')"
+        :active="activeTab === 'folders'"
+      >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">
+            {{ $t("transmission.downloadOptions") }}
+          </h6>
           <SFormItem :label="$t('transmission.folders.startWhenAdded')">
             <SSwitch v-model="folders.startAdded" @update:model-value="saveFolders" />
           </SFormItem>
@@ -137,7 +147,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.folders.scriptSection") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.folders.scriptSection") }}</h6>
 
           <SFormItem :label="$t('transmission.folders.runScript')">
             <SSwitch v-model="folders.scriptEnabled" @update:model-value="saveFolders" />
@@ -154,9 +164,13 @@
       </STabPane>
 
       <!-- ── Sharing ── -->
-      <STabPane name="sharing" :label="$t('transmission.sharing.title')" :active="activeTab === 'sharing'">
+      <STabPane
+        name="sharing"
+        :label="$t('transmission.sharing.title')"
+        :active="activeTab === 'sharing'"
+      >
         <div class="box">
-          <h6 class="title is-6 mb-3">{{ $t("transmission.sharing.seedRatio") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.seedRatio") }}</h6>
           <SFormItem :label="$t('transmission.sharing.stopAtRatio')">
             <SSwitch v-model="sharing.seedRatioLimited" @update:model-value="saveSharing" />
             <SInputNumber
@@ -172,7 +186,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.sharing.idleSeeding") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.idleSeeding") }}</h6>
           <SFormItem :label="$t('transmission.sharing.stopIfIdle')">
             <SSwitch v-model="sharing.idleSeedingLimitEnabled" @update:model-value="saveSharing" />
             <SInputNumber
@@ -190,7 +204,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.sharing.queue") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.queue") }}</h6>
           <SFormItem :label="$t('transmission.sharing.limitDownQueue')">
             <SSwitch v-model="sharing.downloadQueueEnabled" @update:model-value="saveSharing" />
             <SInputNumber
@@ -231,9 +245,13 @@
       </STabPane>
 
       <!-- ── Privacy ── -->
-      <STabPane name="privacy" :label="$t('transmission.privacy.title')" :active="activeTab === 'privacy'">
+      <STabPane
+        name="privacy"
+        :label="$t('transmission.privacy.title')"
+        :active="activeTab === 'privacy'"
+      >
         <div class="box">
-          <h6 class="title is-6 mb-3">{{ $t("transmission.privacy.encryption") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.encryption") }}</h6>
           <SFormItem :label="$t('transmission.privacy.encryptionMode')">
             <SSelect
               v-model="privacy.encryption"
@@ -245,7 +263,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.privacy.peerDiscovery") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.peerDiscovery") }}</h6>
           <SFormItem :label="$t('transmission.privacy.dht')">
             <SSwitch v-model="privacy.dhtEnabled" @update:model-value="savePrivacy" />
           </SFormItem>
@@ -258,7 +276,7 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.privacy.blocklist") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.blocklist") }}</h6>
           <SFormItem :label="$t('transmission.privacy.enableBlocklist')">
             <SSwitch v-model="privacy.blocklistEnabled" @update:model-value="savePrivacy" />
           </SFormItem>
@@ -272,7 +290,10 @@
               />
             </SFormItem>
             <SFormItem :label="$t('transmission.privacy.blocklistSize')">
-              <span>{{ privacy.blocklistSize.toLocaleString() }} {{ $t("transmission.privacy.rules") }}</span>
+              <span
+                >{{ privacy.blocklistSize.toLocaleString() }}
+                {{ $t("transmission.privacy.rules") }}</span
+              >
               <SButton size="sm" class="ml-3" :loading="updatingBlocklist" @click="updateBlocklist">
                 <span class="mdi mdi-refresh mr-1" />
                 {{ $t("transmission.privacy.updateNow") }}
@@ -283,9 +304,13 @@
       </STabPane>
 
       <!-- ── Network ── -->
-      <STabPane name="network" :label="$t('transmission.network.title')" :active="activeTab === 'network'">
+      <STabPane
+        name="network"
+        :label="$t('transmission.network.title')"
+        :active="activeTab === 'network'"
+      >
         <div class="box">
-          <h6 class="title is-6 mb-3">{{ $t("transmission.network.listeningPort") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.listeningPort") }}</h6>
           <SFormItem :label="$t('transmission.network.peerPort')">
             <SInputNumber
               v-model="network.peerPort"
@@ -304,7 +329,9 @@
               size="sm"
               class="ml-2"
             >
-              {{ portTestResult ? $t("transmission.network.open") : $t("transmission.network.closed") }}
+              {{
+                portTestResult ? $t("transmission.network.open") : $t("transmission.network.closed")
+              }}
             </STag>
           </SFormItem>
           <SFormItem :label="$t('transmission.network.randomizePort')">
@@ -316,14 +343,14 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.network.protocol") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.protocol") }}</h6>
           <SFormItem :label="$t('transmission.network.enableUtp')">
             <SSwitch v-model="network.utpEnabled" @update:model-value="saveNetwork" />
           </SFormItem>
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3">{{ $t("transmission.network.peerLimits") }}</h6>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.peerLimits") }}</h6>
           <SFormItem :label="$t('transmission.network.globalPeerLimit')">
             <SInputNumber
               v-model="network.peerLimitGlobal"
@@ -345,6 +372,33 @@
         </div>
       </STabPane>
 
+      <!-- ── Trackers ── -->
+      <STabPane
+        name="trackers"
+        :label="$t('transmission.trackers.title')"
+        :active="activeTab === 'trackers'"
+      >
+        <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.trackers.title") }}</h6>
+          <p class="is-size-7 has-text-grey mb-1">{{ $t("torrentSearch.trackersDescription") }}</p>
+          <p class="is-size-7 mb-3">
+            {{ $t("torrentSearch.trackersGuide") }}
+            <a href="https://dontorrent.blog/trackers-utorrent/" target="_blank" rel="noopener">
+              dontorrent.blog/trackers-utorrent
+            </a>
+          </p>
+          <textarea
+            v-model="trackersText"
+            class="trackers-textarea"
+            :placeholder="$t('torrentSearch.trackersPlaceholder')"
+          />
+          <div class="mt-3">
+            <SButton variant="primary" :loading="savingTrackers" @click="saveTrackers">
+              <span class="mdi mdi-content-save mr-1" /> {{ $t("settings.save") }}
+            </SButton>
+          </div>
+        </div>
+      </STabPane>
     </STabs>
   </SLoading>
 </template>
@@ -355,6 +409,7 @@ import type { TabPaneDef } from "~/components/s/STabs.vue";
 const { apiFetch, showToast } = useApi();
 const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
+const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
 
 const activeTab = ref("speed");
 const loading = ref(true);
@@ -383,15 +438,23 @@ const tabPanes = computed<TabPaneDef[]>(() => [
   { name: "sharing", label: t("transmission.sharing.title") },
   { name: "privacy", label: t("transmission.privacy.title") },
   { name: "network", label: t("transmission.network.title") },
+  { name: "trackers", label: t("transmission.trackers.title") },
 ]);
 
 // ── Speed ────────────────────────────────────────────────────────────────────
 
 const speed = reactive({
-  dlEnabled: false, dlSpeed: 0,
-  ulEnabled: false, ulSpeed: 0,
-  altEnabled: false, altDown: 0, altUp: 0,
-  altTimeEnabled: false, altTimeBegin: 0, altTimeEnd: 0, altTimeDay: 127,
+  dlEnabled: false,
+  dlSpeed: 0,
+  ulEnabled: false,
+  ulSpeed: 0,
+  altEnabled: false,
+  altDown: 0,
+  altUp: 0,
+  altTimeEnabled: false,
+  altTimeBegin: 0,
+  altTimeEnd: 0,
+  altTimeDay: 127,
 });
 
 const dayOptions = computed(() => [
@@ -437,8 +500,12 @@ function saveSpeed() {
 // ── Folders ──────────────────────────────────────────────────────────────────
 
 const folders = reactive({
-  startAdded: true, renamePartial: true, trashOriginal: false,
-  cacheSizeMb: 4, scriptEnabled: false, scriptFilename: "",
+  startAdded: true,
+  renamePartial: true,
+  trashOriginal: false,
+  cacheSizeMb: 4,
+  scriptEnabled: false,
+  scriptFilename: "",
 });
 
 function saveFolders() {
@@ -460,11 +527,16 @@ function saveFolders() {
 // ── Sharing ──────────────────────────────────────────────────────────────────
 
 const sharing = reactive({
-  seedRatioLimited: false, seedRatioLimit: 2.0,
-  idleSeedingLimitEnabled: false, idleSeedingLimit: 30,
-  downloadQueueEnabled: true, downloadQueueSize: 5,
-  seedQueueEnabled: false, seedQueueSize: 10,
-  queueStalledEnabled: true, queueStalledMinutes: 30,
+  seedRatioLimited: false,
+  seedRatioLimit: 2.0,
+  idleSeedingLimitEnabled: false,
+  idleSeedingLimit: 30,
+  downloadQueueEnabled: true,
+  downloadQueueSize: 5,
+  seedQueueEnabled: false,
+  seedQueueSize: 10,
+  queueStalledEnabled: true,
+  queueStalledMinutes: 30,
 });
 
 function saveSharing() {
@@ -491,8 +563,12 @@ function saveSharing() {
 
 const privacy = reactive({
   encryption: "preferred",
-  dhtEnabled: true, pexEnabled: true, lpdEnabled: false,
-  blocklistEnabled: false, blocklistUrl: "", blocklistSize: 0,
+  dhtEnabled: true,
+  pexEnabled: true,
+  lpdEnabled: false,
+  blocklistEnabled: false,
+  blocklistUrl: "",
+  blocklistSize: 0,
 });
 
 const encryptionOptions = computed(() => [
@@ -537,8 +613,12 @@ async function updateBlocklist() {
 // ── Network ──────────────────────────────────────────────────────────────────
 
 const network = reactive({
-  peerPort: 51413, randomPort: false, portForwarding: true,
-  utpEnabled: true, peerLimitGlobal: 200, peerLimitPerTorrent: 50,
+  peerPort: 51413,
+  randomPort: false,
+  portForwarding: true,
+  utpEnabled: true,
+  peerLimitGlobal: 200,
+  peerLimitPerTorrent: 50,
 });
 
 function saveNetwork() {
@@ -637,6 +717,32 @@ async function fetchSession() {
   }
 }
 
-onMounted(() => fetchSession());
+onMounted(() => {
+  fetchSession();
+  loadTrackers();
+});
 </script>
 
+<style scoped>
+.trackers-textarea {
+  width: 100%;
+  min-height: 240px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+  border: 1px solid var(--s-border);
+  background: var(--s-input-bg, var(--s-bg));
+  color: var(--s-text);
+  border-radius: 4px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.trackers-textarea:focus {
+  border-color: var(--s-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 20%, transparent);
+}
+</style>

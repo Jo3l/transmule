@@ -1,5 +1,6 @@
 import { searchTorrents } from "../torrent-search";
 import type { TorrentSource } from "../torrent-search";
+import { getConfig } from "../utils/database";
 
 defineRouteMeta({
   openAPI: {
@@ -30,10 +31,19 @@ export default defineEventHandler(async (event) => {
 
   const limitN = Math.min(Math.max(Number(limit) || 75, 1), 200);
 
+  const customTrackers = getConfig("bt_trackers") ?? "";
+  const extraTrackers = customTrackers
+    .split("\n")
+    .map((tr) => tr.trim())
+    .filter(Boolean)
+    .map((tr) => `&tr=${encodeURIComponent(tr)}`)
+    .join("");
+
   const results = await searchTorrents({
     query: q.trim(),
     source: src,
     limit: limitN,
+    extraTrackers,
   });
 
   return { results, query: q.trim(), source: src, total: results.length };

@@ -478,6 +478,8 @@
     "title": "Settings",
     "theme": "Theme",
     "themeDescription": "Choose a visual theme for TransMule. Your preference is saved and applied everywhere.",
+    "canvasEffects": "Background effects",
+    "canvasEffectsDescription": "Enable animated WebGL background on the sidebar and login pages.",
     "folders": "Folders",
     "foldersDescription": "Shared folder settings for both aMule and Transmission downloads. Changes are applied to Transmission immediately. aMule folders must also be configured in its own settings file.",
     "downloadDir": "Download directory (incoming)",
@@ -554,6 +556,8 @@
   },
   "transmission": {
     "settings": { "title": "Transmission Settings" },
+    "downloadOptions": "Download Options",
+    "trackers": { "title": "BT Trackers" },
     "speed": {
       "title": "Speed Limits",
       "normal": "Normal Speed Limits",
@@ -722,7 +726,17 @@
     "obfuscationSupported": "Supported",
     "obfuscationRequested": "Requested",
     "obfuscationRequired": "Required",
-    "useSecIdent": "Use Secure Identification"
+    "useSecIdent": "Use Secure Identification",
+    "sectionIdentity": "Identity",
+    "sectionBandwidth": "Bandwidth Capacity",
+    "sectionSpeedLimits": "Speed Limits",
+    "sectionLimits": "Connection Limits",
+    "sectionBehavior": "Behavior",
+    "sectionNetworks": "Networks",
+    "sectionServerManagement": "Server Management",
+    "sectionServerList": "Server List",
+    "sectionAccessControl": "Access Control",
+    "sectionSecureIdent": "Secure Identification"
   },
   "torrentSearch": {
     "title": "Torrent Search",
@@ -750,7 +764,13 @@
       "seeders": "SE",
       "leechers": "LE",
       "source": "Source"
-    }
+    },
+    "trackers": "BT Trackers",
+    "trackersTitle": "BitTorrent Trackers",
+    "trackersDescription": "Custom trackers appended to every magnet link. One URL per line.",
+    "trackersSaved": "Trackers saved",
+    "trackersPlaceholder": "udp://tracker.opentrackr.org:1337/announce\nudp://open.demonii.com:1337/announce",
+    "trackersGuide": "Get more trackers at"
   },
   "pyload": {
     "title": "pyLoad Downloads",
@@ -828,6 +848,7 @@
     "srOriginal": "Original name",
     "srSuggested": "New name",
     "ctxOpen": "Open",
+    "playInWebamp": "Play in Webamp",
     "ctxSelected": "{count} items selected"
   }
 }

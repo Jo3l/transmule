@@ -6,7 +6,7 @@
     </h1>
 
     <div class="box">
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.privacy.encryption") }}
       </h6>
       <SFormItem :label="$t('transmission.privacy.encryptionMode')">
@@ -20,7 +20,7 @@
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.privacy.peerDiscovery") }}
       </h6>
       <SFormItem :label="$t('transmission.privacy.dht')">
@@ -35,7 +35,7 @@
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.privacy.blocklist") }}
       </h6>
       <SFormItem :label="$t('transmission.privacy.enableBlocklist')">
@@ -53,15 +53,9 @@
         </SFormItem>
         <SFormItem :label="$t('transmission.privacy.blocklistSize')">
           <span
-            >{{ form.blocklistSize.toLocaleString() }}
-            {{ $t("transmission.privacy.rules") }}</span
+            >{{ form.blocklistSize.toLocaleString() }} {{ $t("transmission.privacy.rules") }}</span
           >
-          <SButton
-            size="sm"
-            class="ml-3"
-            :loading="updatingBlocklist"
-            @click="updateBlocklist"
-          >
+          <SButton size="sm" class="ml-3" :loading="updatingBlocklist" @click="updateBlocklist">
             <span class="mdi mdi-refresh mr-1" />
             {{ $t("transmission.privacy.updateNow") }}
           </SButton>
@@ -158,4 +152,3 @@ async function updateBlocklist() {
 
 onMounted(() => fetchSession());
 </script>
-

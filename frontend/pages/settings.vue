@@ -4,12 +4,9 @@
 
     <STabs v-model="activeTab" variant="card" :panes="tabPanes">
       <!-- Theme selector -->
-      <STabPane
-        name="theme"
-        :label="$t('settings.theme')"
-        :active="activeTab === 'theme'"
-      >
+      <STabPane name="theme" :label="$t('settings.theme')" :active="activeTab === 'theme'">
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.theme") }}</h6>
           <p class="has-text-grey is-size-7 mb-4">
             {{ $t("settings.themeDescription") }}
           </p>
@@ -21,6 +18,13 @@
             </SSelect>
           </SFormItem>
 
+          <SFormItem :label="$t('settings.canvasEffects')" class="mt-4">
+            <SSwitch :model-value="canvasEnabled" @update:model-value="setCanvasEnabled" />
+          </SFormItem>
+          <p class="has-text-grey is-size-7 mb-4">
+            {{ $t("settings.canvasEffectsDescription") }}
+          </p>
+
           <SButton variant="primary" :loading="savingTheme" @click="applyTheme">
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("settings.save") }}
@@ -29,32 +33,21 @@
       </STabPane>
 
       <!-- Language selector -->
-      <STabPane
-        name="language"
-        :label="$t('settings.language')"
-        :active="activeTab === 'language'"
-      >
+      <STabPane name="language" :label="$t('settings.language')" :active="activeTab === 'language'">
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.language") }}</h6>
           <p class="has-text-grey is-size-7 mb-4">
             {{ $t("settings.languageDescription") }}
           </p>
           <SFormItem :label="$t('settings.language')">
             <SSelect v-model="selectedLocale">
-              <option
-                v-for="lang in availableLocales"
-                :key="lang.code"
-                :value="lang.code"
-              >
+              <option v-for="lang in availableLocales" :key="lang.code" :value="lang.code">
                 {{ lang.name }}
               </option>
             </SSelect>
           </SFormItem>
 
-          <SButton
-            variant="primary"
-            :loading="savingLocale"
-            @click="applyLocale"
-          >
+          <SButton variant="primary" :loading="savingLocale" @click="applyLocale">
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("settings.save") }}
           </SButton>
@@ -62,44 +55,22 @@
       </STabPane>
 
       <!-- Account: change own password -->
-      <STabPane
-        name="account"
-        :label="$t('settings.account')"
-        :active="activeTab === 'account'"
-      >
+      <STabPane name="account" :label="$t('settings.account')" :active="activeTab === 'account'">
         <div class="box">
-          <h3 class="subtitle is-6 mb-4">
-            {{ $t("settings.changePassword") }}
-          </h3>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.changePassword") }}</h6>
           <SFormItem :label="$t('settings.currentPassword')">
-            <SInput
-              v-model="selfPwCurrent"
-              type="password"
-              class="mw-320"
-            />
+            <SInput v-model="selfPwCurrent" type="password" class="mw-320" />
           </SFormItem>
           <SFormItem :label="$t('settings.newPassword')">
-            <SInput
-              v-model="selfPwNew"
-              type="password"
-              class="mw-320"
-            />
+            <SInput v-model="selfPwNew" type="password" class="mw-320" />
           </SFormItem>
           <SFormItem :label="$t('settings.confirmPassword')">
-            <SInput
-              v-model="selfPwConfirm"
-              type="password"
-              class="mw-320"
-            />
+            <SInput v-model="selfPwConfirm" type="password" class="mw-320" />
           </SFormItem>
           <p v-if="selfPwError" class="has-text-danger is-size-7 mb-3">
             {{ selfPwError }}
           </p>
-          <SButton
-            variant="primary"
-            :loading="savingSelfPw"
-            @click="submitSelfPw"
-          >
+          <SButton variant="primary" :loading="savingSelfPw" @click="submitSelfPw">
             <span class="mdi mdi-content-save mr-1" />
             {{ $t("settings.save") }}
           </SButton>
@@ -114,19 +85,19 @@
         :active="activeTab === 'integrations'"
       >
         <div class="box">
-          <h3 class="subtitle is-6 mb-2">{{ $t('settings.tvdbTitle') }}</h3>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.tvdbTitle") }}</h6>
           <p class="is-size-7 mb-3 text-muted">
-            {{ $t('settings.tvdbDescription') }}
+            {{ $t("settings.tvdbDescription") }}
             <a href="https://thetvdb.com/api-information" target="_blank" rel="noopener">
               thetvdb.com/api-information
             </a>
           </p>
 
           <SAlert v-if="tvdbKeySet" variant="success" class="mb-3" size="sm">
-            {{ $t('settings.tvdbKeySet') }}
+            {{ $t("settings.tvdbKeySet") }}
           </SAlert>
           <SAlert v-else variant="warning" class="mb-3" size="sm">
-            {{ $t('settings.tvdbKeyNotSet') }}
+            {{ $t("settings.tvdbKeyNotSet") }}
           </SAlert>
 
           <SFormItem :label="$t('settings.tvdbApiKey')">
@@ -140,11 +111,11 @@
           <div class="stt-btn-row">
             <SButton variant="primary" :loading="savingTvdb" @click="saveTvdbKey">
               <span class="mdi mdi-content-save mr-1" />
-              {{ $t('settings.save') }}
+              {{ $t("settings.save") }}
             </SButton>
             <SButton v-if="tvdbKeySet" variant="danger" :loading="savingTvdb" @click="clearTvdbKey">
               <span class="mdi mdi-delete mr-1" />
-              {{ $t('settings.tvdbKeyClear') }}
+              {{ $t("settings.tvdbKeyClear") }}
             </SButton>
           </div>
         </div>
@@ -158,6 +129,7 @@
         :active="activeTab === 'users'"
       >
         <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.users") }}</h6>
           <STable :data="users" :columns="userCols" stripe>
             <template #cell-role="{ row }">
               <STag :variant="row.is_admin ? 'primary' : 'info'" size="sm">{{
@@ -193,30 +165,16 @@
             width="400px"
           >
             <SFormItem :label="$t('settings.newPassword')">
-              <SInput
-                v-model="pwNew"
-                type="password"
-                size="sm"
-                class="mw-280"
-              />
+              <SInput v-model="pwNew" type="password" size="sm" class="mw-280" />
             </SFormItem>
             <SFormItem :label="$t('settings.confirmPassword')">
-              <SInput
-                v-model="pwConfirm"
-                type="password"
-                size="sm"
-                class="mw-280"
-              />
+              <SInput v-model="pwConfirm" type="password" size="sm" class="mw-280" />
             </SFormItem>
             <p v-if="pwMismatch" class="has-text-danger is-size-7 mt-1">
               {{ $t("settings.passwordsDoNotMatch") }}
             </p>
             <template #footer>
-              <SButton
-                variant="primary"
-                :loading="savingPw"
-                @click="submitChangePw"
-              >
+              <SButton variant="primary" :loading="savingPw" @click="submitChangePw">
                 <span class="mdi mdi-content-save mr-1" />
                 {{ $t("settings.save") }}
               </SButton>
@@ -224,7 +182,7 @@
           </SDialog>
 
           <SDivider />
-          <h3 class="subtitle is-6">{{ $t("settings.addUser") }}</h3>
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.addUser") }}</h6>
           <div class="columns">
             <div class="column is-4">
               <SFormItem :label="$t('settings.username')"
@@ -261,7 +219,8 @@ import type { TabPaneDef } from "~/components/s/STabs.vue";
 const { t, locale, locales } = useI18n();
 const { apiFetch } = useApi();
 const auth = useAuth();
-const { currentTheme, setTheme, saveToServer, THEME_META } = useTheme();
+const { currentTheme, setTheme, saveToServer, THEME_META, canvasEnabled, setCanvasEnabled } =
+  useTheme();
 
 const activeTab = ref("theme");
 const loading = ref(false);
@@ -281,6 +240,9 @@ const themes = computed(() =>
   })),
 );
 const selectedTheme = ref(currentTheme.value);
+watch(currentTheme, (v) => {
+  selectedTheme.value = v;
+});
 
 async function applyTheme() {
   savingTheme.value = true;
@@ -367,10 +329,7 @@ async function submitSelfPw() {
     selfPwNew.value = "";
     selfPwConfirm.value = "";
   } catch (err: any) {
-    selfPwError.value =
-      err?.data?.statusMessage ||
-      err?.statusMessage ||
-      t("settings.saveFailed");
+    selfPwError.value = err?.data?.statusMessage || err?.statusMessage || t("settings.saveFailed");
   } finally {
     savingSelfPw.value = false;
   }
@@ -464,7 +423,9 @@ async function loadIntegrations() {
   try {
     const res = await apiFetch<{ tvdbApiKeySet: boolean }>("/api/admin/integrations");
     tvdbKeySet.value = res?.tvdbApiKeySet ?? false;
-  } catch { /* handled */ }
+  } catch {
+    /* handled */
+  }
 }
 
 async function saveTvdbKey() {
@@ -503,6 +464,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.stt-btn-row { display: flex; gap: 8px; margin-top: 4px; }
-.stt-actions { display: flex; gap: 6px; }
+.stt-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.stt-actions {
+  display: flex;
+  gap: 6px;
+}
 </style>

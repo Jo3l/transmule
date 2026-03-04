@@ -26,24 +26,19 @@
           class="w-160"
           @update:model-value="save"
         />
-        <span class="ml-2 has-text-grey is-size-7">{{
-          $t("transmission.folders.mb")
-        }}</span>
+        <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.folders.mb") }}</span>
       </SFormItem>
 
       <SDivider />
 
-      <h6 class="title is-6 mb-3">
+      <h6 class="title is-6 mb-3 mt-3">
         {{ $t("transmission.folders.scriptSection") }}
       </h6>
 
       <SFormItem :label="$t('transmission.folders.runScript')">
         <SSwitch v-model="form.scriptEnabled" @update:model-value="save" />
       </SFormItem>
-      <SFormItem
-        v-if="form.scriptEnabled"
-        :label="$t('transmission.folders.scriptPath')"
-      >
+      <SFormItem v-if="form.scriptEnabled" :label="$t('transmission.folders.scriptPath')">
         <SInput
           v-model="form.scriptFilename"
           :placeholder="$t('transmission.folders.scriptPlaceholder')"
@@ -111,4 +106,3 @@ async function doSave() {
 
 onMounted(() => fetchSession());
 </script>
-

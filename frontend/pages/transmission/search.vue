@@ -10,11 +10,7 @@
         <div class="columns is-multiline">
           <div class="column is-6">
             <SFormItem :label="$t('torrentSearch.label')">
-              <SInput
-                v-model="query"
-                :placeholder="$t('torrentSearch.placeholder')"
-                autofocus
-              >
+              <SInput v-model="query" :placeholder="$t('torrentSearch.placeholder')" autofocus>
                 <template #prefix><span class="mdi mdi-magnify" /></template>
               </SInput>
             </SFormItem>
@@ -28,15 +24,13 @@
         <SButton variant="primary" native-type="submit" :loading="loading">
           <span class="mdi mdi-magnify mr-1" /> {{ $t("torrentSearch.button") }}
         </SButton>
+        <SButton class="ml-3" @click.prevent="openTrackers">
+          <span class="mdi mdi-antenna mr-1" /> {{ $t("torrentSearch.trackers") }}
+        </SButton>
       </form>
     </div>
 
-    <STable
-      :data="results"
-      :columns="columns"
-      row-key="infoHash"
-      :loading="loading"
-    >
+    <STable :data="results" :columns="columns" row-key="infoHash" :loading="loading">
       <!-- Name cell -->
       <template #cell-name="{ row }">
         <span :title="row.name">{{ row.name }}</span>
@@ -87,11 +81,7 @@
         <div class="has-text-centered py-5 has-text-grey">
           <span class="mdi mdi-file-search-outline icon-lg" />
           <p>
-            {{
-              searched
-                ? $t("torrentSearch.noResults")
-                : $t("torrentSearch.enterSearch")
-            }}
+            {{ searched ? $t("torrentSearch.noResults") : $t("torrentSearch.enterSearch") }}
           </p>
         </div>
       </template>
@@ -99,6 +89,27 @@
 
     <!-- Error -->
     <p v-if="error" class="has-text-danger mt-3">{{ error }}</p>
+
+    <!-- BT Trackers Dialog -->
+    <SDialog v-model="trackersDialog" :title="$t('torrentSearch.trackersTitle')" width="520px">
+      <p class="is-size-7 has-text-grey mb-1">{{ $t("torrentSearch.trackersDescription") }}</p>
+      <p class="is-size-7 mb-3">
+        {{ $t("torrentSearch.trackersGuide") }}
+        <a href="https://dontorrent.blog/trackers-utorrent/" target="_blank" rel="noopener">
+          dontorrent.blog/trackers-utorrent
+        </a>
+      </p>
+      <textarea
+        v-model="trackersText"
+        class="trackers-textarea"
+        :placeholder="$t('torrentSearch.trackersPlaceholder')"
+      />
+      <template #footer>
+        <SButton variant="primary" :loading="savingTrackers" @click="saveAndClose">
+          <span class="mdi mdi-content-save mr-1" /> {{ $t("settings.save") }}
+        </SButton>
+      </template>
+    </SDialog>
   </div>
 </template>
 
@@ -201,9 +212,7 @@ function formatBytes(bytes: number | null): string {
   return `${value.toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
 }
 
-function sourceVariant(
-  src: string,
-): "primary" | "success" | "warning" | "info" {
+function sourceVariant(src: string): "primary" | "success" | "warning" | "info" {
   const map: Record<string, "primary" | "success" | "warning" | "info"> = {
     tpb: "primary",
     nyaa: "success",
@@ -248,9 +257,7 @@ async function fetchExistingHashes() {
   try {
     const res = await apiFetch<any>("/api/transmission/torrents");
     const torrents = res?.torrents ?? [];
-    addedHashes.value = new Set(
-      torrents.map((t: any) => (t.hashString ?? "").toLowerCase()),
-    );
+    addedHashes.value = new Set(torrents.map((t: any) => (t.hashString ?? "").toLowerCase()));
   } catch {
     /* silent */
   }
@@ -274,9 +281,48 @@ async function addTorrent(row: SearchResult) {
   }
 }
 
+// ── BT Trackers ──────────────────────────────────────────────────────────────
+
+const trackersDialog = ref(false);
+const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
+
+async function openTrackers() {
+  await loadTrackers();
+  trackersDialog.value = true;
+}
+
+async function saveAndClose() {
+  await saveTrackers();
+  trackersDialog.value = false;
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 onMounted(() => {
   fetchExistingHashes();
 });
 </script>
+
+<style scoped>
+.trackers-textarea {
+  width: 100%;
+  min-height: 180px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+  border: 1px solid var(--s-border);
+  background: var(--s-input-bg, var(--s-bg));
+  color: var(--s-text);
+  border-radius: 4px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.trackers-textarea:focus {
+  border-color: var(--s-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 20%, transparent);
+}
+</style>

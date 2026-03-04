@@ -63,8 +63,12 @@ function categoryLabel(cat: string): string {
   return map[cat] ?? "Other";
 }
 
-function buildMagnet(infoHash: string, name: string): string {
-  return `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(name)}${TRACKERS}`;
+function buildMagnet(
+  infoHash: string,
+  name: string,
+  extraTrackers = "",
+): string {
+  return `magnet:?xt=urn:btih:${infoHash}&dn=${encodeURIComponent(name)}${TRACKERS}${extraTrackers}`;
 }
 
 interface ApiItem {
@@ -80,6 +84,7 @@ interface ApiItem {
 export async function searchPirateBay(
   query: string,
   limit: number,
+  extraTrackers = "",
 ): Promise<TorrentSearchResult[]> {
   const url = `https://apibay.org/q.php?q=${encodeURIComponent(query)}&cat=0`;
 
@@ -102,7 +107,7 @@ export async function searchPirateBay(
 
   return items.slice(0, limit).map((item) => ({
     name: item.name,
-    magnet: buildMagnet(item.info_hash, item.name),
+    magnet: buildMagnet(item.info_hash, item.name, extraTrackers),
     infoHash: item.info_hash,
     size: item.size ? Number(item.size) : null,
     seeders: Number(item.seeders) || 0,

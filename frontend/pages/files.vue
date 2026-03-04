@@ -140,7 +140,8 @@
                   <a
                     v-if="item.type === 'directory'"
                     @click.prevent="navigate(childPath(item.name))"
-                  >{{ item.name }}</a>
+                    >{{ item.name }}</a
+                  >
                   <span v-else class="fm-filename" :title="item.name">{{ item.name }}</span>
                 </span>
               </td>
@@ -155,9 +156,7 @@
             <!-- Empty state -->
             <tr v-if="!loading && items.length === 0">
               <td colspan="4" class="has-text-centered has-text-grey py-5">
-                <span
-                  class="mdi mdi-folder-open-outline fm-empty-icon"
-                />
+                <span class="mdi mdi-folder-open-outline fm-empty-icon" />
                 {{ $t("fileManager.empty") }}
               </td>
             </tr>
@@ -237,9 +236,24 @@
       <button
         v-if="!ctxIsMulti && ctxMenu.item?.type === 'directory'"
         class="fm-ctx-item"
-        @click="navigate(childPath(ctxMenu.item.name)); hideCtxMenu()"
+        @click="
+          navigate(childPath(ctxMenu.item.name));
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
+      </button>
+
+      <!-- Play in Webamp (mp3 only) -->
+      <button
+        v-if="!ctxIsMulti && isMp3(ctxMenu.item)"
+        class="fm-ctx-item fm-ctx-item--accent"
+        @click="
+          openInWebamp(ctxMenu.item!);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
       </button>
 
       <!-- Download (file only) -->
@@ -256,7 +270,10 @@
       <button
         v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
         class="fm-ctx-item fm-ctx-item--accent"
-        @click="startSmartRenameForPaths([childPath(ctxMenu.item.name)]); hideCtxMenu()"
+        @click="
+          startSmartRenameForPaths([childPath(ctxMenu.item.name)]);
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
       </button>
@@ -265,7 +282,10 @@
       <button
         v-if="ctxIsMulti && selectedFiles.length > 0"
         class="fm-ctx-item fm-ctx-item--accent"
-        @click="startSmartRenameForPaths(selectedFiles); hideCtxMenu()"
+        @click="
+          startSmartRenameForPaths(selectedFiles);
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-auto-fix mr-2" />
         {{ $t("fileManager.smartRenameSelected", { count: selectedFiles.length }) }}
@@ -275,7 +295,10 @@
       <button
         v-if="!ctxIsMulti"
         class="fm-ctx-item"
-        @click="startRename(ctxMenu.item!); hideCtxMenu()"
+        @click="
+          startRename(ctxMenu.item!);
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
       </button>
@@ -286,7 +309,10 @@
       <button
         v-if="!ctxIsMulti"
         class="fm-ctx-item fm-ctx-item--danger"
-        @click="confirmDeleteOne(ctxMenu.item!); hideCtxMenu()"
+        @click="
+          confirmDeleteOne(ctxMenu.item!);
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
       </button>
@@ -295,13 +321,21 @@
       <button
         v-if="ctxIsMulti"
         class="fm-ctx-item fm-ctx-item--danger"
-        @click="confirmDeleteSelected(); hideCtxMenu()"
+        @click="
+          confirmDeleteSelected();
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-delete mr-2" />
         {{ $t("fileManager.deleteSelected", { count: selectedItems.size }) }}
       </button>
     </div>
   </Teleport>
+
+  <!-- ── Webamp player ──────────────────────────────────────────────── -->
+  <ClientOnly>
+    <Webamp v-if="webampTrack" :key="webampKey" :track="webampTrack" />
+  </ClientOnly>
 
   <!-- ── Smart Rename dialog ───────────────────────────────────────── -->
   <SDialog
@@ -426,6 +460,27 @@ const deleteMessage = computed(() =>
 const ctxMenu = ref({ visible: false, x: 0, y: 0, item: null as FileItem | null });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
 
+// ── Webamp ────────────────────────────────────────────────────────────────
+import type { Track } from "webamp";
+
+const webampTrack = ref<Track | null>(null);
+const webampKey = ref(0);
+
+function isMp3(item: FileItem | null): boolean {
+  return item?.type === "file" && item.name.toLowerCase().endsWith(".mp3");
+}
+
+function openInWebamp(item: FileItem) {
+  const url = downloadUrl(item.name);
+  const track: Track = { url, metaData: { title: item.name } };
+  if (webampTrack.value !== null) {
+    webampTrack.value = track;
+  } else {
+    webampTrack.value = track;
+    webampKey.value++;
+  }
+}
+
 function onRowContextMenu(e: MouseEvent, item: FileItem) {
   if (!selectedItems.has(item.name)) {
     selectedItems.clear();
@@ -455,10 +510,10 @@ async function startSmartRenameForPaths(paths: string[]) {
   smartRenameLoading.value = true;
   smartRenameItems.value = [];
   try {
-    const res = await apiFetch<{ suggestions: SmartRenameItem[] }>(
-      "/api/files/smart-rename",
-      { method: "POST", body: { paths } },
-    );
+    const res = await apiFetch<{ suggestions: SmartRenameItem[] }>("/api/files/smart-rename", {
+      method: "POST",
+      body: { paths },
+    });
     smartRenameItems.value = res.suggestions;
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
@@ -858,17 +913,39 @@ onMounted(loadDir);
 }
 
 /* File type colors */
-.fm-icon-dir     { color: #f0a329; }
-.fm-icon-video   { color: #e05050; }
-.fm-icon-audio   { color: #9b59b6; }
-.fm-icon-image   { color: #3498db; }
-.fm-icon-archive { color: #e67e22; }
-.fm-icon-pdf     { color: #e74c3c; }
-.fm-icon-doc     { color: #2980b9; }
-.fm-icon-torrent { color: #27ae60; }
-.fm-icon-disc    { color: #95a5a6; }
-.fm-icon-sub     { color: #16a085; }
-.fm-icon-default { color: #bdc3c7; }
+.fm-icon-dir {
+  color: #f0a329;
+}
+.fm-icon-video {
+  color: #e05050;
+}
+.fm-icon-audio {
+  color: #9b59b6;
+}
+.fm-icon-image {
+  color: #3498db;
+}
+.fm-icon-archive {
+  color: #e67e22;
+}
+.fm-icon-pdf {
+  color: #e74c3c;
+}
+.fm-icon-doc {
+  color: #2980b9;
+}
+.fm-icon-torrent {
+  color: #27ae60;
+}
+.fm-icon-disc {
+  color: #95a5a6;
+}
+.fm-icon-sub {
+  color: #16a085;
+}
+.fm-icon-default {
+  color: #bdc3c7;
+}
 
 .fm-filename {
   overflow: hidden;
@@ -884,10 +961,10 @@ onMounted(loadDir);
   position: fixed;
   z-index: 9999;
   min-width: 190px;
-  background: var(--bulma-scheme-main, #fff);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
   padding: 4px 0;
   user-select: none;
 }
@@ -897,13 +974,13 @@ onMounted(loadDir);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #888;
+  color: var(--s-text-muted);
   padding: 6px 14px 4px;
 }
 
 .fm-ctx-sep {
   height: 1px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--s-border);
   margin: 4px 0;
 }
 
@@ -916,7 +993,7 @@ onMounted(loadDir);
   border: none;
   cursor: pointer;
   font-size: 0.875rem;
-  color: inherit;
+  color: var(--s-text);
   text-align: left;
   text-decoration: none;
   white-space: nowrap;
@@ -924,21 +1001,27 @@ onMounted(loadDir);
 }
 
 .fm-ctx-item:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--s-bg-hover);
 }
 
-.fm-ctx-item--accent { color: #3273dc; }
-.fm-ctx-item--danger { color: #cc3333; }
+.fm-ctx-item--accent {
+  color: var(--s-accent);
+}
+.fm-ctx-item--danger {
+  color: var(--s-danger);
+}
 
 /* ── Smart Rename dialog table ──────────────────────────────────────────── */
 .fm-sr-table-wrap {
   max-height: 400px;
   overflow-y: auto;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--s-border);
   border-radius: 6px;
 }
 
-.fm-sr-table { margin-bottom: 0 !important; }
+.fm-sr-table {
+  margin-bottom: 0 !important;
+}
 
 .fm-sr-original {
   max-width: 240px;
@@ -951,10 +1034,25 @@ onMounted(loadDir);
 .fm-sr-input :deep(input) {
   font-size: 0.82rem !important;
 }
-.fm-th-check   { width: 36px; padding-right: 0; }
-.fm-th-size    { width: 90px; }
-.fm-th-date    { width: 160px; }
-.fm-th-arrow   { width: 28px; }
-.fm-td-check   { padding-right: 0; }
-.fm-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+.fm-th-check {
+  width: 36px;
+  padding-right: 0;
+}
+.fm-th-size {
+  width: 90px;
+}
+.fm-th-date {
+  width: 160px;
+}
+.fm-th-arrow {
+  width: 28px;
+}
+.fm-td-check {
+  padding-right: 0;
+}
+.fm-empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
 </style>

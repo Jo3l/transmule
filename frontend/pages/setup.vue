@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <canvas id="c" aria-label="Scene" role="img">Scene</canvas>
+    <canvas v-if="canvasEnabled" id="c" aria-label="Scene" role="img">Scene</canvas>
   </Teleport>
   <div id="page-setup" class="box">
     <div class="has-text-centered mb-5">
@@ -15,20 +15,13 @@
 
     <form @submit.prevent="doSetup">
       <SFormItem :label="$t('setup.adminUsername')">
-        <SInput
-          v-model="username"
-          :placeholder="$t('setup.usernamePlaceholder')"
-        >
+        <SInput v-model="username" :placeholder="$t('setup.usernamePlaceholder')">
           <template #prefix><span class="mdi mdi-account" /></template>
         </SInput>
       </SFormItem>
 
       <SFormItem :label="$t('setup.adminPassword')">
-        <SInput
-          v-model="password"
-          type="password"
-          :placeholder="$t('setup.passwordPlaceholder')"
-        >
+        <SInput v-model="password" type="password" :placeholder="$t('setup.passwordPlaceholder')">
           <template #prefix><span class="mdi mdi-lock" /></template>
         </SInput>
       </SFormItem>
@@ -43,13 +36,7 @@
         </SInput>
       </SFormItem>
 
-      <SButton
-        variant="primary"
-        native-type="submit"
-        :loading="loading"
-        block
-        class="mt-4"
-      >
+      <SButton variant="primary" native-type="submit" :loading="loading" block class="mt-4">
         {{ $t("setup.create") }}
       </SButton>
     </form>
@@ -69,6 +56,8 @@ const passwordConfirm = ref("");
 const loading = ref(false);
 const error = ref("");
 
+const { canvasEnabled } = useTheme();
+
 let destroyScene: (() => void) | null = null;
 onUnmounted(() => destroyScene?.());
 
@@ -81,14 +70,11 @@ async function doSetup() {
   loading.value = true;
   try {
     const config = useRuntimeConfig();
-    const data = await $fetch<{ token: string; user: any }>(
-      "/api/users/setup",
-      {
-        baseURL: config.public.apiBase,
-        method: "POST",
-        body: { username: username.value, password: password.value },
-      },
-    );
+    const data = await $fetch<{ token: string; user: any }>("/api/users/setup", {
+      baseURL: config.public.apiBase,
+      method: "POST",
+      body: { username: username.value, password: password.value },
+    });
     auth.setAuth(data.token, data.user);
     navigateTo("/");
   } catch (err: any) {
@@ -99,9 +85,11 @@ async function doSetup() {
 }
 
 onMounted(async () => {
-  const canvas = document.getElementById('c');
-  const { init } = await import('~/assets/scenes/scene.js');
-  destroyScene = init(canvas);
+  const canvas = document.getElementById("c");
+  if (canvas && canvasEnabled.value) {
+    const { init } = await import("~/assets/scenes/scene.js");
+    destroyScene = init(canvas);
+  }
   try {
     const config = useRuntimeConfig();
     const status = await $fetch<{ hasUsers: boolean }>("/api/users/status", {
@@ -128,4 +116,3 @@ onMounted(async () => {
   z-index: 1;
 }
 </style>
-

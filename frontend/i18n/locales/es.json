@@ -477,6 +477,8 @@
     "title": "Configuración",
     "theme": "Tema",
     "themeDescription": "Elige un tema visual para TransMule. Tu preferencia se guarda y aplica en todas partes.",
+    "canvasEffects": "Efectos de fondo",
+    "canvasEffectsDescription": "Activa el fondo animado WebGL en la barra lateral y las páginas de inicio de sesión.",
     "folders": "Carpetas",
     "foldersDescription": "Configuración de carpetas compartidas para descargas de aMule y Transmission. Los cambios se aplican a Transmission de inmediato. Las carpetas de aMule también deben configurarse en su propio archivo de configuración.",
     "downloadDir": "Carpeta de descarga (entrante)",
@@ -553,6 +555,8 @@
   },
   "transmission": {
     "settings": { "title": "Configuración de Transmission" },
+    "downloadOptions": "Opciones de descarga",
+    "trackers": { "title": "BT Trackers" },
     "speed": {
       "title": "Límites de velocidad",
       "normal": "Límites de velocidad normales",
@@ -721,7 +725,17 @@
     "obfuscationSupported": "Soportada",
     "obfuscationRequested": "Solicitada",
     "obfuscationRequired": "Requerida",
-    "useSecIdent": "Usar identificación segura"
+    "useSecIdent": "Usar identificación segura",
+    "sectionIdentity": "Identidad",
+    "sectionBandwidth": "Capacidad de ancho de banda",
+    "sectionSpeedLimits": "Límites de velocidad",
+    "sectionLimits": "Límites de conexión",
+    "sectionBehavior": "Comportamiento",
+    "sectionNetworks": "Redes",
+    "sectionServerManagement": "Gestión de servidores",
+    "sectionServerList": "Lista de servidores",
+    "sectionAccessControl": "Control de acceso",
+    "sectionSecureIdent": "Identificación segura"
   },
   "torrentSearch": {
     "title": "Buscar Torrents",
@@ -749,7 +763,13 @@
       "seeders": "SE",
       "leechers": "LE",
       "source": "Fuente"
-    }
+    },
+    "trackers": "BT Trackers",
+    "trackersTitle": "Trackers de BitTorrent",
+    "trackersDescription": "Trackers personalizados añadidos a cada enlace magnet. Una URL por línea.",
+    "trackersSaved": "Trackers guardados",
+    "trackersPlaceholder": "udp://tracker.opentrackr.org:1337/announce\nudp://open.demonii.com:1337/announce",
+    "trackersGuide": "Obtén más trackers en"
   },
   "pyload": {
     "title": "pyLoad Descargas",
@@ -827,6 +847,7 @@
     "srOriginal": "Nombre original",
     "srSuggested": "Nuevo nombre",
     "ctxOpen": "Abrir",
+    "playInWebamp": "Reproducir en Webamp",
     "ctxSelected": "{count} elementos seleccionados"
   }
 }

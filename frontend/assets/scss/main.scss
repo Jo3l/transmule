@@ -53,6 +53,8 @@
   --s-scrollbar-thumb: #2a2a50;
   --s-scrollbar-track: #0a0a18;
   --s-glow: 0 0 10px rgba(0, 212, 255, 0.3);
+  --s-btn-shadow: #04040a;
+  --s-btn-outline: var(--s-accent);
 }
 
 /* ── THEME: Sark (Red-Purple neon) ─────────────────────────────────────── */
@@ -101,6 +103,8 @@
   --s-scrollbar-thumb: #401840;
   --s-scrollbar-track: #0a040a;
   --s-glow: 0 0 10px rgba(204, 0, 119, 0.3);
+  --s-btn-shadow: #080408;
+  --s-btn-outline: var(--s-accent);
 }
 
 /* ── THEME: Light ────────────────────────────────────────────────────────── */
@@ -149,6 +153,8 @@
   --s-scrollbar-thumb: #c0c0c0;
   --s-scrollbar-track: #f0f0f0;
   --s-glow: none;
+  --s-btn-shadow: #101c36;
+  --s-btn-outline: transparent;
 }
 
 /* ── THEME: Matrix ───────────────────────────────────────────────────────── */
@@ -197,6 +203,8 @@
   --s-scrollbar-thumb: #1a3a1a;
   --s-scrollbar-track: #0a0a0a;
   --s-glow: 0 0 8px rgba(0, 255, 65, 0.2);
+  --s-btn-shadow: #050505;
+  --s-btn-outline: var(--s-accent);
 }
 
 /* ── THEME: Windows XP (Luna) ─────────────────────────────────────────────
@@ -257,6 +265,8 @@
   --xp-btn-face: #ece9d8;
   --xp-btn-highlight: #ffffff;
   --xp-btn-shadow: #aca899;
+  --s-btn-shadow: var(--xp-btn-shadow);
+  --s-btn-outline: var(--xp-btn-shadow);
   --xp-btn-dk-shadow: #716f64;
   --xp-field-border: #7f9db9;
   --xp-titlebar-start: #0054e3;
@@ -597,12 +607,33 @@ a {
 
 .app-sidebar {
   width: 220px;
-  background: var(--s-bg-sidebar);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   color: var(--s-sidebar-text);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--s-sidebar-border);
+
+  .sidebar-scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .sidebar-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--s-bg-sidebar) 80%, transparent);
+  }
 
   .sidebar-brand {
     padding: 1rem;
@@ -792,89 +823,224 @@ a {
 
 /* ── SButton ─────────────────────────────────────────────────────────────── */
 .s-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--s-border);
-  border-radius: var(--s-radius);
-  background: var(--s-bg-surface);
-  color: var(--s-text);
-  font-size: 0.875rem;
-  font-family: inherit;
+  // ── Per-button design tokens (overridden by variant classes)
+  --bevel: 2px;
+  --border-width: 2px;
+  --btn-outline: var(--s-btn-outline, var(--s-border));
+  --btn-shadow: var(--s-btn-shadow, var(--s-bg));
+  --btn-fill: var(--s-bg-surface);
+  --btn-text: var(--s-text);
+  --btn-accent: var(--s-accent);
+
+  // ── Reset
+  display: inline-block;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.15s;
+  font-family: inherit;
+  font-size: 0.875rem;
   white-space: nowrap;
-  line-height: 1.4;
+  vertical-align: middle;
 
-  &:hover:not(:disabled) {
-    background: var(--s-bg-hover);
-    border-color: var(--s-accent);
-  }
-  &:active:not(:disabled) {
-    transform: scale(0.97);
-  }
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
-  }
-  &:focus-visible {
-    outline: 2px solid var(--s-accent);
-    outline-offset: 2px;
+    pointer-events: none;
   }
 
-  &.s-btn--sm {
-    padding: 0.25rem 0.6rem;
-    font-size: 0.8rem;
-  }
-  &.s-btn--lg {
-    padding: 0.65rem 1.4rem;
-    font-size: 1rem;
-  }
   &.s-btn--block {
     width: 100%;
-  }
-
-  &.s-btn--primary {
-    background: var(--s-accent);
-    color: var(--s-text-inverse);
-    border-color: var(--s-accent);
-  }
-  &.s-btn--primary:hover:not(:disabled) {
-    background: var(--s-accent-hover);
-    border-color: var(--s-accent-hover);
-  }
-  &.s-btn--success {
-    background: var(--s-success);
-    color: var(--s-text-inverse);
-    border-color: var(--s-success);
-  }
-  &.s-btn--warning {
-    background: var(--s-warning);
-    color: var(--s-text-inverse);
-    border-color: var(--s-warning);
-  }
-  &.s-btn--danger {
-    background: var(--s-danger);
-    color: var(--s-text-inverse);
-    border-color: var(--s-danger);
-  }
-  &.s-btn--info {
-    background: var(--s-info);
-    color: var(--s-text-inverse);
-    border-color: var(--s-info);
-  }
-
-  &.s-btn--text {
-    background: transparent;
-    border-color: transparent;
-    color: var(--s-accent);
-    &:hover:not(:disabled) {
-      background: var(--s-accent-subtle);
+    .button-outline,
+    .button-shadow,
+    .button-inside {
+      display: block;
+      width: 100%;
     }
   }
 
+  // ── Size modifiers
+  &.s-btn--sm .button-inside {
+    padding: 2px 16px;
+    font-size: 0.8rem;
+  }
+  &.s-btn--lg .button-inside {
+    padding: 10px 32px;
+    font-size: 1rem;
+  }
+
+  // ── Variant tokens
+  &.s-btn--primary {
+    --btn-fill: var(--s-accent);
+    --btn-text: var(--s-text-inverse);
+    --btn-accent: var(--s-accent-hover);
+  }
+  &.s-btn--success {
+    --btn-fill: var(--s-success);
+    --btn-text: var(--s-text-inverse);
+    --btn-accent: #2da044;
+  }
+  &.s-btn--warning {
+    --btn-fill: var(--s-warning);
+    --btn-text: var(--s-text-inverse);
+    --btn-accent: #c9780a;
+  }
+  &.s-btn--danger {
+    --btn-fill: var(--s-danger);
+    --btn-text: var(--s-text-inverse);
+    --btn-accent: #c02020;
+  }
+  &.s-btn--info {
+    --btn-fill: var(--s-info);
+    --btn-text: var(--s-text-inverse);
+    --btn-accent: #2080c0;
+  }
+
+  // ── Text variant: transparent bevel (same shape, no fill)
+  &.s-btn--text {
+    --btn-outline: transparent;
+    --btn-shadow: transparent;
+    --btn-fill: transparent;
+    --btn-text: var(--s-accent);
+    --btn-accent: var(--s-accent-subtle);
+  }
+
+  // ── Outline bevel span
+  .button-outline {
+    --bevel-1: calc((var(--bevel) + var(--border-width) * 2) - (var(--border-width) * 0.4142) * 2);
+    --bevel-2: calc(var(--bevel-1) + var(--border-width));
+    --bevel-3: calc(var(--bevel-2) + var(--border-width));
+    display: block;
+    margin-top: calc(var(--border-width) * -1);
+    margin-left: calc(var(--border-width) * -1);
+    padding: var(--border-width);
+    background-color: var(--btn-outline);
+    clip-path: polygon(
+      var(--bevel-2) var(--border-width),
+      calc(100% - var(--bevel-2)) var(--border-width),
+      100% var(--bevel-3),
+      100% calc(100% - var(--bevel-1)),
+      calc(100% - var(--bevel-1)) 100%,
+      var(--bevel-3) 100%,
+      var(--border-width) calc(100% - var(--bevel-2)),
+      var(--border-width) var(--bevel-2)
+    );
+    transition: clip-path 0.2s;
+  }
+
+  // ── Shadow bevel span
+  .button-shadow {
+    --bevel-1: calc((var(--bevel) + var(--border-width)) - (var(--border-width) * 0.4142));
+    --bevel-2: calc(var(--bevel-1) + var(--border-width));
+    --bevel-3: calc(var(--bevel-2) + var(--border-width));
+    display: block;
+    padding: calc(var(--border-width) * 2);
+    background-color: var(--btn-shadow);
+    clip-path: polygon(
+      var(--bevel-2) var(--border-width),
+      calc(100% - var(--bevel-2)) var(--border-width),
+      100% var(--bevel-3),
+      100% calc(100% - var(--bevel-1)),
+      calc(100% - var(--bevel-1)) 100%,
+      var(--bevel-3) 100%,
+      var(--border-width) calc(100% - var(--bevel-2)),
+      var(--border-width) var(--bevel-2)
+    );
+    transition: clip-path 0.2s;
+  }
+
+  // ── Hover: expand clip-path on outline + shadow
+  &:hover:not(:active):not(:disabled),
+  &:focus-visible:not(:active) {
+    .button-outline,
+    .button-shadow {
+      clip-path: polygon(
+        var(--bevel-1) 0,
+        calc(100% - var(--bevel-3)) 0,
+        100% var(--bevel-3),
+        100% calc(100% - var(--bevel-1)),
+        calc(100% - var(--bevel-1)) 100%,
+        var(--bevel-3) 100%,
+        0 calc(100% - var(--bevel-3)),
+        0 var(--bevel-1)
+      );
+    }
+    .button-inside {
+      transform: translate(calc(var(--border-width) * -1), calc(var(--border-width) * -1));
+    }
+  }
+
+  // ── Inner fill span
+  .button-inside {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 6px 24px calc(6px - 0.125em);
+    background-color: var(--btn-fill);
+    color: var(--btn-text);
+    clip-path: polygon(
+      var(--bevel) 0,
+      calc(100% - var(--bevel)) 0,
+      100% var(--bevel),
+      100% calc(100% - var(--bevel)),
+      calc(100% - var(--bevel)) 100%,
+      var(--bevel) 100%,
+      0 calc(100% - var(--bevel)),
+      0 var(--bevel)
+    );
+    transition:
+      transform 0.2s,
+      background-color 0.15s;
+  }
+
+  // ── Hover: animated fill on inner span
+  &:hover:not(:disabled),
+  &:focus-visible {
+    .button-inside {
+      background-color: var(--btn-accent);
+      background-image:
+        linear-gradient(
+          to right,
+          transparent,
+          color-mix(in srgb, var(--btn-accent) 56%, transparent)
+        ),
+        radial-gradient(color-mix(in srgb, var(--btn-accent) 70%, white) 1px, transparent 0),
+        radial-gradient(color-mix(in srgb, var(--btn-accent) 70%, white) 1px, transparent 0);
+      background-size:
+        auto,
+        6px 6px,
+        6px 6px;
+      background-position:
+        0 0,
+        0 0,
+        3px 3px;
+      animation: s-btn-scroll 1s linear infinite;
+      color: var(--s-text-inverse);
+    }
+  }
+
+  // ── Text + character animation
+  .button-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .button-text-characters-container {
+    display: inline-block;
+    transform: skewX(-6deg);
+  }
+  .button-text-character {
+    display: inline-block;
+  }
+  &:hover:not(:active):not(:disabled),
+  &:focus-visible:not(:active) {
+    .button-text-character {
+      animation: s-btn-jump 4s cubic-bezier(0.75, 0.25, 1, 2) var(--delay, 0s) infinite;
+    }
+  }
+
+  // ── Spinner
   .s-btn__spinner {
     display: inline-block;
     width: 14px;
@@ -883,6 +1049,25 @@ a {
     border-right-color: transparent;
     border-radius: 50%;
     animation: s-spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes s-btn-scroll {
+  to {
+    background-position-x:
+      0,
+      -6px,
+      -3px;
+  }
+}
+
+@keyframes s-btn-jump {
+  5% {
+    transform: translateY(-0.125em);
+  }
+  10% {
+    transform: translateY(0);
   }
 }
 
@@ -1571,9 +1756,12 @@ textarea.s-input {
 
   /* ═══ Buttons: Classic XP 3D raised look ═══ */
   .s-btn {
+    // Restore XP outer-button styling (overrides the bevel defaults)
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(180deg, #ffffff 0%, #ece9d8 50%, #d8d4c4 100%);
-    border: 1px solid;
-    border-color: #003c74 #003c74 #003c74 #003c74;
+    border: 1px solid #003c74;
     border-radius: 3px;
     box-shadow:
       inset 1px 1px 0 #ffffff,
@@ -1584,27 +1772,47 @@ textarea.s-input {
     color: #000;
     text-shadow: none;
 
+    // ── Make bevel spans invisible passthroughs
+    .button-outline,
+    .button-shadow {
+      background: transparent !important;
+      clip-path: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .button-inside {
+      background: transparent !important;
+      background-image: none !important;
+      clip-path: none !important;
+      padding: 0 !important;
+      animation: none !important;
+      transform: none !important;
+      color: inherit !important;
+    }
+    .button-text-characters-container {
+      transform: none;
+    }
+    .button-text-character {
+      animation: none !important;
+    }
+
     &:hover:not(:disabled) {
-      background: linear-gradient(
-        180deg,
-        #fefefe 0%,
-        #dfe8f5 45%,
-        #b9cbe4 55%,
-        #9dbae0 100%
-      );
+      background: linear-gradient(180deg, #fefefe 0%, #dfe8f5 45%, #b9cbe4 55%, #9dbae0 100%);
       border-color: #0055a4;
       box-shadow:
         inset 1px 1px 0 #dce6f4,
         inset -1px -1px 0 #7c9dc2;
+      .button-inside {
+        background: transparent !important;
+        background-image: none !important;
+        animation: none !important;
+        transform: none !important;
+        color: inherit !important;
+      }
     }
 
     &:active:not(:disabled) {
-      background: linear-gradient(
-        180deg,
-        #a4b8d3 0%,
-        #8daacd 50%,
-        #7698c3 100%
-      );
+      background: linear-gradient(180deg, #a4b8d3 0%, #8daacd 50%, #7698c3 100%);
       box-shadow:
         inset 1px 1px 2px rgba(0, 0, 0, 0.25),
         inset -1px -1px 0 #bacbe0;
@@ -1628,13 +1836,7 @@ textarea.s-input {
 
     /* Primary: bold blue XP button */
     &.s-btn--primary {
-      background: linear-gradient(
-        180deg,
-        #ffffff 0%,
-        #d6e4f9 25%,
-        #a8c8f0 75%,
-        #7eb6e9 100%
-      );
+      background: linear-gradient(180deg, #ffffff 0%, #d6e4f9 25%, #a8c8f0 75%, #7eb6e9 100%);
       border-color: #003c74;
       color: #003399;
       font-weight: 700;
@@ -1644,68 +1846,37 @@ textarea.s-input {
         0 0 3px rgba(0, 60, 116, 0.25);
 
       &:hover:not(:disabled) {
-        background: linear-gradient(
-          180deg,
-          #ffffff 0%,
-          #c3d9f5 25%,
-          #8fb8ea 75%,
-          #6ba8e3 100%
-        );
+        background: linear-gradient(180deg, #ffffff 0%, #c3d9f5 25%, #8fb8ea 75%, #6ba8e3 100%);
       }
       &:active:not(:disabled) {
-        background: linear-gradient(
-          180deg,
-          #7498c0 0%,
-          #6088b8 50%,
-          #4c78b0 100%
-        );
+        background: linear-gradient(180deg, #7498c0 0%, #6088b8 50%, #4c78b0 100%);
         color: #ffffff;
       }
     }
 
     /* Variant buttons keep the 3D feel */
     &.s-btn--success {
-      background: linear-gradient(
-        180deg,
-        #e8f5e4 0%,
-        #b8dab0 50%,
-        #8dc480 100%
-      );
+      background: linear-gradient(180deg, #e8f5e4 0%, #b8dab0 50%, #8dc480 100%);
       border-color: #3c7a34;
       color: #1a5412;
     }
     &.s-btn--danger {
-      background: linear-gradient(
-        180deg,
-        #fce4e4 0%,
-        #e8a8a8 50%,
-        #d47878 100%
-      );
+      background: linear-gradient(180deg, #fce4e4 0%, #e8a8a8 50%, #d47878 100%);
       border-color: #993030;
       color: #7a1010;
     }
     &.s-btn--warning {
-      background: linear-gradient(
-        180deg,
-        #fef8e8 0%,
-        #f2d88c 50%,
-        #e4c05c 100%
-      );
+      background: linear-gradient(180deg, #fef8e8 0%, #f2d88c 50%, #e4c05c 100%);
       border-color: #99782c;
       color: #5a4010;
     }
     &.s-btn--info {
-      background: linear-gradient(
-        180deg,
-        #e8f2fc 0%,
-        #a8c8e8 50%,
-        #78a8d4 100%
-      );
+      background: linear-gradient(180deg, #e8f2fc 0%, #a8c8e8 50%, #78a8d4 100%);
       border-color: #30609c;
       color: #0c3c70;
     }
 
-    /* Text variant is simpler */
+    /* Text variant: transparent, XP link color */
     &.s-btn--text {
       background: transparent;
       border-color: transparent;
@@ -1716,8 +1887,10 @@ textarea.s-input {
         background: rgba(49, 106, 197, 0.08);
         border-color: transparent;
         box-shadow: none;
-        color: #003399;
-        text-decoration: underline;
+        .button-inside {
+          color: #003399 !important;
+          text-decoration: underline;
+        }
       }
     }
 
@@ -1769,20 +1942,10 @@ textarea.s-input {
       background: #ffffff;
     }
     button {
-      background: linear-gradient(
-        180deg,
-        #ffffff 0%,
-        #ece9d8 50%,
-        #d8d4c4 100%
-      );
+      background: linear-gradient(180deg, #ffffff 0%, #ece9d8 50%, #d8d4c4 100%);
       border-left: 1px solid #aca899;
       &:hover {
-        background: linear-gradient(
-          180deg,
-          #fefefe 0%,
-          #dfe8f5 50%,
-          #b9cbe4 100%
-        );
+        background: linear-gradient(180deg, #fefefe 0%, #dfe8f5 50%, #b9cbe4 100%);
       }
       &:active {
         background: linear-gradient(180deg, #a4b8d3 0%, #8daacd 100%);
@@ -1950,12 +2113,7 @@ textarea.s-input {
   }
   .s-table {
     thead th {
-      background: linear-gradient(
-        180deg,
-        #ffffff 0%,
-        #ece9d8 60%,
-        #d8d0be 100%
-      );
+      background: linear-gradient(180deg, #ffffff 0%, #ece9d8 60%, #d8d0be 100%);
       border-bottom: 1px solid #aca899;
       border-right: 1px solid #d6d2c2;
       color: #000000;
@@ -2096,12 +2254,7 @@ textarea.s-input {
       /* XP window icon area */
       .s-dialog__close {
         color: #ffffff;
-        background: linear-gradient(
-          180deg,
-          #e87868 0%,
-          #c43c2c 50%,
-          #b02418 100%
-        );
+        background: linear-gradient(180deg, #e87868 0%, #c43c2c 50%, #b02418 100%);
         border: 1px solid #993018;
         border-radius: 3px;
         width: 21px;
@@ -2112,12 +2265,7 @@ textarea.s-input {
         justify-content: center;
         box-shadow: inset 1px 1px 0 #f0a890;
         &:hover {
-          background: linear-gradient(
-            180deg,
-            #f09080 0%,
-            #d84830 50%,
-            #c43020 100%
-          );
+          background: linear-gradient(180deg, #f09080 0%, #d84830 50%, #c43020 100%);
         }
       }
     }
@@ -2188,12 +2336,7 @@ textarea.s-input {
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.25);
 
     .sidebar-brand {
-      background: linear-gradient(
-        180deg,
-        #0054e3 0%,
-        #3a8aff 40%,
-        #0054e3 100%
-      );
+      background: linear-gradient(180deg, #0054e3 0%, #3a8aff 40%, #0054e3 100%);
       border-bottom: 1px solid rgba(255, 255, 255, 0.15);
       color: #ffffff;
       text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
@@ -2351,45 +2494,109 @@ textarea.s-input {
 }
 
 /* ── Flex layout utilities ──────────────────────────────────────────────── */
-.flex-row    { display: flex; }
-.flex-center { display: flex; align-items: center; }
-.flex-end    { display: flex; justify-content: flex-end; }
-.flex-wrap   { flex-wrap: wrap; }
-.flex-1      { flex: 1; }
-.ml-auto     { margin-left: auto; }
-.gap-xs { gap: 0.3rem; }
-.gap-sm { gap: 0.5rem; }
-.gap-md { gap: 0.75rem; }
-.gap-lg { gap: 1.5rem; }
+.flex-row {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+}
+.flex-end {
+  display: flex;
+  justify-content: flex-end;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-1 {
+  flex: 1;
+}
+.ml-auto {
+  margin-left: auto;
+}
+.gap-xs {
+  gap: 0.3rem;
+}
+.gap-sm {
+  gap: 0.5rem;
+}
+.gap-md {
+  gap: 0.75rem;
+}
+.gap-lg {
+  gap: 1.5rem;
+}
 
 /* ── Icon sizing ────────────────────────────────────────────────────────── */
-.icon-sm  { font-size: 1.1em; }
-.icon-md  { font-size: 1.5rem; }
-.icon-lg  { font-size: 2rem; }
-.icon-xl  { font-size: 2.5rem; }
-.icon-2xl { font-size: 3rem; }
+.icon-sm {
+  font-size: 1.1em;
+}
+.icon-md {
+  font-size: 1.5rem;
+}
+.icon-lg {
+  font-size: 2rem;
+}
+.icon-xl {
+  font-size: 2.5rem;
+}
+.icon-2xl {
+  font-size: 3rem;
+}
 
 /* ── Text color utilities ───────────────────────────────────────────────── */
-.text-warning { color: var(--s-warning); }
-.text-accent  { color: var(--s-accent); }
-.text-info    { color: var(--s-info); }
-.text-muted   { color: var(--s-text-muted); }
+.text-warning {
+  color: var(--s-warning);
+}
+.text-accent {
+  color: var(--s-accent);
+}
+.text-info {
+  color: var(--s-info);
+}
+.text-muted {
+  color: var(--s-text-muted);
+}
 
 /* ── Form field width constraints ───────────────────────────────────────── */
 /* Fixed widths — for number inputs, selects */
-.w-120 { width: 120px; }
-.w-130 { width: 130px; }
-.w-140 { width: 140px; }
-.w-150 { width: 150px; }
-.w-160 { width: 160px; }
-.w-200 { width: 200px; }
+.w-120 {
+  width: 120px;
+}
+.w-130 {
+  width: 130px;
+}
+.w-140 {
+  width: 140px;
+}
+.w-150 {
+  width: 150px;
+}
+.w-160 {
+  width: 160px;
+}
+.w-200 {
+  width: 200px;
+}
 /* Max widths — for text inputs */
-.mw-200 { max-width: 200px; }
-.mw-280 { max-width: 280px; }
-.mw-320 { max-width: 320px; }
-.mw-400 { max-width: 400px; }
-.mw-420 { max-width: 420px; }
-.mw-500 { max-width: 500px; }
+.mw-200 {
+  max-width: 200px;
+}
+.mw-280 {
+  max-width: 280px;
+}
+.mw-320 {
+  max-width: 320px;
+}
+.mw-400 {
+  max-width: 400px;
+}
+.mw-420 {
+  max-width: 420px;
+}
+.mw-500 {
+  max-width: 500px;
+}
 
 /* ── Auth pages logo ────────────────────────────────────────────────────── */
 .auth-logo {
