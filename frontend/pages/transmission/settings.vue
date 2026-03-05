@@ -410,8 +410,12 @@ const { apiFetch, showToast } = useApi();
 const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
+const route = useRoute();
+const router = useRouter();
 
-const activeTab = ref("speed");
+const VALID_TABS = ["speed", "folders", "sharing", "privacy", "network", "trackers"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "speed");
+watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const updatingBlocklist = ref(false);
 const testingPort = ref(false);

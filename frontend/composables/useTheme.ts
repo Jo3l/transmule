@@ -1,4 +1,4 @@
-const THEMES = ["tron", "sark", "light", "matrix", "xp"] as const;
+const THEMES = ["tron", "sark", "light", "matrix", "xp", "spectrum"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export const THEME_META: Record<ThemeId, { name: string; icon: string; description: string }> = {
@@ -26,6 +26,11 @@ export const THEME_META: Record<ThemeId, { name: string; icon: string; descripti
     name: "Windows XP",
     icon: "mdi-microsoft-windows",
     description: "Classic Luna UI with Tahoma, 3D buttons & blue title bars",
+  },
+  spectrum: {
+    name: "ZX Spectrum",
+    icon: "mdi-television-classic",
+    description: "Authentic ZX Spectrum 48K palette with pixel font",
   },
 };
 

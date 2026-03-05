@@ -10,6 +10,7 @@ const props = defineProps<{
   skin?: { url: string };
 }>();
 
+const { registerInstance, unregisterInstance } = useWebamp();
 const container = useTemplateRef<HTMLDivElement>("container");
 
 let instance: InstanceType<typeof import("webamp").default> | null = null;
@@ -28,18 +29,12 @@ onMounted(async () => {
   });
 
   await instance.renderWhenReady(container.value!);
+  // Register only after fully ready so appendTracks() is safe to call
+  registerInstance(instance);
 });
 
-watch(
-  () => props.track,
-  async (track) => {
-    if (instance) {
-      await instance.setTracksToPlay([track]);
-    }
-  },
-);
-
 onBeforeUnmount(() => {
+  unregisterInstance();
   instance?.dispose();
   instance = null;
 });

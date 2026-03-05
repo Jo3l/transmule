@@ -55,12 +55,7 @@
           >
             <span class="mdi mdi-magnify mr-1" /> {{ $t("search.button") }}
           </SButton>
-          <SButton
-            v-if="pollActive"
-            variant="warning"
-            size="sm"
-            @click="stopSearch"
-          >
+          <SButton v-if="pollActive" variant="warning" size="sm" @click="stopSearch">
             <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
           </SButton>
           <span v-if="pollActive" class="has-text-grey is-size-7">
@@ -70,17 +65,11 @@
       </form>
     </div>
 
-    <STable
-      :data="results"
-      :columns="columns"
-      :loading="loadingResults"
-      row-key="hash"
-    >
+    <STable :data="results" :columns="columns" :loading="loadingResults" row-key="hash">
       <template #cell-name="{ row }">
-        <span :class="{ 'has-text-danger': downloadedHashes.has(row.hash) }">{{
-          row.name
-        }}</span>
+        <span :class="{ 'has-text-danger': downloadedHashes.has(row.hash) }">{{ row.name }}</span>
       </template>
+      <template #cell-sizeFull="{ row }">{{ row.size_fmt }}</template>
       <template #cell-sources="{ row }">{{ row.sources }}</template>
       <template #cell-actions="{ row }">
         <SButton
@@ -126,7 +115,7 @@ const sizeUnits = computed(() => [
 const columns = computed(() => [
   { prop: "name", label: t("search.columns.name"), sortable: true },
   {
-    prop: "size_fmt",
+    prop: "sizeFull",
     label: t("search.columns.size"),
     width: 120,
     sortable: true,
@@ -223,7 +212,10 @@ function stopPolling() {
 }
 
 async function fetchResults() {
-  if (!amuleRunning.value) { stopPolling(); return; }
+  if (!amuleRunning.value) {
+    stopPolling();
+    return;
+  }
   try {
     const res = await apiFetch<any>("/api/amule/search");
     const incoming = res?.results?.files || [];

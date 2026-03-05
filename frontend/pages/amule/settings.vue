@@ -13,7 +13,6 @@
         :active="activeTab === 'general'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionIdentity") }}</h6>
           <SFormItem :label="$t('amuleSettings.userNick')">
             <SInput v-model="form.general.userNick" class="mw-400" />
           </SFormItem>
@@ -34,7 +33,6 @@
         :active="activeTab === 'connection'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionBandwidth") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.downloadCapacity')">
@@ -64,7 +62,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionSpeedLimits") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxDownloadSpeed')">
@@ -94,7 +91,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionLimits") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxFileSources')">
@@ -124,7 +120,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionBehavior") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.autoconnect')">
@@ -140,7 +135,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionNetworks") }}</h6>
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.networkED2K')">
@@ -170,7 +164,6 @@
         :active="activeTab === 'servers'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionServerManagement") }}</h6>
           <SFormItem :label="$t('amuleSettings.removeDead')">
             <SSwitch v-model="form.servers.removeDead" />
           </SFormItem>
@@ -195,7 +188,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionServerList") }}</h6>
           <SFormItem :label="$t('amuleSettings.updateUrl')">
             <SInput v-model="form.servers.updateUrl" class="mw-500" />
           </SFormItem>
@@ -216,7 +208,6 @@
         :active="activeTab === 'security'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionAccessControl") }}</h6>
           <SFormItem :label="$t('amuleSettings.canSeeShares')">
             <SSelect v-model="form.security.canSeeShares" :number="true">
               <option :value="0">{{ $t("amuleSettings.sharesNobody") }}</option>
@@ -231,7 +222,9 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.ipFilter") }}</h6>
+          <h3 class="subtitle is-6">
+            {{ $t("amuleSettings.ipFilter") }}
+          </h3>
 
           <div class="columns is-multiline">
             <div class="column is-4">
@@ -274,7 +267,9 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.protocolObfuscation") }}</h6>
+          <h3 class="subtitle is-6">
+            {{ $t("amuleSettings.protocolObfuscation") }}
+          </h3>
 
           <div class="columns is-multiline">
             <div class="column is-4">
@@ -296,7 +291,6 @@
 
           <SDivider />
 
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("amuleSettings.sectionSecureIdent") }}</h6>
           <SFormItem :label="$t('amuleSettings.useSecIdent')">
             <SSwitch v-model="form.security.useSecIdent" />
           </SFormItem>
@@ -362,8 +356,12 @@ interface AmulePreferences {
 
 const { t } = useI18n();
 const { apiFetch } = useApi();
+const route = useRoute();
+const router = useRouter();
 
-const activeTab = ref("general");
+const VALID_TABS = ["general", "connection", "servers", "security"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "general");
+watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const saving = ref(false);
 const saved = ref(false);

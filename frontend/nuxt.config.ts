@@ -59,8 +59,17 @@ export default defineNuxtConfig({
       title: "TransMule",
       meta: [
         { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { name: "theme-color", content: "#080810" },
+        { property: "og:image", content: "/og-image.png" },
+        { property: "og:title", content: "TransMule" },
+        { property: "og:type", content: "website" },
       ],
       link: [
+        // ── Favicons ──────────────────────────────────────────────────────
+        { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png" },
+        { rel: "icon", type: "image/png", sizes: "128x128", href: "/favicon-128.png" },
+        { rel: "apple-touch-icon", sizes: "320x320", href: "/apple-touch-icon.png" },
+        // ── Fonts ─────────────────────────────────────────────────────────
         {
           rel: "preconnect",
           href: "https://fonts.googleapis.com",

@@ -30,7 +30,7 @@ export default defineEventHandler(async () => {
     userHash: c.userHashHexString || "",
     software: c.software || "",
     softwareVersion: c.softVerStr || "",
-    fileName: "",
+    fileName: c.uploadFilename || "",
     score: c.score || 0,
     uploadSpeed: c.upSpeed || 0,
     uploadSpeed_fmt: formatSpeed(c.upSpeed),

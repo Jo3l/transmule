@@ -544,6 +544,10 @@
     "xp": {
       "name": "Windows XP",
       "description": "Classic Luna UI with Tahoma, 3D buttons & blue title bars"
+    },
+    "spectrum": {
+      "name": "ZX Spectrum",
+      "description": "Authentic ZX Spectrum 48K palette with pixel font"
     }
   },
   "errors": {
@@ -726,17 +730,7 @@
     "obfuscationSupported": "Supported",
     "obfuscationRequested": "Requested",
     "obfuscationRequired": "Required",
-    "useSecIdent": "Use Secure Identification",
-    "sectionIdentity": "Identity",
-    "sectionBandwidth": "Bandwidth Capacity",
-    "sectionSpeedLimits": "Speed Limits",
-    "sectionLimits": "Connection Limits",
-    "sectionBehavior": "Behavior",
-    "sectionNetworks": "Networks",
-    "sectionServerManagement": "Server Management",
-    "sectionServerList": "Server List",
-    "sectionAccessControl": "Access Control",
-    "sectionSecureIdent": "Secure Identification"
+    "useSecIdent": "Use Secure Identification"
   },
   "torrentSearch": {
     "title": "Torrent Search",
@@ -833,6 +827,7 @@
     "empty": "This folder is empty",
     "dropToUpload": "Drop files here to upload",
     "uploading": "Uploading…",
+    "uploadingMultiple": "Uploading {count} files…",
     "confirmDelete": "Delete \"{ name }\"?",
     "confirmDeleteMultiple": "Delete {count} items?",
     "notConfigured": "Downloads directory is not configured. Set the NITRO_DOWNLOADS_DIR environment variable.",
@@ -849,6 +844,37 @@
     "srSuggested": "New name",
     "ctxOpen": "Open",
     "playInWebamp": "Play in Webamp",
-    "ctxSelected": "{count} items selected"
+    "playAllWithWebamp": "Play {count} MP3 with Webamp",
+    "move": "Move",
+    "copy": "Copy",
+    "moveSelected": "Move {count} items",
+    "copySelected": "Copy {count} items",
+    "moveTitle": "Move to…",
+    "copyTitle": "Copy to…",
+    "transferHint": "{count} item(s) will be {mode}d to the selected folder. The operation runs in the background.",
+    "transferStarted": "{mode} started in the background",
+    "transferDone": "{mode} completed",
+    "transferError": "Transfer failed: {error}",
+    "ctxSelected": "{count} items selected",
+    "transfers": "Background Tasks",
+    "clearDone": "Clear done",
+    "queued": "Queued",
+    "noTransfers": "No transfers yet",
+    "extract": "extract",
+    "compress": "compress",
+    "extractHere": "Extract here",
+    "extractToFolder": "Extract to \"{name}\"",
+    "extractTo": "Extract to\u2026",
+    "extractTitle": "Extract to\u2026",
+    "extractHint": "\u201c{name}\u201d will be extracted to the selected folder.",
+    "destination": "Destination",
+    "compressSelected": "Compress ({count})",
+    "compressTitle": "Create archive",
+    "compressFormat": "Format",
+    "compressName": "Archive name",
+    "extractDone": "Extraction completed",
+    "compressDone": "Compression completed",
+    "extractStarted": "Extraction started in the background",
+    "compressStarted": "Compression started in the background"
   }
 }

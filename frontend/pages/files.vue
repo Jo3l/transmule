@@ -48,6 +48,18 @@
             <span class="mdi mdi-auto-fix mr-1" />{{ $t("fileManager.smartRename") }}
           </SButton>
           <SButton
+            v-if="selectedItems.size > 1"
+            size="sm"
+            @click="openTransferDialog(Array.from(selectedItems).map(childPath), 'move')"
+          >
+            <span class="mdi mdi-folder-move mr-1" />
+            {{ $t("fileManager.moveSelected", { count: selectedItems.size }) }}
+          </SButton>
+          <SButton v-if="selectedItems.size > 0" size="sm" @click="openCompressDialog">
+            <span class="mdi mdi-archive-arrow-up-outline mr-1" />
+            {{ $t("fileManager.compressSelected", { count: selectedItems.size }) }}
+          </SButton>
+          <SButton
             v-if="selectedItems.size > 0"
             size="sm"
             variant="danger"
@@ -58,17 +70,6 @@
           </SButton>
           <input ref="fileInputEl" type="file" multiple hidden @change="onFilesChosen" />
         </div>
-      </div>
-
-      <!-- Upload progress bar -->
-      <div v-if="uploading" class="fm-upload-bar mb-2">
-        <span class="is-size-7 has-text-grey mr-2">{{ $t("fileManager.uploading") }}</span>
-        <progress
-          class="progress is-primary is-small mb-0 flex-1"
-          :value="uploadProgress"
-          max="100"
-        />
-        <span class="is-size-7 has-text-grey ml-2">{{ uploadProgress }}%</span>
       </div>
 
       <!-- ── File table with drag-and-drop ────────────────────────────── -->
@@ -256,6 +257,19 @@
         <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
       </button>
 
+      <!-- Play all MP3s with Webamp — multi selection -->
+      <button
+        v-if="ctxIsMulti && selectedMp3s.length > 0"
+        class="fm-ctx-item fm-ctx-item--accent"
+        @click="
+          openMp3sInWebamp(selectedMp3s);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-playlist-play mr-2" />
+        {{ $t("fileManager.playAllWithWebamp", { count: selectedMp3s.length }) }}
+      </button>
+
       <!-- Download (file only) -->
       <a
         v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
@@ -289,6 +303,90 @@
       >
         <span class="mdi mdi-auto-fix mr-2" />
         {{ $t("fileManager.smartRenameSelected", { count: selectedFiles.length }) }}
+      </button>
+
+      <!-- Move / Copy — single item -->
+      <button
+        v-if="!ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openTransferDialog([childPath(ctxMenu.item!.name)], 'move');
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
+      </button>
+      <button
+        v-if="!ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openTransferDialog([childPath(ctxMenu.item!.name)], 'copy');
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
+      </button>
+
+      <!-- Extract (archive files only) -->
+      <template v-if="!ctxIsMulti && ctxMenu.item?.type === 'file' && isArchive(ctxMenu.item.name)">
+        <div class="fm-ctx-sep" />
+        <button
+          class="fm-ctx-item"
+          @click="
+            doExtractHere(childPath(ctxMenu.item!.name));
+            hideCtxMenu();
+          "
+        >
+          <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+            $t("fileManager.extractHere")
+          }}
+        </button>
+        <button
+          class="fm-ctx-item"
+          @click="
+            doExtractToFolder(childPath(ctxMenu.item!.name), archiveBasename(ctxMenu.item!.name));
+            hideCtxMenu();
+          "
+        >
+          <span class="mdi mdi-archive-arrow-down-outline mr-2" />
+          {{ $t("fileManager.extractToFolder", { name: archiveBasename(ctxMenu.item!.name) }) }}
+        </button>
+        <button
+          class="fm-ctx-item"
+          @click="
+            openExtractDialog(childPath(ctxMenu.item!.name));
+            hideCtxMenu();
+          "
+        >
+          <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractTo") }}
+        </button>
+        <div class="fm-ctx-sep" />
+      </template>
+
+      <!-- Move / Copy — multi-selection -->
+      <button
+        v-if="ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openTransferDialog(Array.from(selectedItems).map(childPath), 'move');
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-folder-move mr-2" />{{
+          $t("fileManager.moveSelected", { count: selectedItems.size })
+        }}
+      </button>
+      <button
+        v-if="ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openTransferDialog(Array.from(selectedItems).map(childPath), 'copy');
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-content-copy mr-2" />{{
+          $t("fileManager.copySelected", { count: selectedItems.size })
+        }}
       </button>
 
       <!-- Rename — single item -->
@@ -332,10 +430,94 @@
     </div>
   </Teleport>
 
+  <!-- ── Move / Copy dialog ───────────────────────────────────────── -->
+  <SDialog
+    v-model="showTransferDialog"
+    :title="transferMode === 'move' ? $t('fileManager.moveTitle') : $t('fileManager.copyTitle')"
+    width="480px"
+  >
+    <p class="is-size-7 has-text-grey mb-3">
+      {{
+        $t("fileManager.transferHint", {
+          count: transferSources.length,
+          mode: $t(`fileManager.${transferMode}`),
+        })
+      }}
+    </p>
+    <FolderPicker v-model="transferDest" />
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton @click="showTransferDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton
+          :variant="transferMode === 'move' ? 'warning' : 'primary'"
+          :disabled="!transferDest && transferDest !== ''"
+          @click="doTransfer"
+        >
+          <span
+            :class="
+              transferMode === 'move' ? 'mdi mdi-folder-move mr-1' : 'mdi mdi-content-copy mr-1'
+            "
+          />
+          {{ transferMode === "move" ? $t("fileManager.move") : $t("fileManager.copy") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
+
   <!-- ── Webamp player ──────────────────────────────────────────────── -->
-  <ClientOnly>
-    <Webamp v-if="webampTrack" :key="webampKey" :track="webampTrack" />
-  </ClientOnly>
+  <!-- Mounted in default.vue layout so it survives route changes -->
+
+  <!-- ── Extract to… dialog ──────────────────────────────────────── -->
+  <SDialog v-model="showExtractDialog" :title="$t('fileManager.extractTitle')" width="480px">
+    <p class="is-size-7 has-text-grey mb-3">
+      {{ $t("fileManager.extractHint", { name: extractSource.split("/").pop() }) }}
+    </p>
+    <FolderPicker v-model="extractDest" />
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton @click="showExtractDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton
+          variant="primary"
+          :disabled="extractDest === undefined || extractDest === null"
+          @click="doExtract"
+        >
+          <span class="mdi mdi-archive-arrow-down-outline mr-1" />
+          {{ $t("fileManager.extract") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
+
+  <!-- ── Compress dialog ──────────────────────────────────────────── -->
+  <SDialog v-model="showCompressDialog" :title="$t('fileManager.compressTitle')" width="480px">
+    <SFormItem :label="$t('fileManager.compressName')">
+      <SInput v-model="compressArchiveName" placeholder="archive" @enter="doCompress" />
+    </SFormItem>
+    <SFormItem :label="$t('fileManager.compressFormat')">
+      <SSelect
+        v-model="compressFormat"
+        :options="[
+          { label: 'ZIP (.zip)', value: 'zip' },
+          { label: '7-Zip (.7z)', value: '7z' },
+          { label: 'TAR + GZ (.tar.gz)', value: 'tar.gz' },
+          { label: 'TAR + BZ2 (.tar.bz2)', value: 'tar.bz2' },
+          { label: 'TAR + XZ (.tar.xz)', value: 'tar.xz' },
+        ]"
+      />
+    </SFormItem>
+    <SFormItem :label="$t('fileManager.destination')">
+      <FolderPicker v-model="compressDest" />
+    </SFormItem>
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton @click="showCompressDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton variant="primary" :disabled="!compressArchiveName" @click="doCompress">
+          <span class="mdi mdi-archive-arrow-up-outline mr-1" />
+          {{ $t("fileManager.compress") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
 
   <!-- ── Smart Rename dialog ───────────────────────────────────────── -->
   <SDialog
@@ -412,9 +594,25 @@ const { t } = useI18n();
 const { apiFetch, showToast } = useApi();
 const auth = useAuth();
 const config = useRuntimeConfig();
+const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob } = useTransferJobs();
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * Strip any path-traversal segments from a user-supplied relative path.
+ * Removes empty segments, '.' and '..' so a crafted URL like
+ * ?path=../../etc/passwd is collapsed to '' (root).
+ */
+function sanitizePath(raw: string): string {
+  return (raw || "")
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((s) => s !== "" && s !== "." && s !== "..")
+    .join("/");
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
-const currentPath = ref("");
+const currentPath = computed(() => sanitizePath((route.query.path as string) || ""));
 const items = ref<FileItem[]>([]);
 const loading = ref(false);
 const notConfigured = ref(false);
@@ -435,8 +633,6 @@ const selectedFiles = computed(() =>
 );
 
 // ── Upload state ───────────────────────────────────────────────────────────
-const uploading = ref(false);
-const uploadProgress = ref(0);
 const dragging = ref(false);
 const fileInputEl = ref<HTMLInputElement>();
 
@@ -456,29 +652,127 @@ const deleteMessage = computed(() =>
     : t("fileManager.confirmDeleteMultiple", { count: deleteTargets.value.length }),
 );
 
+// ── Transfer (move / copy) dialog state ───────────────────────────────
+const showTransferDialog = ref(false);
+const transferMode = ref<"move" | "copy">("move");
+const transferSources = ref<string[]>([]);
+const transferDest = ref("");
+
+// ── Extract dialog state ──────────────────────────────────────────────
+const showExtractDialog = ref(false);
+const extractSource = ref("");
+const extractDest = ref("");
+
+// ── Compress dialog state ─────────────────────────────────────────────
+const showCompressDialog = ref(false);
+const compressSources = ref<string[]>([]);
+const compressArchiveName = ref("");
+const compressFormat = ref("zip");
+const compressDest = ref("");
+
+function openTransferDialog(sources: string[], mode: "move" | "copy") {
+  transferSources.value = sources;
+  transferMode.value = mode;
+  // Default destination to current directory
+  transferDest.value = currentPath.value;
+  showTransferDialog.value = true;
+}
+
+function doTransfer() {
+  enqueueTransfers(transferSources.value, transferDest.value, transferMode.value, loadDir);
+  showTransferDialog.value = false;
+  selectedItems.clear();
+  showToast(
+    t("fileManager.transferStarted", { mode: t(`fileManager.${transferMode.value}`) }),
+    "success",
+  );
+}
+
+// ── Archive helpers ───────────────────────────────────────────────────────────
+const ARCHIVE_RE = /\.(zip|rar|7z|tar\.gz|tar\.bz2|tar\.xz|tgz|gz|bz2)$/i;
+
+function isArchive(name: string): boolean {
+  return ARCHIVE_RE.test(name);
+}
+
+function archiveBasename(name: string): string {
+  return name.replace(/\.(tar\.gz|tar\.bz2|tar\.xz)$/i, "").replace(/\.[^.]+$/, "");
+}
+
+// ── Extract actions ──────────────────────────────────────────────────────────
+function doExtractHere(sourceRelPath: string) {
+  enqueueExtract(sourceRelPath, currentPath.value, loadDir);
+  showToast(t("fileManager.extractStarted"), "success");
+}
+
+function doExtractToFolder(sourceRelPath: string, folderName: string) {
+  const dest = currentPath.value ? `${currentPath.value}/${folderName}` : folderName;
+  enqueueExtract(sourceRelPath, dest, loadDir);
+  showToast(t("fileManager.extractStarted"), "success");
+}
+
+function openExtractDialog(sourceRelPath: string) {
+  extractSource.value = sourceRelPath;
+  extractDest.value = currentPath.value;
+  showExtractDialog.value = true;
+}
+
+function doExtract() {
+  enqueueExtract(extractSource.value, extractDest.value, loadDir);
+  showExtractDialog.value = false;
+  showToast(t("fileManager.extractStarted"), "success");
+}
+
+// ── Compress actions ─────────────────────────────────────────────────────────
+function openCompressDialog() {
+  compressSources.value = Array.from(selectedItems).map(childPath);
+  const first = Array.from(selectedItems)[0] ?? "archive";
+  compressArchiveName.value =
+    items.value.find((i) => i.name === first)?.type === "directory"
+      ? first
+      : first.replace(/\.[^.]+$/, "") || "archive";
+  compressFormat.value = "zip";
+  compressDest.value = currentPath.value;
+  showCompressDialog.value = true;
+}
+
+function doCompress() {
+  enqueueCompress(
+    compressSources.value,
+    compressDest.value,
+    compressArchiveName.value || "archive",
+    compressFormat.value,
+    loadDir,
+  );
+  showCompressDialog.value = false;
+  selectedItems.clear();
+  showToast(t("fileManager.compressStarted"), "success");
+}
+
 // ── Context menu ─────────────────────────────────────────────────────────────
 const ctxMenu = ref({ visible: false, x: 0, y: 0, item: null as FileItem | null });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
 
 // ── Webamp ────────────────────────────────────────────────────────────────
-import type { Track } from "webamp";
+const { webampTrack, isMp3Name, openTrack, openTracks } = useWebamp();
 
-const webampTrack = ref<Track | null>(null);
-const webampKey = ref(0);
+/** MP3 files among the current selection. */
+const selectedMp3s = computed(() =>
+  items.value.filter((i) => i.type === "file" && isMp3Name(i.name) && selectedItems.has(i.name)),
+);
 
 function isMp3(item: FileItem | null): boolean {
-  return item?.type === "file" && item.name.toLowerCase().endsWith(".mp3");
+  return item?.type === "file" && isMp3Name(item.name);
 }
 
 function openInWebamp(item: FileItem) {
-  const url = downloadUrl(item.name);
-  const track: Track = { url, metaData: { title: item.name } };
-  if (webampTrack.value !== null) {
-    webampTrack.value = track;
-  } else {
-    webampTrack.value = track;
-    webampKey.value++;
-  }
+  openTrack({ url: downloadUrl(item.name), metaData: { artist: "", title: item.name } });
+}
+
+function openMp3sInWebamp(mp3s: FileItem[]) {
+  openTracks(
+    mp3s.map((i) => ({ url: downloadUrl(i.name), metaData: { artist: "", title: i.name } })),
+  );
 }
 
 function onRowContextMenu(e: MouseEvent, item: FileItem) {
@@ -561,9 +855,9 @@ function childPath(name: string) {
 
 // ── Navigation ─────────────────────────────────────────────────────────────
 function navigate(path: string) {
-  currentPath.value = path;
+  const safe = sanitizePath(path);
   selectedItems.clear();
-  loadDir();
+  router.replace({ query: safe ? { path: safe } : {} });
 }
 
 function navigateUp() {
@@ -636,8 +930,12 @@ function onDragLeave(e: DragEvent) {
 }
 
 function uploadFiles(files: File[]) {
-  uploading.value = true;
-  uploadProgress.value = 0;
+  const name =
+    files.length === 1
+      ? files[0].name
+      : t("fileManager.uploadingMultiple", { count: files.length });
+
+  const { setPercent, setDone, setError } = addUploadJob(name, currentPath.value);
 
   const formData = new FormData();
   formData.append("dir", currentPath.value);
@@ -649,23 +947,20 @@ function uploadFiles(files: File[]) {
 
   xhr.upload.addEventListener("progress", (e) => {
     if (e.lengthComputable) {
-      uploadProgress.value = Math.round((e.loaded / e.total) * 100);
+      setPercent(Math.round((e.loaded / e.total) * 100));
     }
   });
 
   xhr.addEventListener("load", () => {
-    uploading.value = false;
-    uploadProgress.value = 0;
     if (xhr.status >= 200 && xhr.status < 300) {
-      loadDir();
+      setDone(loadDir);
     } else {
-      showToast(t("errors.middlewareError", { status: xhr.status }), "error");
+      setError(t("errors.middlewareError", { status: xhr.status }));
     }
   });
 
   xhr.addEventListener("error", () => {
-    uploading.value = false;
-    showToast(t("errors.middlewareError", { status: 0 }), "error");
+    setError(t("errors.middlewareError", { status: 0 }));
   });
 
   const base = (config.public.apiBase as string) || "";
@@ -821,7 +1116,11 @@ function fmtDate(iso: string): string {
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
-onMounted(loadDir);
+watch(
+  () => route.query.path,
+  () => loadDir(),
+  { immediate: true },
+);
 </script>
 
 <style scoped>
@@ -839,10 +1138,99 @@ onMounted(loadDir);
   flex-wrap: wrap;
 }
 
+/* ── Breadcrumb address bar ──────────────────────────────────────────────── */
 .fm-breadcrumb {
   flex: 1;
   min-width: 0;
+  min-height: 32px;
   margin-bottom: 0 !important;
+  background: color-mix(in oklab, var(--s-border) 20%, var(--s-bg-surface));
+  border: 1px solid var(--s-border);
+  border-radius: 6px;
+  padding: 0 0.6rem !important;
+  display: flex !important;
+  align-items: center;
+  overflow: hidden;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.fm-breadcrumb:hover {
+  border-color: color-mix(in oklab, var(--s-accent) 40%, var(--s-border));
+}
+
+/* Scrollable segment list — no wrapping, hidden scrollbar */
+.fm-breadcrumb ul {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0;
+}
+
+.fm-breadcrumb ul::-webkit-scrollbar {
+  display: none;
+}
+
+.fm-breadcrumb li {
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Chevron separator */
+.fm-breadcrumb li + li::before {
+  content: "›" !important;
+  color: var(--s-text-muted, #aaa) !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  margin: 0 0.15rem !important;
+  pointer-events: none;
+}
+
+/* Segment links */
+.fm-breadcrumb li a {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem !important;
+  color: var(--s-text-secondary, var(--s-text)) !important;
+  text-decoration: none !important;
+  padding: 0.15rem 0.35rem !important;
+  border-radius: 4px;
+  transition:
+    color 0.1s,
+    background 0.1s;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.fm-breadcrumb li a:hover {
+  color: var(--s-accent) !important;
+  background: color-mix(in oklab, var(--s-accent) 8%, transparent);
+}
+
+/* Active (current) segment — not clickable, bold */
+.fm-breadcrumb li.is-active a {
+  color: var(--s-text) !important;
+  font-weight: 600 !important;
+  cursor: default;
+  pointer-events: none;
+  background: transparent !important;
+}
+
+/* Home/root icon */
+.fm-breadcrumb li:first-child a .mdi {
+  font-size: 1rem;
+  color: #f0a329;
+  line-height: 1;
 }
 
 .fm-actions {
@@ -850,16 +1238,6 @@ onMounted(loadDir);
   gap: 0.4rem;
   flex-shrink: 0;
   flex-wrap: wrap;
-}
-
-/* Upload bar */
-.fm-upload-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.04);
 }
 
 /* Table wrap + drag-and-drop */
@@ -961,7 +1339,8 @@ onMounted(loadDir);
   position: fixed;
   z-index: 9999;
   min-width: 190px;
-  background: var(--s-bg-surface);
+  background: color-mix(in oklab, var(--s-bg-surface) 45%, transparent);
+  backdrop-filter: blur(5px);
   border: 1px solid var(--s-border);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);

@@ -5,23 +5,30 @@
         <h1 class="title is-4 mb-0">{{ $t("downloads.title") }}</h1>
       </div>
       <div class="level-right flex-row gap-sm">
-        <SButton variant="primary" size="sm" :disabled="transmissionStopped" @click="showAddTorrent = true">
+        <SButton
+          variant="primary"
+          size="sm"
+          :disabled="transmissionStopped"
+          @click="showAddTorrent = true"
+        >
           <span class="mdi mdi-magnet mr-1" /> {{ $t("downloads.addTorrent") }}
         </SButton>
         <SButton variant="primary" size="sm" :disabled="amuleStopped" @click="showAddLink = true">
           <span class="mdi mdi-donkey mr-1" /> {{ $t("downloads.addEd2k") }}
         </SButton>
-        <SButton variant="primary" size="sm" :disabled="pyloadStopped" @click="showAddPyload = true">
+        <SButton
+          variant="primary"
+          size="sm"
+          :disabled="pyloadStopped"
+          @click="showAddPyload = true"
+        >
           <span class="mdi mdi-download mr-1" /> {{ $t("downloads.addPyload") }}
         </SButton>
       </div>
     </div>
 
     <!-- Totals -->
-    <div
-      class="box py-3 mb-4"
-      v-if="amuleTotals || torrentTotals || pyloadTotals"
-    >
+    <div class="box py-3 mb-4" v-if="amuleTotals || torrentTotals || pyloadTotals">
       <div class="totals-bar">
         <div class="total-item" v-if="amuleTotals">
           <span class="mdi mdi-donkey icon-sm" />
@@ -56,7 +63,7 @@
     </div>
 
     <!-- Filters -->
-    <div class="columns is-mobile mb-2">
+    <div class="columns is-mobile mb-2 is-vcentered">
       <div class="column is-narrow">
         <SFormItem :label="$t('downloads.filter.source')">
           <SSelect
@@ -93,6 +100,74 @@
           />
         </SFormItem>
       </div>
+      <!-- Spacer -->
+      <div class="column"></div>
+      <!-- Action buttons (desktop only, shown when items selected) -->
+      <div
+        class="column is-narrow is-hidden-mobile"
+        v-if="selectedAmule.length > 0 || selectedTorrents.length > 0 || selectedPyload.length > 0"
+      >
+        <div class="buttons mb-0">
+          <template v-if="selectedAmule.length > 0">
+            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
+              >{{ $t("downloads.sources.amule") }} ({{ selectedAmule.length }}):</span
+            >
+            <SButton variant="warning" size="sm" @click="doAmuleAction('pause')"
+              ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.pause") }}</SButton
+            >
+            <SButton variant="success" size="sm" @click="doAmuleAction('resume')"
+              ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.resume") }}</SButton
+            >
+            <SButton variant="info" size="sm" @click="doAmuleAction('stop')"
+              ><span class="mdi mdi-stop mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
+            >
+            <SButton variant="danger" size="sm" @click="doAmuleAction('cancel')"
+              ><span class="mdi mdi-close-circle mr-1" />
+              {{ $t("downloads.actions.cancel") }}</SButton
+            >
+          </template>
+          <template v-if="selectedTorrents.length > 0">
+            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
+              >{{ $t("downloads.sources.torrent") }} ({{ selectedTorrents.length }}):</span
+            >
+            <SButton variant="success" size="sm" @click="doTorrentAction('start')"
+              ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.start") }}</SButton
+            >
+            <SButton variant="warning" size="sm" @click="doTorrentAction('stop')"
+              ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
+            >
+            <SButton size="sm" @click="doTorrentAction('verify')"
+              ><span class="mdi mdi-check-circle mr-1" />
+              {{ $t("downloads.actions.verify") }}</SButton
+            >
+            <SButton variant="danger" size="sm" @click="confirmTorrentRemove(false)"
+              ><span class="mdi mdi-close-circle mr-1" />
+              {{ $t("downloads.actions.remove") }}</SButton
+            >
+            <SButton variant="danger" size="sm" @click="confirmTorrentRemove(true)"
+              ><span class="mdi mdi-delete mr-1" />
+              {{ $t("downloads.actions.removeData") }}</SButton
+            >
+          </template>
+          <template v-if="selectedPyload.length > 0">
+            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
+              >pyLoad ({{ selectedPyload.length }}):</span
+            >
+            <SButton variant="warning" size="sm" @click="doPyloadAction('stop')">
+              <span class="mdi mdi-pause mr-1" />
+              {{ $t("downloads.actions.stop") }}
+            </SButton>
+            <SButton variant="warning" size="sm" @click="doPyloadAction('restart')">
+              <span class="mdi mdi-restart mr-1" />
+              {{ $t("downloads.actions.restart") }}
+            </SButton>
+            <SButton variant="danger" size="sm" @click="doPyloadAction('delete')">
+              <span class="mdi mdi-delete mr-1" />
+              {{ $t("downloads.actions.remove") }}
+            </SButton>
+          </template>
+        </div>
+      </div>
     </div>
 
     <!-- Mobile cards (≤768px) -->
@@ -100,10 +175,7 @@
       <div v-if="loading" class="has-text-centered py-5 has-text-grey">
         <span class="mdi mdi-loading mdi-spin icon-lg" />
       </div>
-      <div
-        v-else-if="filteredFiles.length === 0"
-        class="has-text-centered py-5 has-text-grey"
-      >
+      <div v-else-if="filteredFiles.length === 0" class="has-text-centered py-5 has-text-grey">
         <span class="mdi mdi-tray-alert icon-lg" />
         <p>{{ $t("downloads.noDownloads") }}</p>
       </div>
@@ -111,25 +183,16 @@
         <div v-for="row in filteredFiles" :key="row._uid" class="download-card">
           <!-- type + name + status -->
           <div class="card-header-row">
-            <span
-              v-if="row._type === 'amule'"
-              class="mdi mdi-donkey card-type-icon text-warning"
-            />
+            <span v-if="row._type === 'amule'" class="mdi mdi-donkey card-type-icon text-warning" />
             <span
               v-else-if="row._type === 'torrent'"
               class="mdi mdi-magnet card-type-icon text-accent"
             />
-            <span
-              v-else
-              class="mdi mdi-cloud-download card-type-icon text-info"
-            />
+            <span v-else class="mdi mdi-cloud-download card-type-icon text-info" />
             <span class="card-name">{{ row.name }}</span>
-            <STag
-              v-if="row._type === 'amule'"
-              :variant="amuleStatusType(row.status)"
-              size="sm"
-              >{{ row.status }}</STag
-            >
+            <STag v-if="row._type === 'amule'" :variant="amuleStatusType(row.status)" size="sm">{{
+              row.status
+            }}</STag>
             <STag
               v-else-if="row._type === 'torrent'"
               :variant="torrentStatusType(row.status)"
@@ -197,13 +260,10 @@
             />
             <div class="card-progress-label">
               <template v-if="row._type === 'amule'"
-                >{{ row.size_done_fmt }} / {{ row.size_fmt }} ({{
-                  row.progress || 0
-                }}%)</template
+                >{{ row.size_done_fmt }} / {{ row.size_fmt }} ({{ row.progress || 0 }}%)</template
               >
               <template v-else-if="row._type === 'torrent'"
-                >{{ Math.round(row.percentDone * 100) }}% &mdash;
-                {{ row.totalSize_fmt }}</template
+                >{{ Math.round(row.percentDone * 100) }}% &mdash; {{ row.totalSize_fmt }}</template
               >
               <template v-else
                 >{{ row.doneSize_fmt }} / {{ row.totalSize_fmt }} ({{
@@ -225,26 +285,16 @@
                     : row.speed_fmt
               }}
             </span>
-            <span
-              v-if="row._type === 'amule' || row._type === 'torrent'"
-              class="card-stat"
-            >
+            <span v-if="row._type === 'amule' || row._type === 'torrent'" class="card-stat">
               <span class="mdi mdi-account-group" />
               <template v-if="row._type === 'amule'"
-                >{{ row.sourceCountXfer || 0 }}/{{
-                  row.sourceCount || 0
-                }}</template
+                >{{ row.sourceCountXfer || 0 }}/{{ row.sourceCount || 0 }}</template
               >
               <template v-else
-                >{{ row.peersSendingToUs || 0 }}/{{
-                  row.peersConnected || 0
-                }}</template
+                >{{ row.peersSendingToUs || 0 }}/{{ row.peersConnected || 0 }}</template
               >
             </span>
-            <span
-              v-if="row._type === 'pyload' && row.activeLinks > 0"
-              class="card-stat"
-            >
+            <span v-if="row._type === 'pyload' && row.activeLinks > 0" class="card-stat">
               <span class="mdi mdi-link" />
               {{ row.activeLinks }} {{ $t("pyload.downloading") }}
             </span>
@@ -260,49 +310,27 @@
                 @click="doCardAction(row, 'pause')"
                 ><span class="mdi mdi-pause"
               /></SButton>
-              <SButton
-                v-else
-                variant="success"
-                size="sm"
-                @click="doCardAction(row, 'resume')"
+              <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')"
                 ><span class="mdi mdi-play"
               /></SButton>
-              <SButton
-                variant="info"
-                size="sm"
-                @click="doCardAction(row, 'stop')"
+              <SButton variant="info" size="sm" @click="doCardAction(row, 'stop')"
                 ><span class="mdi mdi-stop"
               /></SButton>
-              <SButton
-                variant="danger"
-                size="sm"
-                @click="doCardAction(row, 'cancel')"
+              <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')"
                 ><span class="mdi mdi-close-circle"
               /></SButton>
             </template>
             <template v-else-if="row._type === 'torrent'">
-              <SButton
-                variant="success"
-                size="sm"
-                @click="doCardAction(row, 'start')"
+              <SButton variant="success" size="sm" @click="doCardAction(row, 'start')"
                 ><span class="mdi mdi-play"
               /></SButton>
-              <SButton
-                variant="warning"
-                size="sm"
-                @click="doCardAction(row, 'stop')"
+              <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')"
                 ><span class="mdi mdi-pause"
               /></SButton>
-              <SButton
-                variant="danger"
-                size="sm"
-                @click="doCardAction(row, 'remove')"
+              <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove')"
                 ><span class="mdi mdi-close-circle"
               /></SButton>
-              <SButton
-                variant="danger"
-                size="sm"
-                @click="doCardAction(row, 'remove_data')"
+              <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')"
                 ><span class="mdi mdi-delete"
               /></SButton>
             </template>
@@ -314,16 +342,10 @@
                 @click="doCardAction(row, 'stop')"
                 ><span class="mdi mdi-pause"
               /></SButton>
-              <SButton
-                variant="warning"
-                size="sm"
-                @click="doCardAction(row, 'restart')"
+              <SButton variant="warning" size="sm" @click="doCardAction(row, 'restart')"
                 ><span class="mdi mdi-restart"
               /></SButton>
-              <SButton
-                variant="danger"
-                size="sm"
-                @click="doCardAction(row, 'delete')"
+              <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')"
                 ><span class="mdi mdi-delete"
               /></SButton>
             </template>
@@ -395,6 +417,7 @@
               :color="amuleProgressColor(row.status)"
               :height="12"
             />
+            <span class="is-size-7 has-text-grey ml-1">{{ row.progress || 0 }}%</span>
           </template>
           <SProgress
             v-else-if="row._type === 'torrent'"
@@ -419,9 +442,7 @@
         <!-- Speed cell -->
         <template #cell-speed="{ row }">
           <template v-if="row._type === 'amule'">{{ row.speed_fmt }}</template>
-          <template v-else-if="row._type === 'torrent'">{{
-            row.rateDownload_fmt
-          }}</template>
+          <template v-else-if="row._type === 'torrent'">{{ row.rateDownload_fmt }}</template>
           <template v-else>{{ row.speed_fmt }}</template>
         </template>
 
@@ -430,21 +451,14 @@
           <template v-if="row._type === 'amule'"
             >{{ row.sourceCountXfer || 0 }}/{{ row.sourceCount || 0 }}</template
           >
-          <template v-else
-            >{{ row.peersSendingToUs || 0 }}/{{
-              row.peersConnected || 0
-            }}</template
-          >
+          <template v-else>{{ row.peersSendingToUs || 0 }}/{{ row.peersConnected || 0 }}</template>
         </template>
 
         <!-- Status cell -->
         <template #cell-status="{ row }">
-          <STag
-            v-if="row._type === 'amule'"
-            :variant="amuleStatusType(row.status)"
-            size="sm"
-            >{{ row.status }}</STag
-          >
+          <STag v-if="row._type === 'amule'" :variant="amuleStatusType(row.status)" size="sm">{{
+            row.status
+          }}</STag>
           <STag
             v-else-if="row._type === 'torrent'"
             :variant="torrentStatusType(row.status)"
@@ -504,9 +518,7 @@
                     </h6>
                     <div class="kv-list">
                       <div class="kv-row">
-                        <span class="kv-label">{{
-                          $t("downloads.info.hash")
-                        }}</span>
+                        <span class="kv-label">{{ $t("downloads.info.hash") }}</span>
                         <span class="kv-value hash-cell">{{
                           row._type === "amule"
                             ? row.hash
@@ -516,9 +528,7 @@
                         }}</span>
                       </div>
                       <div class="kv-row">
-                        <span class="kv-label">{{
-                          $t("downloads.info.size")
-                        }}</span>
+                        <span class="kv-label">{{ $t("downloads.info.size") }}</span>
                         <span class="kv-value">
                           <template v-if="row._type === 'amule'">
                             {{ row.size_fmt }} ({{ row.size_done_fmt }}
@@ -532,38 +542,26 @@
                       <!-- aMule-specific fields -->
                       <template v-if="row._type === 'amule'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.partName")
-                          }}</span>
-                          <span class="kv-value"
-                            >{{ row.partMetID }}.part.met</span
-                          >
+                          <span class="kv-label">{{ $t("downloads.info.partName") }}</span>
+                          <span class="kv-value">{{ row.partMetID }}.part.met</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.priority")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.priority") }}</span>
                           <span class="kv-value">{{ row.priority }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.category")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.category") }}</span>
                           <span class="kv-value">{{ row.category }}</span>
                         </div>
                       </template>
                       <!-- pyLoad-specific fields -->
                       <template v-if="row._type === 'pyload'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.pyload.folder")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.pyload.folder") }}</span>
                           <span class="kv-value">{{ row.folder }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.pyload.destination")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.pyload.destination") }}</span>
                           <span class="kv-value">{{
                             row.dest === "queue"
                               ? $t("pyload.destQueue")
@@ -574,51 +572,29 @@
                       <!-- Torrent-specific fields -->
                       <template v-if="row._type === 'torrent'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.downloaded")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.downloaded") }}</span>
+                          <span class="kv-value">{{ row.downloadedEver_fmt }}</span>
+                        </div>
+                        <div class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.uploaded") }}</span>
+                          <span class="kv-value">{{ row.uploadedEver_fmt }}</span>
+                        </div>
+                        <div class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.ratio") }}</span>
                           <span class="kv-value">{{
-                            row.downloadedEver_fmt
+                            row.uploadRatio >= 0 ? row.uploadRatio.toFixed(2) : "&mdash;"
                           }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.uploaded")
-                          }}</span>
-                          <span class="kv-value">{{
-                            row.uploadedEver_fmt
-                          }}</span>
-                        </div>
-                        <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.ratio")
-                          }}</span>
-                          <span class="kv-value">{{
-                            row.uploadRatio >= 0
-                              ? row.uploadRatio.toFixed(2)
-                              : "&mdash;"
-                          }}</span>
-                        </div>
-                        <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.location")
-                          }}</span>
-                          <span class="kv-value is-size-7">{{
-                            row.downloadDir
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.location") }}</span>
+                          <span class="kv-value is-size-7">{{ row.downloadDir }}</span>
                         </div>
                         <div v-if="row.comment" class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.comment")
-                          }}</span>
-                          <span class="kv-value is-size-7">{{
-                            row.comment
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.comment") }}</span>
+                          <span class="kv-value is-size-7">{{ row.comment }}</span>
                         </div>
                         <div v-if="row.creator" class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.creator")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.creator") }}</span>
                           <span class="kv-value">{{ row.creator }}</span>
                         </div>
                       </template>
@@ -630,9 +606,7 @@
                     </h6>
                     <div class="kv-list">
                       <div class="kv-row">
-                        <span class="kv-label">{{
-                          $t("downloads.info.status")
-                        }}</span>
+                        <span class="kv-label">{{ $t("downloads.info.status") }}</span>
                         <span class="kv-value">{{
                           row._type === "amule"
                             ? row.status
@@ -644,9 +618,7 @@
                         }}</span>
                       </div>
                       <div class="kv-row">
-                        <span class="kv-label">{{
-                          $t("downloads.info.progress")
-                        }}</span>
+                        <span class="kv-label">{{ $t("downloads.info.progress") }}</span>
                         <span class="kv-value"
                           >{{
                             row._type === "amule" || row._type === "pyload"
@@ -658,31 +630,19 @@
                       <!-- pyLoad-specific transfer -->
                       <template v-if="row._type === 'pyload'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.speed")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.speed") }}</span>
                           <span class="kv-value">{{ row.speed_fmt }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.pyload.activeLinks")
-                          }}</span>
-                          <span class="kv-value has-text-success">{{
-                            row.activeLinks
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.pyload.activeLinks") }}</span>
+                          <span class="kv-value has-text-success">{{ row.activeLinks }}</span>
                         </div>
                         <div class="kv-row" v-if="row.failedLinks > 0">
-                          <span class="kv-label">{{
-                            $t("downloads.pyload.failedLinks")
-                          }}</span>
-                          <span class="kv-value has-text-danger">{{
-                            row.failedLinks
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.pyload.failedLinks") }}</span>
+                          <span class="kv-value has-text-danger">{{ row.failedLinks }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.pyload.finishedLinks")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.pyload.finishedLinks") }}</span>
                           <span class="kv-value"
                             >{{ row.finishedLinks }} / {{ row.linkCount }}</span
                           >
@@ -691,86 +651,56 @@
                       <!-- aMule-specific transfer -->
                       <template v-if="row._type === 'amule'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.speed")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.speed") }}</span>
                           <span class="kv-value">{{ row.speed_fmt }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.sources")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.sources") }}</span>
                           <span class="kv-value">
-                            {{ row.sourceCountXfer || 0 }} /
-                            {{ row.sourceCount || 0 }} ({{
+                            {{ row.sourceCountXfer || 0 }} / {{ row.sourceCount || 0 }} ({{
                               row.sourceCountA4AF || 0
                             }}
                             {{ $t("downloads.info.a4af") }})
                           </span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.lastSeenComplete")
-                          }}</span>
-                          <span class="kv-value">{{
-                            formatTimestamp(row.lastSeenComplete)
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.lastSeenComplete") }}</span>
+                          <span class="kv-value">{{ formatTimestamp(row.lastSeenComplete) }}</span>
                         </div>
                       </template>
                       <!-- Torrent-specific transfer -->
                       <template v-if="row._type === 'torrent'">
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.peers")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.peers") }}</span>
                           <span class="kv-value">
                             {{ row.peersSendingToUs }}
                             {{ $t("downloads.info.sending") }},
                             {{ row.peersGettingFromUs }}
-                            {{ $t("downloads.info.receiving") }} ({{
-                              row.peersConnected
-                            }}
+                            {{ $t("downloads.info.receiving") }} ({{ row.peersConnected }}
                             {{ $t("downloads.info.connected") }})
                           </span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.eta")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.eta") }}</span>
                           <span class="kv-value">{{ row.eta_fmt }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.added")
-                          }}</span>
-                          <span class="kv-value">{{
-                            formatTimestamp(row.addedDate)
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.added") }}</span>
+                          <span class="kv-value">{{ formatTimestamp(row.addedDate) }}</span>
                         </div>
                         <div v-if="row.doneDate > 0" class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.completed")
-                          }}</span>
-                          <span class="kv-value">{{
-                            formatTimestamp(row.doneDate)
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.completed") }}</span>
+                          <span class="kv-value">{{ formatTimestamp(row.doneDate) }}</span>
                         </div>
                         <div class="kv-row">
-                          <span class="kv-label">{{
-                            $t("downloads.info.pieces")
-                          }}</span>
+                          <span class="kv-label">{{ $t("downloads.info.pieces") }}</span>
                           <span class="kv-value">
                             {{ row.pieceCount }} &times;
                             {{ formatSize(row.pieceSize) }}
                           </span>
                         </div>
-                        <div
-                          v-if="row.labels && row.labels.length"
-                          class="kv-row"
-                        >
-                          <span class="kv-label">{{
-                            $t("downloads.info.labels")
-                          }}</span>
+                        <div v-if="row.labels && row.labels.length" class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.labels") }}</span>
                           <span class="kv-value">
                             <STag
                               v-for="label in row.labels"
@@ -794,10 +724,7 @@
                     {{ $t("downloads.info.copyEd2k") }}
                   </SButton>
                 </div>
-                <div
-                  class="mt-2"
-                  v-if="row._type === 'torrent' && row.magnetLink"
-                >
+                <div class="mt-2" v-if="row._type === 'torrent' && row.magnetLink">
                   <SButton size="sm" @click="copyToClipboard(row.magnetLink)">
                     <span class="mdi mdi-magnet mr-1" />
                     {{ $t("downloads.info.copyMagnet") }}
@@ -826,16 +753,10 @@
                 </div>
 
                 <!-- Part availability grid -->
-                <template
-                  v-if="
-                    sourceData[row.hash] && sourceData[row.hash].availability
-                  "
-                >
+                <template v-if="sourceData[row.hash] && sourceData[row.hash].availability">
                   <div class="avail-grid mb-3">
                     <div class="avail-grid-row">
-                      <span class="avail-label">{{
-                        $t("downloads.chunks.parts")
-                      }}</span>
+                      <span class="avail-label">{{ $t("downloads.chunks.parts") }}</span>
                       <span class="avail-value">{{
                         sourceData[row.hash].availability.partCount
                       }}</span>
@@ -877,30 +798,18 @@
                       }}</span>
                     </div>
                     <div class="avail-grid-row avail-grid-separator">
-                      <span class="avail-label">{{
-                        $t("downloads.chunks.sourcesPerPart")
-                      }}</span>
+                      <span class="avail-label">{{ $t("downloads.chunks.sourcesPerPart") }}</span>
                       <span class="avail-value">
-                        {{
-                          sourceData[row.hash].availability.minSourcesPerPart
-                        }}
+                        {{ sourceData[row.hash].availability.minSourcesPerPart }}
                         &ndash;
-                        {{
-                          sourceData[row.hash].availability.maxSourcesPerPart
-                        }}
+                        {{ sourceData[row.hash].availability.maxSourcesPerPart }}
                         <span class="has-text-grey"
-                          >(avg
-                          {{
-                            sourceData[row.hash].availability.avgSourcesPerPart
-                          }})</span
+                          >(avg {{ sourceData[row.hash].availability.avgSourcesPerPart }})</span
                         >
                       </span>
                     </div>
                     <div
-                      v-if="
-                        sourceData[row.hash].availability.partsWithZeroSources >
-                        0
-                      "
+                      v-if="sourceData[row.hash].availability.partsWithZeroSources > 0"
                       class="avail-grid-row"
                     >
                       <span class="avail-label has-text-danger">
@@ -920,8 +829,7 @@
                   >
                     <div class="avail-bar">
                       <div
-                        v-for="(a, aidx) in sourceData[row.hash].availability
-                          .perPartAvailability"
+                        v-for="(a, aidx) in sourceData[row.hash].availability.perPartAvailability"
                         :key="aidx"
                         class="avail-bar-segment"
                         :style="{
@@ -929,18 +837,9 @@
                             a,
                             sourceData[row.hash].availability.maxSourcesPerPart,
                           ),
-                          width:
-                            100 / sourceData[row.hash].availability.partCount +
-                            '%',
+                          width: 100 / sourceData[row.hash].availability.partCount + '%',
                         }"
-                        :title="
-                          'Part ' +
-                          aidx +
-                          ': ' +
-                          a +
-                          ' source' +
-                          (a !== 1 ? 's' : '')
-                        "
+                        :title="'Part ' + aidx + ': ' + a + ' source' + (a !== 1 ? 's' : '')"
                       />
                     </div>
                     <div class="avail-bar-legend">
@@ -969,18 +868,9 @@
                 :label="$t('downloads.sourcesTab.title')"
                 :active="detailTab[row._uid] === 'sources'"
               >
-                <div
-                  class="mb-2 flex-center gap-sm"
-                >
-                  <span
-                    v-if="sourceLoading[row.hash]"
-                    class="mdi mdi-loading mdi-spin"
-                  />
-                  <SButton
-                    size="sm"
-                    variant="text"
-                    @click="fetchSources(row.hash)"
-                  >
+                <div class="mb-2 flex-center gap-sm">
+                  <span v-if="sourceLoading[row.hash]" class="mdi mdi-loading mdi-spin" />
+                  <SButton size="sm" variant="text" @click="fetchSources(row.hash)">
                     <span class="mdi mdi-refresh mr-1" />
                     {{ $t("downloads.sourcesTab.refresh") }}
                   </SButton>
@@ -995,10 +885,7 @@
 
                 <template v-if="sourceData[row.hash]">
                   <!-- Source count cards -->
-                  <div
-                    class="source-cards mb-4"
-                    v-if="sourceData[row.hash].sources"
-                  >
+                  <div class="source-cards mb-4" v-if="sourceData[row.hash].sources">
                     <div class="source-card">
                       <div class="source-card-value">
                         {{ sourceData[row.hash].sources.total }}
@@ -1042,10 +929,7 @@
                   </div>
 
                   <!-- Transfer health & timing -->
-                  <div
-                    class="columns is-multiline mb-3"
-                    v-if="sourceData[row.hash].file"
-                  >
+                  <div class="columns is-multiline mb-3" v-if="sourceData[row.hash].file">
                     <div class="column is-6">
                       <p class="is-size-7 has-text-weight-bold mb-2">
                         <span class="mdi mdi-shield-check" />
@@ -1075,8 +959,7 @@
                           <span
                             class="avail-value"
                             :class="{
-                              'has-text-danger':
-                                sourceData[row.hash].file.lostCorruption > 0,
+                              'has-text-danger': sourceData[row.hash].file.lostCorruption > 0,
                             }"
                           >
                             {{ sourceData[row.hash].file.lostCorruption_fmt }}
@@ -1089,8 +972,7 @@
                           <span
                             class="avail-value"
                             :class="{
-                              'has-text-success':
-                                sourceData[row.hash].file.gainCompression > 0,
+                              'has-text-success': sourceData[row.hash].file.gainCompression > 0,
                             }"
                           >
                             {{ sourceData[row.hash].file.gainCompression_fmt }}
@@ -1100,9 +982,7 @@
                           <span class="avail-label">{{
                             $t("downloads.sourcesTab.savedByICH")
                           }}</span>
-                          <span class="avail-value">{{
-                            sourceData[row.hash].file.savedICH
-                          }}</span>
+                          <span class="avail-value">{{ sourceData[row.hash].file.savedICH }}</span>
                         </div>
                       </div>
                     </div>
@@ -1117,9 +997,7 @@
                             $t("downloads.sourcesTab.downloadActiveTime")
                           }}</span>
                           <span class="avail-value">{{
-                            formatDuration(
-                              sourceData[row.hash].file.downloadActiveTime,
-                            )
+                            formatDuration(sourceData[row.hash].file.downloadActiveTime)
                           }}</span>
                         </div>
                         <div class="avail-grid-row">
@@ -1127,9 +1005,7 @@
                             $t("downloads.sourcesTab.lastSeenComplete")
                           }}</span>
                           <span class="avail-value">{{
-                            formatTimestamp(
-                              sourceData[row.hash].file.lastSeenComplete,
-                            )
+                            formatTimestamp(sourceData[row.hash].file.lastSeenComplete)
                           }}</span>
                         </div>
                         <div class="avail-grid-row">
@@ -1137,9 +1013,7 @@
                             $t("downloads.sourcesTab.lastModified")
                           }}</span>
                           <span class="avail-value">{{
-                            formatTimestamp(
-                              sourceData[row.hash].file.lastDateChanged,
-                            )
+                            formatTimestamp(sourceData[row.hash].file.lastDateChanged)
                           }}</span>
                         </div>
                       </div>
@@ -1167,18 +1041,13 @@
                         class="mr-1 mb-1"
                       >
                         {{ sn.name }}
-                        <span class="has-text-grey-light ml-1"
-                          >({{ sn.count }})</span
-                        >
+                        <span class="has-text-grey-light ml-1">({{ sn.count }})</span>
                       </STag>
                     </div>
                   </div>
 
                   <!-- Uploading to me -->
-                  <div
-                    v-if="sourceData[row.hash].uploadingToMeCount > 0"
-                    class="mb-4"
-                  >
+                  <div v-if="sourceData[row.hash].uploadingToMeCount > 0" class="mb-4">
                     <p class="is-size-7 has-text-weight-bold mb-1">
                       <span class="mdi mdi-arrow-down-bold has-text-success" />
                       {{ $t("downloads.sourcesTab.uploadingToMe") }} ({{
@@ -1194,9 +1063,7 @@
                         {{ r.software }}
                         {{ r.softwareVersion }}
                       </template>
-                      <template #cell-dlspeed="{ row: r }">{{
-                        r.downloadSpeed_fmt
-                      }}</template>
+                      <template #cell-dlspeed="{ row: r }">{{ r.downloadSpeed_fmt }}</template>
                       <template #cell-srcip="{ row: r }">
                         {{ r.ip }}{{ r.port ? ":" + r.port : "" }}
                       </template>
@@ -1220,12 +1087,8 @@
                         {{ r.software }}
                         {{ r.softwareVersion }}
                       </template>
-                      <template #cell-ulspeed="{ row: r }">{{
-                        r.uploadSpeed_fmt
-                      }}</template>
-                      <template #cell-srcip="{ row: r }">
-                        {{ r.ip }}:{{ r.port }}
-                      </template>
+                      <template #cell-ulspeed="{ row: r }">{{ r.uploadSpeed_fmt }}</template>
+                      <template #cell-srcip="{ row: r }"> {{ r.ip }}:{{ r.port }} </template>
                     </STable>
                   </div>
                 </template>
@@ -1238,26 +1101,15 @@
                 :label="$t('downloads.pyload.links')"
                 :active="detailTab[row._uid] === 'links'"
               >
-                <STable
-                  :data="row.links"
-                  :columns="pyloadLinkCols"
-                  size="sm"
-                  :max-height="300"
-                >
+                <STable :data="row.links" :columns="pyloadLinkCols" size="sm" :max-height="300">
                   <template #cell-lstatus="{ row: lnk }">
-                    <STag
-                      :variant="pyloadLinkStatusVariant(lnk.statusCode)"
-                      size="sm"
-                      >{{ lnk.status }}</STag
-                    >
+                    <STag :variant="pyloadLinkStatusVariant(lnk.statusCode)" size="sm">{{
+                      lnk.status
+                    }}</STag>
                   </template>
-                  <template #cell-lprogress="{ row: lnk }"
-                    >{{ lnk.progress.toFixed(1) }}%</template
-                  >
+                  <template #cell-lprogress="{ row: lnk }">{{ lnk.progress.toFixed(1) }}%</template>
                   <template #cell-lspeed="{ row: lnk }">
-                    <span v-if="lnk.isDownloading" class="has-text-info">{{
-                      lnk.speed_fmt
-                    }}</span>
+                    <span v-if="lnk.isDownloading" class="has-text-info">{{ lnk.speed_fmt }}</span>
                     <span v-else class="has-text-grey">—</span>
                   </template>
                 </STable>
@@ -1280,15 +1132,11 @@
                     <template #cell-fname="{ row: f }">
                       <span class="is-size-7">{{ f.name }}</span>
                     </template>
-                    <template #cell-fsize="{ row: f }">{{
-                      formatSize(f.length)
-                    }}</template>
+                    <template #cell-fsize="{ row: f }">{{ formatSize(f.length) }}</template>
                     <template #cell-fprogress="{ row: f }">
                       <SProgress
                         :percentage="
-                          f.length > 0
-                            ? Math.round((f.bytesCompleted / f.length) * 100)
-                            : 0
+                          f.length > 0 ? Math.round((f.bytesCompleted / f.length) * 100) : 0
                         "
                         :height="10"
                         color="var(--s-success)"
@@ -1317,9 +1165,7 @@
                     :max-height="300"
                   >
                     <template #cell-pdown="{ row: p }">{{
-                      p.isDownloadingFrom
-                        ? formatSpeed(p.rateToClient)
-                        : "&mdash;"
+                      p.isDownloadingFrom ? formatSpeed(p.rateToClient) : "&mdash;"
                     }}</template>
                     <template #cell-pup="{ row: p }">{{
                       p.isUploadingTo ? formatSpeed(p.rateToPeer) : "&mdash;"
@@ -1328,9 +1174,7 @@
                       {{ (p.progress * 100).toFixed(0) }}%
                     </template>
                     <template #empty>
-                      <div
-                        class="has-text-centered py-2 has-text-grey is-size-7"
-                      >
+                      <div class="has-text-centered py-2 has-text-grey is-size-7">
                         {{ $t("downloads.peersTab.noPeers") }}
                       </div>
                     </template>
@@ -1363,21 +1207,14 @@
                       ts.leecherCount >= 0 ? ts.leecherCount : "?"
                     }}</template>
                     <template #cell-announce_status="{ row: ts }">
-                      <STag
-                        :variant="
-                          ts.lastAnnounceSucceeded ? 'success' : 'danger'
-                        "
-                        size="sm"
-                      >
+                      <STag :variant="ts.lastAnnounceSucceeded ? 'success' : 'danger'" size="sm">
                         {{
                           ts.lastAnnounceSucceeded
                             ? $t("downloads.trackers.ok")
                             : $t("downloads.trackers.fail")
                         }}
                       </STag>
-                      <span class="is-size-7 ml-1"
-                        >({{ ts.lastAnnouncePeerCount }})</span
-                      >
+                      <span class="is-size-7 ml-1">({{ ts.lastAnnouncePeerCount }})</span>
                     </template>
                     <template #cell-announce_url="{ row: ts }">
                       <span class="is-size-7">{{ ts.announce }}</span>
@@ -1400,88 +1237,11 @@
           </div>
         </template>
       </STable>
-
-      <!-- aMule action buttons -->
-      <div class="buttons mt-3" v-if="selectedAmule.length > 0">
-        <span class="is-size-7 has-text-grey mr-2"
-          >{{ $t("downloads.sources.amule") }} ({{
-            selectedAmule.length
-          }}):</span
-        >
-        <SButton variant="warning" size="sm" @click="doAmuleAction('pause')"
-          ><span class="mdi mdi-pause mr-1" />
-          {{ $t("downloads.actions.pause") }}</SButton
-        >
-        <SButton variant="success" size="sm" @click="doAmuleAction('resume')"
-          ><span class="mdi mdi-play mr-1" />
-          {{ $t("downloads.actions.resume") }}</SButton
-        >
-        <SButton variant="info" size="sm" @click="doAmuleAction('stop')"
-          ><span class="mdi mdi-stop mr-1" />
-          {{ $t("downloads.actions.stop") }}</SButton
-        >
-        <SButton variant="danger" size="sm" @click="doAmuleAction('cancel')"
-          ><span class="mdi mdi-close-circle mr-1" />
-          {{ $t("downloads.actions.cancel") }}</SButton
-        >
-      </div>
-
-      <!-- Torrent action buttons -->
-      <div class="buttons mt-3" v-if="selectedTorrents.length > 0">
-        <span class="is-size-7 has-text-grey mr-2"
-          >{{ $t("downloads.sources.torrent") }} ({{
-            selectedTorrents.length
-          }}):</span
-        >
-        <SButton variant="success" size="sm" @click="doTorrentAction('start')"
-          ><span class="mdi mdi-play mr-1" />
-          {{ $t("downloads.actions.start") }}</SButton
-        >
-        <SButton variant="warning" size="sm" @click="doTorrentAction('stop')"
-          ><span class="mdi mdi-pause mr-1" />
-          {{ $t("downloads.actions.stop") }}</SButton
-        >
-        <SButton size="sm" @click="doTorrentAction('verify')"
-          ><span class="mdi mdi-check-circle mr-1" />
-          {{ $t("downloads.actions.verify") }}</SButton
-        >
-        <SButton variant="danger" size="sm" @click="confirmTorrentRemove(false)"
-          ><span class="mdi mdi-close-circle mr-1" />
-          {{ $t("downloads.actions.remove") }}</SButton
-        >
-        <SButton variant="danger" size="sm" @click="confirmTorrentRemove(true)"
-          ><span class="mdi mdi-delete mr-1" />
-          {{ $t("downloads.actions.removeData") }}</SButton
-        >
-      </div>
-
-      <!-- pyLoad action buttons -->
-      <div class="buttons mt-3" v-if="selectedPyload.length > 0">
-        <span class="is-size-7 has-text-grey mr-2"
-          >pyLoad ({{ selectedPyload.length }}):</span
-        >
-        <SButton variant="warning" size="sm" @click="doPyloadAction('stop')">
-          <span class="mdi mdi-pause mr-1" />
-          {{ $t("downloads.actions.stop") }}
-        </SButton>
-        <SButton variant="warning" size="sm" @click="doPyloadAction('restart')">
-          <span class="mdi mdi-restart mr-1" />
-          {{ $t("downloads.actions.restart") }}
-        </SButton>
-        <SButton variant="danger" size="sm" @click="doPyloadAction('delete')">
-          <span class="mdi mdi-delete mr-1" />
-          {{ $t("downloads.actions.remove") }}
-        </SButton>
-      </div>
     </div>
     <!-- /.is-hidden-mobile -->
 
     <!-- Add ED2K Link dialog -->
-    <SDialog
-      v-model="showAddLink"
-      :title="$t('downloads.addEd2kDialog.title')"
-      width="500px"
-    >
+    <SDialog v-model="showAddLink" :title="$t('downloads.addEd2kDialog.title')" width="500px">
       <SFormItem :label="$t('downloads.addEd2kDialog.label')">
         <SInput
           v-model="ed2kLink"
@@ -1494,18 +1254,12 @@
         <SButton variant="primary" :loading="addingLink" @click="addLink">{{
           $t("downloads.addEd2kDialog.add")
         }}</SButton>
-        <SButton @click="showAddLink = false">{{
-          $t("downloads.addEd2kDialog.cancel")
-        }}</SButton>
+        <SButton @click="showAddLink = false">{{ $t("downloads.addEd2kDialog.cancel") }}</SButton>
       </template>
     </SDialog>
 
     <!-- Add Torrent dialog -->
-    <SDialog
-      v-model="showAddTorrent"
-      :title="$t('downloads.addTorrentDialog.title')"
-      width="500px"
-    >
+    <SDialog v-model="showAddTorrent" :title="$t('downloads.addTorrentDialog.title')" width="500px">
       <SFormItem :label="$t('downloads.addTorrentDialog.label')">
         <SInput
           v-model="torrentForm.url"
@@ -1520,12 +1274,9 @@
         class="mb-3"
       />
       <template #footer>
-        <SButton
-          variant="primary"
-          :loading="addingTorrent"
-          @click="addTorrent"
-          >{{ $t("downloads.addTorrentDialog.add") }}</SButton
-        >
+        <SButton variant="primary" :loading="addingTorrent" @click="addTorrent">{{
+          $t("downloads.addTorrentDialog.add")
+        }}</SButton>
         <SButton @click="showAddTorrent = false">{{
           $t("downloads.addTorrentDialog.cancel")
         }}</SButton>
@@ -1533,11 +1284,7 @@
     </SDialog>
 
     <!-- Add pyLoad package dialog -->
-    <SDialog
-      v-model="showAddPyload"
-      :title="$t('downloads.addPyloadDialog.title')"
-      width="520px"
-    >
+    <SDialog v-model="showAddPyload" :title="$t('downloads.addPyloadDialog.title')" width="520px">
       <SFormItem :label="$t('downloads.addPyloadDialog.nameLabel')">
         <SInput
           v-model="pyloadForm.name"
@@ -1553,12 +1300,9 @@
         />
       </SFormItem>
       <template #footer>
-        <SButton
-          variant="primary"
-          :loading="addingPyload"
-          @click="addPyloadPackage"
-          >{{ $t("downloads.addPyloadDialog.add") }}</SButton
-        >
+        <SButton variant="primary" :loading="addingPyload" @click="addPyloadPackage">{{
+          $t("downloads.addPyloadDialog.add")
+        }}</SButton>
         <SButton @click="showAddPyload = false">{{
           $t("downloads.addPyloadDialog.cancel")
         }}</SButton>
@@ -1566,28 +1310,17 @@
     </SDialog>
 
     <!-- Torrent remove confirmation -->
-    <SDialog
-      v-model="showRemoveDialog"
-      :title="$t('downloads.removeDialog.title')"
-      width="400px"
-    >
+    <SDialog v-model="showRemoveDialog" :title="$t('downloads.removeDialog.title')" width="400px">
       <p>
         {{ $t("downloads.removeDialog.message", { n: selectedTorrents.length })
-        }}{{
-          removeWithData ? " " + $t("downloads.removeDialog.andData") : ""
-        }}?
+        }}{{ removeWithData ? " " + $t("downloads.removeDialog.andData") : "" }}?
       </p>
       <template #footer>
-        <SButton
-          variant="danger"
-          :loading="removing"
-          @click="doTorrentRemove"
-          >{{
-            removeWithData
-              ? $t("downloads.removeDialog.removeDelete")
-              : $t("downloads.removeDialog.remove")
-          }}</SButton
-        >
+        <SButton variant="danger" :loading="removing" @click="doTorrentRemove">{{
+          removeWithData
+            ? $t("downloads.removeDialog.removeDelete")
+            : $t("downloads.removeDialog.remove")
+        }}</SButton>
         <SButton @click="showRemoveDialog = false">{{
           $t("downloads.removeDialog.cancel")
         }}</SButton>
@@ -1601,17 +1334,11 @@
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
       @click="contextMenu.visible = false"
     >
-      <div
-        class="context-menu-item"
-        @click="copyToClipboard(contextMenu.client?.userHash || '')"
-      >
+      <div class="context-menu-item" @click="copyToClipboard(contextMenu.client?.userHash || '')">
         <span class="mdi mdi-content-copy" />
         {{ $t("downloads.contextMenu.copyUserHash") }}
       </div>
-      <div
-        class="context-menu-item"
-        @click="copyToClipboard(contextMenu.client?.ip || '')"
-      >
+      <div class="context-menu-item" @click="copyToClipboard(contextMenu.client?.ip || '')">
         <span class="mdi mdi-ip-network" />
         {{ $t("downloads.contextMenu.copyIP") }}
       </div>
@@ -1776,11 +1503,7 @@ const torrentData = ref<any>(null);
 const amuleFiles = ref<any[]>([]);
 const torrentFiles = ref<any[]>([]);
 const pyloadFiles = ref<any[]>([]);
-const allFiles = computed(() => [
-  ...amuleFiles.value,
-  ...torrentFiles.value,
-  ...pyloadFiles.value,
-]);
+const allFiles = computed(() => [...amuleFiles.value, ...torrentFiles.value, ...pyloadFiles.value]);
 const filteredFiles = ref<any[]>([]);
 const amuleTotals = ref<any>(null);
 const torrentTotals = ref<any>(null);
@@ -1839,15 +1562,9 @@ const contextMenu = reactive({
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 // ── Selection by type ─────────────────────────────────────────────────
-const selectedAmule = computed(() =>
-  selected.value.filter((r) => r._type === "amule"),
-);
-const selectedTorrents = computed(() =>
-  selected.value.filter((r) => r._type === "torrent"),
-);
-const selectedPyload = computed(() =>
-  selected.value.filter((r) => r._type === "pyload"),
-);
+const selectedAmule = computed(() => selected.value.filter((r) => r._type === "amule"));
+const selectedTorrents = computed(() => selected.value.filter((r) => r._type === "torrent"));
+const selectedPyload = computed(() => selected.value.filter((r) => r._type === "pyload"));
 
 function onCheck(rows: any[]) {
   selected.value = rows;
@@ -1902,8 +1619,7 @@ async function fetchChunks(hash: string) {
     const res = await apiFetch<any>("/api/amule/downloads/parts?hash=" + hash);
     if (res?.parts) {
       const updated = { ...chunkData.value };
-      for (const [h, info] of Object.entries(res.parts))
-        updated[h] = info as any;
+      for (const [h, info] of Object.entries(res.parts)) updated[h] = info as any;
       chunkData.value = updated;
     }
   } catch {
@@ -1914,9 +1630,7 @@ async function fetchChunks(hash: string) {
 async function fetchSources(hash: string) {
   sourceLoading.value[hash] = true;
   try {
-    const res = await apiFetch<any>(
-      "/api/amule/downloads/sources?hash=" + hash,
-    );
+    const res = await apiFetch<any>("/api/amule/downloads/sources?hash=" + hash);
     sourceData.value[hash] = res;
   } catch {
     /* silent */
@@ -1928,11 +1642,8 @@ async function fetchSources(hash: string) {
 // ── Torrent detail fetcher ────────────────────────────────────────────
 async function fetchTorrentDetail(id: number) {
   try {
-    const res = await apiFetch<any>(
-      `/api/transmission/torrents/detail?id=${id}`,
-    );
-    if (res?.torrent)
-      torrentDetail.value = { ...torrentDetail.value, [id]: res.torrent };
+    const res = await apiFetch<any>(`/api/transmission/torrents/detail?id=${id}`);
+    if (res?.torrent) torrentDetail.value = { ...torrentDetail.value, [id]: res.torrent };
   } catch {
     /* silent */
   }
@@ -1944,13 +1655,7 @@ function amuleProgressColor(status: string) {
   if (status === "Paused") return "var(--s-warning)";
   return "var(--s-accent)";
 }
-type TagVariant =
-  | "default"
-  | "primary"
-  | "success"
-  | "warning"
-  | "danger"
-  | "info";
+type TagVariant = "default" | "primary" | "success" | "warning" | "danger" | "info";
 function amuleStatusType(status: string): TagVariant {
   if (status === "Downloading") return "success";
   if (status === "Paused") return "warning";
@@ -2118,8 +1823,7 @@ async function fetchAllChunks() {
     const res = await apiFetch<any>("/api/amule/downloads/parts");
     if (res?.parts) {
       const updated = { ...chunkData.value };
-      for (const [h, info] of Object.entries(res.parts))
-        updated[h] = info as any;
+      for (const [h, info] of Object.entries(res.parts)) updated[h] = info as any;
       chunkData.value = updated;
     }
   } catch {
@@ -2173,9 +1877,7 @@ async function refreshPyload() {
       _type: "pyload",
       _uid: "pyload-" + p.pid,
     }));
-    pyloadTotals.value = res
-      ? { totalSpeed_fmt: res.totalSpeed_fmt, count: res.count }
-      : null;
+    pyloadTotals.value = res ? { totalSpeed_fmt: res.totalSpeed_fmt, count: res.count } : null;
   } catch {
     /* silent */
   }
@@ -2280,10 +1982,7 @@ async function doCardAction(row: any, action: string) {
   const prev = selected.value;
   selected.value = [row];
   // Remove dialogs: keep selected set so the dialog can read it
-  if (
-    row._type === "torrent" &&
-    (action === "remove" || action === "remove_data")
-  ) {
+  if (row._type === "torrent" && (action === "remove" || action === "remove_data")) {
     confirmTorrentRemove(action === "remove_data");
     return;
   }
@@ -2589,5 +2288,4 @@ onUnmounted(() => {
   gap: 0.35rem;
   padding-top: 0.15rem;
 }
-
 </style>

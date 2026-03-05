@@ -1,0 +1,318 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE STYLES — applied globally, use CSS vars
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+$font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+html,
+body {
+  font-family: $font-family;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: var(--s-bg);
+  color: var(--s-text);
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--s-accent);
+  text-decoration: none;
+  &:hover {
+    color: var(--s-accent-hover);
+  }
+}
+
+::selection {
+  background: var(--s-accent);
+  color: var(--s-text-inverse);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--s-scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--s-scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  opacity: 0.8;
+}
+
+/* ── Headings ────────────────────────────────────────────────────────────── */
+.title {
+  font-weight: 600;
+  color: var(--s-text);
+  line-height: 1.125;
+  margin-bottom: 1rem;
+}
+.title.is-4 {
+  font-size: 1.5rem;
+}
+.title.is-5 {
+  font-size: 1.25rem;
+}
+.title.is-6 {
+  font-size: 1rem;
+}
+
+.subtitle {
+  font-weight: 400;
+  color: var(--s-text-secondary);
+  line-height: 1.25;
+}
+.subtitle.is-5 {
+  font-size: 1.25rem;
+}
+.subtitle.is-6 {
+  font-size: 1rem;
+}
+
+/* ── Box (card surface) ──────────────────────────────────────────────────── */
+.box {
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius-lg);
+  box-shadow: var(--s-shadow);
+  padding: 1.25rem;
+}
+
+/* ── Text utilities ──────────────────────────────────────────────────────── */
+.has-text-centered {
+  text-align: center !important;
+}
+.has-text-grey {
+  color: var(--s-text-muted) !important;
+}
+.has-text-grey-dark {
+  color: var(--s-text-secondary) !important;
+}
+.has-text-grey-light {
+  color: var(--s-text-muted) !important;
+}
+.has-text-weight-medium {
+  font-weight: 500 !important;
+}
+.has-text-weight-semibold {
+  font-weight: 600 !important;
+}
+.has-text-weight-bold {
+  font-weight: 700 !important;
+}
+.has-text-success {
+  color: var(--s-success) !important;
+}
+.has-text-info {
+  color: var(--s-info) !important;
+}
+.has-text-danger {
+  color: var(--s-danger) !important;
+}
+.has-text-warning {
+  color: var(--s-warning) !important;
+}
+.is-size-7 {
+  font-size: 0.75rem !important;
+}
+.is-family-monospace {
+  font-family: "Fira Code", "Cascadia Code", monospace !important;
+}
+
+/* ── Flex utilities ──────────────────────────────────────────────────────── */
+.is-flex {
+  display: flex !important;
+}
+.is-align-items-center {
+  align-items: center !important;
+}
+.is-align-items-flex-end {
+  align-items: flex-end !important;
+}
+.is-hidden-tablet {
+  @media (min-width: 769px) {
+    display: none !important;
+  }
+}
+.is-hidden-mobile {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
+/* ── Grid system ─────────────────────────────────────────────────────────── */
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  margin: -0.75rem;
+}
+.columns.is-mobile {
+  flex-wrap: wrap;
+}
+.columns.is-multiline {
+  flex-wrap: wrap;
+}
+.columns.is-vcentered {
+  align-items: center;
+}
+
+.column {
+  flex: 1;
+  padding: 0.75rem;
+}
+.column.is-2 {
+  flex: none;
+  width: 16.6667%;
+}
+.column.is-3 {
+  flex: none;
+  width: 25%;
+}
+.column.is-4 {
+  flex: none;
+  width: 33.3333%;
+}
+.column.is-5 {
+  flex: none;
+  width: 41.6667%;
+}
+.column.is-6 {
+  flex: none;
+  width: 50%;
+}
+.column.is-7 {
+  flex: none;
+  width: 58.3333%;
+}
+.column.is-8 {
+  flex: none;
+  width: 66.6667%;
+}
+.column.is-narrow {
+  flex: none;
+}
+
+/* ── Level layout ────────────────────────────────────────────────────────── */
+.level {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+.level-left {
+  display: flex;
+  align-items: center;
+}
+.level-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Button group ────────────────────────────────────────────────────────── */
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ── Spacing helpers ─────────────────────────────────────────────────────── */
+@each $n in (0, 1, 2, 3, 4, 5, 6) {
+  $val: $n * 0.25rem;
+  @if $n == 4 {
+    $val: 1.5rem;
+  } @else if $n == 5 {
+    $val: 3rem;
+  } @else if $n == 6 {
+    $val: 4rem;
+  }
+  .mb-#{$n} {
+    margin-bottom: $val !important;
+  }
+  .mt-#{$n} {
+    margin-top: $val !important;
+  }
+  .ml-#{$n} {
+    margin-left: $val !important;
+  }
+  .mr-#{$n} {
+    margin-right: $val !important;
+  }
+  .py-#{$n} {
+    padding-top: $val !important;
+    padding-bottom: $val !important;
+  }
+  .px-#{$n} {
+    padding-left: $val !important;
+    padding-right: $val !important;
+  }
+}
+
+/* ── Plain HTML table ────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  td,
+  th {
+    padding: 0.5em 0.75em;
+    border-bottom: 1px solid var(--s-table-border);
+    text-align: left;
+    color: var(--s-text);
+  }
+  th {
+    background: var(--s-table-header-bg);
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--s-text-secondary);
+  }
+  &.is-narrow td,
+  &.is-narrow th {
+    padding: 0.25em 0.5em;
+  }
+  &.is-fullwidth {
+    width: 100%;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.75em;
+  height: 2em;
+  border-radius: var(--s-radius);
+  font-size: 0.75rem;
+  background: var(--s-bg-surface-alt);
+  color: var(--s-text-secondary);
+  border: 1px solid var(--s-border);
+  &.is-small {
+    font-size: 0.65rem;
+    height: 1.5em;
+  }
+}
+

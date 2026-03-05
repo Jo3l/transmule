@@ -6,7 +6,13 @@ export default defineNitroConfig({
     openAPI: true,
   },
   rollupConfig: {
-    external: ["better-sqlite3", "amule-ec-client"],
+    external: [
+      "better-sqlite3",
+      "amule-ec-client",
+      "node-7z",
+      "7zip-bin",
+      "node-unrar-js",
+    ],
   },
   openAPI: {
     meta: {
@@ -36,5 +42,6 @@ export default defineNitroConfig({
     pyloadPassword: "pyload",
     jwtSecret: "amule-middleware-change-this-secret",
     downloadsDir: "",
+    amuleConfigDir: "",
   },
 });

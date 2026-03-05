@@ -221,8 +221,12 @@ const { apiFetch } = useApi();
 const auth = useAuth();
 const { currentTheme, setTheme, saveToServer, THEME_META, canvasEnabled, setCanvasEnabled } =
   useTheme();
+const route = useRoute();
+const router = useRouter();
 
-const activeTab = ref("theme");
+const VALID_TABS = ["theme", "language", "account", "integrations", "users"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "theme");
+watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(false);
 const savingTheme = ref(false);
 const savingLocale = ref(false);

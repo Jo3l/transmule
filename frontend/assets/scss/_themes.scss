@@ -1,0 +1,325 @@
+/* ── THEME: Tron (1982 Grid) ────────────────────────────────────────────── */
+:root,
+[data-theme="tron"] {
+  --s-bg: #080810;
+  --s-bg-surface: #0e0e1e;
+  --s-bg-surface-alt: #12122a;
+  --s-bg-overlay: rgba(0, 0, 0, 0.7);
+  --s-bg-input: #0a0a18;
+  --s-bg-sidebar: #06060e;
+  --s-bg-topbar: #0c0c1a;
+  --s-bg-hover: #181838;
+  --s-border: #1e1e40;
+  --s-border-light: #16163a;
+  --s-border-focus: #00d4ff;
+  --s-text: #d0d0f0;
+  --s-text-secondary: #8888aa;
+  --s-text-muted: #555577;
+  --s-text-inverse: #080810;
+  --s-accent: #00d4ff;
+  --s-accent-hover: #00b8e0;
+  --s-accent-subtle: rgba(0, 212, 255, 0.12);
+  --s-success: #00ff88;
+  --s-success-subtle: rgba(0, 255, 136, 0.1);
+  --s-warning: #ff8800;
+  --s-warning-subtle: rgba(255, 136, 0, 0.1);
+  --s-danger: #ff3366;
+  --s-danger-subtle: rgba(255, 51, 102, 0.1);
+  --s-info: #00aaff;
+  --s-info-subtle: rgba(0, 170, 255, 0.1);
+  --s-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --s-radius: 4px;
+  --s-radius-lg: 8px;
+  --s-sidebar-text: #7777aa;
+  --s-sidebar-text-hover: #c0c0e0;
+  --s-sidebar-active-bg: #00d4ff;
+  --s-sidebar-active-text: #080810;
+  --s-sidebar-section-text: #555580;
+  --s-sidebar-border: #1a1a3a;
+  --s-topbar-border: #1a1a3a;
+  --s-table-header-bg: #0c0c1c;
+  --s-table-stripe-bg: rgba(0, 212, 255, 0.03);
+  --s-table-hover-bg: rgba(0, 212, 255, 0.06);
+  --s-table-border: #1a1a3a;
+  --s-scrollbar-thumb: #2a2a50;
+  --s-scrollbar-track: #0a0a18;
+  --s-glow: 0 0 10px rgba(0, 212, 255, 0.3);
+  --s-btn-shadow: #04040a;
+  --s-btn-outline: var(--s-accent);
+}
+
+/* ── THEME: Sark (Red-Purple neon) ─────────────────────────────────────── */
+[data-theme="sark"] {
+  --s-bg: #0d080d;
+  --s-bg-surface: #160e1a;
+  --s-bg-surface-alt: #1c1224;
+  --s-bg-overlay: rgba(0, 0, 0, 0.7);
+  --s-bg-input: #100810;
+  --s-bg-sidebar: #0a050e;
+  --s-bg-topbar: #100a14;
+  --s-bg-hover: #221228;
+  --s-border: #2a142a;
+  --s-border-light: #200e20;
+  --s-border-focus: #cc0077;
+  --s-text: #e8d0e8;
+  --s-text-secondary: #aa88aa;
+  --s-text-muted: #775577;
+  --s-text-inverse: #0d080d;
+  --s-accent: #cc0077;
+  --s-accent-hover: #aa0066;
+  --s-accent-subtle: rgba(204, 0, 119, 0.12);
+  --s-success: #00ff88;
+  --s-success-subtle: rgba(0, 255, 136, 0.1);
+  --s-warning: #ff8800;
+  --s-warning-subtle: rgba(255, 136, 0, 0.1);
+  --s-danger: #ff3333;
+  --s-danger-subtle: rgba(255, 51, 51, 0.1);
+  --s-info: #aa00cc;
+  --s-info-subtle: rgba(170, 0, 204, 0.1);
+  --s-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --s-radius: 4px;
+  --s-radius-lg: 8px;
+  --s-sidebar-text: #aa77aa;
+  --s-sidebar-text-hover: #e0c0e0;
+  --s-sidebar-active-bg: #cc0077;
+  --s-sidebar-active-text: #0d080d;
+  --s-sidebar-section-text: #775580;
+  --s-sidebar-border: #2a1230;
+  --s-topbar-border: #2a1230;
+  --s-table-header-bg: #120812;
+  --s-table-stripe-bg: rgba(204, 0, 119, 0.03);
+  --s-table-hover-bg: rgba(204, 0, 119, 0.06);
+  --s-table-border: #2a1230;
+  --s-scrollbar-thumb: #401840;
+  --s-scrollbar-track: #0a040a;
+  --s-glow: 0 0 10px rgba(204, 0, 119, 0.3);
+  --s-btn-shadow: #080408;
+  --s-btn-outline: var(--s-accent);
+}
+
+/* ── THEME: Light ────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --s-bg: #f0f2f5;
+  --s-bg-surface: #ffffff;
+  --s-bg-surface-alt: #f8f9fa;
+  --s-bg-overlay: rgba(0, 0, 0, 0.4);
+  --s-bg-input: #ffffff;
+  --s-bg-sidebar: #ffffff;
+  --s-bg-topbar: #ffffff;
+  --s-bg-hover: #f0f2f5;
+  --s-border: #e0e0e0;
+  --s-border-light: #f0f0f0;
+  --s-border-focus: #4a90d9;
+  --s-text: #333333;
+  --s-text-secondary: #666666;
+  --s-text-muted: #999999;
+  --s-text-inverse: #ffffff;
+  --s-accent: #4a90d9;
+  --s-accent-hover: #3a7bc8;
+  --s-accent-subtle: rgba(74, 144, 217, 0.08);
+  --s-success: #52c41a;
+  --s-success-subtle: rgba(82, 196, 26, 0.08);
+  --s-warning: #faad14;
+  --s-warning-subtle: rgba(250, 173, 20, 0.08);
+  --s-danger: #f5222d;
+  --s-danger-subtle: rgba(245, 34, 45, 0.08);
+  --s-info: #1890ff;
+  --s-info-subtle: rgba(24, 144, 255, 0.08);
+  --s-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --s-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --s-radius: 6px;
+  --s-radius-lg: 10px;
+  --s-sidebar-text: #666666;
+  --s-sidebar-text-hover: #333333;
+  --s-sidebar-active-bg: #4a90d9;
+  --s-sidebar-active-text: #ffffff;
+  --s-sidebar-section-text: #999999;
+  --s-sidebar-border: #e8e8e8;
+  --s-topbar-border: #e8e8e8;
+  --s-table-header-bg: #fafafa;
+  --s-table-stripe-bg: #fafafa;
+  --s-table-hover-bg: #f0f7ff;
+  --s-table-border: #f0f0f0;
+  --s-scrollbar-thumb: #c0c0c0;
+  --s-scrollbar-track: #f0f0f0;
+  --s-glow: none;
+  --s-btn-shadow: #101c36;
+  --s-btn-outline: transparent;
+}
+
+/* ── THEME: Matrix ───────────────────────────────────────────────────────── */
+[data-theme="matrix"] {
+  --s-bg: #0a0a0a;
+  --s-bg-surface: #111111;
+  --s-bg-surface-alt: #141414;
+  --s-bg-overlay: rgba(0, 0, 0, 0.8);
+  --s-bg-input: #0d0d0d;
+  --s-bg-sidebar: #080808;
+  --s-bg-topbar: #0e0e0e;
+  --s-bg-hover: #1a1a1a;
+  --s-border: #1a2a1a;
+  --s-border-light: #142014;
+  --s-border-focus: #00ff41;
+  --s-text: #00ff41;
+  --s-text-secondary: #00cc33;
+  --s-text-muted: #006622;
+  --s-text-inverse: #0a0a0a;
+  --s-accent: #00ff41;
+  --s-accent-hover: #00dd38;
+  --s-accent-subtle: rgba(0, 255, 65, 0.08);
+  --s-success: #00ff41;
+  --s-success-subtle: rgba(0, 255, 65, 0.08);
+  --s-warning: #ccff00;
+  --s-warning-subtle: rgba(204, 255, 0, 0.08);
+  --s-danger: #ff0040;
+  --s-danger-subtle: rgba(255, 0, 64, 0.08);
+  --s-info: #00ccff;
+  --s-info-subtle: rgba(0, 204, 255, 0.08);
+  --s-shadow: 0 2px 8px rgba(0, 255, 65, 0.05);
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+  --s-radius: 2px;
+  --s-radius-lg: 4px;
+  --s-sidebar-text: #006622;
+  --s-sidebar-text-hover: #00ff41;
+  --s-sidebar-active-bg: #00ff41;
+  --s-sidebar-active-text: #0a0a0a;
+  --s-sidebar-section-text: #004415;
+  --s-sidebar-border: #1a2a1a;
+  --s-topbar-border: #1a2a1a;
+  --s-table-header-bg: #0d0d0d;
+  --s-table-stripe-bg: rgba(0, 255, 65, 0.02);
+  --s-table-hover-bg: rgba(0, 255, 65, 0.05);
+  --s-table-border: #1a2a1a;
+  --s-scrollbar-thumb: #1a3a1a;
+  --s-scrollbar-track: #0a0a0a;
+  --s-glow: 0 0 8px rgba(0, 255, 65, 0.2);
+  --s-btn-shadow: #050505;
+  --s-btn-outline: var(--s-accent);
+}
+
+/* ── THEME: Windows XP (Luna) ─────────────────────────────────────────────
+   Faithful recreation of the Windows XP Luna visual style.
+   Uses Tahoma font, 3D beveled controls, blue gradient title bars,
+   task-pane sidebar, and classic XP color palette.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-theme="xp"] {
+  --s-bg: #d7d7d7;
+  --s-bg-surface: #ece9d8;
+  --s-bg-surface-alt: #f5f3ea;
+  --s-bg-overlay: rgba(0, 0, 0, 0.45);
+  --s-bg-input: #ffffff;
+  --s-bg-sidebar: #003399;
+  --s-bg-topbar: #ece9d8;
+  --s-bg-hover: #316ac5;
+  --s-border: #aca899;
+  --s-border-light: #d6d2c2;
+  --s-border-focus: #316ac5;
+  --s-text: #000000;
+  --s-text-secondary: #333333;
+  --s-text-muted: #808080;
+  --s-text-inverse: #ffffff;
+  --s-accent: #003399;
+  --s-accent-hover: #002266;
+  --s-accent-subtle: #d8e8ff;
+  --s-success: #008000;
+  --s-success-subtle: #dff0df;
+  --s-warning: #cc6600;
+  --s-warning-subtle: #fff3e0;
+  --s-danger: #cc0000;
+  --s-danger-subtle: #ffe0e0;
+  --s-info: #0066cc;
+  --s-info-subtle: #e0f0ff;
+  --s-shadow: none;
+  --s-shadow-lg: 2px 2px 6px rgba(0, 0, 0, 0.25);
+  --s-radius: 3px;
+  --s-radius-lg: 3px;
+  --s-sidebar-text: #d4e1ff;
+  --s-sidebar-text-hover: #ffffff;
+  --s-sidebar-active-bg: rgba(255, 255, 255, 0.25);
+  --s-sidebar-active-text: #ffffff;
+  --s-sidebar-section-text: #97b4e8;
+  --s-sidebar-border: rgba(255, 255, 255, 0.12);
+  --s-topbar-border: #aca899;
+  --s-table-header-bg: #ece9d8;
+  --s-table-stripe-bg: #f5f3ea;
+  --s-table-hover-bg: #316ac5;
+  --s-table-border: #c8c5b4;
+  --s-scrollbar-thumb: #b8c4da;
+  --s-scrollbar-track: #e4e1d4;
+  --s-glow: none;
+
+  /* Extra XP-specific tokens used in overrides below */
+  --xp-face: #ece9d8;
+  --xp-highlight: #316ac5;
+  --xp-highlight-text: #ffffff;
+  --xp-btn-face: #ece9d8;
+  --xp-btn-highlight: #ffffff;
+  --xp-btn-shadow: #aca899;
+  --s-btn-shadow: var(--xp-btn-shadow);
+  --s-btn-outline: var(--xp-btn-shadow);
+  --xp-btn-dk-shadow: #716f64;
+  --xp-field-border: #7f9db9;
+  --xp-titlebar-start: #0054e3;
+  --xp-titlebar-end: #2490f0;
+  --xp-green: #37b534;
+  --xp-start-green: #3c9a3c;
+  --xp-taskpane-start: #003399;
+  --xp-taskpane-mid: #0359c3;
+  --xp-taskpane-end: #003399;
+}
+
+/* ── THEME: ZX Spectrum ─────────────────────────────────────────────────────
+   Authentic ZX Spectrum 48K colour palette.
+   Black/dark-blue background, bright cyan accent, pixel font.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="spectrum"] {
+  --s-bg: #000000;
+  --s-bg-surface: #000000;
+  --s-bg-surface-alt: #001a33;
+  --s-bg-overlay: rgba(0, 0, 0, 0.85);
+  --s-bg-input: #000000;
+  --s-bg-sidebar: #0000d8;
+  --s-bg-topbar: #000000;
+  --s-bg-hover: #0000d8;
+  --s-border: #d8d8d8;
+  --s-border-light: #808080;
+  --s-border-focus: #ffff00;
+  --s-text: #d8d8d8;
+  --s-text-secondary: #00d8d8;
+  --s-text-muted: #808080;
+  --s-text-inverse: #000000;
+  --s-accent: #00ffff;
+  --s-accent-hover: #00d8d8;
+  --s-accent-subtle: rgba(0, 255, 255, 0.1);
+  --s-success: #00ff00;
+  --s-success-subtle: rgba(0, 255, 0, 0.1);
+  --s-warning: #ffff00;
+  --s-warning-subtle: rgba(255, 255, 0, 0.1);
+  --s-danger: #ff0000;
+  --s-danger-subtle: rgba(255, 0, 0, 0.1);
+  --s-info: #0000ff;
+  --s-info-subtle: rgba(0, 0, 255, 0.15);
+  --s-shadow: none;
+  --s-shadow-lg: none;
+  --s-radius: 0px;
+  --s-radius-lg: 0px;
+  --s-sidebar-text: rgba(216, 216, 216, 0.7);
+  --s-sidebar-text-hover: #ffffff;
+  --s-sidebar-active-bg: #00ffff;
+  --s-sidebar-active-text: #000000;
+  --s-sidebar-section-text: rgba(216, 216, 216, 0.4);
+  --s-sidebar-border: #0000ff;
+  --s-topbar-border: #d8d8d8;
+  --s-table-header-bg: #001a33;
+  --s-table-stripe-bg: rgba(0, 255, 255, 0.03);
+  --s-table-hover-bg: rgba(0, 255, 255, 0.1);
+  --s-table-border: #d8d8d8;
+  --s-scrollbar-thumb: #d8d8d8;
+  --s-scrollbar-track: #000000;
+  --s-glow: 0 0 6px rgba(0, 255, 255, 0.5);
+  --s-btn-shadow: #000000;
+  --s-btn-outline: #d8d8d8;
+}
+

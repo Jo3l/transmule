@@ -1,0 +1,15 @@
+/* ── ZX Spectrum font ───────────────────────────────────────────────────── */
+@font-face {
+  font-family: "ZX Spectrum";
+  src: url("../fonts/zx_spectrum-7.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "ZX Spectrum";
+  src: url("../fonts/zx_spectrum-7_bold.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}

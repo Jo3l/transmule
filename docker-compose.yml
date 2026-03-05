@@ -98,6 +98,7 @@ services:
       - ${DATA_DIR:-./data}:/app/data
       - ${DOWNLOAD_DIR:-./downloads}:/downloads:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - amule-config:/amule-config:rw
     environment:
       NITRO_AMULE_HOST: amule
       NITRO_AMULE_PORT: 4712
@@ -110,6 +111,7 @@ services:
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
       NITRO_DOWNLOADS_DIR: /downloads
+      NITRO_AMULE_CONFIG_DIR: /amule-config
     depends_on:
       - amule
       - transmission

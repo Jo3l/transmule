@@ -648,8 +648,10 @@ class AmuleECClient {
 
       if (prefs.general) {
         const g = prefs.general;
-        const subs: any[] = [new StringTag(0x1201, g.userNick)]; // EC_TAG_USER_NICK
-        if (g.checkNewVersion) subs.push(new UByteTag(0x1204, 0)); // presence = true
+        const subs: any[] = [
+          new StringTag(0x1201, g.userNick), // EC_TAG_USER_NICK
+          new UByteTag(0x1204, g.checkNewVersion ? 1 : 0), // EC_TAG_GENERAL_CHECK_NEW_VERSION
+        ];
         topTags.push(new UByteTag(0x1200, 0, subs)); // EC_TAG_PREFS_GENERAL
       }
 
@@ -665,23 +667,23 @@ class AmuleECClient {
           new UShortTag(0x1307, c.udpPort), // EC_TAG_CONN_UDP_PORT
           new UIntTag(0x1309, c.maxFileSources), // EC_TAG_CONN_MAX_FILE_SOURCES
           new UIntTag(0x130a, c.maxConnections), // EC_TAG_CONN_MAX_CONN
+          new UByteTag(0x130b, c.autoconnect ? 1 : 0), // EC_TAG_CONN_AUTOCONNECT
+          new UByteTag(0x130c, c.reconnect ? 1 : 0), // EC_TAG_CONN_RECONNECT
+          new UByteTag(0x130d, c.networkED2K ? 1 : 0), // EC_TAG_NETWORK_ED2K
+          new UByteTag(0x130e, c.networkKademlia ? 1 : 0), // EC_TAG_NETWORK_KADEMLIA
         ];
-        if (c.autoconnect) subs.push(new UByteTag(0x130b, 0)); // EC_TAG_CONN_AUTOCONNECT
-        if (c.reconnect) subs.push(new UByteTag(0x130c, 0)); // EC_TAG_CONN_RECONNECT
-        if (c.networkED2K) subs.push(new UByteTag(0x130d, 0)); // EC_TAG_NETWORK_ED2K
-        if (c.networkKademlia) subs.push(new UByteTag(0x130e, 0)); // EC_TAG_NETWORK_KADEMLIA
         topTags.push(new UByteTag(0x1300, 0, subs)); // EC_TAG_PREFS_CONNECTIONS
       }
 
       if (prefs.servers) {
         const s = prefs.servers;
         const subs: any[] = [
+          new UByteTag(0x1701, s.removeDead ? 1 : 0), // EC_TAG_SERVERS_REMOVE_DEAD
           new UShortTag(0x1702, s.deadRetries), // EC_TAG_SERVERS_DEAD_SERVER_RETRIES
+          new UByteTag(0x1707, s.useScoreSystem ? 1 : 0), // EC_TAG_SERVERS_USE_SCORE_SYSTEM
+          new UByteTag(0x1708, s.smartIdCheck ? 1 : 0), // EC_TAG_SERVERS_SMART_ID_CHECK
           new StringTag(0x170c, s.updateUrl), // EC_TAG_SERVERS_UPDATE_URL
         ];
-        if (s.removeDead) subs.push(new UByteTag(0x1701, 0)); // EC_TAG_SERVERS_REMOVE_DEAD
-        if (s.useScoreSystem) subs.push(new UByteTag(0x1707, 0)); // EC_TAG_SERVERS_USE_SCORE_SYSTEM
-        if (s.smartIdCheck) subs.push(new UByteTag(0x1708, 0)); // EC_TAG_SERVERS_SMART_ID_CHECK
         topTags.push(new UByteTag(0x1700, 0, subs)); // EC_TAG_PREFS_SERVERS
       }
 
@@ -689,17 +691,17 @@ class AmuleECClient {
         const sec = prefs.security;
         const subs: any[] = [
           new UByteTag(0x1c01, sec.canSeeShares), // EC_TAG_SECURITY_CAN_SEE_SHARES
+          new UByteTag(0x1c02, sec.ipFilterClients ? 1 : 0), // EC_TAG_IPFILTER_CLIENTS
+          new UByteTag(0x1c03, sec.ipFilterServers ? 1 : 0), // EC_TAG_IPFILTER_SERVERS
+          new UByteTag(0x1c04, sec.ipFilterAutoUpdate ? 1 : 0), // EC_TAG_IPFILTER_AUTO_UPDATE
           new StringTag(0x1c05, sec.ipFilterUpdateUrl), // EC_TAG_IPFILTER_UPDATE_URL
           new UByteTag(0x1c06, sec.ipFilterLevel), // EC_TAG_IPFILTER_LEVEL
+          new UByteTag(0x1c07, sec.filterLan ? 1 : 0), // EC_TAG_IPFILTER_FILTER_LAN
+          new UByteTag(0x1c08, sec.useSecIdent ? 1 : 0), // EC_TAG_SECURITY_USE_SECIDENT
+          new UByteTag(0x1c09, sec.obfuscationSupported ? 1 : 0), // EC_TAG_SECURITY_OBFUSCATION_SUPPORTED
+          new UByteTag(0x1c0a, sec.obfuscationRequested ? 1 : 0), // EC_TAG_SECURITY_OBFUSCATION_REQUESTED
+          new UByteTag(0x1c0b, sec.obfuscationRequired ? 1 : 0), // EC_TAG_SECURITY_OBFUSCATION_REQUIRED
         ];
-        if (sec.ipFilterClients) subs.push(new UByteTag(0x1c02, 0)); // EC_TAG_IPFILTER_CLIENTS
-        if (sec.ipFilterServers) subs.push(new UByteTag(0x1c03, 0)); // EC_TAG_IPFILTER_SERVERS
-        if (sec.ipFilterAutoUpdate) subs.push(new UByteTag(0x1c04, 0)); // EC_TAG_IPFILTER_AUTO_UPDATE
-        if (sec.filterLan) subs.push(new UByteTag(0x1c07, 0)); // EC_TAG_IPFILTER_FILTER_LAN
-        if (sec.useSecIdent) subs.push(new UByteTag(0x1c08, 0)); // EC_TAG_SECURITY_USE_SECIDENT
-        if (sec.obfuscationSupported) subs.push(new UByteTag(0x1c09, 0)); // EC_TAG_SECURITY_OBFUSCATION_SUPPORTED
-        if (sec.obfuscationRequested) subs.push(new UByteTag(0x1c0a, 0)); // EC_TAG_SECURITY_OBFUSCATION_REQUESTED
-        if (sec.obfuscationRequired) subs.push(new UByteTag(0x1c0b, 0)); // EC_TAG_SECURITY_OBFUSCATION_REQUIRED
         topTags.push(new UByteTag(0x1c00, 0, subs)); // EC_TAG_PREFS_SECURITY
       }
 

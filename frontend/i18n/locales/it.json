@@ -543,6 +543,10 @@
     "xp": {
       "name": "Windows XP",
       "description": "Interfaccia classica Luna con Tahoma, pulsanti 3D e barre del titolo blu"
+    },
+    "spectrum": {
+      "name": "ZX Spectrum",
+      "description": "Palette autentica ZX Spectrum 48K con font pixel"
     }
   },
   "errors": {
@@ -725,17 +729,7 @@
     "obfuscationSupported": "Supportato",
     "obfuscationRequested": "Richiesto",
     "obfuscationRequired": "Obbligatorio",
-    "useSecIdent": "Usa identificazione sicura",
-    "sectionIdentity": "Identità",
-    "sectionBandwidth": "Capacità di banda",
-    "sectionSpeedLimits": "Limiti di velocità",
-    "sectionLimits": "Limiti di connessione",
-    "sectionBehavior": "Comportamento",
-    "sectionNetworks": "Reti",
-    "sectionServerManagement": "Gestione server",
-    "sectionServerList": "Lista server",
-    "sectionAccessControl": "Controllo accesso",
-    "sectionSecureIdent": "Identificazione sicura"
+    "useSecIdent": "Usa identificazione sicura"
   },
   "torrentSearch": {
     "title": "Cerca Torrent",
@@ -832,6 +826,7 @@
     "empty": "Questa cartella è vuota",
     "dropToUpload": "Trascina i file qui per caricarli",
     "uploading": "Caricamento…",
+    "uploadingMultiple": "Caricamento di {count} file…",
     "confirmDelete": "Eliminare \"{ name }\"?",
     "confirmDeleteMultiple": "Eliminare {count} elementi?",
     "notConfigured": "La directory dei download non è configurata. Imposta la variabile d'ambiente NITRO_DOWNLOADS_DIR.",
@@ -848,6 +843,37 @@
     "srSuggested": "Nuovo nome",
     "ctxOpen": "Apri",
     "playInWebamp": "Riproduci in Webamp",
-    "ctxSelected": "{count} elementi selezionati"
+    "playAllWithWebamp": "Riproduci {count} MP3 con Webamp",
+    "move": "Sposta",
+    "copy": "Copia",
+    "moveSelected": "Sposta {count} elementi",
+    "copySelected": "Copia {count} elementi",
+    "moveTitle": "Sposta in…",
+    "copyTitle": "Copia in…",
+    "transferHint": "{count} elemento/i verrà/verranno {mode}to/i nella cartella selezionata. L'operazione viene eseguita in background.",
+    "transferStarted": "{mode} avviato in background",
+    "transferDone": "{mode} completato",
+    "transferError": "Trasferimento fallito: {error}",
+    "ctxSelected": "{count} elementi selezionati",
+    "transfers": "Attività in background",
+    "clearDone": "Rimuovi completati",
+    "queued": "In coda",
+    "noTransfers": "Nessun trasferimento",
+    "extract": "estrai",
+    "compress": "comprimi",
+    "extractHere": "Estrai qui",
+    "extractToFolder": "Estrai in \"{name}\"",
+    "extractTo": "Estrai in\u2026",
+    "extractTitle": "Estrai in\u2026",
+    "extractHint": "\u201c{name}\u201d verr\u00e0 estratto nella cartella selezionata.",
+    "destination": "Destinazione",
+    "compressSelected": "Comprimi ({count})",
+    "compressTitle": "Crea archivio",
+    "compressFormat": "Formato",
+    "compressName": "Nome archivio",
+    "extractDone": "Estrazione completata",
+    "compressDone": "Compressione completata",
+    "extractStarted": "Estrazione avviata in background",
+    "compressStarted": "Compressione avviata in background"
   }
 }

@@ -10,12 +10,10 @@
       ]"
     >
       <template #tab-amule
-        ><span class="mdi mdi-text-box mr-1" />
-        {{ $t("log.amuleLog") }}</template
+        ><span class="mdi mdi-text-box mr-1" /> {{ $t("log.amuleLog") }}</template
       >
       <template #tab-server
-        ><span class="mdi mdi-server mr-1" />
-        {{ $t("log.serverLog") }}</template
+        ><span class="mdi mdi-server mr-1" /> {{ $t("log.serverLog") }}</template
       >
 
       <STabPane name="amule" :active="activeTab === 'amule'">
@@ -23,12 +21,7 @@
           <pre>{{ amuleLog || $t("log.noData") }}</pre>
         </div>
         <div class="buttons mt-3">
-          <SButton
-            variant="primary"
-            size="sm"
-            @click="refresh"
-            :loading="loading"
-          >
+          <SButton variant="primary" size="sm" @click="refresh" :loading="loading">
             <span class="mdi mdi-refresh mr-1" /> {{ $t("log.refresh") }}
           </SButton>
         </div>
@@ -39,12 +32,7 @@
           <pre>{{ serverLog || $t("log.noData") }}</pre>
         </div>
         <div class="buttons mt-3">
-          <SButton
-            variant="primary"
-            size="sm"
-            @click="refresh"
-            :loading="loading"
-          >
+          <SButton variant="primary" size="sm" @click="refresh" :loading="loading">
             <span class="mdi mdi-refresh mr-1" /> {{ $t("log.refresh") }}
           </SButton>
         </div>
@@ -56,8 +44,12 @@
 <script setup lang="ts">
 const { apiFetch } = useApi();
 const { amuleRunning } = useServiceGuard();
+const route = useRoute();
+const router = useRouter();
 
-const activeTab = ref("amule");
+const VALID_TABS = ["amule", "server"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "amule");
+watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const amuleLog = ref("");
 const serverLog = ref("");
 const loading = ref(false);

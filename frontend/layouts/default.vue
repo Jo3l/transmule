@@ -5,11 +5,7 @@
     <div class="app-main">
       <div class="app-topbar">
         <div class="flex-center gap-md">
-          <SButton
-            size="sm"
-            class="is-hidden-tablet"
-            @click="sidebarOpen = !sidebarOpen"
-          >
+          <SButton size="sm" class="is-hidden-tablet" @click="sidebarOpen = !sidebarOpen">
             <span class="mdi mdi-menu" />
           </SButton>
           <LazyConnectionStatus class="is-hidden-mobile" />
@@ -17,6 +13,10 @@
 
         <div class="flex-center gap-md">
           <LazyServiceDropdown />
+          <!-- Transfer jobs systray -->
+          <ClientOnly>
+            <LazyTransferSystray />
+          </ClientOnly>
           <span class="has-text-grey-dark is-size-7">
             <STag size="sm" class="ml-1">
               <span class="mdi mdi-account" /> {{ user?.username }}
@@ -34,6 +34,11 @@
     </div>
 
     <LazySToastContainer />
+
+    <!-- ── Webamp — mounted here so it persists across route changes ── -->
+    <ClientOnly>
+      <Webamp v-if="webampTrack" :key="webampKey" :track="webampTrack" />
+    </ClientOnly>
   </div>
 </template>
 
@@ -41,6 +46,12 @@
 const sidebarOpen = ref(false);
 const auth = useAuth();
 const user = auth.user;
+
+// Ensure transfer job polling resumes after page refresh
+useTransferJobs();
+
+// Global Webamp state — persists across route changes
+const { webampTrack, webampKey } = useWebamp();
 
 function doLogout() {
   auth.clear();

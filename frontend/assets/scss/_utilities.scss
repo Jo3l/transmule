@@ -1,0 +1,148 @@
+/* ── Key-Value list (flex-based replacement for <table> key/value rows) ── */
+.kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.kv-row {
+  display: flex;
+  align-items: baseline;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  gap: 0.75rem;
+}
+.kv-label {
+  flex: 0 0 140px;
+  color: var(--s-text-muted);
+  white-space: nowrap;
+}
+.kv-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--s-text);
+}
+
+/* ── Flex layout utilities ──────────────────────────────────────────────── */
+.flex-row {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+}
+.flex-end {
+  display: flex;
+  justify-content: flex-end;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.flex-1 {
+  flex: 1;
+}
+.ml-auto {
+  margin-left: auto;
+}
+.gap-xs {
+  gap: 0.3rem;
+}
+.gap-sm {
+  gap: 0.5rem;
+}
+.gap-md {
+  gap: 0.75rem;
+}
+.gap-lg {
+  gap: 1.5rem;
+}
+
+/* ── Icon sizing ────────────────────────────────────────────────────────── */
+.icon-sm {
+  font-size: 1.1em;
+}
+.icon-md {
+  font-size: 1.5rem;
+}
+.icon-lg {
+  font-size: 2rem;
+}
+.icon-xl {
+  font-size: 2.5rem;
+}
+.icon-2xl {
+  font-size: 3rem;
+}
+
+/* ── Text color utilities ───────────────────────────────────────────────── */
+.text-warning {
+  color: var(--s-warning);
+}
+.text-accent {
+  color: var(--s-accent);
+}
+.text-info {
+  color: var(--s-info);
+}
+.text-muted {
+  color: var(--s-text-muted);
+}
+
+/* ── Form field width constraints ───────────────────────────────────────── */
+/* Fixed widths — for number inputs, selects */
+.w-120 {
+  width: 120px;
+}
+.w-130 {
+  width: 130px;
+}
+.w-140 {
+  width: 140px;
+}
+.w-150 {
+  width: 150px;
+}
+.w-160 {
+  width: 160px;
+}
+.w-200 {
+  width: 200px;
+}
+/* Max widths — for text inputs */
+.mw-200 {
+  max-width: 200px;
+}
+.mw-280 {
+  max-width: 280px;
+}
+.mw-320 {
+  max-width: 320px;
+}
+.mw-400 {
+  max-width: 400px;
+}
+.mw-420 {
+  max-width: 420px;
+}
+.mw-500 {
+  max-width: 500px;
+}
+
+/* ── Auth pages logo ────────────────────────────────────────────────────── */
+.auth-logo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Totals bar (shared by downloads, uploads, shared pages) ────────────── */
+.totals-bar {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+.total-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
