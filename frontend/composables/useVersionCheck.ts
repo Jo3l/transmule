@@ -17,7 +17,8 @@ export function useVersionCheck() {
   onMounted(async () => {
     try {
       const res = await fetch(
-        `https://raw.githubusercontent.com/${GITHUB_REPO}/main/frontend/package.json`,
+        `https://raw.githubusercontent.com/${GITHUB_REPO}/main/frontend/package.json?t=${Date.now()}`,
+        { cache: "no-store" },
       );
       if (!res.ok) return;
       const pkg = await res.json();
