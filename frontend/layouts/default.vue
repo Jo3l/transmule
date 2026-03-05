@@ -50,6 +50,9 @@ const user = auth.user;
 // Ensure transfer job polling resumes after page refresh
 useTransferJobs();
 
+// Check for newer version on GitHub
+useVersionCheck();
+
 // Global Webamp state — persists across route changes
 const { webampTrack, webampKey } = useWebamp();
 

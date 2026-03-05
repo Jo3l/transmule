@@ -4,11 +4,14 @@
       <div
         v-for="t in toasts"
         :key="t.id"
-        :class="['s-toast', `s-toast--${t.type}`]"
-        @click="removeToast(t.id)"
+        :class="['s-toast', `s-toast--${t.type}`, { 's-toast--persistent': t.persistent }]"
+        @click="!t.persistent && removeToast(t.id)"
       >
         <span class="mdi" :class="iconFor(t.type)" />
-        {{ t.message }}
+        <span class="s-toast__body">{{ t.message }}</span>
+        <button v-if="t.persistent" class="s-toast__close" @click.stop="removeToast(t.id)">
+          <span class="mdi mdi-close" />
+        </button>
       </div>
     </div>
   </Teleport>

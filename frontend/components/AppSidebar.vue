@@ -4,7 +4,10 @@
     <div class="sidebar-content">
       <div class="sidebar-brand">
         <img src="~/assets/logo/logo64.png" alt="TransMule" class="sidebar-logo" />
-        {{ $t("app.title") }}
+        <div class="sidebar-brand-text">
+          {{ $t("app.title") }}
+          <span class="sidebar-version">v{{ APP_VERSION }}</span>
+        </div>
       </div>
       <div class="menu">
         <ul class="menu-list">
@@ -162,6 +165,8 @@
 </template>
 
 <script setup lang="ts">
+import { APP_VERSION } from "~/utils/constants";
+
 defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
 

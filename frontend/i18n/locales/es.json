@@ -1,7 +1,9 @@
 {
   "app": {
     "title": "TransMule",
-    "admin": "admin"
+    "admin": "admin",
+    "updateAvailable": "Nueva versión v{latest} disponible (tienes v{current})",
+    "updateInstructions": "Para actualizar, ejecuta en tu servidor: git pull && docker compose up -d --build"
   },
   "nav": {
     "downloads": "Descargas",

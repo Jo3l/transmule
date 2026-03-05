@@ -807,6 +807,32 @@ textarea.s-input {
   align-items: center;
   gap: 0.5rem;
   max-width: 400px;
+  cursor: pointer;
+  &.s-toast--persistent {
+    max-width: 480px;
+    cursor: default;
+    .s-toast__body {
+      white-space: pre-line;
+    }
+  }
+  .s-toast__body {
+    flex: 1;
+  }
+  .s-toast__close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0 0 0 0.25rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    &:hover {
+      opacity: 1;
+    }
+  }
   &.s-toast--success {
     background: var(--s-success);
     color: var(--s-text-inverse);
@@ -882,4 +908,3 @@ textarea.s-input {
     transform: translateY(0);
   }
 }
-

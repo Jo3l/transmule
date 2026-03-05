@@ -43,7 +43,7 @@
     font-weight: 700;
     border-bottom: 1px solid var(--s-sidebar-border);
     display: flex;
-    align-items: end;
+    align-items: center;
     gap: 0.5rem;
     color: var(--s-accent);
     .sidebar-logo {
@@ -53,6 +53,17 @@
       flex-shrink: 0;
       vertical-align: middle;
       display: block;
+    }
+    .sidebar-brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .sidebar-version {
+      font-size: 0.6rem;
+      font-weight: 400;
+      opacity: 0.55;
+      letter-spacing: 0.03em;
     }
   }
 
@@ -218,4 +229,3 @@
   max-width: 400px;
   padding: 2rem;
 }
-
