@@ -14,7 +14,9 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const client = usePyLoadClient();
 
   try {

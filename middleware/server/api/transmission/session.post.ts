@@ -13,6 +13,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const body = await readBody(event);
   if (!body || typeof body !== "object") {
     throw createError({ statusCode: 400, statusMessage: "Body required" });

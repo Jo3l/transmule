@@ -13,7 +13,9 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   // Fetch aMule upload queue and Transmission upload peers in parallel
   const amuleClient = useAmuleClient();
   const trClient = useTransmissionClient();

@@ -22,6 +22,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const query = getQuery(event);
   const rawId = query.id;
 

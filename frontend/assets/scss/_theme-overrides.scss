@@ -621,12 +621,7 @@
 
   /* ═══ Sidebar: XP Task Pane ═══ */
   .app-sidebar {
-    background: linear-gradient(
-      180deg,
-      var(--xp-taskpane-start) 0%,
-      var(--xp-taskpane-mid) 35%,
-      var(--xp-taskpane-start) 100%
-    );
+    background-color: var(--s-bg-sidebar);
     border-right: 2px solid;
     border-color: #001a66;
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.25);
@@ -1123,4 +1118,3 @@
     }
   }
 }
-

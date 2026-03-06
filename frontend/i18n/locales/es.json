@@ -28,6 +28,8 @@
     "pyload": "pyLoad",
     "pyloadDownloads": "Descargas",
     "disabled": "Detenido",
+    "movies": "Películas",
+    "shows": "Series",
     "files": "Archivos"
   },
   "connection": {
@@ -523,7 +525,23 @@
     "tvdbKeyPlaceholder": "Pega aquí tu clave API de TVDB",
     "tvdbKeySet": "Hay una clave API de TVDB configurada. El renombrado inteligente usará TVDB.",
     "tvdbKeyNotSet": "No hay clave API de TVDB configurada. El renombrado inteligente solo usará patrones.",
-    "tvdbKeyClear": "Borrar clave"
+    "tvdbKeyClear": "Borrar clave",
+    "downloadHistory": "Historial de descargas",
+    "downloadHistoryTitle": "Historial de descargas",
+    "downloadHistoryDescription": "Cada archivo enviado a descargar. Hasta 50 entradas por página.",
+    "downloadHistoryEmpty": "Aún no hay historial de descargas.",
+    "downloadHistoryColumns": {
+      "title": "Título / URL",
+      "service": "Origen",
+      "date": "Descargado"
+    },
+    "downloadHistoryReDownload": "Descargar",
+    "downloadHistoryRemove": "Eliminar",
+    "downloadHistoryPage": "Página {page} de {pages}",
+    "downloadHistoryPrev": "Anterior",
+    "downloadHistoryNext": "Siguiente",
+    "downloadHistorySent": "Enviado a Transmission",
+    "downloadHistoryRemoved": "Entrada eliminada"
   },
   "themes": {
     "tron": {
@@ -560,9 +578,13 @@
     "connectionRestored": "Conexión con aMule restaurada"
   },
   "transmission": {
-    "settings": { "title": "Configuración de Transmission" },
+    "settings": {
+      "title": "Configuración de Transmission"
+    },
     "downloadOptions": "Opciones de descarga",
-    "trackers": { "title": "BT Trackers" },
+    "trackers": {
+      "title": "BT Trackers"
+    },
     "speed": {
       "title": "Límites de velocidad",
       "normal": "Límites de velocidad normales",
@@ -877,5 +899,47 @@
     "compressDone": "Compresión completada",
     "extractStarted": "Extracción iniciada en segundo plano",
     "compressStarted": "Compresión iniciada en segundo plano"
+  },
+  "movies": {
+    "title": "Películas",
+    "refresh": "Actualizar",
+    "searchPlaceholder": "Buscar películas...",
+    "filterAll": "Todas",
+    "labelSearch": "Búsqueda",
+    "labelGenre": "Género",
+    "labelQuality": "Calidad",
+    "labelSort": "Ordenar por",
+    "labelRating": "Puntuación mín.",
+    "sortLatest": "Últimas",
+    "sortYear": "Año",
+    "sortRating": "Puntuación",
+    "sortSeeds": "Seeds",
+    "sortDownloads": "Descargas",
+    "sortLiked": "Más gustadas",
+    "sortTitle": "Título",
+    "expand": "Leer más",
+    "collapse": "Mostrar menos",
+    "empty": "No se encontraron películas.",
+    "fetchError": "Error al cargar las películas",
+    "addToTransmission": "Añadir a Transmission",
+    "addError": "Error al añadir el torrent",
+    "noTorrent": "No se encontró torrent para esta película",
+    "download": "Descargar",
+    "saveUrl": "Guardar"
+  },
+  "shows": {
+    "title": "Series",
+    "subtitle": "Series añadidas recientemente en ",
+    "refresh": "Actualizar",
+    "expand": "Leer más",
+    "collapse": "Mostrar menos",
+    "empty": "No se encontraron series.",
+    "fetchError": "Error al cargar las series",
+    "addToTransmission": "Añadir a Transmission",
+    "addError": "Error al añadir el torrent",
+    "saveUrl": "Guardar",
+    "noTorrent": "No se encontró torrent para esta serie",
+    "episodes": "episodios",
+    "download": "Descargar"
   }
 }

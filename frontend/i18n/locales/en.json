@@ -28,6 +28,8 @@
     "pyload": "pyLoad",
     "pyloadDownloads": "Downloads",
     "disabled": "Stopped",
+    "movies": "Movies",
+    "shows": "Shows",
     "files": "Files"
   },
   "connection": {
@@ -80,7 +82,13 @@
     "addTorrent": "Add Torrent",
     "addEd2k": "Add ED2K Link",
     "addPyload": "Add Direct Download",
-    "files": "files",
+    "files": {
+      "title": "Files",
+      "loading": "Loading files...",
+      "name": "Name",
+      "size": "Size",
+      "progress": "Progress"
+    },
     "torrents": "torrents",
     "total": "total",
     "packages": "pkgs",
@@ -203,13 +211,6 @@
       "speed": "Speed",
       "upSpeed": "Up Speed",
       "ip": "IP"
-    },
-    "files": {
-      "title": "Files",
-      "loading": "Loading files...",
-      "name": "Name",
-      "size": "Size",
-      "progress": "Progress"
     },
     "peersTab": {
       "title": "Peers",
@@ -524,7 +525,23 @@
     "tvdbKeyPlaceholder": "Paste your TVDB API key here",
     "tvdbKeySet": "A TVDB API key is configured. Smart Rename will use TVDB for name lookup.",
     "tvdbKeyNotSet": "No TVDB API key configured. Smart Rename will use pattern matching only.",
-    "tvdbKeyClear": "Clear Key"
+    "tvdbKeyClear": "Clear Key",
+    "downloadHistory": "Download History",
+    "downloadHistoryTitle": "Download History",
+    "downloadHistoryDescription": "Every file sent to download. Up to 50 entries per page.",
+    "downloadHistoryEmpty": "No download history yet.",
+    "downloadHistoryColumns": {
+      "title": "Title / URL",
+      "service": "Source",
+      "date": "Downloaded"
+    },
+    "downloadHistoryReDownload": "Download",
+    "downloadHistoryRemove": "Delete",
+    "downloadHistoryPage": "Page {page} of {pages}",
+    "downloadHistoryPrev": "Previous",
+    "downloadHistoryNext": "Next",
+    "downloadHistorySent": "Sent to Transmission",
+    "downloadHistoryRemoved": "Entry removed"
   },
   "themes": {
     "tron": {
@@ -561,9 +578,13 @@
     "connectionRestored": "aMule connection restored"
   },
   "transmission": {
-    "settings": { "title": "Transmission Settings" },
+    "settings": {
+      "title": "Transmission Settings"
+    },
     "downloadOptions": "Download Options",
-    "trackers": { "title": "BT Trackers" },
+    "trackers": {
+      "title": "BT Trackers"
+    },
     "speed": {
       "title": "Speed Limits",
       "normal": "Normal Speed Limits",
@@ -866,9 +887,9 @@
     "compress": "compress",
     "extractHere": "Extract here",
     "extractToFolder": "Extract to \"{name}\"",
-    "extractTo": "Extract to\u2026",
-    "extractTitle": "Extract to\u2026",
-    "extractHint": "\u201c{name}\u201d will be extracted to the selected folder.",
+    "extractTo": "Extract to…",
+    "extractTitle": "Extract to…",
+    "extractHint": "“{name}” will be extracted to the selected folder.",
     "destination": "Destination",
     "compressSelected": "Compress ({count})",
     "compressTitle": "Create archive",
@@ -878,5 +899,47 @@
     "compressDone": "Compression completed",
     "extractStarted": "Extraction started in the background",
     "compressStarted": "Compression started in the background"
+  },
+  "movies": {
+    "title": "Movies",
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search movies...",
+    "filterAll": "All",
+    "labelSearch": "Search",
+    "labelGenre": "Genre",
+    "labelQuality": "Quality",
+    "labelSort": "Sort by",
+    "labelRating": "Min. rating",
+    "sortLatest": "Latest",
+    "sortYear": "Year",
+    "sortRating": "Rating",
+    "sortSeeds": "Seeds",
+    "sortDownloads": "Downloads",
+    "sortLiked": "Most liked",
+    "sortTitle": "Title",
+    "expand": "Read more",
+    "collapse": "Show less",
+    "empty": "No movies found.",
+    "fetchError": "Failed to load movies",
+    "addToTransmission": "Add to Transmission",
+    "addError": "Failed to add torrent",
+    "noTorrent": "No torrent found for this movie",
+    "download": "Download",
+    "saveUrl": "Save"
+  },
+  "shows": {
+    "title": "Shows",
+    "subtitle": "Recently added shows on ",
+    "refresh": "Refresh",
+    "expand": "Read more",
+    "collapse": "Show less",
+    "empty": "No shows found.",
+    "fetchError": "Failed to load shows",
+    "addToTransmission": "Add to Transmission",
+    "addError": "Failed to add torrent",
+    "saveUrl": "Save",
+    "noTorrent": "No torrent found for this series",
+    "episodes": "episodes",
+    "download": "Download"
   }
 }

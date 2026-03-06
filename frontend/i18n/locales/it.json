@@ -28,6 +28,8 @@
     "pyload": "pyLoad",
     "pyloadDownloads": "Download",
     "disabled": "Fermo",
+    "movies": "Film",
+    "shows": "Serie TV",
     "files": "File"
   },
   "connection": {
@@ -523,7 +525,23 @@
     "tvdbKeyPlaceholder": "Incolla qui la tua chiave API TVDB",
     "tvdbKeySet": "Una chiave API TVDB è configurata. Il rinomino intelligente userà TVDB.",
     "tvdbKeyNotSet": "Nessuna chiave API TVDB configurata. Il rinomino intelligente userà solo i pattern.",
-    "tvdbKeyClear": "Cancella chiave"
+    "tvdbKeyClear": "Cancella chiave",
+    "downloadHistory": "Cronologia download",
+    "downloadHistoryTitle": "Cronologia download",
+    "downloadHistoryDescription": "Ogni file inviato al download. Fino a 50 voci per pagina.",
+    "downloadHistoryEmpty": "Nessuna cronologia di download.",
+    "downloadHistoryColumns": {
+      "title": "Titolo / URL",
+      "service": "Origine",
+      "date": "Scaricato"
+    },
+    "downloadHistoryReDownload": "Scarica",
+    "downloadHistoryRemove": "Elimina",
+    "downloadHistoryPage": "Pagina {page} di {pages}",
+    "downloadHistoryPrev": "Precedente",
+    "downloadHistoryNext": "Successivo",
+    "downloadHistorySent": "Inviato a Transmission",
+    "downloadHistoryRemoved": "Voce rimossa"
   },
   "themes": {
     "tron": {
@@ -560,9 +578,13 @@
     "connectionRestored": "Connessione ad aMule ripristinata"
   },
   "transmission": {
-    "settings": { "title": "Impostazioni Transmission" },
+    "settings": {
+      "title": "Impostazioni Transmission"
+    },
     "downloadOptions": "Opzioni di download",
-    "trackers": { "title": "BT Tracker" },
+    "trackers": {
+      "title": "BT Tracker"
+    },
     "speed": {
       "title": "Limiti velocità",
       "normal": "Limiti velocità normali",
@@ -865,9 +887,9 @@
     "compress": "comprimi",
     "extractHere": "Estrai qui",
     "extractToFolder": "Estrai in \"{name}\"",
-    "extractTo": "Estrai in\u2026",
-    "extractTitle": "Estrai in\u2026",
-    "extractHint": "\u201c{name}\u201d verr\u00e0 estratto nella cartella selezionata.",
+    "extractTo": "Estrai in…",
+    "extractTitle": "Estrai in…",
+    "extractHint": "“{name}” verrà estratto nella cartella selezionata.",
     "destination": "Destinazione",
     "compressSelected": "Comprimi ({count})",
     "compressTitle": "Crea archivio",
@@ -877,5 +899,47 @@
     "compressDone": "Compressione completata",
     "extractStarted": "Estrazione avviata in background",
     "compressStarted": "Compressione avviata in background"
+  },
+  "movies": {
+    "title": "Film",
+    "refresh": "Aggiorna",
+    "searchPlaceholder": "Cerca film...",
+    "filterAll": "Tutti",
+    "labelSearch": "Ricerca",
+    "labelGenre": "Genere",
+    "labelQuality": "Qualità",
+    "labelSort": "Ordina per",
+    "labelRating": "Valut. min.",
+    "sortLatest": "Recenti",
+    "sortYear": "Anno",
+    "sortRating": "Valutazione",
+    "sortSeeds": "Seeds",
+    "sortDownloads": "Download",
+    "sortLiked": "Più apprezzati",
+    "sortTitle": "Titolo",
+    "expand": "Leggi di più",
+    "collapse": "Mostra meno",
+    "empty": "Nessun film trovato.",
+    "fetchError": "Errore nel caricamento dei film",
+    "addToTransmission": "Aggiungi a Transmission",
+    "addError": "Errore nell'aggiunta del torrent",
+    "noTorrent": "Nessun torrent trovato per questo film",
+    "download": "Scarica",
+    "saveUrl": "Salva"
+  },
+  "shows": {
+    "title": "Serie TV",
+    "subtitle": "Serie aggiunte di recente su ",
+    "refresh": "Aggiorna",
+    "expand": "Leggi di più",
+    "collapse": "Mostra meno",
+    "empty": "Nessuna serie trovata.",
+    "fetchError": "Errore nel caricamento delle serie",
+    "addToTransmission": "Aggiungi a Transmission",
+    "addError": "Errore nell'aggiunta del torrent",
+    "saveUrl": "Salva",
+    "noTorrent": "Nessun torrent trovato per questa serie",
+    "episodes": "episodi",
+    "download": "Scarica"
   }
 }

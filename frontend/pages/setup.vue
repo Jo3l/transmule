@@ -87,7 +87,11 @@ async function doSetup() {
 onMounted(async () => {
   const canvas = document.getElementById("c");
   if (canvas && canvasEnabled.value) {
-    const { init } = await import("~/assets/scenes/scene.js");
+    const theme = document.documentElement.getAttribute("data-theme");
+    const { init } =
+      theme === "matrix"
+        ? await import("~/assets/scenes/scene-matrix.js")
+        : await import("~/assets/scenes/scene.js");
     destroyScene = init(canvas);
   }
   try {

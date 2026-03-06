@@ -75,20 +75,23 @@ services:
     networks:
       - transmule
 
-  # ── API Middleware (Nitro.js) ────────────────────────────────────────────
-  middleware:
-    image: enriquito/transmule-middleware:latest
-    container_name: transmule-middleware
+  # ── App (Nitro API + Nuxt SPA via nginx) ─────────────────────────────────
+  # Single container: supervisord runs nginx (port 3001) and Nitro (loopback).
+  # nginx reverse-proxies /api/* and /_scalar to Nitro internally.
+  app:
+    image: enriquito/transmule:latest
+    container_name: transmule-app
     restart: unless-stopped
     ports:
-      - "${MIDDLEWARE_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-3001}:3001"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/data:/app/data
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads/transmule}:/downloads:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       NITRO_AMULE_HOST: amule
       NITRO_AMULE_PORT: 4712
-      NITRO_AMULE_PASSWORD: ${AMULE_GUI_PASSWORD}
+      NITRO_AMULE_PASSWORD: ${AMULE_GUI_PASSWORD:?AMULE_GUI_PASSWORD is required}
       NITRO_TRANSMISSION_URL: http://transmission:9091/transmission/rpc
       NITRO_TRANSMISSION_USERNAME: ${TRANSMISSION_USER:-}
       NITRO_TRANSMISSION_PASSWORD: ${TRANSMISSION_PASS:-}
@@ -96,24 +99,11 @@ services:
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      NITRO_DOWNLOADS_DIR: /downloads
     depends_on:
       - amule
       - transmission
       - pyload
-    networks:
-      - transmule
-
-  # ── Frontend (Nuxt 3 SPA via nginx) ─────────────────────────────────────
-  # nginx inside this image reverse-proxies /api/* → middleware container,
-  # so no server IP needs to be configured here.
-  frontend:
-    image: enriquito/transmule-frontend:latest
-    container_name: transmule-frontend
-    restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3001}:3001"
-    depends_on:
-      - middleware
     networks:
       - transmule
 

@@ -17,6 +17,7 @@ defineRouteMeta({
 });
 
 export default defineEventHandler((event) => {
+  requireUser(event);
   const { jobId } = getQuery(event);
 
   if (!jobId) {

@@ -173,6 +173,8 @@ async function tvdbSearchName(
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const root = getDownloadsRoot();
   const body = await readBody<{ paths: string[] }>(event);
 

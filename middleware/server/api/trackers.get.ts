@@ -10,7 +10,8 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(() => {
+export default defineEventHandler((event) => {
+  requireUser(event);
   const trackers = getConfig("bt_trackers") ?? "";
   return { trackers };
 });

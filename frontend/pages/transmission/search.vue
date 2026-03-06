@@ -61,7 +61,7 @@
       <template #cell-actions="{ row }">
         <SButton
           v-if="!addedHashes.has(row.infoHash)"
-          variant="success"
+          :variant="isDownloadedByHash(row.infoHash) ? 'warning' : 'success'"
           size="sm"
           :loading="addingHash === row.infoHash"
           :title="$t('torrentSearch.addToTransmission')"
@@ -118,6 +118,7 @@ const { apiFetch } = useApi();
 const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
+const { isDownloadedByHash, recordDownload, loadDownloadHistory } = useDownloadHistory();
 
 // ── Source options ──────────────────────────────────────────────────────────
 
@@ -273,6 +274,7 @@ async function addTorrent(row: SearchResult) {
       body: { action: "add", filename: row.magnet },
     });
     addedHashes.value.add(row.infoHash.toLowerCase());
+    recordDownload(row.magnet, row.name, "transmission");
     addToast(t("torrentSearch.added", { name: row.name }), "success");
   } catch (err: any) {
     addToast(err?.message ?? t("torrentSearch.addError"), "error");
@@ -298,8 +300,9 @@ async function saveAndClose() {
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
-onMounted(() => {
+onMounted(async () => {
   fetchExistingHashes();
+  await loadDownloadHistory();
 });
 </script>
 

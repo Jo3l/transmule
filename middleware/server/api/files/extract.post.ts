@@ -31,6 +31,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const body = await readBody(event);
   const { source, destination } = body ?? {};
 

@@ -50,6 +50,12 @@ export function useTheme() {
     if (import.meta.client) {
       document.documentElement.setAttribute("data-theme", id);
       localStorage.setItem("sark-theme", id);
+      if (canvasEnabled.value) {
+        canvasEnabled.value = false;
+        setTimeout(() => {
+          canvasEnabled.value = true;
+        }, 1000);
+      }
       window.dispatchEvent(new CustomEvent("app-theme-change", { detail: id }));
     }
   }

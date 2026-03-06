@@ -14,6 +14,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const body = await readBody(event);
   // Accept single path or array of paths
   const rawPaths: string[] = Array.isArray(body?.paths)

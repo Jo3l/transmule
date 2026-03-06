@@ -10,7 +10,9 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   try {
     const client = useTransmissionClient();
 

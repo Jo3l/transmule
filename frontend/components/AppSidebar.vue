@@ -1,6 +1,7 @@
 <template>
   <nav id="comp-app-sidebar" class="app-sidebar" :class="{ 'is-open': open }">
     <canvas v-if="canvasEnabled" ref="sidebarCanvas" class="sidebar-scene" aria-hidden="true" />
+    <div v-if="canvasEnabled" class="sidebar-scene-fade" aria-hidden="true" />
     <div class="sidebar-content">
       <div class="sidebar-brand">
         <img src="~/assets/logo/logo64.png" alt="TransMule" class="sidebar-logo" />
@@ -32,6 +33,54 @@
             </NuxtLink>
           </li>
         </ul>
+
+        <!-- Shows collapsible section -->
+        <div class="sidebar-section" :class="{ 'is-expanded': showsOpen }">
+          <a class="sidebar-section-header" @click="showsOpen = !showsOpen">
+            <span class="mdi mdi-television-play"></span>
+            {{ $t("nav.shows") }}
+            <span
+              class="mdi sidebar-section-chevron"
+              :class="showsOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+            />
+          </a>
+          <ul v-show="showsOpen" class="menu-list sidebar-section-list">
+            <li>
+              <NuxtLink to="/shows/showrss" @click="$emit('close')">
+                <span class="mdi mdi-rss"></span> ShowRSS
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/shows/dontorrent" @click="$emit('close')">
+                <span class="mdi mdi-movie-play"></span> DonTorrent
+              </NuxtLink>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Movies collapsible section -->
+        <div class="sidebar-section" :class="{ 'is-expanded': moviesOpen }">
+          <a class="sidebar-section-header" @click="moviesOpen = !moviesOpen">
+            <span class="mdi mdi-movie-open"></span>
+            {{ $t("nav.movies") }}
+            <span
+              class="mdi sidebar-section-chevron"
+              :class="moviesOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+            />
+          </a>
+          <ul v-show="moviesOpen" class="menu-list sidebar-section-list">
+            <li>
+              <NuxtLink to="/movies/yts" @click="$emit('close')">
+                <span class="mdi mdi-filmstrip"></span> YTS
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/movies/dontorrent" @click="$emit('close')">
+                <span class="mdi mdi-movie-play"></span> DonTorrent
+              </NuxtLink>
+            </li>
+          </ul>
+        </div>
 
         <!-- aMule collapsible section -->
         <div
@@ -177,20 +226,32 @@ let themeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const { canvasEnabled } = useTheme();
 
+async function resolveSceneInit(): Promise<(canvas: HTMLCanvasElement) => (() => void) | null> {
+  const theme = document.documentElement.getAttribute("data-theme");
+  if (theme === "matrix") {
+    const { init } = await import("~/assets/scenes/scene-matrix.js");
+    return init;
+  }
+  const { init } = await import("~/assets/scenes/scene.js");
+  return init;
+}
+
 function reinitScene() {
   if (themeTimer) clearTimeout(themeTimer);
-  themeTimer = setTimeout(() => {
-    if (!sidebarCanvas.value || !sceneInit) return;
+  themeTimer = setTimeout(async () => {
+    if (!sidebarCanvas.value) return;
     destroyScene?.();
-    destroyScene = sceneInit(sidebarCanvas.value);
+    sceneInit = await resolveSceneInit();
+    if (sceneInit && sidebarCanvas.value) destroyScene = sceneInit(sidebarCanvas.value);
   }, 1000);
 }
 
 watch(canvasEnabled, async (enabled) => {
   if (enabled) {
     await nextTick();
-    if (!sidebarCanvas.value || !sceneInit) return;
-    destroyScene = sceneInit(sidebarCanvas.value);
+    if (!sidebarCanvas.value) return;
+    sceneInit = await resolveSceneInit();
+    if (sceneInit) destroyScene = sceneInit(sidebarCanvas.value);
   } else {
     destroyScene?.();
     destroyScene = null;
@@ -199,18 +260,19 @@ watch(canvasEnabled, async (enabled) => {
 
 onMounted(async () => {
   if (!canvasEnabled.value || !sidebarCanvas.value) return;
-  const { init } = await import("~/assets/scenes/scene.js");
-  sceneInit = init;
-  destroyScene = init(sidebarCanvas.value);
-  window.addEventListener("sark-theme-change", reinitScene);
+  sceneInit = await resolveSceneInit();
+  destroyScene = sceneInit(sidebarCanvas.value);
+  window.addEventListener("app-theme-change", reinitScene);
 });
 
 onUnmounted(() => {
   if (themeTimer) clearTimeout(themeTimer);
-  window.removeEventListener("sark-theme-change", reinitScene);
+  window.removeEventListener("app-theme-change", reinitScene);
   destroyScene?.();
 });
 
+const showsOpen = ref(true);
+const moviesOpen = ref(true);
 const amuleOpen = ref(true);
 const transmissionOpen = ref(true);
 const pyloadOpen = ref(true);

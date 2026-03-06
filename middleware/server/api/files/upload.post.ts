@@ -18,6 +18,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const form = await readMultipartFormData(event);
   if (!form || form.length === 0) {
     throw createError({ statusCode: 400, statusMessage: "No multipart data" });

@@ -18,6 +18,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const { q, source = "all", limit = "75" } = getQuery(event);
 
   if (!q || typeof q !== "string" || !q.trim()) {

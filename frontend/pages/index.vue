@@ -1354,6 +1354,7 @@ const { apiFetch } = useApi();
 const { t } = useI18n();
 const { addToast } = useToast();
 const { lastStopped, services, loaded } = useServices();
+const { recordDownload } = useDownloadHistory();
 
 const amuleStopped = computed(
   () => loaded.value && services.value !== null && !services.value.amule.running,
@@ -1906,11 +1907,13 @@ async function doAmuleAction(action: string) {
 async function addLink() {
   if (!ed2kLink.value.trim()) return;
   addingLink.value = true;
+  const link = ed2kLink.value.trim();
   try {
     await apiFetch("/api/amule/downloads", {
       method: "POST",
-      body: { action: "add", ed2k_link: ed2kLink.value.trim() },
+      body: { action: "add", ed2k_link: link },
     });
+    recordDownload(link, link, "amule");
     ed2kLink.value = "";
     showAddLink.value = false;
     await refresh();
@@ -2000,13 +2003,17 @@ async function addPyloadPackage() {
     .split(/[\n\s,]+/)
     .map((l) => l.trim())
     .filter(Boolean);
-  if (!pyloadForm.name.trim() || !links.length) return;
+  const name = pyloadForm.name.trim();
+  if (!name || !links.length) return;
   addingPyload.value = true;
   try {
     await apiFetch("/api/pyload/packages", {
       method: "POST",
-      body: { action: "add", name: pyloadForm.name.trim(), links },
+      body: { action: "add", name, links },
     });
+    for (const link of links) {
+      recordDownload(link, name, "pyload");
+    }
     pyloadForm.name = "";
     pyloadForm.links = "";
     showAddPyload.value = false;
@@ -2023,15 +2030,17 @@ async function addPyloadPackage() {
 async function addTorrent() {
   if (!torrentForm.url.trim()) return;
   addingTorrent.value = true;
+  const url = torrentForm.url.trim();
   try {
     await apiFetch("/api/transmission/torrents", {
       method: "POST",
       body: {
         action: "add",
-        filename: torrentForm.url.trim(),
+        filename: url,
         paused: torrentForm.paused,
       },
     });
+    recordDownload(url, url, "transmission");
     torrentForm.url = "";
     torrentForm.paused = false;
     showAddTorrent.value = false;

@@ -44,6 +44,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const body = await readBody(event);
 
   if (!body?.action) {

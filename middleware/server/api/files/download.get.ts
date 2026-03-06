@@ -23,6 +23,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const { path = "" } = getQuery(event);
 
   if (!path) {

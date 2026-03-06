@@ -11,7 +11,9 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const client = useTransmissionClient();
 
   let session: any, stats: any, raw: any;

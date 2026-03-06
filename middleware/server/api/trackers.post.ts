@@ -27,6 +27,8 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
+  requireUser(event);
+
   const body = await readBody<{ trackers?: string }>(event);
   setConfig("bt_trackers", body?.trackers ?? "");
   return { ok: true };
