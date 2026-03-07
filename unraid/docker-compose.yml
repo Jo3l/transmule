@@ -25,8 +25,8 @@ services:
       - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/amule:/home/amule/.aMule
-      - ${DOWNLOAD_DIR:-/mnt/user/downloads/transmule}:/incoming
-      - ${INCOMPLETE_DIR:-/mnt/user/incomplete/transmule}:/temp
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/incoming
+      - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/temp
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
@@ -47,8 +47,8 @@ services:
       - "9091"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/transmission:/config
-      - ${DOWNLOAD_DIR:-/mnt/user/downloads/transmule}:/downloads
-      - ${INCOMPLETE_DIR:-/mnt/user/incomplete/transmule}:/incomplete
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
+      - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/incomplete
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
@@ -67,7 +67,7 @@ services:
       - "8000"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/pyload:/config
-      - ${DOWNLOAD_DIR:-/mnt/user/downloads/transmule}:/downloads
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
@@ -86,7 +86,7 @@ services:
       - "${FRONTEND_PORT:-3001}:3001"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/data:/app/data
-      - ${DOWNLOAD_DIR:-/mnt/user/downloads/transmule}:/downloads:rw
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads:rw
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       NITRO_AMULE_HOST: amule

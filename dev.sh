@@ -7,6 +7,14 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+# ── Require Node.js 22+ (node:sqlite is built-in since 22.5) ─────────────────
+NODE_MAJOR=$(node --version | sed 's/v\([0-9]*\).*/\1/')
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo -e "\033[0;31mError: Node.js 22+ is required (found $(node --version)).\033[0m"
+  echo -e "Run: \033[1mnvm install 22 && nvm use 22\033[0m"
+  exit 1
+fi
+
 # Colors
 CYAN='\033[0;36m'
 GREEN='\033[0;32m'
@@ -20,10 +28,6 @@ for dir in middleware frontend; do
     (cd "$ROOT/$dir" && npm install)
   fi
 done
-
-# ── Rebuild native addons for the current Node version ───────────────────────
-echo -e "${CYAN}▸ Rebuilding native addons…${NC}"
-(cd "$ROOT/middleware" && npm rebuild better-sqlite3 2>/dev/null || true)
 
 # ── Ensure data directory exists ──────────────────────────────────────────────
 mkdir -p "$ROOT/data"
@@ -69,7 +73,7 @@ trap cleanup EXIT INT TERM
 
 # ── Start middleware ──────────────────────────────────────────────────────────
 echo -e "${CYAN}▸ Starting middleware (Nitro) on :3000${NC}"
-(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 npm run dev) &
+(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 NODE_OPTIONS="--experimental-sqlite" npm run dev) &
 MW_PID=$!
 
 # ── Start frontend ───────────────────────────────────────────────────────────
