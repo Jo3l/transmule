@@ -45,7 +45,8 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends nginx supervisor libsqlite3-0 && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data
+    mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data && \
+    chmod 777 /app/data
 
 # ── Middleware artefacts ───────────────────────────────────────────────────
 COPY --from=mw-builder /app/.output                           .output

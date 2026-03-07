@@ -8,7 +8,7 @@
 #   2. Edit .env with your passwords and paths.
 #   3. In the Unraid UI → Docker → Compose Manager → "transmule" → Up.
 #
-# Single image: enriquito/transmule contains both the Nuxt SPA (nginx) and the
+# Single image: ghcr.io/jo3l/transmule contains both the Nuxt SPA (nginx) and the
 # Nitro API (Node.js). Only one port (3001) is exposed. nginx proxies /api/*
 # and /_scalar to Nitro running on loopback inside the container.
 # ─────────────────────────────────────────────────────────────────────────────
