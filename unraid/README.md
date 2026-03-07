@@ -12,6 +12,8 @@ Deploy TransMule on Unraid using the **Compose Manager** plugin.
 3. The image is hosted on **GitHub Container Registry** and pulled automatically:
    - `ghcr.io/jo3l/transmule:latest`
    - No Docker Hub account or login required.
+   > ⚠️ On the first push, ghcr.io packages default to **private**. If the pull fails, go to
+   > **GitHub repo → Packages → transmule → Package settings** and change the visibility to **Public**.
 
 ---
 

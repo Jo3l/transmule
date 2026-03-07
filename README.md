@@ -67,6 +67,9 @@ PYLOAD_PASSWORD=pyload
 docker compose up -d
 ```
 
+> **Image not found / access denied?** On the first push, ghcr.io packages default to **private**.
+> To make it public: GitHub repo → **Packages** → **transmule** → **Package settings** → change visibility to **Public**.
+
 ### 3. Open
 
 - **Frontend / API:** http://localhost:3001
