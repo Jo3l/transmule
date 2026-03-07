@@ -6,13 +6,13 @@
  *  - config   — key/value settings (aMule URL, password, etc.)
  */
 
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-let _db: InstanceType<typeof Database> | null = null;
+let _db: DatabaseSync | null = null;
 
-export function useDatabase(): InstanceType<typeof Database> {
+export function useDatabase(): DatabaseSync {
   if (!_db) {
     const dbPath =
       process.env.NITRO_DB_PATH || resolve("data", "amule-middleware.db");
@@ -20,14 +20,14 @@ export function useDatabase(): InstanceType<typeof Database> {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }
-    _db = new Database(dbPath);
-    _db.pragma("journal_mode = WAL");
+    _db = new DatabaseSync(dbPath);
+    _db.exec("PRAGMA journal_mode = WAL");
     _initSchema(_db);
   }
   return _db;
 }
 
-function _initSchema(db: InstanceType<typeof Database>): void {
+function _initSchema(db: DatabaseSync): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,

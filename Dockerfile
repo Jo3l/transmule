@@ -22,16 +22,12 @@ ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 RUN npm run generate
 
 # ── Stage 2: build middleware ──────────────────────────────────────────────
+# node:sqlite is built into Node 22 — no native compilation needed.
 FROM node:22-alpine AS mw-builder
 WORKDIR /app
 
-# Build tools required to compile better-sqlite3 from source on Alpine/musl.
-# Prebuilt binaries are glibc-only; building from source is required here.
-RUN apk add --no-cache python3 make g++ sqlite-dev
-
 COPY middleware/package.json middleware/package-lock.json ./
-# Force native modules to build from source (avoids glibc prebuilt on musl)
-RUN npm_config_build_from_source=true npm ci
+RUN npm ci
 
 COPY middleware/ .
 RUN npm run build
@@ -43,7 +39,7 @@ FROM node:22-bookworm-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends nginx supervisor libsqlite3-0 && \
+    apt-get install -y --no-install-recommends nginx supervisor && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data && \
     chmod 777 /app/data
