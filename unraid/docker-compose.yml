@@ -53,6 +53,7 @@ services:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/transmission:/config
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
       - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/incomplete
+      - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/transmission-init:/custom-cont-init.d:ro
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
@@ -91,6 +92,7 @@ services:
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/data:/app/data
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads:rw
+      - ${MEDIA_DIR:-/mnt/user/data/media}:/downloads/media
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       NITRO_AMULE_HOST: amule
