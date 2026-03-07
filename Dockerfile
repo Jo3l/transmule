@@ -50,23 +50,7 @@ RUN apt-get update && \
 
 # ── Middleware artefacts ───────────────────────────────────────────────────
 COPY --from=mw-builder /app/.output                           .output
-COPY --from=mw-builder /app/node_modules/better-sqlite3       node_modules/better-sqlite3
-COPY --from=mw-builder /app/node_modules/bindings             node_modules/bindings
-COPY --from=mw-builder /app/node_modules/prebuild-install     node_modules/prebuild-install
-COPY --from=mw-builder /app/node_modules/file-uri-to-path     node_modules/file-uri-to-path
-COPY --from=mw-builder /app/node_modules/amule-ec-client      node_modules/amule-ec-client
-COPY --from=mw-builder /app/node_modules/node-7z               node_modules/node-7z
-COPY --from=mw-builder /app/node_modules/7zip-bin              node_modules/7zip-bin
-COPY --from=mw-builder /app/node_modules/node-unrar-js         node_modules/node-unrar-js
-COPY --from=mw-builder /app/node_modules/lodash.defaultto      node_modules/lodash.defaultto
-COPY --from=mw-builder /app/node_modules/lodash.defaultsdeep   node_modules/lodash.defaultsdeep
-COPY --from=mw-builder /app/node_modules/lodash.flattendeep    node_modules/lodash.flattendeep
-COPY --from=mw-builder /app/node_modules/lodash.isempty        node_modules/lodash.isempty
-COPY --from=mw-builder /app/node_modules/lodash.negate         node_modules/lodash.negate
-COPY --from=mw-builder /app/node_modules/normalize-path        node_modules/normalize-path
-COPY --from=mw-builder /app/node_modules/split2                node_modules/split2
-COPY --from=mw-builder /app/node_modules/debug                 node_modules/debug
-COPY --from=mw-builder /app/node_modules/ms                    node_modules/ms
+COPY --from=mw-builder /app/node_modules                      node_modules
 
 # ── Frontend artefacts ─────────────────────────────────────────────────────
 RUN rm -rf /usr/share/nginx/html/*
