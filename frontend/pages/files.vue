@@ -1329,7 +1329,7 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 420px;
+  max-width: 80%;
   display: inline-block;
   vertical-align: bottom;
 }

@@ -541,7 +541,11 @@
     "downloadHistoryPrev": "Anterior",
     "downloadHistoryNext": "Siguiente",
     "downloadHistorySent": "Enviado a Transmission",
-    "downloadHistoryRemoved": "Entrada eliminada"
+    "downloadHistoryRemoved": "Entrada eliminada",
+    "providers": "Proveedores",
+    "providersTitle": "Proveedores de contenido",
+    "providersDescription": "Activa o desactiva proveedores de contenido. Los desactivados no aparecerán en la barra lateral.",
+    "providersEmpty": "No hay proveedores disponibles."
   },
   "themes": {
     "tron": {

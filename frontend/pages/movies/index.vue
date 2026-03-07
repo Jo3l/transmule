@@ -1,3 +1,7 @@
 <script setup lang="ts">
-await navigateTo("/movies/yts", { replace: true });
+const { loadProviders, getProviders } = useProviders();
+await loadProviders();
+const movieProviders = getProviders("movies");
+const first = movieProviders[0]?.id || "yts";
+await navigateTo(`/movies/${first}`, { replace: true });
 </script>

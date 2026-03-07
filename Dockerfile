@@ -79,6 +79,10 @@ RUN rm -f /etc/nginx/sites-enabled/default
 # Process supervisor config
 COPY supervisord.conf /etc/supervisord.conf
 
+# Entrypoint: auto-generates secrets if not provided, then starts supervisord
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 VOLUME /app/data
 
 ENV NODE_ENV=production
@@ -89,4 +93,4 @@ ENV NITRO_PORT=3000
 # Only the nginx port is exposed; Nitro is internal
 EXPOSE 3001
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+ENTRYPOINT ["/entrypoint.sh"]

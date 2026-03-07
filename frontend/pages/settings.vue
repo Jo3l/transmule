@@ -295,6 +295,54 @@
           </template>
         </div>
       </STabPane>
+
+      <!-- Providers -->
+      <STabPane
+        name="providers"
+        :label="$t('settings.providers')"
+        :active="activeTab === 'providers'"
+      >
+        <div class="box">
+          <h6 class="title is-6 mb-1 mt-3">{{ $t("settings.providersTitle") }}</h6>
+          <p class="has-text-grey is-size-7 mb-4">
+            {{ $t("settings.providersDescription") }}
+          </p>
+
+          <SLoading v-if="providersLoading" />
+
+          <div v-else-if="providerList.length" class="providers-list">
+            <div
+              v-for="p in providerList"
+              :key="p.id"
+              class="provider-item"
+              :class="{ 'is-disabled': !p.enabled }"
+            >
+              <span class="provider-icon mdi" :class="p.icon" />
+              <div class="provider-details">
+                <div class="provider-name">{{ p.name }}</div>
+                <div class="provider-desc">
+                  {{ p.description }}
+                  <STag
+                    size="sm"
+                    :variant="p.mediaType === 'movies' ? 'info' : 'primary'"
+                    class="ml-2"
+                  >
+                    {{ p.mediaType === "movies" ? $t("nav.movies") : $t("nav.shows") }}
+                  </STag>
+                </div>
+              </div>
+              <SSwitch
+                :model-value="p.enabled"
+                @update:model-value="onToggleProvider(p.id, $event)"
+              />
+            </div>
+          </div>
+
+          <p v-else class="has-text-muted is-size-7">
+            {{ $t("settings.providersEmpty") }}
+          </p>
+        </div>
+      </STabPane>
     </STabs>
   </SLoading>
 </template>
@@ -311,7 +359,15 @@ const { currentTheme, setTheme, saveToServer, THEME_META, canvasEnabled, setCanv
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["theme", "language", "account", "integrations", "users", "downloadHistory"];
+const VALID_TABS = [
+  "theme",
+  "language",
+  "account",
+  "integrations",
+  "users",
+  "downloadHistory",
+  "providers",
+];
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "theme");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(false);
@@ -376,6 +432,7 @@ const tabPanes = computed<TabPaneDef[]>(() => {
     p.push({ name: "users", label: t("settings.users") });
   }
   p.push({ name: "downloadHistory", label: t("settings.downloadHistory") });
+  p.push({ name: "providers", label: t("settings.providers") });
   return p;
 });
 
@@ -676,16 +733,47 @@ async function clearTvdbKey() {
   }
 }
 
+// ── Providers ─────────────────────────────────────────────────────────────
+import type { ProviderMeta } from "~/composables/useProviders";
+
+const { loadProviders, toggleProvider } = useProviders();
+const providerList = ref<ProviderMeta[]>([]);
+const providersLoading = ref(false);
+
+async function loadProviderList() {
+  providersLoading.value = true;
+  try {
+    providerList.value = await loadProviders(true);
+  } catch {
+    /* silent */
+  } finally {
+    providersLoading.value = false;
+  }
+}
+
+async function onToggleProvider(id: string, enabled: boolean) {
+  try {
+    await toggleProvider(id, enabled);
+    providerList.value = providerList.value.map((p) => (p.id === id ? { ...p, enabled } : p));
+  } catch {
+    /* silent */
+  }
+}
+
 onMounted(async () => {
   loading.value = true;
   await Promise.all([loadUsers(), loadIntegrations()]);
   loading.value = false;
   // Load history after main content so it doesn't block the UI
   if (activeTab.value === "downloadHistory") loadHistory();
+  if (activeTab.value === "providers") loadProviderList();
 });
 watch(activeTab, (tab) => {
   if (tab === "downloadHistory" && !historyEntries.value.length && !historyLoading.value) {
     loadHistory();
+  }
+  if (tab === "providers" && !providerList.value.length && !providersLoading.value) {
+    loadProviderList();
   }
 });
 </script>
@@ -724,5 +812,48 @@ watch(activeTab, (tab) => {
   font-size: 0.82rem;
   color: var(--s-text-muted);
   white-space: nowrap;
+}
+
+/* Providers */
+.providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.provider-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  transition: opacity 0.15s;
+
+  &.is-disabled {
+    opacity: 0.5;
+  }
+}
+.provider-icon {
+  font-size: 1.6rem;
+  color: var(--s-accent);
+  flex-shrink: 0;
+}
+.provider-details {
+  flex: 1;
+  min-width: 0;
+}
+.provider-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--s-text);
+}
+.provider-desc {
+  font-size: 0.78rem;
+  color: var(--s-text-muted);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
 }
 </style>

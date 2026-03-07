@@ -35,7 +35,11 @@
         </ul>
 
         <!-- Shows collapsible section -->
-        <div class="sidebar-section" :class="{ 'is-expanded': showsOpen }">
+        <div
+          v-if="showProviders.length"
+          class="sidebar-section"
+          :class="{ 'is-expanded': showsOpen }"
+        >
           <a class="sidebar-section-header" @click="showsOpen = !showsOpen">
             <span class="mdi mdi-television-play"></span>
             {{ $t("nav.shows") }}
@@ -45,21 +49,20 @@
             />
           </a>
           <ul v-show="showsOpen" class="menu-list sidebar-section-list">
-            <li>
-              <NuxtLink to="/shows/showrss" @click="$emit('close')">
-                <span class="mdi mdi-rss"></span> ShowRSS
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/shows/dontorrent" @click="$emit('close')">
-                <span class="mdi mdi-movie-play"></span> DonTorrent
+            <li v-for="p in showProviders" :key="p.id">
+              <NuxtLink :to="`/shows/${p.id}`" @click="$emit('close')">
+                <span class="mdi" :class="p.icon"></span> {{ p.name }}
               </NuxtLink>
             </li>
           </ul>
         </div>
 
         <!-- Movies collapsible section -->
-        <div class="sidebar-section" :class="{ 'is-expanded': moviesOpen }">
+        <div
+          v-if="movieProviders.length"
+          class="sidebar-section"
+          :class="{ 'is-expanded': moviesOpen }"
+        >
           <a class="sidebar-section-header" @click="moviesOpen = !moviesOpen">
             <span class="mdi mdi-movie-open"></span>
             {{ $t("nav.movies") }}
@@ -69,14 +72,9 @@
             />
           </a>
           <ul v-show="moviesOpen" class="menu-list sidebar-section-list">
-            <li>
-              <NuxtLink to="/movies/yts" @click="$emit('close')">
-                <span class="mdi mdi-filmstrip"></span> YTS
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/movies/dontorrent" @click="$emit('close')">
-                <span class="mdi mdi-movie-play"></span> DonTorrent
+            <li v-for="p in movieProviders" :key="p.id">
+              <NuxtLink :to="`/movies/${p.id}`" @click="$emit('close')">
+                <span class="mdi" :class="p.icon"></span> {{ p.name }}
               </NuxtLink>
             </li>
           </ul>
@@ -258,13 +256,6 @@ watch(canvasEnabled, async (enabled) => {
   }
 });
 
-onMounted(async () => {
-  if (!canvasEnabled.value || !sidebarCanvas.value) return;
-  sceneInit = await resolveSceneInit();
-  destroyScene = sceneInit(sidebarCanvas.value);
-  window.addEventListener("app-theme-change", reinitScene);
-});
-
 onUnmounted(() => {
   if (themeTimer) clearTimeout(themeTimer);
   window.removeEventListener("app-theme-change", reinitScene);
@@ -278,6 +269,33 @@ const transmissionOpen = ref(true);
 const pyloadOpen = ref(true);
 
 const { services, loaded } = useServices();
+
+// Provider-driven sidebar
+const { loadProviders, providers } = useProviders();
+
+const showProviders = computed(() =>
+  (providers.value ?? []).filter((p) => p.enabled && p.mediaType === "shows"),
+);
+const movieProviders = computed(() =>
+  (providers.value ?? []).filter((p) => p.enabled && p.mediaType === "movies"),
+);
+
+onMounted(async () => {
+  if (!canvasEnabled.value || !sidebarCanvas.value) {
+    // no canvas init needed
+  } else {
+    sceneInit = await resolveSceneInit();
+    destroyScene = sceneInit(sidebarCanvas.value);
+  }
+  window.addEventListener("app-theme-change", reinitScene);
+
+  // Load providers for sidebar
+  try {
+    await loadProviders();
+  } catch {
+    // Fallback: show nothing, user hasn't logged in yet
+  }
+});
 
 // A section is disabled only once we have data and the service is not running.
 // While loading (loaded=false) or for non-admin users (services=null), show all.

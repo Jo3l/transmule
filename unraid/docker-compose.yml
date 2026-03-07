@@ -30,8 +30,8 @@ services:
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
-      GUI_PWD: ${AMULE_GUI_PASSWORD:?AMULE_GUI_PASSWORD is required}
-      WEBUI_PWD: ${AMULE_GUI_PASSWORD}
+      GUI_PWD: ${AMULE_GUI_PASSWORD:-changeme}
+      WEBUI_PWD: ${AMULE_GUI_PASSWORD:-changeme}
     networks:
       - transmule
 
@@ -91,14 +91,14 @@ services:
     environment:
       NITRO_AMULE_HOST: amule
       NITRO_AMULE_PORT: 4712
-      NITRO_AMULE_PASSWORD: ${AMULE_GUI_PASSWORD:?AMULE_GUI_PASSWORD is required}
+      NITRO_AMULE_PASSWORD: ${AMULE_GUI_PASSWORD:-changeme}
       NITRO_TRANSMISSION_URL: http://transmission:9091/transmission/rpc
       NITRO_TRANSMISSION_USERNAME: ${TRANSMISSION_USER:-}
       NITRO_TRANSMISSION_PASSWORD: ${TRANSMISSION_PASS:-}
       NITRO_PYLOAD_URL: http://pyload:8000
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
-      NITRO_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      NITRO_JWT_SECRET: ${JWT_SECRET:-}
       NITRO_DOWNLOADS_DIR: /downloads
     depends_on:
       - amule

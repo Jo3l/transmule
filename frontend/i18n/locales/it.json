@@ -541,7 +541,11 @@
     "downloadHistoryPrev": "Precedente",
     "downloadHistoryNext": "Successivo",
     "downloadHistorySent": "Inviato a Transmission",
-    "downloadHistoryRemoved": "Voce rimossa"
+    "downloadHistoryRemoved": "Voce rimossa",
+    "providers": "Provider",
+    "providersTitle": "Provider multimediali",
+    "providersDescription": "Abilita o disabilita i provider. I provider disabilitati non appariranno nella barra laterale.",
+    "providersEmpty": "Nessun provider disponibile."
   },
   "themes": {
     "tron": {

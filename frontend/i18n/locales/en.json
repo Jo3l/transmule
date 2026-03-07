@@ -541,7 +541,11 @@
     "downloadHistoryPrev": "Previous",
     "downloadHistoryNext": "Next",
     "downloadHistorySent": "Sent to Transmission",
-    "downloadHistoryRemoved": "Entry removed"
+    "downloadHistoryRemoved": "Entry removed",
+    "providers": "Providers",
+    "providersTitle": "Media Providers",
+    "providersDescription": "Enable or disable media providers. Disabled providers won't appear in the sidebar or be accessible.",
+    "providersEmpty": "No providers available."
   },
   "themes": {
     "tron": {
