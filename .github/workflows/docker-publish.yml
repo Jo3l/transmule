@@ -3,8 +3,8 @@ name: Build & Publish Docker Images
 on:
   push:
     branches: [main]
-    # Also rebuild when version tags are pushed
-    tags: ["v*.*.*"]
+    # Also rebuild when version tags are pushed (v1.4 or v1.4.0)
+    tags: ["v*.*", "v*.*.*"]
   workflow_dispatch:
 
 env:

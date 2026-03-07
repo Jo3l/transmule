@@ -8,6 +8,7 @@ Deploy TransMule on Unraid using the **Compose Manager** plugin.
 
 1. **Community Applications** plugin installed on Unraid.
 2. **Compose Manager** plugin — install it from Community Apps (search "Compose Manager").
+   > ⚠️ Without this plugin, neither `docker compose` nor `docker-compose` will be available in the Unraid terminal.
 3. The custom Docker image published to Docker Hub:
    - `enriquito/transmule:latest`
 
@@ -47,12 +48,14 @@ This copies `.env.example` → `.env` and fills in random values for `AMULE_GUI_
 
 ### 3. Start the stack
 
+**Recommended — via Compose Manager UI:**
+
 In the Unraid web UI:
 
 - Go to **Docker** → **Compose Manager**.
 - Click the **transmule** project → **Up** (or **Compose Up**).
 
-Alternatively, from the Unraid terminal:
+**Alternative — via terminal** (requires Compose Manager plugin to be installed first, which adds the `docker compose` command):
 
 ```bash
 cd /boot/config/plugins/compose.manager/projects/transmule
@@ -131,8 +134,11 @@ docker push enriquito/transmule:latest
 
 ## Updating
 
+Via Compose Manager UI: **Docker → Compose Manager → transmule → Pull** then **Up**.
+
+Or from the terminal (after Compose Manager plugin is installed):
+
 ```bash
 cd /boot/config/plugins/compose.manager/projects/transmule
-docker compose pull
-docker compose up -d
+docker-compose pull && docker-compose up -d
 ```

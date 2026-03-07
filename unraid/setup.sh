@@ -52,5 +52,6 @@ if grep -q '^JWT_SECRET=change-me' "$ENV_FILE"; then
 fi
 
 echo ""
-echo "Setup complete. Review your .env then run:"
-echo "  docker compose up -d"
+echo "Setup complete. Review your .env then start via:"
+echo "  Docker -> Compose Manager -> transmule -> Up"
+echo "  (or: docker compose up -d  after Compose Manager plugin is installed)"
