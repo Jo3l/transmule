@@ -9,10 +9,9 @@ Deploy TransMule on Unraid using the **Compose Manager** plugin.
 1. **Community Applications** plugin installed on Unraid.
 2. **Compose Manager** plugin — install it from Community Apps (search "Compose Manager").
    > ⚠️ Without this plugin, neither `docker compose` nor `docker-compose` will be available in the Unraid terminal.
-3. The custom Docker image published to Docker Hub:
-   - `enriquito/transmule:latest`
-
-   See [Building & publishing images](#building--publishing-images) below if you need to build it.
+3. The image is hosted on **GitHub Container Registry** and pulled automatically:
+   - `ghcr.io/jo3l/transmule:latest`
+   - No Docker Hub account or login required.
 
 ---
 
@@ -106,24 +105,18 @@ All paths are configurable via `APPDATA_DIR`, `DOWNLOAD_DIR`, `INCOMPLETE_DIR` i
 
 ## Building & publishing images
 
-The app image must be built and pushed to Docker Hub before Unraid can pull it.
-A GitHub Actions workflow is included at `.github/workflows/docker-publish.yml`.
+The app image is hosted on **GitHub Container Registry** (ghcr.io) and built automatically
+by GitHub Actions whenever a new version is pushed.
+No Docker Hub account or extra secrets needed — it uses the built-in `GITHUB_TOKEN`.
 
-**GitHub Actions** — add two secrets to your repository
-(`Settings → Secrets → Actions`):
-
-| Secret               | Value                     |
-| -------------------- | ------------------------- |
-| `DOCKERHUB_USERNAME` | your Docker Hub username  |
-| `DOCKERHUB_TOKEN`    | a Docker Hub access token |
-
-Push to `main` and the workflow will build and push `enriquito/transmule:latest` automatically.
+**GitHub Actions** runs automatically on every push with a version tag.
+The workflow is at `.github/workflows/docker-publish.yml`.
 
 To build and push manually (from the repository root):
 
 ```bash
-docker build -t enriquito/transmule:latest .
-docker push enriquito/transmule:latest
+docker build -t ghcr.io/jo3l/transmule:latest .
+docker push ghcr.io/jo3l/transmule:latest
 ```
 
 > **No IP configuration needed.** nginx inside the container proxies all

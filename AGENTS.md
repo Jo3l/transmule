@@ -20,4 +20,4 @@ git tag v<NEW_VERSION>
 git push && git push --tags
 ```
 
-Pushing the tag triggers the GitHub Actions workflow (`.github/workflows/docker-publish.yml`), which builds and pushes the Docker image to Docker Hub with both the version tag (`enriquito/transmule:1.x`) and `latest`.
+Pushing the tag triggers the GitHub Actions workflow (`.github/workflows/docker-publish.yml`), which builds and pushes the Docker image to **GitHub Container Registry** with both the version tag (`ghcr.io/jo3l/transmule:1.x`) and `latest`. No extra secrets needed — it uses the built-in `GITHUB_TOKEN`.

@@ -79,7 +79,7 @@ services:
   # Single container: supervisord runs nginx (port 3001) and Nitro (loopback).
   # nginx reverse-proxies /api/* and /_scalar to Nitro internally.
   app:
-    image: enriquito/transmule:latest
+    image: ghcr.io/jo3l/transmule:latest
     container_name: transmule-app
     restart: unless-stopped
     ports:
