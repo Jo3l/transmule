@@ -90,6 +90,46 @@ WRAP
 chmod +x "$AMULE_INIT_DIR/wrap-entrypoint.sh"
 echo "Created aMule wrapper at $AMULE_INIT_DIR/wrap-entrypoint.sh"
 
+# ── Create Transmission RPC/dir init script ───────────────────────────────────
+TRANSMISSION_INIT_DIR="$APPDATA_DIR_VAL/transmission-init"
+mkdir -p "$TRANSMISSION_INIT_DIR"
+cat > "$TRANSMISSION_INIT_DIR/10-ensure-rpc.sh" <<'TRANS'
+#!/usr/bin/env bash
+# Ensure Transmission RPC is enabled and download/incomplete dirs are correct.
+SETTINGS="/config/settings.json"
+if [ ! -f "$SETTINGS" ]; then
+  echo "[transmule-init] settings.json not found yet — first boot."
+  exit 0
+fi
+python3 - "$SETTINGS" <<'PYEOF'
+import json, sys
+path = sys.argv[1]
+with open(path) as f:
+    cfg = json.load(f)
+changed = False
+for key, val in [
+    ("rpc-enabled", True),
+    ("rpc-port", 9091),
+    ("rpc-bind-address", "0.0.0.0"),
+    ("rpc-whitelist-enabled", False),
+    ("download-dir", "/downloads"),
+    ("incomplete-dir", "/incomplete"),
+    ("incomplete-dir-enabled", True),
+]:
+    if cfg.get(key) != val:
+        cfg[key] = val
+        changed = True
+if changed:
+    with open(path, "w") as f:
+        json.dump(cfg, f, indent=4, sort_keys=True)
+    print("[transmule-init] settings.json patched.")
+else:
+    print("[transmule-init] settings.json already correct.")
+PYEOF
+TRANS
+chmod +x "$TRANSMISSION_INIT_DIR/10-ensure-rpc.sh"
+echo "Created Transmission init script at $TRANSMISSION_INIT_DIR/10-ensure-rpc.sh"
+
 echo ""
 echo "✓ Setup complete. Edit $ENV_FILE if needed, then start:"
 echo "  Docker → Compose Manager → transmule → Up"

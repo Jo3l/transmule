@@ -53,6 +53,7 @@ services:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/transmission:/config
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
       - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/incomplete
+      - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/transmission-init:/custom-cont-init.d:ro
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
