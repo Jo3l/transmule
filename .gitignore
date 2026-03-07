@@ -11,5 +11,5 @@ node_modules/
 data/
 
 # aMule download data (bind-mounted volumes)
-downloads/
-incomplete/
+/downloads/
+/incomplete/
