@@ -25,13 +25,17 @@ services:
       - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/amule:/home/amule/.aMule
-      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/incoming
-      - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/temp
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
+      - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/incomplete
+      - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/amule-init:/amule-init:ro
+    entrypoint: ["sh", "/amule-init/wrap-entrypoint.sh"]
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
       GUI_PWD: ${AMULE_GUI_PASSWORD:-changeme}
       WEBUI_PWD: ${AMULE_GUI_PASSWORD:-changeme}
+      INCOMING_DIR: /downloads
+      TEMP_DIR: /incomplete
     networks:
       - transmule
 

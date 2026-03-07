@@ -32,13 +32,17 @@ services:
       - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp" # Kademlia
     volumes:
       - amule-config:/home/amule/.aMule
-      - ${DOWNLOAD_DIR:-./downloads}:/incoming
-      - ${INCOMPLETE_DIR:-./incomplete}:/temp
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads
+      - ${INCOMPLETE_DIR:-./incomplete}:/incomplete
+      - ./docker/amule:/amule-init:ro
+    entrypoint: ["sh", "/amule-init/wrap-entrypoint.sh"]
     environment:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
       GUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
       WEBUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
+      INCOMING_DIR: /downloads
+      TEMP_DIR: /incomplete
     networks:
       - transmule
 
