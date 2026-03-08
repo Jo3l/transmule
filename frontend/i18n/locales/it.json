@@ -30,7 +30,8 @@
     "disabled": "Fermo",
     "movies": "Film",
     "shows": "Serie TV",
-    "files": "File"
+    "files": "File",
+    "portStatus": "Stato Porte Pubbliche"
   },
   "connection": {
     "amule": "aMule",
@@ -572,6 +573,23 @@
       "name": "ZX Spectrum",
       "description": "Palette autentica ZX Spectrum 48K con font pixel"
     }
+  },
+  "ports": {
+    "title": "Stato Porte Pubbliche",
+    "description": "Mostra se le porte di aMule e Transmission sono raggiungibili da internet. Verificato tramite portchecker.io.",
+    "refresh": "Ricontrolla",
+    "open": "Aperta",
+    "closed": "Chiusa",
+    "checking": "Verifica in corso...",
+    "colStatus": "Stato",
+    "colService": "Servizio",
+    "colPort": "Porta",
+    "colProtocol": "Protocollo",
+    "poweredBy": "Verifica porte tramite",
+    "nodePrivate": "Privato",
+    "nodePublic": "Pubblico",
+    "nodeInternet": "Internet",
+    "udpNote": "UDP"
   },
   "errors": {
     "cannotConnect": "Impossibile connettersi ad aMule — è in esecuzione?",

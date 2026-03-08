@@ -52,6 +52,10 @@ if cfg.get("incomplete-dir", "") != "/incomplete":
     cfg["incomplete-dir"] = "/incomplete"
     changed = True
 
+if cfg.get("peer-port", 0) != 16884:
+    cfg["peer-port"] = 16884
+    changed = True
+
 if changed:
     with open(path, "w") as f:
         json.dump(cfg, f, indent=4, sort_keys=True)

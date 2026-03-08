@@ -30,7 +30,8 @@
     "disabled": "Detenido",
     "movies": "Películas",
     "shows": "Series",
-    "files": "Archivos"
+    "files": "Archivos",
+    "portStatus": "Estado de Puertos"
   },
   "connection": {
     "amule": "aMule",
@@ -572,6 +573,23 @@
       "name": "ZX Spectrum",
       "description": "Paleta auténtica ZX Spectrum 48K con fuente de píxeles"
     }
+  },
+  "ports": {
+    "title": "Estado de Puertos Públicos",
+    "description": "Muestra si los puertos de aMule y Transmission son accesibles desde internet. Comprobado a través de portchecker.io.",
+    "refresh": "Comprobar de nuevo",
+    "open": "Abierto",
+    "closed": "Cerrado",
+    "checking": "Comprobando...",
+    "colStatus": "Estado",
+    "colService": "Servicio",
+    "colPort": "Puerto",
+    "colProtocol": "Protocolo",
+    "poweredBy": "Comprobación de puertos por",
+    "nodePrivate": "Privado",
+    "nodePublic": "Público",
+    "nodeInternet": "Internet",
+    "udpNote": "UDP"
   },
   "errors": {
     "cannotConnect": "No se puede conectar a aMule — ¿está ejecutándose?",

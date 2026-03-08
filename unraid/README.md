@@ -68,13 +68,13 @@ On first access you will be prompted to create an admin account.
 
 ## Ports
 
-| Host port    | Service            |
-| ------------ | ------------------ |
-| `3001`       | Web UI + API       |
-| `4662` (TCP) | aMule ED2K         |
-| `4672` (UDP) | aMule ED2K         |
-| `4665` (UDP) | aMule Kademlia     |
-| `51413`      | Transmission peers |
+| Host port     | Service            |
+| ------------- | ------------------ |
+| `3001`        | Web UI + API       |
+| `16881` (TCP) | aMule ED2K         |
+| `16882` (UDP) | aMule ED2K         |
+| `16883` (UDP) | aMule Kademlia     |
+| `16884`       | Transmission peers |
 
 All ports are configurable via `.env`. The Nitro API runs on port 3000 **inside** the container (loopback only) and is not exposed to the host — nginx proxies requests to it.
 

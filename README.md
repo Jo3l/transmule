@@ -78,13 +78,13 @@ On first run you will be prompted to create an admin account.
 
 ## Ports
 
-| Port         | Service             | Note                                      |
-| ------------ | ------------------- | ----------------------------------------- |
-| `3001`       | App (nginx + Nitro) | UI + proxied API + Swagger (`/_scalar`)   |
-| `4662` (TCP) | aMule ED2K          | Configurable via `AMULE_ED2K_TCP_PORT`    |
-| `4672` (UDP) | aMule ED2K          | Configurable via `AMULE_ED2K_UDP_PORT`    |
-| `4665` (UDP) | aMule Kademlia      | Configurable via `AMULE_KAD_UDP_PORT`     |
-| `51413`      | Transmission peers  | Configurable via `TRANSMISSION_PEER_PORT` |
+| Port          | Service             | Note                                      |
+| ------------- | ------------------- | ----------------------------------------- |
+| `3001`        | App (nginx + Nitro) | UI + proxied API + Swagger (`/_scalar`)   |
+| `16881` (TCP) | aMule ED2K          | Configurable via `AMULE_ED2K_TCP_PORT`    |
+| `16882` (UDP) | aMule ED2K          | Configurable via `AMULE_ED2K_UDP_PORT`    |
+| `16883` (UDP) | aMule Kademlia      | Configurable via `AMULE_KAD_UDP_PORT`     |
+| `16884`       | Transmission peers  | Configurable via `TRANSMISSION_PEER_PORT` |
 
 All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) happens on the internal Docker network and is **not** exposed to the host. Nitro listens on `127.0.0.1:3000` inside the app container and is not exposed externally.
 

@@ -30,7 +30,8 @@
     "disabled": "Stopped",
     "movies": "Movies",
     "shows": "Shows",
-    "files": "Files"
+    "files": "Files",
+    "portStatus": "Public Port Status"
   },
   "connection": {
     "amule": "aMule",
@@ -572,6 +573,23 @@
       "name": "ZX Spectrum",
       "description": "Authentic ZX Spectrum 48K palette with pixel font"
     }
+  },
+  "ports": {
+    "title": "Public Port Status",
+    "description": "Shows whether your aMule and Transmission ports are reachable from the internet. Checked via portchecker.io.",
+    "refresh": "Re-check",
+    "open": "Open",
+    "closed": "Closed",
+    "checking": "Checking...",
+    "colStatus": "Status",
+    "colService": "Service",
+    "colPort": "Port",
+    "colProtocol": "Protocol",
+    "poweredBy": "Port checks powered by",
+    "nodePrivate": "Private",
+    "nodePublic": "Public",
+    "nodeInternet": "Internet",
+    "udpNote": "UDP"
   },
   "errors": {
     "cannotConnect": "Cannot connect to aMule — is it running?",

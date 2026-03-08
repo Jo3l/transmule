@@ -37,5 +37,9 @@ export default defineNitroConfig({
     jwtSecret: "amule-middleware-change-this-secret",
     downloadsDir: "",
     amuleConfigDir: "",
+    amuleEd2kTcpPort: "16881",
+    amuleEd2kUdpPort: "16882",
+    amuleKadUdpPort: "16883",
+    transmissionPeerPort: "16884",
   },
 });

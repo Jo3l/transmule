@@ -8,10 +8,10 @@
 #
 # Ports exposed to host:
 #   3001  → App (Nuxt SPA + API via nginx)
-#   4662  → aMule TCP (ED2K)       — configurable via AMULE_ED2K_TCP_PORT
-#   4672  → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
-#   4665  → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
-#   51413 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
+#   16881 → aMule TCP (ED2K)       — configurable via AMULE_ED2K_TCP_PORT
+#   16882 → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
+#   16883 → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
+#   16884 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
 #
 # Internal only (Docker network, not exposed to host):
 #   4712  → aMule EC protocol (accessible by app container)
@@ -27,9 +27,9 @@ services:
     container_name: transmule-amule
     restart: unless-stopped
     ports:
-      - "${AMULE_ED2K_TCP_PORT:-4662}:4662" # ED2K TCP
-      - "${AMULE_ED2K_UDP_PORT:-4672}:4672/udp" # ED2K UDP
-      - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp" # Kademlia
+      - "${AMULE_ED2K_TCP_PORT:-16881}:16881" # ED2K TCP
+      - "${AMULE_ED2K_UDP_PORT:-16882}:16882/udp" # ED2K UDP
+      - "${AMULE_KAD_UDP_PORT:-16883}:16883/udp" # Kademlia
     volumes:
       - amule-config:/home/amule/.aMule
       - ${DOWNLOAD_DIR:-./downloads}:/downloads
@@ -52,8 +52,8 @@ services:
     container_name: transmule-transmission
     restart: unless-stopped
     ports:
-      - "${TRANSMISSION_PEER_PORT:-51413}:51413" # Peer TCP
-      - "${TRANSMISSION_PEER_PORT:-51413}:51413/udp" # Peer UDP
+      - "${TRANSMISSION_PEER_PORT:-16884}:16884" # Peer TCP
+      - "${TRANSMISSION_PEER_PORT:-16884}:16884/udp" # Peer UDP
     expose:
       - "9091" # Transmission RPC — internal only (middleware)
     volumes:
@@ -114,10 +114,16 @@ services:
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
       NITRO_DOWNLOADS_DIR: /downloads
+      NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-16881}
+      NITRO_AMULE_ED2K_UDP_PORT: ${AMULE_ED2K_UDP_PORT:-16882}
+      NITRO_AMULE_KAD_UDP_PORT: ${AMULE_KAD_UDP_PORT:-16883}
+      NITRO_TRANSMISSION_PEER_PORT: ${TRANSMISSION_PEER_PORT:-16884}
     depends_on:
       - amule
       - transmission
       - pyload
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - transmule
 

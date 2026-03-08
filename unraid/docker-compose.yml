@@ -20,9 +20,9 @@ services:
     container_name: transmule-amule
     restart: unless-stopped
     ports:
-      - "${AMULE_ED2K_TCP_PORT:-4662}:4662"
-      - "${AMULE_ED2K_UDP_PORT:-4672}:4672/udp"
-      - "${AMULE_KAD_UDP_PORT:-4665}:4665/udp"
+      - "${AMULE_ED2K_TCP_PORT:-16881}:16881"
+      - "${AMULE_ED2K_UDP_PORT:-16882}:16882/udp"
+      - "${AMULE_KAD_UDP_PORT:-16883}:16883/udp"
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/amule:/home/amule/.aMule
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
@@ -45,8 +45,8 @@ services:
     container_name: transmule-transmission
     restart: unless-stopped
     ports:
-      - "${TRANSMISSION_PEER_PORT:-51413}:51413"
-      - "${TRANSMISSION_PEER_PORT:-51413}:51413/udp"
+      - "${TRANSMISSION_PEER_PORT:-16884}:16884"
+      - "${TRANSMISSION_PEER_PORT:-16884}:16884/udp"
     expose:
       - "9091"
     volumes:
@@ -106,10 +106,16 @@ services:
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_JWT_SECRET: ${JWT_SECRET:-}
       NITRO_DOWNLOADS_DIR: /downloads
+      NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-16881}
+      NITRO_AMULE_ED2K_UDP_PORT: ${AMULE_ED2K_UDP_PORT:-16882}
+      NITRO_AMULE_KAD_UDP_PORT: ${AMULE_KAD_UDP_PORT:-16883}
+      NITRO_TRANSMISSION_PEER_PORT: ${TRANSMISSION_PEER_PORT:-16884}
     depends_on:
       - amule
       - transmission
       - pyload
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - transmule
 

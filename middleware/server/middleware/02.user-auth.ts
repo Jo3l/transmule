@@ -16,6 +16,7 @@ export default defineEventHandler((event) => {
     "/api/users/login",
     "/api/users/setup",
     "/api/users/status",
+    "/api/ports",
   ];
   if (publicRoutes.some((r) => path === r)) return;
 
