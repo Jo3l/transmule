@@ -9,8 +9,8 @@ CONF="/home/amule/.aMule/amule.conf"
 if [ -f "$CONF" ]; then
   sed -i 's|^IncomingDir=.*|IncomingDir=/downloads|' "$CONF"
   sed -i 's|^TempDir=.*|TempDir=/incomplete|'        "$CONF"
-  sed -i 's|^Port=.*|Port=16881|'                    "$CONF"
-  sed -i 's|^UDPPort=.*|UDPPort=16882|'              "$CONF"
+  sed -i '/^\[eMule\]/,/^\[/{s|^Port=.*|Port=16881|}' "$CONF"
+  sed -i '/^\[eMule\]/,/^\[/{s|^UDPPort=.*|UDPPort=16882|}' "$CONF"
 fi
 
 exec /home/amule/entrypoint.sh "$@"
