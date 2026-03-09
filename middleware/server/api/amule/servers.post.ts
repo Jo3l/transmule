@@ -62,6 +62,15 @@ export default defineEventHandler(async (event) => {
         await client.disconnectFromServer();
         return { success: true, action: "disconnect" };
 
+      case "update-from-url": {
+        if (!body.url) {
+          setResponseStatus(event, 400);
+          return { error: "Missing url field for update-from-url" };
+        }
+        await client.updateServerListFromUrl(body.url);
+        return { success: true, action: "update-from-url" };
+      }
+
       default:
         setResponseStatus(event, 400);
         return { error: `Unknown action: ${body.action}` };

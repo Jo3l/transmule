@@ -1774,8 +1774,26 @@ function availColor(sources: number, max: number) {
   return "var(--s-success)";
 }
 
-function copyToClipboard(text: string) {
-  if (text) navigator.clipboard.writeText(text);
+async function copyToClipboard(text: string) {
+  if (!text) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      // Fallback for non-secure contexts (plain HTTP)
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    addToast(t("common.copied"), "success");
+  } catch {
+    addToast(t("common.copyFailed"), "error");
+  }
 }
 function closeContextMenu() {
   contextMenu.visible = false;

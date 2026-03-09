@@ -1,6 +1,9 @@
 <template>
   <div id="layout-default" class="app-layout">
     <LazyAppSidebar :open="sidebarOpen" @close="sidebarOpen = false" />
+    <Transition name="sidebar-backdrop">
+      <div v-if="sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false" />
+    </Transition>
 
     <div class="app-main">
       <div class="app-topbar">

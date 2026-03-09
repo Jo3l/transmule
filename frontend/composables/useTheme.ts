@@ -34,12 +34,20 @@ export const THEME_META: Record<ThemeId, { name: string; icon: string; descripti
   },
 };
 
+// Returns true when the device is a mobile screen (client-side only).
+function isMobileScreen(): boolean {
+  return !!(import.meta.client && window.matchMedia("(max-width: 768px)").matches);
+}
+
 export function useTheme() {
   const currentTheme = useState<ThemeId>("theme", () => "tron");
-  const canvasEnabled = useState<boolean>("canvas-enabled", () => true);
+  // Raw user preference — what was saved in settings.
+  const _canvasPref = useState<boolean>("canvas-enabled", () => true);
+  // Effective value: always false on mobile regardless of stored preference.
+  const canvasEnabled = computed(() => !isMobileScreen() && _canvasPref.value);
 
   function setCanvasEnabled(v: boolean) {
-    canvasEnabled.value = v;
+    _canvasPref.value = v;
     if (import.meta.client) {
       localStorage.setItem("canvas-effects", String(v));
     }
@@ -50,10 +58,11 @@ export function useTheme() {
     if (import.meta.client) {
       document.documentElement.setAttribute("data-theme", id);
       localStorage.setItem("sark-theme", id);
-      if (canvasEnabled.value) {
-        canvasEnabled.value = false;
+      // Use raw pref so the restart animation works on desktop.
+      if (_canvasPref.value && !isMobileScreen()) {
+        _canvasPref.value = false;
         setTimeout(() => {
-          canvasEnabled.value = true;
+          _canvasPref.value = true;
         }, 1000);
       }
       window.dispatchEvent(new CustomEvent("app-theme-change", { detail: id }));
@@ -103,6 +112,8 @@ export function useTheme() {
     currentTheme,
     canvasEnabled,
     setCanvasEnabled,
+    // Expose raw pref for the plugin to seed before setTheme runs.
+    _canvasPref,
     setTheme,
     loadTheme,
     syncFromServer,

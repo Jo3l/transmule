@@ -2,16 +2,18 @@
   <div id="page-amule-servers">
     <h1 class="title is-4 mb-4">{{ $t("servers.title") }}</h1>
 
-    <STable :data="servers" :columns="columns" :loading="loading">
-      <template #cell-users="{ row }">{{
-        row.users?.toLocaleString()
-      }}</template>
-      <template #cell-files="{ row }">{{
-        row.files?.toLocaleString()
-      }}</template>
+    <STable :data="servers" :columns="columns" :loading="loading" :row-class="rowClass">
+      <template #cell-users="{ row }">{{ row.users?.toLocaleString() }}</template>
+      <template #cell-files="{ row }">{{ row.files?.toLocaleString() }}</template>
       <template #cell-actions="{ row }">
-        <SButton variant="success" size="sm" @click="doAction('connect', row)">
-          <span class="mdi mdi-lan-connect mr-1" /> {{ $t("servers.connect") }}
+        <SButton
+          variant="success"
+          size="sm"
+          :disabled="row.connected"
+          @click="doAction('connect', row)"
+        >
+          <span :class="row.connected ? 'mdi mdi-check-circle mr-1' : 'mdi mdi-lan-connect mr-1'" />
+          {{ row.connected ? $t("servers.connected") : $t("servers.connect") }}
         </SButton>
       </template>
       <template #empty>
@@ -36,6 +38,10 @@ const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 const servers = ref<any[]>([]);
 const loading = ref(false);
+
+function rowClass(row: any) {
+  return row.connected ? "is-connected-server" : "";
+}
 
 const columns = computed(() => [
   { prop: "name", label: t("servers.columns.name"), sortable: true },
@@ -94,5 +100,14 @@ async function disconnect() {
   }
 }
 
-onMounted(refresh);
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+onMounted(() => {
+  refresh();
+  pollInterval = setInterval(refresh, 8000);
+});
+
+onUnmounted(() => {
+  if (pollInterval) clearInterval(pollInterval);
+});
 </script>

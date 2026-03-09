@@ -189,7 +189,12 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.updateUrl')">
-            <SInput v-model="form.servers.updateUrl" class="mw-500" />
+            <SInput
+              v-model="form.servers.updateUrl"
+              class="mw-500"
+              placeholder="http://peerates.net/servers.met"
+            />
+            <p class="is-size-7 has-text-grey mt-1">{{ $t("amuleSettings.updateUrlHelp") }}</p>
           </SFormItem>
 
           <SDivider />
@@ -434,11 +439,21 @@ async function save(section: keyof AmulePreferences) {
   saving.value = true;
   saved.value = false;
   errorMsg.value = "";
+  if (section === "servers" && form.servers.updateUrl.startsWith("https://")) {
+    form.servers.updateUrl = form.servers.updateUrl.replace("https://", "http://");
+  }
   try {
     await apiFetch("/api/amule/prefs", {
       method: "POST",
       body: { [section]: form[section] },
     });
+    // If a server list URL is set, trigger aMule to fetch it immediately
+    if (section === "servers" && form.servers.updateUrl) {
+      await apiFetch("/api/amule/servers", {
+        method: "POST",
+        body: { action: "update-from-url", url: form.servers.updateUrl },
+      });
+    }
     saved.value = true;
     setTimeout(() => {
       saved.value = false;

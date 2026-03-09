@@ -15,7 +15,13 @@ export default defineEventHandler(async (event) => {
 
   try {
     const client = useAmuleClient();
-    const servers = await client.getServerList();
+    const [servers, stats] = await Promise.all([
+      client.getServerList(),
+      client.getStats().catch(() => null),
+    ]);
+
+    const connectedIp = stats?.connectedServer?.ip || null;
+    const connectedPort = stats?.connectedServer?.port ?? null;
 
     const list = servers.map((s) => ({
       name: s.name || "Unknown",
@@ -31,6 +37,10 @@ export default defineEventHandler(async (event) => {
       version: s.version || "",
       isStatic: s.isStatic ?? false,
       failedCount: s.failedCount ?? 0,
+      connected:
+        connectedIp !== null &&
+        s.ip === connectedIp &&
+        (s.port || 0) === connectedPort,
     }));
 
     return {

@@ -21,6 +21,7 @@ body {
   transition:
     background 0.3s,
     color 0.3s;
+  overflow-x: hidden;
 }
 
 *,
@@ -315,4 +316,3 @@ a {
     height: 1.5em;
   }
 }
-

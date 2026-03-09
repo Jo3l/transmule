@@ -462,6 +462,25 @@ class AmuleECClient {
     return this.exec(() => this.client.getServerList());
   }
 
+  /**
+   * Trigger aMule to download and import a server.met list from a URL.
+   * Uses EC_OP_SERVER_UPDATE_FROM_URL with EC_TAG_SERVERS_UPDATE_URL.
+   */
+  async updateServerListFromUrl(url: string): Promise<void> {
+    return this.exec(async () => {
+      const req = {
+        buildPacket() {
+          return new Packet(
+            ECOpCode.EC_OP_SERVER_UPDATE_FROM_URL,
+            Flags.useUtf8Numbers(),
+            [new StringTag(ECTagName.EC_TAG_SERVERS_UPDATE_URL, url)],
+          );
+        },
+      };
+      await (this.client as any).connection.sendRequest(req);
+    });
+  }
+
   async connectToServer(ip?: string, port?: number): Promise<void> {
     return this.exec(() => this.client.connectToServer(ip, port));
   }

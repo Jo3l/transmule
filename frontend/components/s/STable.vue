@@ -2,9 +2,7 @@
   <div class="s-loading-wrap">
     <div
       class="s-table-wrap"
-      :style="
-        maxHeight ? { maxHeight: `${maxHeight}px`, overflow: 'auto' } : {}
-      "
+      :style="maxHeight ? { maxHeight: `${maxHeight}px`, overflow: 'auto' } : {}"
     >
       <table :class="tableClasses">
         <thead>
@@ -17,18 +15,12 @@
               @click="col.sortable && onSort(col)"
             >
               <template v-if="col.type === 'selection'">
-                <SCheckbox
-                  :model-value="allSelected"
-                  @update:model-value="toggleAll"
-                />
+                <SCheckbox :model-value="allSelected" @update:model-value="toggleAll" />
               </template>
               <template v-else-if="col.type === 'expand'" />
               <template v-else>
                 {{ col.label }}
-                <span
-                  v-if="col.sortable && sortProp === (col.prop || col.key)"
-                  class="sort-icon"
-                >
+                <span v-if="col.sortable && sortProp === (col.prop || col.key)" class="sort-icon">
                   {{ sortDir === "asc" ? "▲" : "▼" }}
                 </span>
               </template>
@@ -45,22 +37,18 @@
           </template>
           <template v-for="(row, idx) in sortedData" :key="rowKeyFn(row, idx)">
             <tr
-              :class="{
-                'is-selected': isSelected(row),
-                'is-current': highlightCurrent && currentRow === row,
-              }"
+              :class="[
+                {
+                  'is-selected': isSelected(row),
+                  'is-current': highlightCurrent && currentRow === row,
+                },
+                rowClass ? rowClass(row) : '',
+              ]"
               @click="onRowClick(row, idx)"
             >
-              <td
-                v-for="col in columns"
-                :key="colKey(col)"
-                :style="colStyle(col)"
-              >
+              <td v-for="col in columns" :key="colKey(col)" :style="colStyle(col)">
                 <template v-if="col.type === 'selection'">
-                  <SCheckbox
-                    :model-value="isSelected(row)"
-                    @update:model-value="toggleRow(row)"
-                  />
+                  <SCheckbox :model-value="isSelected(row)" @update:model-value="toggleRow(row)" />
                 </template>
                 <template v-else-if="col.type === 'expand'">
                   <button
@@ -70,19 +58,13 @@
                     <span
                       class="mdi"
                       :class="
-                        isExpanded(rowKeyFn(row, idx))
-                          ? 'mdi-chevron-down'
-                          : 'mdi-chevron-right'
+                        isExpanded(rowKeyFn(row, idx)) ? 'mdi-chevron-down' : 'mdi-chevron-right'
                       "
                     />
                   </button>
                 </template>
                 <template v-else-if="$slots[`cell-${col.prop || col.key}`]">
-                  <slot
-                    :name="`cell-${col.prop || col.key}`"
-                    :row="row"
-                    :index="idx"
-                  />
+                  <slot :name="`cell-${col.prop || col.key}`" :row="row" :index="idx" />
                 </template>
                 <template v-else>
                   {{ col.prop ? row[col.prop] : "" }}
@@ -135,6 +117,7 @@ const props = withDefaults(
     highlightCurrent?: boolean;
     maxHeight?: number;
     size?: "sm" | "md";
+    rowClass?: (row: any) => string;
   }>(),
   {
     data: () => [],
@@ -159,8 +142,7 @@ function isSelected(row: any) {
   return selectedSet.value.has(row);
 }
 const allSelected = computed(
-  () =>
-    props.data.length > 0 && props.data.every((r) => selectedSet.value.has(r)),
+  () => props.data.length > 0 && props.data.every((r) => selectedSet.value.has(r)),
 );
 
 function toggleRow(row: any) {
@@ -200,17 +182,14 @@ const sortedData = computed(() => {
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;
-    if (typeof va === "number" && typeof vb === "number")
-      return (va - vb) * dir;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
     return String(va).localeCompare(String(vb)) * dir;
   });
 });
 
 // -- Expand
 const expandedKeys = ref(new Set<string | number>(props.expandKeys || []));
-const hasExpandColumn = computed(() =>
-  props.columns.some((c) => c.type === "expand"),
-);
+const hasExpandColumn = computed(() => props.columns.some((c) => c.type === "expand"));
 
 function isExpanded(key: string | number) {
   return expandedKeys.value.has(key);
@@ -247,11 +226,9 @@ function colKey(col: STableColumn) {
 
 function colStyle(col: STableColumn) {
   const s: Record<string, string> = {};
-  if (col.width)
-    s.width = typeof col.width === "number" ? `${col.width}px` : col.width;
+  if (col.width) s.width = typeof col.width === "number" ? `${col.width}px` : col.width;
   if (col.minWidth)
-    s.minWidth =
-      typeof col.minWidth === "number" ? `${col.minWidth}px` : col.minWidth;
+    s.minWidth = typeof col.minWidth === "number" ? `${col.minWidth}px` : col.minWidth;
   if (col.align) s.textAlign = col.align;
   return s;
 }
@@ -272,13 +249,10 @@ watch(
   () => props.data,
   (newData) => {
     if (props.rowKey) {
-      const oldKeys = new Set(
-        [...selectedSet.value].map((r) => r[props.rowKey!]),
-      );
+      const oldKeys = new Set([...selectedSet.value].map((r) => r[props.rowKey!]));
       const kept = newData.filter((r) => oldKeys.has(r[props.rowKey!]));
       selectedSet.value = new Set(kept);
-      if (kept.length !== selectedSet.value.size)
-        emit("select", [...selectedSet.value]);
+      if (kept.length !== selectedSet.value.size) emit("select", [...selectedSet.value]);
     } else {
       selectedSet.value = new Set();
     }
@@ -287,5 +261,7 @@ watch(
 </script>
 
 <style scoped>
-.s-expand-btn { padding: 0.15rem 0.3rem; }
+.s-expand-btn {
+  padding: 0.15rem 0.3rem;
+}
 </style>

@@ -5,6 +5,10 @@
     "updateAvailable": "Nuova versione v{latest} disponibile (hai v{current})",
     "updateInstructions": "Per aggiornare, esegui sul server: git pull && docker compose up -d --build"
   },
+  "common": {
+    "copied": "Copiato negli appunti",
+    "copyFailed": "Errore durante la copia negli appunti"
+  },
   "nav": {
     "downloads": "Download",
     "uploads": "Upload",
@@ -327,6 +331,7 @@
   "servers": {
     "title": "Server ED2K",
     "connect": "Connetti",
+    "connected": "Connesso",
     "disconnect": "Disconnetti",
     "noServers": "Nessun server",
     "columns": {
@@ -483,7 +488,7 @@
     "theme": "Tema",
     "themeDescription": "Scegli un tema visivo per TransMule. La tua preferenza viene salvata e applicata ovunque.",
     "canvasEffects": "Effetti di sfondo",
-    "canvasEffectsDescription": "Abilita lo sfondo WebGL animato nella barra laterale e nelle pagine di accesso.",
+    "canvasEffectsDescription": "Abilita lo sfondo WebGL animato nella barra laterale e nelle pagine di accesso. Disabilitato di default su mobile per prestazioni migliori.",
     "folders": "Cartelle",
     "foldersDescription": "Impostazioni cartelle condivise per download aMule e Transmission. Le modifiche vengono applicate a Transmission immediatamente. Le cartelle aMule devono essere configurate anche nel proprio file di configurazione.",
     "downloadDir": "Cartella download (in arrivo)",
@@ -759,6 +764,8 @@
     "useScoreSystem": "Usa sistema di punteggio",
     "smartIdCheck": "Verifica LowID intelligente",
     "updateUrl": "URL lista server",
+    "updateUrlHelp": "Usa un URL HTTP semplice (senza redirect HTTPS). Esempio: http://peerates.net/servers.met",
+    "updateFromUrl": "Aggiorna da URL",
     "canSeeShares": "Chi può vedere i file condivisi",
     "sharesNobody": "Nessuno",
     "sharesFriends": "Solo amici",

@@ -5,6 +5,10 @@
     "updateAvailable": "New version v{latest} available (you have v{current})",
     "updateInstructions": "To update, run on your server: git pull && docker compose up -d --build"
   },
+  "common": {
+    "copied": "Copied to clipboard",
+    "copyFailed": "Failed to copy to clipboard"
+  },
   "nav": {
     "downloads": "Downloads",
     "uploads": "Uploads",
@@ -327,6 +331,7 @@
   "servers": {
     "title": "ED2K Servers",
     "connect": "Connect",
+    "connected": "Connected",
     "disconnect": "Disconnect",
     "noServers": "No servers",
     "columns": {
@@ -483,7 +488,7 @@
     "theme": "Theme",
     "themeDescription": "Choose a visual theme for TransMule. Your preference is saved and applied everywhere.",
     "canvasEffects": "Background effects",
-    "canvasEffectsDescription": "Enable animated WebGL background on the sidebar and login pages.",
+    "canvasEffectsDescription": "Enable animated WebGL background on the sidebar and login pages. Disabled by default on mobile to save performance.",
     "folders": "Folders",
     "foldersDescription": "Shared folder settings for both aMule and Transmission downloads. Changes are applied to Transmission immediately. aMule folders must also be configured in its own settings file.",
     "downloadDir": "Download directory (incoming)",
@@ -759,6 +764,8 @@
     "useScoreSystem": "Use Score System",
     "smartIdCheck": "Smart LowID Check",
     "updateUrl": "Server List URL",
+    "updateUrlHelp": "Use a plain HTTP URL (no HTTPS redirect). Example: http://peerates.net/servers.met",
+    "updateFromUrl": "Fetch from URL",
     "canSeeShares": "Who Can See Shared Files",
     "sharesNobody": "Nobody",
     "sharesFriends": "Friends Only",

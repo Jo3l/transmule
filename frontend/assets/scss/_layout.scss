@@ -83,6 +83,9 @@
     padding: 0.5rem 0;
     flex: 1;
     overflow-y: auto;
+    /* Enable momentum / native touch scroll on iOS & Android */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
 
     .menu-list {
       list-style: none;
@@ -200,7 +203,26 @@
   padding: 1.25rem;
 }
 
+.sidebar-backdrop {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  // Hard CSS failsafe: hide canvas background elements on mobile.
+  // JS (useTheme computed) also always returns false, but this ensures
+  // nothing flashes even during the brief initial render.
+  canvas.sidebar-scene,
+  canvas#c {
+    display: none !important;
+  }
+
+  // Switch from flex row to block so the sidebar (position:fixed, out of
+  // flow) no longer constrains .app-main height via flex stretch.
+  // This lets the page grow naturally and allows body scroll on mobile.
+  .app-layout {
+    display: block;
+  }
+
   .app-sidebar {
     position: fixed;
     z-index: 100;
@@ -210,6 +232,23 @@
     &.is-open {
       transform: translateX(0);
     }
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .sidebar-backdrop-enter-active,
+  .sidebar-backdrop-leave-active {
+    transition: opacity 0.25s ease;
+  }
+  .sidebar-backdrop-enter-from,
+  .sidebar-backdrop-leave-to {
+    opacity: 0;
   }
 }
 
