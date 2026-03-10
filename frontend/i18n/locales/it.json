@@ -883,6 +883,8 @@
     "confirmDelete": "Eliminare \"{ name }\"?",
     "confirmDeleteMultiple": "Eliminare {count} elementi?",
     "notConfigured": "La directory dei download non è configurata. Imposta la variabile d'ambiente NITRO_DOWNLOADS_DIR.",
+    "errorPermission": "Permesso negato — ritorno alla cartella precedente.",
+    "errorNotFound": "Cartella non trovata — ritorno alla cartella precedente.",
     "cancel": "Annulla",
     "create": "Crea",
     "ok": "Rinomina",
@@ -895,6 +897,8 @@
     "srOriginal": "Nome originale",
     "srSuggested": "Nuovo nome",
     "ctxOpen": "Apri",
+    "viewImage": "Visualizza immagine",
+    "playVideo": "Riproduci video",
     "playInWebamp": "Riproduci in Webamp",
     "playAllWithWebamp": "Riproduci {count} MP3 con Webamp",
     "move": "Sposta",
@@ -907,6 +911,8 @@
     "transferStarted": "{mode} avviato in background",
     "transferDone": "{mode} completato",
     "transferError": "Trasferimento fallito: {error}",
+    "interruptedByRestart": "Interrotto (server riavviato)",
+    "cancelled": "Annullato",
     "ctxSelected": "{count} elementi selezionati",
     "transfers": "Attività in background",
     "clearDone": "Rimuovi completati",
@@ -927,7 +933,9 @@
     "extractDone": "Estrazione completata",
     "compressDone": "Compressione completata",
     "extractStarted": "Estrazione avviata in background",
-    "compressStarted": "Compressione avviata in background"
+    "compressStarted": "Compressione avviata in background",
+    "folderTree": "Albero cartelle",
+    "closeFolderTree": "Chiudi albero cartelle"
   },
   "movies": {
     "title": "Film",

@@ -34,7 +34,14 @@ export default defineEventHandler((event) => {
     mode: job.mode,
     total: job.total,
     done: job.done,
-    percent: job.total > 0 ? Math.round((job.done / job.total) * 100) : 0,
+    bytesTotal: job.bytesTotal ?? 0,
+    bytesDone: job.bytesDone ?? 0,
+    percent:
+      (job.bytesTotal ?? 0) > 0
+        ? Math.round(((job.bytesDone ?? 0) / job.bytesTotal!) * 100)
+        : job.total > 0
+          ? Math.round((job.done / job.total) * 100)
+          : 0,
     status: job.status,
     error: job.error,
     startedAt: job.startedAt,

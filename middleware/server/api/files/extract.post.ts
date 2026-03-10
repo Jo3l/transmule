@@ -79,12 +79,14 @@ export default defineEventHandler(async (event) => {
 
   globalThis.__transferJobs.set(jobId, {
     id: jobId,
+    name: absSrc.split("/").pop() ?? absSrc,
     mode: "extract",
     sources: [absSrc],
     destination: absDest,
     total: 1,
     done: 0,
     status: "running",
+    queuedAt: new Date().toISOString(),
     startedAt: new Date().toISOString(),
   });
 

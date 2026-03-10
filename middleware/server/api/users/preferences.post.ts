@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const allowed = ["theme"];
+  const allowed = ["theme", "fileTreeVisible"];
   for (const [key, value] of Object.entries(body)) {
     if (!allowed.includes(key)) continue;
     setUserPreference(user.userId, key, String(value));

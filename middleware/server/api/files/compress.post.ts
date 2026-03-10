@@ -101,12 +101,14 @@ export default defineEventHandler(async (event) => {
 
   globalThis.__transferJobs.set(jobId, {
     id: jobId,
+    name: normalizedName,
     mode: "compress",
     sources: absSources,
     destination: archivePath, // store archive path so UI can display it
     total: 1,
     done: 0,
     status: "running",
+    queuedAt: new Date().toISOString(),
     startedAt: new Date().toISOString(),
   });
 

@@ -52,10 +52,21 @@
           </div>
           <span v-if="job.status === 'running'" class="transfer-dropdown__pct">
             {{ job.percent }}%
+            <span v-if="job.speed && job.speed > 512" class="transfer-dropdown__speed">
+              {{ fmtSpeed(job.speed) }}
+            </span>
           </span>
           <span v-else-if="job.status === 'queued'" class="transfer-dropdown__badge">
             {{ $t("fileManager.queued") }}
           </span>
+          <button
+            v-if="job.status === 'queued' || job.status === 'running'"
+            class="transfer-dropdown__cancel"
+            :title="$t('fileManager.cancel')"
+            @click.stop="cancelJob(job)"
+          >
+            <span class="mdi mdi-close" />
+          </button>
         </div>
         <div v-if="!jobs.length" class="transfer-dropdown__empty">
           {{ $t("fileManager.noTransfers") }}
@@ -68,7 +79,7 @@
 <script setup lang="ts">
 import type { TransferJob } from "~/composables/useTransferJobs";
 
-const { jobs, activeJobs, hasActive, clearDone } = useTransferJobs();
+const { jobs, activeJobs, hasActive, clearDone, cancelJob } = useTransferJobs();
 const { t } = useI18n();
 
 const open = ref(false);
@@ -109,7 +120,23 @@ function rowLabel(job: TransferJob) {
   }
   if (job.status === "error") return job.error ?? t("fileManager.transferError", { error: "" });
   if (job.status === "queued") return "…";
+  // running — show byte progress if available, fall back to percent
+  if ((job.bytesTotal ?? 0) > 0) {
+    return `${fmtBytes(job.bytesDone ?? 0)} / ${fmtBytes(job.bytesTotal!)}`;
+  }
   return `${job.percent}%`;
+}
+
+function fmtBytes(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${bytes} B`;
+}
+
+function fmtSpeed(bps: number): string {
+  if (bps >= 1024 * 1024) return `${(bps / (1024 * 1024)).toFixed(1)} MB/s`;
+  return `${Math.round(bps / 1024)} KB/s`;
 }
 
 // Close when clicking outside the widget
@@ -308,6 +335,16 @@ onBeforeUnmount(() => window.removeEventListener("mousedown", onMousedown));
   color: var(--s-accent);
   font-weight: 600;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.transfer-dropdown__speed {
+  font-size: 0.6rem;
+  font-weight: 400;
+  color: var(--s-text-secondary);
+  white-space: nowrap;
 }
 .transfer-dropdown__badge {
   font-size: 0.65rem;
@@ -316,6 +353,44 @@ onBeforeUnmount(() => window.removeEventListener("mousedown", onMousedown));
   border-radius: var(--s-radius);
   padding: 0 0.3rem;
   flex-shrink: 0;
+}
+
+.transfer-dropdown__cancel {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0 0.1rem;
+  cursor: pointer;
+  color: var(--s-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+}
+.transfer-dropdown__cancel:hover {
+  opacity: 1;
+  color: var(--s-danger, #ef4444);
+}
+
+.transfer-dropdown__cancel {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0 0.1rem;
+  cursor: pointer;
+  color: var(--s-text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0.6;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+}
+.transfer-dropdown__cancel:hover {
+  opacity: 1;
+  color: var(--s-danger, #ef4444);
 }
 
 .transfer-dropdown__empty {

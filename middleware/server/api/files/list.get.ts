@@ -60,6 +60,16 @@ export default defineEventHandler(async (event) => {
     return { path: path as string, items };
   } catch (err: any) {
     if (err?.statusCode) throw err;
+    const code: string = err?.code ?? "";
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      throw createError({ statusCode: 404, statusMessage: "Folder not found" });
+    }
+    if (code === "EACCES" || code === "EPERM") {
+      throw createError({
+        statusCode: 403,
+        statusMessage: "Permission denied",
+      });
+    }
     throw createError({
       statusCode: 500,
       statusMessage: `Cannot list directory: ${err.message}`,

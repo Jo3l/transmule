@@ -20,22 +20,43 @@ declare global {
     string,
     {
       id: string;
+      /** Human-readable display name (e.g. basename of first source). */
+      name: string;
       mode: "move" | "copy" | "extract" | "compress";
       sources: string[];
       destination: string;
       total: number;
       done: number;
-      status: "running" | "done" | "error";
+      /** Total bytes to transfer (optional — set for move/copy, not extract/compress). */
+      bytesTotal?: number;
+      /** Bytes transferred so far. */
+      bytesDone?: number;
+      status: "queued" | "running" | "done" | "error";
       error?: string;
-      startedAt: string;
+      /** ISO timestamp when the job was enqueued. */
+      queuedAt: string;
+      /** ISO timestamp when execution actually started (not set while queued). */
+      startedAt?: string;
       finishedAt?: string;
     }
   >;
+  // eslint-disable-next-line no-var
+  /** Ordered list of transfer jobIds waiting to run. */
+  var __transferQueue: string[];
+  // eslint-disable-next-line no-var
+  /** AbortController per running transfer job, keyed by jobId. */
+  var __transferAbortControllers: Map<string, AbortController>;
 }
 
 export function initJobStore() {
   if (!globalThis.__transferJobs) {
     globalThis.__transferJobs = new Map();
+  }
+  if (!globalThis.__transferQueue) {
+    globalThis.__transferQueue = [];
+  }
+  if (!globalThis.__transferAbortControllers) {
+    globalThis.__transferAbortControllers = new Map();
   }
 }
 
