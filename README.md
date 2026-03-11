@@ -12,7 +12,8 @@ A unified self-hosted web interface for managing downloads across **aMule** (ED2
 - **aMule** — browse/search the ED2K network, manage downloads, view chunk availability, sources, friends, servers, KAD status and preferences
 - **Transmission** — add torrents via magnet/URL, control downloads, inspect peers/trackers/files, manage network and speed settings
 - **pyLoad NG** — add direct-download packages, monitor link status, stop/restart/delete packages
-- **Torrent search** — search Nyaa, The Pirate Bay and YTS from within the UI
+- **Torrent search** — search torrent indexes from within the UI (extensible via plugins)
+- **Plugin system** — upload `.js` plugins to add media providers (movies, shows, …) or torrent-search indexes without restarting the server
 - **Statistics** — live aMule stats tree and Transmission session stats
 - **Multi-user auth** — JWT-based login, per-user preferences
 - **Theming** — light / dark mode
@@ -143,3 +144,40 @@ Or use the convenience script at the root:
 | Transmission client | Transmission RPC JSON API                                                                                                                  |
 | pyLoad client       | pyLoad NG HTTP API                                                                                                                         |
 | Containers          | Docker Compose — `ngosang/amule`, `linuxserver/transmission`, `linuxserver/pyload-ng` + combined app image (nginx + Nitro via supervisord) |
+
+---
+
+## Plugins
+
+TransMule supports a runtime plugin system for extending media providers and torrent-search indexes.
+
+Official plugins are maintained in the **[transmule-plugins](https://github.com/Jo3l/transmule-plugins)** repository.
+
+Two plugin types are supported:
+
+| Type | What it does | Key method |
+| --- | --- | --- |
+| **Media** (`mediaType`) | Adds a sidebar browse/search section for a content type (movies, shows, …) | `list(params)` |
+| **Torrent Search** (`pluginType: "torrent-search"`) | Powers the Transmission → Torrent Search page with a new index source | `search(query, limit, extraTrackers)` |
+
+### Installing plugins
+
+1. Open TransMule → **Settings → Providers**
+2. Click **Upload Plugin** and select a `.js` file
+3. Reload the page — the plugin is active immediately
+
+No server restart needed. To remove a plugin, click **Remove** next to it in the Providers panel.
+
+### Available plugins
+
+| Plugin | Type | Description |
+| --- | --- | --- |
+| `dontorrent-movies` | movies | Spanish movie torrents from dontorrent.link |
+| `dontorrent-shows` | shows | Spanish series torrents from dontorrent.link |
+| `yts` | movies | Movie browse/search via YTS.mx with quality & genre filters |
+| `showrss` | shows | TV show torrents from your personal ShowRSS RSS feed |
+| `nyaa` | torrent-search | Anime & manga torrents via nyaa.si RSS |
+| `piratebay` | torrent-search | General torrents via apibay.org JSON API |
+| `yts-search` | torrent-search | Movie torrents via YTS.mx JSON API |
+
+Download them from [github.com/Jo3l/transmule-plugins](https://github.com/Jo3l/transmule-plugins).
