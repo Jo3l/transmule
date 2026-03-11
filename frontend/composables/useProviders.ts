@@ -6,7 +6,10 @@ export interface ProviderMeta {
   id: string;
   name: string;
   icon: string;
-  mediaType: string;
+  /** Only present for media plugins; torrent-search plugins omit this */
+  mediaType?: string;
+  /** "media" (default) or "torrent-search" */
+  pluginType?: string;
   description?: string;
   enabled: boolean;
   hasDetail: boolean;
@@ -82,10 +85,23 @@ export function useProviders() {
 
   function getProviders(mediaType?: string): ProviderMeta[] {
     if (!_providers.value) return [];
-    const list = _providers.value.filter((p) => p.enabled);
+    const list = _providers.value.filter(
+      (p) => p.enabled && p.pluginType !== "torrent-search",
+    );
     if (mediaType) return list.filter((p) => p.mediaType === mediaType);
     return list;
   }
+
+  /** Returns enabled torrent-search plugins */
+  const torrentSearchProviders = computed(() =>
+    (_providers.value ?? []).filter(
+      (p) => p.pluginType === "torrent-search" && p.enabled,
+    ),
+  );
+
+  const hasTorrentSearchProviders = computed(
+    () => torrentSearchProviders.value.length > 0,
+  );
 
   async function toggleProvider(id: string, enabled: boolean): Promise<void> {
     await apiFetch("/api/providers/toggle", {
@@ -140,6 +156,8 @@ export function useProviders() {
 
   return {
     providers: _providers,
+    torrentSearchProviders,
+    hasTorrentSearchProviders,
     loadProviders,
     getProviders,
     toggleProvider,

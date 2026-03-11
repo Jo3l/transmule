@@ -6,7 +6,7 @@
  *
  * Body: multipart/form-data with a single field "file" (the .js file).
  */
-import { writeFile } from "node:fs/promises";
+import { writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import {
   getPluginsDir,
@@ -55,10 +55,12 @@ export default defineEventHandler(async (event) => {
   // Load the new plugin directly
   const providerId = await loadPlugin(destPath);
   if (!providerId) {
+    // Remove the invalid file so it doesn't get loaded on next restart
+    await unlink(destPath).catch(() => {});
     throw createError({
       statusCode: 422,
       statusMessage:
-        "Plugin loaded but validation failed. Ensure it exports: meta.id, meta.name, meta.mediaType, and a list() function.",
+        "Plugin validation failed. Media plugins need: meta.id, meta.name, meta.mediaType, list(). Torrent-search plugins need: meta.id, meta.name, meta.pluginType='torrent-search', search().",
     });
   }
 

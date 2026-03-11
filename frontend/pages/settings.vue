@@ -430,6 +430,21 @@ export default {
   async detail(url) {
     return { id: url, title: "...", links: [] };
   }
+};
+
+// Torrent-search plugin (pluginType: "torrent-search"):
+export default {
+  meta: {
+    id: "my-search",
+    name: "My Search",
+    icon: "mdi-magnify",
+    pluginType: "torrent-search",
+    description: "Optional."
+  },
+  async search(query, limit, extraTrackers) {
+    // return TorrentSearchResult[]
+    return [];
+  }
 };</code></pre>
               <p class="is-size-7 mt-2 has-text-muted">
                 {{ $t("settings.pluginDocNote") }}
@@ -449,43 +464,83 @@ export default {
 
           <SLoading v-if="providersLoading" />
 
-          <div v-else-if="providerList.length" class="providers-list">
-            <div
-              v-for="p in providerList"
-              :key="p.id"
-              class="provider-item"
-              :class="{ 'is-disabled': !p.enabled }"
-            >
-              <span class="provider-icon mdi" :class="p.icon" />
-              <div class="provider-details">
-                <div class="provider-name">
-                  {{ p.name }}
-                </div>
-                <div class="provider-desc">
-                  {{ p.description }}
-                  <STag size="sm" variant="info" class="ml-2">
-                    {{ p.mediaType }}
-                  </STag>
+          <template v-else>
+            <!-- Media content providers -->
+            <template v-if="mediaProviderList.length">
+              <p class="is-size-7 has-text-grey mb-2 mt-1">
+                <span class="mdi mdi-filmstrip mr-1" />{{ $t("settings.providersMediaTitle") }}
+              </p>
+              <div class="providers-list mb-4">
+                <div
+                  v-for="p in mediaProviderList"
+                  :key="p.id"
+                  class="provider-item"
+                  :class="{ 'is-disabled': !p.enabled }"
+                >
+                  <span class="provider-icon mdi" :class="p.icon" />
+                  <div class="provider-details">
+                    <div class="provider-name">{{ p.name }}</div>
+                    <div class="provider-desc">
+                      {{ p.description }}
+                      <STag size="sm" variant="info" class="ml-2">{{ p.mediaType }}</STag>
+                    </div>
+                  </div>
+                  <SSwitch
+                    :model-value="p.enabled"
+                    @update:model-value="onToggleProvider(p.id, $event)"
+                  />
+                  <SButton
+                    v-if="isAdmin"
+                    variant="warning"
+                    size="sm"
+                    @click="onDeletePlugin(p.id, p.name)"
+                  >
+                    {{ $t("settings.pluginDelete") }}
+                  </SButton>
                 </div>
               </div>
-              <SSwitch
-                :model-value="p.enabled"
-                @update:model-value="onToggleProvider(p.id, $event)"
-              />
-              <SButton
-                v-if="isAdmin"
-                variant="warning"
-                size="sm"
-                @click="onDeletePlugin(p.id, p.name)"
-              >
-                {{ $t("settings.pluginDelete") }}
-              </SButton>
-            </div>
-          </div>
+            </template>
 
-          <p v-else class="has-text-muted is-size-7">
-            {{ $t("settings.providersEmpty") }}
-          </p>
+            <!-- Torrent-search plugins -->
+            <template v-if="torrentSearchProviderList.length">
+              <p class="is-size-7 has-text-grey mb-2">
+                <span class="mdi mdi-magnify mr-1" />{{ $t("settings.providersTorrentSearchTitle") }}
+              </p>
+              <div class="providers-list mb-4">
+                <div
+                  v-for="p in torrentSearchProviderList"
+                  :key="p.id"
+                  class="provider-item"
+                  :class="{ 'is-disabled': !p.enabled }"
+                >
+                  <span class="provider-icon mdi" :class="p.icon" />
+                  <div class="provider-details">
+                    <div class="provider-name">{{ p.name }}</div>
+                    <div class="provider-desc">
+                      {{ p.description }}
+                      <STag size="sm" variant="warning" class="ml-2">torrent-search</STag>
+                    </div>
+                  </div>
+                  <SSwitch
+                    :model-value="p.enabled"
+                    @update:model-value="onToggleProvider(p.id, $event)"
+                  />
+                  <SButton
+                    v-if="isAdmin"
+                    variant="warning"
+                    size="sm"
+                    @click="onDeletePlugin(p.id, p.name)"
+                  >
+                    {{ $t("settings.pluginDelete") }}
+                  </SButton>
+                </div>
+              </div>
+            </template>
+
+            <p v-if="!mediaProviderList.length && !torrentSearchProviderList.length" class="has-text-muted is-size-7">
+              {{ $t("settings.providersEmpty") }}
+            </p>
+          </template>
         </div>
       </STabPane>
     </STabs>
@@ -888,6 +943,13 @@ const providerList = ref<ProviderMeta[]>([]);
 const providersLoading = ref(false);
 const pluginUploading = ref(false);
 const pluginFileInput = ref<HTMLInputElement | null>(null);
+
+const mediaProviderList = computed(() =>
+  providerList.value.filter((p) => p.pluginType !== "torrent-search"),
+);
+const torrentSearchProviderList = computed(() =>
+  providerList.value.filter((p) => p.pluginType === "torrent-search"),
+);
 
 async function loadProviderList() {
   providersLoading.value = true;

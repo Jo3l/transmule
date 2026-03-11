@@ -1,23 +1,12 @@
 /**
  * Shared types for the torrent search module.
  *
- * This module lives in its own folder so it can be easily removed or replaced
- * when a better search method becomes available.
+ * TorrentSearchResult and TorrentSearchPlugin now live in providers/types.ts
+ * so the loader can validate torrent-search plugins.
  */
 
-export type TorrentSource = "tpb" | "nyaa" | "yts";
+// Keep TorrentSource as a plain string alias so existing code compiles
+export type TorrentSource = string;
 
-export interface TorrentSearchResult {
-  name: string;
-  magnet: string;
-  infoHash: string;
-  /** Size in bytes, null if unknown */
-  size: number | null;
-  seeders: number;
-  leechers: number;
-  /** ISO date string or null */
-  uploadedAt: string | null;
-  source: TorrentSource;
-  /** Human-readable category */
-  category: string | null;
-}
+// Re-export from the canonical location
+export type { TorrentSearchResult, TorrentSearchPlugin } from "../providers/types";

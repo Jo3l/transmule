@@ -73,6 +73,7 @@ export interface MediaItem {
 // ── Provider metadata & interface ──────────────────────────────────────
 
 export type MediaType = string;
+export type PluginType = "media" | "torrent-search";
 
 export interface ProviderMeta {
   /** Machine-name slug (must match filename, e.g. "yts") */
@@ -81,8 +82,13 @@ export interface ProviderMeta {
   name: string;
   /** MDI icon class (e.g. "mdi-filmstrip") */
   icon: string;
-  /** What kind of content it supplies */
-  mediaType: MediaType;
+  /**
+   * What kind of content it supplies — creates a sidebar nav section.
+   * Omitted for "torrent-search" plugins (they have no sidebar entry).
+   */
+  mediaType?: MediaType;
+  /** Plugin category: "media" (default) or "torrent-search" */
+  pluginType?: PluginType;
   /** Short description for the settings panel */
   description?: string;
 }
@@ -137,3 +143,37 @@ export interface ProviderFilter {
   options?: ProviderFilterOption[];
   defaultValue?: string;
 }
+
+// ── Torrent-search plugin ──────────────────────────────────────────────────
+
+/**
+ * A torrent-search plugin provides the search() function used by the
+ * /api/torrent-search endpoint.  It has no sidebar entry and no mediaType.
+ */
+export interface TorrentSearchResult {
+  name: string;
+  magnet: string;
+  infoHash: string;
+  /** Size in bytes, null if unknown */
+  size: number | null;
+  seeders: number;
+  leechers: number;
+  /** ISO date string or null */
+  uploadedAt: string | null;
+  /** The plugin id that produced this result */
+  source: string;
+  /** Human-readable category */
+  category: string | null;
+}
+
+export interface TorrentSearchPlugin {
+  meta: ProviderMeta & { pluginType: "torrent-search" };
+  search(
+    query: string,
+    limit: number,
+    extraTrackers: string,
+  ): Promise<TorrentSearchResult[]>;
+}
+
+/** Union of all supported plugin shapes */
+export type AnyPlugin = MediaProvider | TorrentSearchPlugin;

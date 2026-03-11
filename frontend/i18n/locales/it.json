@@ -552,6 +552,8 @@
     "providersTitle": "Provider multimediali",
     "providersDescription": "Abilita o disabilita i provider. I provider disabilitati non appariranno nella barra laterale.",
     "providersEmpty": "Nessun provider disponibile.",
+    "providersMediaTitle": "Provider di contenuti",
+    "providersTorrentSearchTitle": "Provider di ricerca torrent",
     "pluginUpload": "Carica Plugin",
     "pluginBuiltin": "Integrato",
     "pluginCustom": "Personalizzato",

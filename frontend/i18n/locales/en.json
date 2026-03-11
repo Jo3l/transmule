@@ -552,6 +552,8 @@
     "providersTitle": "Media Providers",
     "providersDescription": "Enable or disable media providers. Disabled providers won't appear in the sidebar or be accessible.",
     "providersEmpty": "No providers available.",
+    "providersMediaTitle": "Content Providers",
+    "providersTorrentSearchTitle": "Torrent Search Providers",
     "pluginUpload": "Upload Plugin",
     "pluginBuiltin": "Built-in",
     "pluginCustom": "Custom",

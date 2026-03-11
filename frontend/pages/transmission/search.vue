@@ -119,14 +119,16 @@ const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
 const { isDownloadedByHash, recordDownload, loadDownloadHistory } = useDownloadHistory();
+const { torrentSearchProviders, loadProviders } = useProviders();
 
-// ── Source options ──────────────────────────────────────────────────────────
+// ── Source options (dynamic — built from registered torrent-search plugins) ──
 
 const sourceOptions = computed(() => [
   { label: t("torrentSearch.sources.all"), value: "all" },
-  { label: t("torrentSearch.sources.tpb"), value: "tpb" },
-  { label: t("torrentSearch.sources.nyaa"), value: "nyaa" },
-  { label: t("torrentSearch.sources.yts"), value: "yts" },
+  ...torrentSearchProviders.value.map((p) => ({
+    label: p.name,
+    value: p.id,
+  })),
 ]);
 
 // ── Columns ─────────────────────────────────────────────────────────────────
@@ -291,6 +293,7 @@ async function saveAndClose() {
 onMounted(async () => {
   fetchExistingHashes();
   await loadDownloadHistory();
+  await loadProviders();
 });
 </script>
 

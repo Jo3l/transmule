@@ -552,6 +552,8 @@
     "providersTitle": "Proveedores de contenido",
     "providersDescription": "Activa o desactiva proveedores de contenido. Los desactivados no aparecerán en la barra lateral.",
     "providersEmpty": "No hay proveedores disponibles.",
+    "providersMediaTitle": "Proveedores de contenido",
+    "providersTorrentSearchTitle": "Proveedores de búsqueda de torrents",
     "pluginUpload": "Subir Plugin",
     "pluginBuiltin": "Integrado",
     "pluginCustom": "Personalizado",

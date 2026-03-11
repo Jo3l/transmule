@@ -1,5 +1,5 @@
 import { searchTorrents } from "../torrent-search";
-import type { TorrentSource } from "../torrent-search";
+import { ensureProviders, getTorrentSearchProviders } from "../providers/loader";
 import { getConfig } from "../utils/database";
 
 defineRouteMeta({
@@ -7,9 +7,9 @@ defineRouteMeta({
     tags: ["Torrent Search"],
     summary: "Search public torrent indexes",
     description:
-      "Searches The Pirate Bay (apibay.org), Nyaa.si and YTS.mx in parallel " +
+      "Searches registered torrent-search plugins in parallel " +
       "and returns merged, deduplicated results sorted by seeders.\n\n" +
-      "Sources: `all` | `tpb` | `nyaa` | `yts`",
+      "Sources: `all` | any registered torrent-search plugin id",
     responses: {
       200: { description: "Search results" },
       400: { description: "Missing or invalid query" },
@@ -26,10 +26,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "q is required" });
   }
 
-  const validSources = ["all", "tpb", "nyaa", "yts"];
-  const src = (
-    typeof source === "string" && validSources.includes(source) ? source : "all"
-  ) as TorrentSource | "all";
+  await ensureProviders();
+  const plugins = getTorrentSearchProviders();
+  const validIds = plugins.map((p) => p.meta.id);
+
+  const src =
+    source === "all" || (typeof source === "string" && validIds.includes(source))
+      ? (source as string)
+      : "all";
 
   const limitN = Math.min(Math.max(Number(limit) || 75, 1), 200);
 

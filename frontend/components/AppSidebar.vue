@@ -138,7 +138,7 @@
             v-show="transmissionOpen && !transmissionDisabled"
             class="menu-list sidebar-section-list"
           >
-            <li>
+            <li v-if="hasTorrentSearchProviders">
               <NuxtLink to="/transmission/search" @click="$emit('close')">
                 <span class="mdi mdi-magnify"></span>
                 {{ $t("nav.torrentSearch") }}
@@ -249,14 +249,16 @@ const pyloadOpen = ref(true);
 const { services, loaded } = useServices();
 
 // Provider-driven sidebar
-const { loadProviders, providers } = useProviders();
+const { loadProviders, providers, hasTorrentSearchProviders } = useProviders();
 
-// Group enabled providers by mediaType, preserving insertion order
+// Group enabled media providers by mediaType (torrent-search plugins excluded)
 const mediaGroups = computed(() => {
   const groups = new Map<string, ProviderMeta[]>();
-  for (const p of (providers.value ?? []).filter((p) => p.enabled)) {
-    if (!groups.has(p.mediaType)) groups.set(p.mediaType, []);
-    groups.get(p.mediaType)!.push(p);
+  for (const p of (providers.value ?? []).filter(
+    (p) => p.enabled && p.pluginType !== "torrent-search" && p.mediaType,
+  )) {
+    if (!groups.has(p.mediaType!)) groups.set(p.mediaType!, []);
+    groups.get(p.mediaType!)!.push(p);
   }
   return [...groups.entries()].map(([type, list]) => ({ type, list }));
 });
