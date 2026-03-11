@@ -44,7 +44,8 @@
                 },
                 rowClass ? rowClass(row) : '',
               ]"
-              @click="onRowClick(row, idx)"
+              @click="onRowClick(row, idx, $event)"
+              @contextmenu.prevent="onRowContextMenu(row, $event)"
             >
               <td v-for="col in columns" :key="colKey(col)" :style="colStyle(col)">
                 <template v-if="col.type === 'selection'">
@@ -130,9 +131,10 @@ const props = withDefaults(
 const emit = defineEmits<{
   select: [rows: any[]];
   sort: [prop: string, dir: "asc" | "desc"];
-  "row-click": [row: any, index: number];
+  "row-click": [row: any, index: number, event: MouseEvent];
   "current-change": [row: any];
   expand: [keys: (string | number)[]];
+  "row-contextmenu": [row: any, event: MouseEvent];
 }>();
 
 // -- Selection
@@ -213,10 +215,14 @@ watch(
 // -- Current row
 const currentRow = ref<any>(null);
 
-function onRowClick(row: any, idx: number) {
+function onRowClick(row: any, idx: number, event: MouseEvent) {
   currentRow.value = row;
-  emit("row-click", row, idx);
+  emit("row-click", row, idx, event);
   if (props.highlightCurrent) emit("current-change", row);
+}
+
+function onRowContextMenu(row: any, event: MouseEvent) {
+  emit("row-contextmenu", row, event);
 }
 
 // -- Helpers

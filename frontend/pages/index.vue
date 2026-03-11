@@ -363,9 +363,11 @@
         :loading="loading"
         row-key="_uid"
         :expand-keys="openedDetails"
+        :row-class="dlRowClass"
         stripe
         size="md"
-        @select="onCheck"
+        @row-click="onDlRowClick"
+        @row-contextmenu="onDlRowContextmenu"
         @expand="onExpandChange"
       >
         <!-- Type icon cell -->
@@ -1327,7 +1329,7 @@
       </template>
     </SDialog>
 
-    <!-- Context menu -->
+    <!-- Context menu (aMule client) -->
     <div
       v-if="contextMenu.visible"
       class="context-menu"
@@ -1344,6 +1346,107 @@
       </div>
     </div>
   </div>
+
+  <!-- Download row context menu -->
+  <Teleport to="body">
+    <div
+      v-if="dlCtxMenu.visible"
+      class="context-menu"
+      :style="{ top: dlCtxMenu.y + 'px', left: dlCtxMenu.x + 'px' }"
+      @click.stop
+    >
+      <div v-if="dlCtxSelectedCount > 1" class="context-menu-header">
+        {{ dlCtxSelectedCount }} {{ $t("downloads.sources." + dlCtxMenu.row?._type) }}
+      </div>
+
+      <!-- aMule actions -->
+      <template v-if="dlCtxMenu.row?._type === 'amule'">
+        <div class="context-menu-item" @click="doAmuleAction('pause'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-pause" /> {{ $t("downloads.actions.pause") }}
+        </div>
+        <div class="context-menu-item" @click="doAmuleAction('resume'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-play" /> {{ $t("downloads.actions.resume") }}
+        </div>
+        <div class="context-menu-item" @click="doAmuleAction('stop'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-stop" /> {{ $t("downloads.actions.stop") }}
+        </div>
+        <div class="context-menu-sep" />
+        <div
+          class="context-menu-item context-menu-item--danger"
+          @click="doAmuleAction('cancel'); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.cancel") }}
+        </div>
+        <template v-if="dlCtxSelectedCount === 1 && dlCtxMenu.row?.ed2kLink">
+          <div class="context-menu-sep" />
+          <div
+            class="context-menu-item"
+            @click="copyToClipboard(dlCtxMenu.row.ed2kLink); dlCtxMenu.visible = false"
+          >
+            <span class="mdi mdi-donkey" /> {{ $t("downloads.info.copyEd2k") }}
+          </div>
+        </template>
+      </template>
+
+      <!-- Torrent actions -->
+      <template v-else-if="dlCtxMenu.row?._type === 'torrent'">
+        <div class="context-menu-item" @click="doTorrentAction('start'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-play" /> {{ $t("downloads.actions.start") }}
+        </div>
+        <div class="context-menu-item" @click="doTorrentAction('stop'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
+        </div>
+        <div
+          class="context-menu-item"
+          @click="doTorrentAction('verify'); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-check-circle" /> {{ $t("downloads.actions.verify") }}
+        </div>
+        <div class="context-menu-sep" />
+        <div
+          class="context-menu-item context-menu-item--danger"
+          @click="confirmTorrentRemove(false); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.remove") }}
+        </div>
+        <div
+          class="context-menu-item context-menu-item--danger"
+          @click="confirmTorrentRemove(true); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.removeData") }}
+        </div>
+        <template v-if="dlCtxSelectedCount === 1 && dlCtxMenu.row?.magnetLink">
+          <div class="context-menu-sep" />
+          <div
+            class="context-menu-item"
+            @click="copyToClipboard(dlCtxMenu.row.magnetLink); dlCtxMenu.visible = false"
+          >
+            <span class="mdi mdi-magnet" /> {{ $t("downloads.info.copyMagnet") }}
+          </div>
+        </template>
+      </template>
+
+      <!-- pyLoad actions -->
+      <template v-else-if="dlCtxMenu.row?._type === 'pyload'">
+        <div class="context-menu-item" @click="doPyloadAction('stop'); dlCtxMenu.visible = false">
+          <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
+        </div>
+        <div
+          class="context-menu-item"
+          @click="doPyloadAction('restart'); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-restart" /> {{ $t("downloads.actions.restart") }}
+        </div>
+        <div class="context-menu-sep" />
+        <div
+          class="context-menu-item context-menu-item--danger"
+          @click="doPyloadAction('delete'); dlCtxMenu.visible = false"
+        >
+          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.remove") }}
+        </div>
+      </template>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -1385,7 +1488,6 @@ watch(lastStopped, (ev) => {
 // ── Column definitions ────────────────────────────────────────────────
 const mainColumns = computed<STableColumn[]>(() => [
   { type: "expand", key: "_expand", width: 30 },
-  { type: "selection", key: "_sel", width: 40 },
   { key: "icon", label: "", width: 40 },
   { key: "name", label: t("downloads.columns.name") },
   { key: "size", label: t("downloads.columns.size"), width: 100 },
@@ -1512,7 +1614,8 @@ const pyloadTotals = ref<any>(null);
 const amuleCount = computed(() => amuleFiles.value.length);
 const torrentCount = computed(() => torrentFiles.value.length);
 const pyloadCount = computed(() => pyloadFiles.value.length);
-const selected = ref<any[]>([]);
+const selectedItems = reactive(new Set<string>());
+const lastClickedRow = ref<string | null>(null);
 const loading = ref(false);
 const sortBy = ref("");
 const filterStatus = ref("");
@@ -1559,16 +1662,71 @@ const contextMenu = reactive({
   y: 0,
   client: null as any,
 });
+const dlCtxMenu = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  row: null as any,
+});
+const dlCtxSelectedCount = computed(() => {
+  if (!dlCtxMenu.row) return 0;
+  const type = dlCtxMenu.row._type;
+  if (type === "amule") return selectedAmule.value.length;
+  if (type === "torrent") return selectedTorrents.value.length;
+  if (type === "pyload") return selectedPyload.value.length;
+  return 0;
+});
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 // ── Selection by type ─────────────────────────────────────────────────
-const selectedAmule = computed(() => selected.value.filter((r) => r._type === "amule"));
-const selectedTorrents = computed(() => selected.value.filter((r) => r._type === "torrent"));
-const selectedPyload = computed(() => selected.value.filter((r) => r._type === "pyload"));
+const selectedAmule = computed(() =>
+  filteredFiles.value.filter((r: any) => r._type === "amule" && selectedItems.has(r._uid)),
+);
+const selectedTorrents = computed(() =>
+  filteredFiles.value.filter((r: any) => r._type === "torrent" && selectedItems.has(r._uid)),
+);
+const selectedPyload = computed(() =>
+  filteredFiles.value.filter((r: any) => r._type === "pyload" && selectedItems.has(r._uid)),
+);
 
-function onCheck(rows: any[]) {
-  selected.value = rows;
+function dlRowClass(row: any): string {
+  return selectedItems.has(row._uid) ? "is-selected" : "";
+}
+
+function onDlRowClick(row: any, _idx: number, e: MouseEvent) {
+  if (e.shiftKey && lastClickedRow.value) {
+    const uids = filteredFiles.value.map((r: any) => r._uid);
+    const a = uids.indexOf(lastClickedRow.value);
+    const b = uids.indexOf(row._uid);
+    if (a !== -1 && b !== -1) {
+      const [from, to] = a < b ? [a, b] : [b, a];
+      if (!e.ctrlKey && !e.metaKey) selectedItems.clear();
+      for (let i = from; i <= to; i++) selectedItems.add(uids[i]);
+      return;
+    }
+  }
+  if (e.ctrlKey || e.metaKey) {
+    if (selectedItems.has(row._uid)) selectedItems.delete(row._uid);
+    else selectedItems.add(row._uid);
+  } else {
+    selectedItems.clear();
+    selectedItems.add(row._uid);
+  }
+  lastClickedRow.value = row._uid;
+}
+
+function onDlRowContextmenu(row: any, e: MouseEvent) {
+  if (!selectedItems.has(row._uid)) {
+    selectedItems.clear();
+    selectedItems.add(row._uid);
+    lastClickedRow.value = row._uid;
+  }
+  dlCtxMenu.visible = true;
+  dlCtxMenu.x = Math.min(e.clientX, window.innerWidth - 220);
+  dlCtxMenu.y = Math.min(e.clientY, window.innerHeight - 220);
+  dlCtxMenu.row = row;
+  e.stopPropagation();
 }
 
 function isOpen(uid: string) {
@@ -1780,6 +1938,7 @@ async function copyToClipboard(text: string) {
 }
 function closeContextMenu() {
   contextMenu.visible = false;
+  dlCtxMenu.visible = false;
 }
 
 // ── Sort + filter ─────────────────────────────────────────────────────
@@ -1898,7 +2057,7 @@ async function doAmuleAction(action: string) {
       method: "POST",
       body: { action, hashes: selectedAmule.value.map((f: any) => f.hash) },
     });
-    selected.value = [];
+    selectedItems.clear();
     await refresh();
   } finally {
     loading.value = false;
@@ -1934,7 +2093,7 @@ async function doTorrentAction(action: string) {
         ids: selectedTorrents.value.map((t: any) => t._torrentId),
       },
     });
-    selected.value = [];
+    selectedItems.clear();
     await refresh();
   } finally {
     loading.value = false;
@@ -1956,7 +2115,7 @@ async function doTorrentRemove() {
         ids: selectedTorrents.value.map((t: any) => t._torrentId),
       },
     });
-    selected.value = [];
+    selectedItems.clear();
     showRemoveDialog.value = false;
     await refresh();
   } finally {
@@ -1973,7 +2132,7 @@ async function doPyloadAction(action: string) {
         body: action === "delete" ? { action, pids: [pid] } : { action, pid },
       });
     }
-    selected.value = [];
+    selectedItems.clear();
     await refreshPyload();
     applySortAndFilter();
   } catch (err: any) {
@@ -1983,9 +2142,9 @@ async function doPyloadAction(action: string) {
 
 // Per-row action from mobile cards
 async function doCardAction(row: any, action: string) {
-  const prev = selected.value;
-  selected.value = [row];
-  // Remove dialogs: keep selected set so the dialog can read it
+  const prevSelected = [...selectedItems];
+  selectedItems.clear();
+  selectedItems.add(row._uid);
   if (row._type === "torrent" && (action === "remove" || action === "remove_data")) {
     confirmTorrentRemove(action === "remove_data");
     return;
@@ -1995,7 +2154,8 @@ async function doCardAction(row: any, action: string) {
     else if (row._type === "torrent") await doTorrentAction(action);
     else await doPyloadAction(action);
   } finally {
-    selected.value = prev;
+    selectedItems.clear();
+    for (const uid of prevSelected) selectedItems.add(uid);
   }
 }
 
@@ -2119,6 +2279,27 @@ onUnmounted(() => {
   font-size: 1rem;
   width: 1.25rem;
   text-align: center;
+}
+.context-menu-header {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--s-text-muted);
+  border-bottom: 1px solid var(--s-border);
+  margin-bottom: 0.15rem;
+}
+.context-menu-sep {
+  height: 1px;
+  background: var(--s-border);
+  margin: 0.25rem 0;
+}
+.context-menu-item--danger {
+  color: var(--s-danger);
+}
+.context-menu-item--danger:hover {
+  background: color-mix(in srgb, var(--s-danger) 10%, var(--s-bg-input));
 }
 .source-cards {
   display: flex;
