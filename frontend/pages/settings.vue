@@ -504,7 +504,9 @@ export default {
             <!-- Torrent-search plugins -->
             <template v-if="torrentSearchProviderList.length">
               <p class="is-size-7 has-text-grey mb-2">
-                <span class="mdi mdi-magnify mr-1" />{{ $t("settings.providersTorrentSearchTitle") }}
+                <span class="mdi mdi-magnify mr-1" />{{
+                  $t("settings.providersTorrentSearchTitle")
+                }}
               </p>
               <div class="providers-list mb-4">
                 <div
@@ -537,7 +539,10 @@ export default {
               </div>
             </template>
 
-            <p v-if="!mediaProviderList.length && !torrentSearchProviderList.length" class="has-text-muted is-size-7">
+            <p
+              v-if="!mediaProviderList.length && !torrentSearchProviderList.length"
+              class="has-text-muted is-size-7"
+            >
               {{ $t("settings.providersEmpty") }}
             </p>
           </template>

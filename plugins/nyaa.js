@@ -81,8 +81,15 @@ function parseSize(s) {
   const n = parseFloat(m[1]);
   const unit = m[2].toLowerCase();
   const map = {
-    b: 1, kib: 1024, kb: 1024, mib: 1024 ** 2, mb: 1024 ** 2,
-    gib: 1024 ** 3, gb: 1024 ** 3, tib: 1024 ** 4, tb: 1024 ** 4,
+    b: 1,
+    kib: 1024,
+    kb: 1024,
+    mib: 1024 ** 2,
+    mb: 1024 ** 2,
+    gib: 1024 ** 3,
+    gb: 1024 ** 3,
+    tib: 1024 ** 4,
+    tb: 1024 ** 4,
   };
   return Math.round(n * (map[unit] ?? 1));
 }

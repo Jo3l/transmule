@@ -155,10 +155,10 @@ Official plugins are maintained in the **[transmule-plugins](https://github.com/
 
 Two plugin types are supported:
 
-| Type | What it does | Key method |
-| --- | --- | --- |
-| **Media** (`mediaType`) | Adds a sidebar browse/search section for a content type (movies, shows, …) | `list(params)` |
-| **Torrent Search** (`pluginType: "torrent-search"`) | Powers the Transmission → Torrent Search page with a new index source | `search(query, limit, extraTrackers)` |
+| Type                                                | What it does                                                               | Key method                            |
+| --------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------- |
+| **Media** (`mediaType`)                             | Adds a sidebar browse/search section for a content type (movies, shows, …) | `list(params)`                        |
+| **Torrent Search** (`pluginType: "torrent-search"`) | Powers the Transmission → Torrent Search page with a new index source      | `search(query, limit, extraTrackers)` |
 
 ### Installing plugins
 
@@ -170,14 +170,14 @@ No server restart needed. To remove a plugin, click **Remove** next to it in the
 
 ### Available plugins
 
-| Plugin | Type | Description |
-| --- | --- | --- |
-| `dontorrent-movies` | movies | Spanish movie torrents from dontorrent.link |
-| `dontorrent-shows` | shows | Spanish series torrents from dontorrent.link |
-| `yts` | movies | Movie browse/search via YTS.mx with quality & genre filters |
-| `showrss` | shows | TV show torrents from your personal ShowRSS RSS feed |
-| `nyaa` | torrent-search | Anime & manga torrents via nyaa.si RSS |
-| `piratebay` | torrent-search | General torrents via apibay.org JSON API |
-| `yts-search` | torrent-search | Movie torrents via YTS.mx JSON API |
+| Plugin              | Type           | Description                                                 |
+| ------------------- | -------------- | ----------------------------------------------------------- |
+| `dontorrent-movies` | movies         | Spanish movie torrents from dontorrent.link                 |
+| `dontorrent-shows`  | shows          | Spanish series torrents from dontorrent.link                |
+| `yts`               | movies         | Movie browse/search via YTS.mx with quality & genre filters |
+| `showrss`           | shows          | TV show torrents from your personal ShowRSS RSS feed        |
+| `nyaa`              | torrent-search | Anime & manga torrents via nyaa.si RSS                      |
+| `piratebay`         | torrent-search | General torrents via apibay.org JSON API                    |
+| `yts-search`        | torrent-search | Movie torrents via YTS.mx JSON API                          |
 
 Download them from [github.com/Jo3l/transmule-plugins](https://github.com/Jo3l/transmule-plugins).

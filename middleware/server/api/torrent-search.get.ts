@@ -1,5 +1,8 @@
 import { searchTorrents } from "../torrent-search";
-import { ensureProviders, getTorrentSearchProviders } from "../providers/loader";
+import {
+  ensureProviders,
+  getTorrentSearchProviders,
+} from "../providers/loader";
 import { getConfig } from "../utils/database";
 
 defineRouteMeta({
@@ -31,7 +34,8 @@ export default defineEventHandler(async (event) => {
   const validIds = plugins.map((p) => p.meta.id);
 
   const src =
-    source === "all" || (typeof source === "string" && validIds.includes(source))
+    source === "all" ||
+    (typeof source === "string" && validIds.includes(source))
       ? (source as string)
       : "all";
 

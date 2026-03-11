@@ -9,4 +9,7 @@
 export type TorrentSource = string;
 
 // Re-export from the canonical location
-export type { TorrentSearchResult, TorrentSearchPlugin } from "../providers/types";
+export type {
+  TorrentSearchResult,
+  TorrentSearchPlugin,
+} from "../providers/types";

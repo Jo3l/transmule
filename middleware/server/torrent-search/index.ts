@@ -43,9 +43,7 @@ export async function searchTorrents(
   const plugins = getTorrentSearchProviders();
 
   const targets =
-    source === "all"
-      ? plugins
-      : plugins.filter((p) => p.meta.id === source);
+    source === "all" ? plugins : plugins.filter((p) => p.meta.id === source);
 
   const tasks = targets.map((p) =>
     safeSearch(() => p.search(query, limit, extraTrackers)),

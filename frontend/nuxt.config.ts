@@ -8,6 +8,12 @@ export default defineNuxtConfig({
   // SPA mode — no SSR needed for a private dashboard app.
   ssr: false,
 
+  experimental: {
+    // Disable app manifest to avoid #app-manifest import resolution errors
+    // in SPA mode (Nuxt 3.14+).
+    appManifest: false,
+  },
+
   modules: ["@nuxtjs/i18n"],
 
   i18n: {
