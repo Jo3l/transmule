@@ -2,6 +2,8 @@
 
 A unified self-hosted web interface for managing downloads across **aMule** (ED2K/Kademlia), **Transmission** (torrents) and **pyLoad NG** (direct downloads) — all from a single dashboard, deployed with Docker Compose.
 
+![TransMule — aMule downloads view](amuleDownloads.jpg)
+
 ---
 
 ## Features
