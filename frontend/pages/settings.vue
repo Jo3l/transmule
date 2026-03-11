@@ -385,6 +385,7 @@
               </p>
             </div>
             <SButton
+              v-if="isAdmin"
               variant="primary"
               size="sm"
               icon="mdi-upload"
@@ -394,6 +395,7 @@
               {{ $t("settings.pluginUpload") }}
             </SButton>
             <input
+              v-if="isAdmin"
               ref="pluginFileInput"
               type="file"
               accept=".js"
@@ -416,7 +418,7 @@ export default {
     id: "my-provider",          // unique string id
     name: "My Provider",        // display name
     icon: "mdi-magnify",        // MDI icon class
-    mediaType: "movies",        // "movies" | "shows"
+    mediaType: "movies",        // any string, e.g. "movies", "shows", "games"
     description: "Optional."
   },
   // Required: returns items + pagination info
@@ -431,6 +433,16 @@ export default {
 };</code></pre>
               <p class="is-size-7 mt-2 has-text-muted">
                 {{ $t("settings.pluginDocNote") }}
+              </p>
+              <p class="is-size-7 mt-1">
+                <a
+                  href="https://github.com/Jo3l/transmule/blob/main/PROVIDER_PLUGIN.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <span class="mdi mdi-open-in-new mr-1" />
+                  {{ $t("settings.pluginDocReadMore") }}
+                </a>
               </p>
             </div>
           </details>
@@ -448,22 +460,11 @@ export default {
               <div class="provider-details">
                 <div class="provider-name">
                   {{ p.name }}
-                  <STag
-                    size="sm"
-                    :variant="p.builtin ? 'default' : 'warning'"
-                    class="ml-1"
-                  >
-                    {{ p.builtin ? $t("settings.pluginBuiltin") : $t("settings.pluginCustom") }}
-                  </STag>
                 </div>
                 <div class="provider-desc">
                   {{ p.description }}
-                  <STag
-                    size="sm"
-                    :variant="p.mediaType === 'movies' ? 'info' : 'primary'"
-                    class="ml-2"
-                  >
-                    {{ p.mediaType === "movies" ? $t("nav.movies") : $t("nav.shows") }}
+                  <STag size="sm" variant="info" class="ml-2">
+                    {{ p.mediaType }}
                   </STag>
                 </div>
               </div>
@@ -472,13 +473,13 @@ export default {
                 @update:model-value="onToggleProvider(p.id, $event)"
               />
               <SButton
-                v-if="!p.builtin"
-                variant="danger"
+                v-if="isAdmin"
+                variant="warning"
                 size="sm"
-                icon="mdi-delete-outline"
-                :title="$t('settings.pluginDelete')"
                 @click="onDeletePlugin(p.id, p.name)"
-              />
+              >
+                {{ $t("settings.pluginDelete") }}
+              </SButton>
             </div>
           </div>
 

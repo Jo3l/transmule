@@ -1,11 +1,10 @@
-import { registerProvider } from "./loader";
 import type {
   MediaProvider,
   MediaItem,
   MediaEpisode,
   ProviderListResult,
   ProviderSearchParams,
-} from "./types";
+} from "../types";
 
 const DEFAULT_URL = "https://www21.dontorrent.link/descargar-series";
 const HD_URL = "https://www21.dontorrent.link/series/hd";
@@ -249,5 +248,4 @@ function toMediaItem(r: RawItem): MediaItem {
   };
 }
 
-registerProvider(provider);
 export default provider;

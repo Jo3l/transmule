@@ -1,11 +1,10 @@
-import { registerProvider } from "./loader";
 import type {
   MediaProvider,
   MediaItem,
   MediaEpisode,
   ProviderListResult,
   ProviderSearchParams,
-} from "./types";
+} from "../types";
 
 const RSS_URL = "https://showrss.info/other/shows.rss";
 
@@ -174,5 +173,4 @@ const provider: MediaProvider = {
   },
 };
 
-registerProvider(provider);
 export default provider;

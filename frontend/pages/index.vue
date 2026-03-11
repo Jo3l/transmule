@@ -696,7 +696,7 @@
                           <span class="kv-label">{{ $t("downloads.info.pieces") }}</span>
                           <span class="kv-value">
                             {{ row.pieceCount }} &times;
-                            {{ formatSize(row.pieceSize) }}
+                            {{ formatBytes(row.pieceSize) }}
                           </span>
                         </div>
                         <div v-if="row.labels && row.labels.length" class="kv-row">
@@ -1132,7 +1132,7 @@
                     <template #cell-fname="{ row: f }">
                       <span class="is-size-7">{{ f.name }}</span>
                     </template>
-                    <template #cell-fsize="{ row: f }">{{ formatSize(f.length) }}</template>
+                    <template #cell-fsize="{ row: f }">{{ formatBytes(f.length) }}</template>
                     <template #cell-fprogress="{ row: f }">
                       <SProgress
                         :percentage="
@@ -1746,23 +1746,6 @@ function formatDuration(seconds: number) {
   if (m > 0) parts.push(`${m}m`);
   if (parts.length === 0) parts.push(`${s}s`);
   return parts.join(" ");
-}
-
-function formatSize(bytes: number) {
-  if (!bytes) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0,
-    v = bytes;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
-}
-
-function formatSpeed(bps: number) {
-  if (!bps) return "0 B/s";
-  return formatSize(bps) + "/s";
 }
 
 function availColor(sources: number, max: number) {

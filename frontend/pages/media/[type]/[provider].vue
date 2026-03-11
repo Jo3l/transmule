@@ -9,13 +9,14 @@
       </div>
       <div class="level-right">
         <SButton size="sm" @click="load">
-          <span class="mdi mdi-refresh mr-1" />{{ $t("shows.refresh") }}
+          <span class="mdi mdi-refresh mr-1" />{{ $t("media.refresh") }}
         </SButton>
       </div>
     </div>
 
     <!-- Filters -->
     <div v-if="filterDefs.length" class="provider-filters mb-4">
+      <!-- Text filter first -->
       <div v-for="f in textFilters" :key="f.key" class="provider-filter-search">
         <span class="mdi mdi-magnify" />
         <input
@@ -37,6 +38,7 @@
         </button>
       </div>
 
+      <!-- Select filters -->
       <div v-if="selectFilters.length" class="provider-filters-selects">
         <div v-for="f in selectFilters" :key="f.key" class="provider-filter-group">
           <label class="provider-filter-label">{{ f.label }}</label>
@@ -45,7 +47,7 @@
       </div>
     </div>
 
-    <!-- URL bar -->
+    <!-- URL bar (for dontorrent-style providers with no filters but url preference) -->
     <div v-if="showUrlBar" class="dt-url-bar mb-4">
       <div class="provider-filter-search" style="flex: 1">
         <span class="mdi mdi-link" />
@@ -63,7 +65,7 @@
         :disabled="loading"
         @click="saveAndLoad"
       >
-        <span class="mdi mdi-content-save mr-1" />{{ $t("shows.saveUrl") }}
+        <span class="mdi mdi-content-save mr-1" />{{ $t("media.saveUrl") }}
       </SButton>
     </div>
 
@@ -85,9 +87,11 @@
       />
     </div>
 
-    <p v-else-if="!loading" class="has-text-muted">{{ $t("shows.empty") }}</p>
+    <p v-else-if="!loading" class="has-text-muted">
+      {{ $t("media.empty") }}
+    </p>
 
-    <!-- Episode / detail modal -->
+    <!-- Episode / detail modal for series -->
     <Teleport to="body">
       <div v-if="modal" class="dt-modal-overlay" @click.self="modal = null">
         <div class="dt-modal">
@@ -123,7 +127,7 @@
                 </div>
                 <div v-if="modal.item.episodes?.length" class="media-meta-item">
                   <span class="mdi mdi-television-play" />{{ modal.item.episodes.length }}
-                  {{ $t("shows.episodes") }}
+                  {{ $t("media.episodes") }}
                 </div>
               </div>
             </div>
@@ -134,6 +138,7 @@
               {{ modal.item.description }}
             </p>
 
+            <!-- Episode list -->
             <div v-if="modal.item.episodes?.length" class="dt-modal-episodes">
               <div
                 v-for="(ep, i) in modal.item.episodes"
@@ -149,12 +154,13 @@
                   :disabled="!!busy"
                   @click="downloadEpisode(modal!.item, ep)"
                 >
-                  <span class="mdi mdi-download mr-1" />{{ $t("shows.download") }}
+                  <span class="mdi mdi-download mr-1" />{{ $t("media.download") }}
                 </SButton>
                 <span v-if="ep.date" class="ep-date">{{ ep.date }}</span>
               </div>
             </div>
 
+            <!-- Non-series single download in modal -->
             <div v-else-if="modal.item.links?.length" class="dt-modal-download">
               <SButton
                 size="sm"
@@ -163,7 +169,7 @@
                 :disabled="!!busy"
                 @click="onDownloadLink(modal!.item, modal!.item.links![0])"
               >
-                <span class="mdi mdi-download mr-1" />{{ $t("shows.addToTransmission") }}
+                <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
               </SButton>
             </div>
           </div>
@@ -189,21 +195,33 @@ const { loadProviders, fetchList, fetchDetail, fetchCover } = useProviders();
 const { isDownloaded, isDownloadedByHash, recordDownload, loadDownloadHistory } =
   useDownloadHistory();
 
+// ── Route params ────────────────────────────────────────────────────
 const providerId = computed(() => String(route.params.provider));
-const mediaType = computed(() => "shows" as const);
-const mediaTypeLabel = computed(() => t("shows.title"));
+const mediaType = computed(() => String(route.params.type ?? ""));
+const mediaTypeLabel = computed(() => {
+  const t = mediaType.value;
+  return t.charAt(0).toUpperCase() + t.slice(1);
+});
 
+// ── Provider meta ───────────────────────────────────────────────────
 const providerMeta = ref<ProviderMeta | null>(null);
 const filterDefs = ref<ProviderFilter[]>([]);
 const textFilters = computed(() => filterDefs.value.filter((f) => f.type === "text"));
 const selectFilters = computed(() => filterDefs.value.filter((f) => f.type === "select"));
 
-const showUrlBar = computed(() => providerId.value.startsWith("dontorrent"));
+// ── URL bar (for providers like dontorrent that use a custom URL) ──
+const showUrlBar = computed(() => {
+  // Show URL bar for dontorrent providers
+  return providerId.value.startsWith("dontorrent");
+});
 
 const URL_DEFAULTS: Record<string, string> = {
+  "dontorrent-movies": "https://www21.dontorrent.link/ultimos",
   "dontorrent-shows": "https://www21.dontorrent.link/descargar-series",
 };
+
 const URL_PREF_KEYS: Record<string, string> = {
+  "dontorrent-movies": "dontorrent_url",
   "dontorrent-shows": "dontorrent_series_url",
 };
 
@@ -212,22 +230,27 @@ const sourceUrl = ref("");
 const savedUrl = ref("");
 const urlChanged = computed(() => sourceUrl.value.trim() !== savedUrl.value);
 
+// ── State ───────────────────────────────────────────────────────────
 const items = ref<MediaItem[]>([]);
 const loading = ref(false);
 const error = ref("");
 const busy = ref<string | null>(null);
 const filters = reactive<Record<string, string>>({});
 
+// Detail / cover loading
 const detailLoading = ref(new Set<string>());
 const coverLoading = ref(new Set<string>());
 const coverCache = ref<Record<string, string | null>>({});
 
+// Modal
 interface ModalState {
   item: MediaItem;
 }
 const modal = ref<ModalState | null>(null);
 
+// Download history passthrough
 const downloadedUrls = computed(() => {
+  // Access internal state from useDownloadHistory
   const urls = useState<string[]>("_downloadedUrls");
   return urls.value ?? [];
 });
@@ -235,6 +258,8 @@ const downloadedHashes = computed(() => {
   const hashes = useState<string[]>("_downloadedHashes");
   return hashes.value ?? [];
 });
+
+// ── Helpers ─────────────────────────────────────────────────────────
 
 function getCover(item: MediaItem): string | null {
   if (item.cover) return item.cover;
@@ -278,11 +303,15 @@ function onImgError(e: Event) {
   (e.target as HTMLImageElement).style.display = "none";
 }
 
+// ── Detail lazy-loading (IntersectionObserver) ──────────────────────
+
 let observer: IntersectionObserver | null = null;
 
 async function loadItemDetail(item: MediaItem) {
   if (!item.needsDetail) return;
   if (detailLoading.value.has(item.id)) return;
+
+  // Already enriched (has links or episodes)
   if ((item.links?.length ?? 0) > 0 || (item.episodes?.length ?? 0) > 0) return;
 
   const s = new Set(detailLoading.value);
@@ -292,16 +321,19 @@ async function loadItemDetail(item: MediaItem) {
   try {
     const detail = await fetchDetail(providerId.value, item.sourceUrl || item.id);
     if (detail) {
+      // Merge detail into the item
       const idx = items.value.findIndex((i) => i.id === item.id);
       if (idx >= 0) {
         const merged = { ...items.value[idx], ...detail, id: item.id, needsDetail: false };
         items.value = [...items.value.slice(0, idx), merged, ...items.value.slice(idx + 1)];
+        // Update modal if open
         if (modal.value?.item.id === item.id) {
           modal.value = { item: merged };
         }
       }
     }
   } catch {
+    // silently ignore
   } finally {
     const s2 = new Set(detailLoading.value);
     s2.delete(item.id);
@@ -353,31 +385,37 @@ function setupObserver() {
   });
 }
 
+// ── Modal ───────────────────────────────────────────────────────────
+
 function openModal(item: MediaItem) {
   modal.value = { item };
   if (item.needsDetail) loadItemDetail(item);
 }
 
+// ── Downloads ───────────────────────────────────────────────────────
+
 async function onDownloadLink(item: MediaItem, link: MediaLink | null) {
   if (busy.value) return;
 
+  // If the item needs detail and we don't have a link yet, fetch
   if (!link?.url && item.needsDetail) {
     busy.value = item.id;
     try {
       await loadItemDetail(item);
+      // Re-read the updated item
       const updated = items.value.find((i) => i.id === item.id);
       link = updated?.links?.[0] ?? null;
     } finally {
       if (!link?.url) {
         busy.value = null;
-        error.value = t("shows.noTorrent");
+        error.value = t("media.noTorrent");
         return;
       }
     }
   }
 
   if (!link?.url) {
-    error.value = t("shows.noTorrent");
+    error.value = t("media.noTorrent");
     return;
   }
 
@@ -391,7 +429,7 @@ async function onDownloadLink(item: MediaItem, link: MediaLink | null) {
     const title = link.quality ? `${item.title} [${link.quality}]` : item.title;
     recordDownload(link.url, title, "transmission");
   } catch (err: any) {
-    error.value = err?.data?.statusMessage || err?.message || t("shows.addError");
+    error.value = err?.data?.statusMessage || err?.message || t("media.addError");
   } finally {
     busy.value = null;
   }
@@ -410,11 +448,13 @@ async function downloadEpisode(item: MediaItem, ep: MediaEpisode) {
     });
     recordDownload(link.url, `${item.title} ${ep.code}`, "transmission");
   } catch (err: any) {
-    error.value = err?.data?.statusMessage || err?.message || t("shows.addError");
+    error.value = err?.data?.statusMessage || err?.message || t("media.addError");
   } finally {
     busy.value = null;
   }
 }
+
+// ── Load ────────────────────────────────────────────────────────────
 
 async function load() {
   loading.value = true;
@@ -424,6 +464,8 @@ async function load() {
 
   try {
     const params: Record<string, string | number> = { ...filters };
+
+    // Pass URL for dontorrent providers
     if (showUrlBar.value && sourceUrl.value) {
       params.url = sourceUrl.value.trim();
     }
@@ -431,6 +473,7 @@ async function load() {
     const data = await fetchList(providerId.value, params);
     items.value = data.items ?? [];
 
+    // Save URL if applicable
     if (showUrlBar.value) {
       savedUrl.value = sourceUrl.value.trim();
       const prefKey = URL_PREF_KEYS[providerId.value];
@@ -444,7 +487,7 @@ async function load() {
 
     setupObserver();
   } catch (err: any) {
-    error.value = err?.data?.statusMessage || err?.message || t("shows.fetchError");
+    error.value = err?.data?.statusMessage || err?.message || t("media.fetchError");
   } finally {
     loading.value = false;
   }
@@ -454,8 +497,12 @@ function saveAndLoad() {
   if (urlChanged.value) load();
 }
 
+// ── Init ────────────────────────────────────────────────────────────
+
 onMounted(async () => {
   const auth = useAuth();
+
+  // Load providers meta
   const allProviders = await loadProviders();
   const meta = allProviders.find((p) => p.id === providerId.value);
   if (!meta) {
@@ -465,10 +512,12 @@ onMounted(async () => {
   providerMeta.value = meta;
   filterDefs.value = meta.filters;
 
+  // Initialize filter defaults
   for (const f of meta.filters) {
     filters[f.key] = f.defaultValue ?? "";
   }
 
+  // Load URL preference if needed
   if (showUrlBar.value) {
     sourceUrl.value = URL_DEFAULTS[providerId.value] || "";
     savedUrl.value = sourceUrl.value;
@@ -591,7 +640,8 @@ onUnmounted(() => observer?.disconnect());
   }
 }
 
-/* Modal */
+/* ── Modal ─────────────────────────────────────────────────────────── */
+
 .dt-modal-overlay {
   position: fixed;
   inset: 0;
@@ -723,6 +773,7 @@ onUnmounted(() => observer?.disconnect());
   &.is-odd {
     background: var(--s-bg-muted);
   }
+
   &.is-loading {
     opacity: 0.6;
     pointer-events: none;

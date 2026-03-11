@@ -34,46 +34,24 @@
           </li>
         </ul>
 
-        <!-- Shows collapsible section -->
+        <!-- Dynamic media-type sections (one per unique provider mediaType) -->
         <div
-          v-if="showProviders.length"
+          v-for="group in mediaGroups"
+          :key="group.type"
           class="sidebar-section"
-          :class="{ 'is-expanded': showsOpen }"
+          :class="{ 'is-expanded': isSectionOpen(group.type) }"
         >
-          <a class="sidebar-section-header" @click="showsOpen = !showsOpen">
-            <span class="mdi mdi-television-play"></span>
-            {{ $t("nav.shows") }}
+          <a class="sidebar-section-header" @click="toggleSection(group.type)">
+            <span class="mdi" :class="mediaIcon(group.type)"></span>
+            {{ mediaLabel(group.type) }}
             <span
               class="mdi sidebar-section-chevron"
-              :class="showsOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+              :class="isSectionOpen(group.type) ? 'mdi-chevron-down' : 'mdi-chevron-right'"
             />
           </a>
-          <ul v-show="showsOpen" class="menu-list sidebar-section-list">
-            <li v-for="p in showProviders" :key="p.id">
-              <NuxtLink :to="`/shows/${p.id}`" @click="$emit('close')">
-                <span class="mdi" :class="p.icon"></span> {{ p.name }}
-              </NuxtLink>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Movies collapsible section -->
-        <div
-          v-if="movieProviders.length"
-          class="sidebar-section"
-          :class="{ 'is-expanded': moviesOpen }"
-        >
-          <a class="sidebar-section-header" @click="moviesOpen = !moviesOpen">
-            <span class="mdi mdi-movie-open"></span>
-            {{ $t("nav.movies") }}
-            <span
-              class="mdi sidebar-section-chevron"
-              :class="moviesOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
-            />
-          </a>
-          <ul v-show="moviesOpen" class="menu-list sidebar-section-list">
-            <li v-for="p in movieProviders" :key="p.id">
-              <NuxtLink :to="`/movies/${p.id}`" @click="$emit('close')">
+          <ul v-show="isSectionOpen(group.type)" class="menu-list sidebar-section-list">
+            <li v-for="p in group.list" :key="p.id">
+              <NuxtLink :to="`/media/${group.type}/${p.id}`" @click="$emit('close')">
                 <span class="mdi" :class="p.icon"></span> {{ p.name }}
               </NuxtLink>
             </li>
@@ -213,6 +191,7 @@
 
 <script setup lang="ts">
 import { APP_VERSION } from "~/utils/constants";
+import type { ProviderMeta } from "~/composables/useProviders";
 
 defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
@@ -262,8 +241,7 @@ onUnmounted(() => {
   destroyScene?.();
 });
 
-const showsOpen = ref(true);
-const moviesOpen = ref(true);
+const sectionsOpen = ref<Record<string, boolean>>({});
 const amuleOpen = ref(true);
 const transmissionOpen = ref(true);
 const pyloadOpen = ref(true);
@@ -273,12 +251,36 @@ const { services, loaded } = useServices();
 // Provider-driven sidebar
 const { loadProviders, providers } = useProviders();
 
-const showProviders = computed(() =>
-  (providers.value ?? []).filter((p) => p.enabled && p.mediaType === "shows"),
-);
-const movieProviders = computed(() =>
-  (providers.value ?? []).filter((p) => p.enabled && p.mediaType === "movies"),
-);
+// Group enabled providers by mediaType, preserving insertion order
+const mediaGroups = computed(() => {
+  const groups = new Map<string, ProviderMeta[]>();
+  for (const p of (providers.value ?? []).filter((p) => p.enabled)) {
+    if (!groups.has(p.mediaType)) groups.set(p.mediaType, []);
+    groups.get(p.mediaType)!.push(p);
+  }
+  return [...groups.entries()].map(([type, list]) => ({ type, list }));
+});
+
+const MEDIA_ICONS: Record<string, string> = {
+  movies: "mdi-movie-open",
+  shows: "mdi-television-play",
+};
+
+function mediaIcon(type: string): string {
+  return MEDIA_ICONS[type] ?? "mdi-package-variant-closed";
+}
+
+function mediaLabel(type: string): string {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function isSectionOpen(type: string): boolean {
+  return sectionsOpen.value[type] !== false;
+}
+
+function toggleSection(type: string) {
+  sectionsOpen.value = { ...sectionsOpen.value, [type]: !isSectionOpen(type) };
+}
 
 onMounted(async () => {
   if (!canvasEnabled.value || !sidebarCanvas.value) {

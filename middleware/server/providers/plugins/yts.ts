@@ -1,4 +1,3 @@
-import { registerProvider } from "./loader";
 import type {
   MediaProvider,
   MediaItem,
@@ -6,7 +5,7 @@ import type {
   ProviderListResult,
   ProviderSearchParams,
   ProviderFilter,
-} from "./types";
+} from "../types";
 
 const YTS_BASE = "https://movies-api.accel.li/api/v2/list_movies.json";
 
@@ -219,5 +218,4 @@ const provider: MediaProvider = {
   },
 };
 
-registerProvider(provider);
 export default provider;

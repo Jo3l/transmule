@@ -72,7 +72,7 @@ export interface MediaItem {
 
 // ── Provider metadata & interface ──────────────────────────────────────
 
-export type MediaType = "movies" | "shows";
+export type MediaType = string;
 
 export interface ProviderMeta {
   /** Machine-name slug (must match filename, e.g. "yts") */

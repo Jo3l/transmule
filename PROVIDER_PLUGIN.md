@@ -1,6 +1,6 @@
 # Provider Plugin Development Guide
 
-TransMule supports user-uploaded media provider plugins. Providers are plain `.js` files that follow a simple interface, letting you add custom media sources for movies or TV shows.
+TransMule supports user-uploaded media provider plugins. Providers are plain `.js` files that follow a simple interface, letting you add custom media sources for any content type — movies, TV shows, games, software, or anything else.
 
 ---
 
@@ -12,16 +12,18 @@ Create a file `my-provider.js` and upload it via **Settings → Providers → Up
 // my-provider.js
 export default {
   meta: {
-    id: "my-provider",           // unique string — must not clash with built-ins
-    name: "My Provider",         // display name shown in the UI
-    icon: "mdi-magnify",         // MDI icon class (https://pictogrammers.com/library/mdi/)
-    mediaType: "movies",         // "movies" | "shows"
+    id: "my-provider", // unique string — must not clash with built-ins
+    name: "My Provider", // display name shown in the UI
+    icon: "mdi-magnify", // MDI icon class (https://pictogrammers.com/library/mdi/)
+    mediaType: "movies", // any string — creates a sidebar section with that name
     description: "My custom provider searches an awesome source.",
   },
 
   // Required: search / browse items
   async list({ query, page, filters }) {
-    const res = await fetch(`https://example.com/api?q=${encodeURIComponent(query)}&page=${page}`);
+    const res = await fetch(
+      `https://example.com/api?q=${encodeURIComponent(query)}&page=${page}`,
+    );
     const data = await res.json();
     return {
       items: data.results.map((r) => ({
@@ -38,7 +40,9 @@ export default {
 
   // Optional: fetch full detail for an item (used when needsDetail = true)
   async detail(url) {
-    const res = await fetch(`https://example.com/api/detail?url=${encodeURIComponent(url)}`);
+    const res = await fetch(
+      `https://example.com/api/detail?url=${encodeURIComponent(url)}`,
+    );
     const data = await res.json();
     return {
       id: data.id,
@@ -47,7 +51,11 @@ export default {
       year: data.year,
       rating: data.rating,
       cover: data.poster,
-      links: data.torrents.map((t) => ({ url: t.magnet, label: t.quality, size: t.size })),
+      links: data.torrents.map((t) => ({
+        url: t.magnet,
+        label: t.quality,
+        size: t.size,
+      })),
     };
   },
 };
@@ -59,13 +67,13 @@ export default {
 
 ### `meta` (required)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | `string` | ✅ | Unique identifier. Use lowercase kebab-case (e.g. `"my-source"`). Must not conflict with built-in ids: `yts`, `dontorrent-movies`, `dontorrent-shows`, `showrss`. |
-| `name` | `string` | ✅ | Human-readable display name. |
-| `icon` | `string` | ✅ | MDI icon CSS class (e.g. `"mdi-movie"`, `"mdi-television-play"`). Full list at [Pictogrammers](https://pictogrammers.com/library/mdi/). |
-| `mediaType` | `"movies" \| "shows"` | ✅ | Which section this provider appears in. |
-| `description` | `string` | — | Short description shown in Settings. |
+| Field         | Type     | Required | Description                                                                                                                                                       |
+| ------------- | -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | `string` | ✅       | Unique identifier. Use lowercase kebab-case (e.g. `"my-source"`). Must not conflict with built-in ids: `yts`, `dontorrent-movies`, `dontorrent-shows`, `showrss`. |
+| `name`        | `string` | ✅       | Human-readable display name.                                                                                                                                      |
+| `icon`        | `string` | ✅       | MDI icon CSS class (e.g. `"mdi-movie"`, `"mdi-television-play"`). Full list at [Pictogrammers](https://pictogrammers.com/library/mdi/).                           |
+| `mediaType`   | `string` | ✅       | The content category for this provider (e.g. `"movies"`, `"shows"`, `"games"`). A sidebar section is automatically created for each unique value.                 |
+| `description` | `string` | —        | Short description shown in Settings.                                                                                                                              |
 
 ---
 
@@ -75,16 +83,16 @@ Called when the user searches or browses.
 
 ```ts
 interface ListParams {
-  query: string;          // search query (may be empty for browse)
-  page: number;           // 1-based page number
+  query: string; // search query (may be empty for browse)
+  page: number; // 1-based page number
   filters: Record<string, string>; // key/value from declared filters
 }
 
 interface ListResult {
   items: MediaItem[];
-  hasMore?: boolean;      // true if there are more pages
-  total?: number;         // total number of results (optional)
-  page?: number;          // current page (optional, echoed back)
+  hasMore?: boolean; // true if there are more pages
+  total?: number; // total number of results (optional)
+  page?: number; // current page (optional, echoed back)
 }
 ```
 
@@ -144,18 +152,18 @@ filters: [
 interface MediaItem {
   id: string;
   title: string;
-  cover?: string;          // poster/thumbnail URL
+  cover?: string; // poster/thumbnail URL
   year?: number | string;
   date?: string;
   genre?: string;
   rating?: number | string;
-  runtime?: number;        // minutes
+  runtime?: number; // minutes
   description?: string;
-  links?: MediaLink[];     // direct torrent/magnet links
+  links?: MediaLink[]; // direct torrent/magnet links
   episodes?: MediaEpisode[]; // for TV shows
   isSeries?: boolean;
-  needsDetail?: boolean;   // true → detail() will be called before showing links
-  sourceUrl?: string;      // URL passed to detail() when needsDetail is true
+  needsDetail?: boolean; // true → detail() will be called before showing links
+  sourceUrl?: string; // URL passed to detail() when needsDetail is true
 }
 ```
 
@@ -163,13 +171,13 @@ interface MediaItem {
 
 ```ts
 interface MediaLink {
-  url: string;             // magnet: or https:// torrent URL
-  label?: string;          // e.g. "1080p BluRay"
+  url: string; // magnet: or https:// torrent URL
+  label?: string; // e.g. "1080p BluRay"
   quality?: string;
   type?: string;
-  size?: string;           // human-readable, e.g. "2.3 GB"
+  size?: string; // human-readable, e.g. "2.3 GB"
   seeds?: number;
-  hash?: string;           // info hash (without magnet prefix)
+  hash?: string; // info hash (without magnet prefix)
 }
 ```
 
@@ -177,7 +185,7 @@ interface MediaLink {
 
 ```ts
 interface MediaEpisode {
-  code: string;            // e.g. "S01E03"
+  code: string; // e.g. "S01E03"
   links: MediaLink[];
   date?: string;
 }
@@ -190,11 +198,13 @@ interface MediaEpisode {
 Plugins must be plain **JavaScript** files (`.js`). Both ESM and CommonJS are supported:
 
 **ESM (recommended)**
+
 ```js
 export default { meta: { ... }, async list(...) { ... } };
 ```
 
 **CommonJS**
+
 ```js
 module.exports = { meta: { ... }, async list(...) { ... } };
 ```

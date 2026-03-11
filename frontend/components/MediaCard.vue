@@ -133,44 +133,7 @@
 </template>
 
 <script setup lang="ts">
-interface MediaLink {
-  label?: string;
-  url: string;
-  quality?: string;
-  type?: string;
-  size?: string;
-  seeds?: number;
-  hash?: string;
-}
-
-interface MediaEpisode {
-  code: string;
-  links: MediaLink[];
-  date?: string;
-}
-
-interface MediaItem {
-  id: string;
-  title: string;
-  cover?: string;
-  year?: number | string;
-  date?: string;
-  genre?: string;
-  rating?: number | string;
-  runtime?: number;
-  description?: string;
-  format?: string;
-  size?: string;
-  director?: string;
-  actors?: string;
-  language?: string;
-  genres?: string[];
-  links?: MediaLink[];
-  episodes?: MediaEpisode[];
-  isSeries?: boolean;
-  sourceUrl?: string;
-  needsDetail?: boolean;
-}
+import type { MediaLink, MediaEpisode, MediaItem } from "~/composables/useProviders";
 
 const props = defineProps<{
   item: MediaItem;

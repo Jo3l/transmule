@@ -6,13 +6,12 @@ export interface ProviderMeta {
   id: string;
   name: string;
   icon: string;
-  mediaType: "movies" | "shows";
+  mediaType: string;
   description?: string;
   enabled: boolean;
   hasDetail: boolean;
   hasCover: boolean;
   filters: ProviderFilter[];
-  builtin: boolean;
   filename?: string;
 }
 
@@ -81,7 +80,7 @@ export function useProviders() {
     return _providers.value;
   }
 
-  function getProviders(mediaType?: "movies" | "shows"): ProviderMeta[] {
+  function getProviders(mediaType?: string): ProviderMeta[] {
     if (!_providers.value) return [];
     const list = _providers.value.filter((p) => p.enabled);
     if (mediaType) return list.filter((p) => p.mediaType === mediaType);

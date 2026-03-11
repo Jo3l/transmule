@@ -18,3 +18,21 @@ export function requireUser(event: H3Event): JwtPayload {
   }
   return event.context.user as JwtPayload;
 }
+
+/**
+ * Asserts that the request is made by an authenticated admin user.
+ * Combines requireUser + isAdmin guard so admin handlers stay concise.
+ *
+ * @throws 401 if not authenticated
+ * @throws 403 if authenticated but not an admin
+ */
+export function requireAdmin(event: H3Event): JwtPayload {
+  const user = requireUser(event);
+  if (!user.isAdmin) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Admin access required",
+    });
+  }
+  return user;
+}

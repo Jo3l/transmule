@@ -13,12 +13,7 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
-  if (!event.context.user?.isAdmin) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Admin access required",
-    });
-  }
+  requireAdmin(event);
 
   // Try to get stored values first, fall back to Transmission session
   let downloadDir = getConfig("shared_download_dir") || "";

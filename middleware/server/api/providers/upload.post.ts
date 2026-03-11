@@ -18,7 +18,10 @@ import {
 export default defineEventHandler(async (event) => {
   const user = requireUser(event);
   if (!user.isAdmin) {
-    throw createError({ statusCode: 403, statusMessage: "Admin access required" });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Admin access required",
+    });
   }
 
   const formData = await readMultipartFormData(event);
@@ -29,12 +32,16 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!filePart.filename.endsWith(".js")) {
-    throw createError({ statusCode: 400, statusMessage: "Only .js files are accepted" });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Only .js files are accepted",
+    });
   }
 
   // Sanitize: keep only safe filename characters, force .js extension
   const safeName =
-    filePart.filename.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.js$/, "") + ".js";
+    filePart.filename.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.js$/, "") +
+    ".js";
 
   // Ensure built-ins are loaded first
   await ensureProviders();
@@ -57,4 +64,3 @@ export default defineEventHandler(async (event) => {
 
   return { ok: true, id: providerId, filename: safeName };
 });
-

@@ -1,10 +1,9 @@
-import { registerProvider } from "./loader";
 import type {
   MediaProvider,
   MediaItem,
   ProviderListResult,
   ProviderSearchParams,
-} from "./types";
+} from "../types";
 
 const DEFAULT_URL = "https://www21.dontorrent.link/ultimos";
 const BASE_ORIGIN = "https://www21.dontorrent.link";
@@ -213,5 +212,4 @@ function toMediaItem(r: RawItem): MediaItem {
   };
 }
 
-registerProvider(provider);
 export default provider;

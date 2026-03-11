@@ -4,13 +4,7 @@ import {
 } from "../utils/database";
 
 export default defineEventHandler((event) => {
-  const userId: number = event.context.user?.userId;
-  if (!userId) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: "Authentication required",
-    });
-  }
+  const { userId } = requireUser(event);
   const q = getQuery(event);
   const page = Math.max(1, Number(q.page) || 1);
   const limit = 50;

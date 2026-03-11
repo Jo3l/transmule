@@ -38,12 +38,7 @@ defineRouteMeta({
 });
 
 export default defineEventHandler(async (event) => {
-  if (!event.context.user?.isAdmin) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Admin access required",
-    });
-  }
+  requireAdmin(event);
 
   const id = Number(getRouterParam(event, "id"));
   const body = await readBody(event);

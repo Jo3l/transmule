@@ -148,17 +148,6 @@ export function updateUserPassword(id: number, passwordHash: string): boolean {
 
 // ─── User preference helpers ────────────────────────────────────────────────
 
-export function getUserPreference(
-  userId: number,
-  key: string,
-): string | undefined {
-  const db = useDatabase();
-  const row = db
-    .prepare("SELECT value FROM user_preferences WHERE user_id = ? AND key = ?")
-    .get(userId, key) as { value: string } | undefined;
-  return row?.value;
-}
-
 export function setUserPreference(
   userId: number,
   key: string,
@@ -210,15 +199,6 @@ export function getDownloadedUrls(userId: number): string[] {
     )
     .all(userId) as { url: string }[];
   return rows.map((r) => r.url);
-}
-
-export function getDownloadHistory(userId: number): DownloadHistoryEntry[] {
-  const db = useDatabase();
-  return db
-    .prepare(
-      "SELECT id, url, title, service, sent_at FROM download_history WHERE user_id = ? ORDER BY sent_at DESC",
-    )
-    .all(userId) as DownloadHistoryEntry[];
 }
 
 export function getDownloadHistoryCount(userId: number): number {

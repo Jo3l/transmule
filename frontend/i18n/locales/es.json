@@ -555,11 +555,12 @@
     "pluginUpload": "Subir Plugin",
     "pluginBuiltin": "Integrado",
     "pluginCustom": "Personalizado",
-    "pluginDelete": "Eliminar plugin",
+    "pluginDelete": "Eliminar",
     "pluginDeleteConfirm": "¿Eliminar el plugin '{name}'? Esta acción no se puede deshacer.",
     "pluginDocTitle": "Cómo crear un plugin",
     "pluginDocIntro": "Crea un archivo .js que exporte un objeto MediaProvider por defecto. Súbelo aquí y estará disponible tras recargar la página.",
-    "pluginDocNote": "Se recomienda el formato ESM (export default). El campo icon acepta cualquier clase MDI (p.ej. mdi-magnify). Consulta PROVIDER_PLUGIN.md para la referencia completa de la API."
+    "pluginDocNote": "Se recomienda el formato ESM (export default). El campo icon acepta cualquier clase MDI (p.ej. mdi-magnify).",
+    "pluginDocReadMore": "Referencia completa de la API de plugins (PROVIDER_PLUGIN.md)"
   },
   "themes": {
     "tron": {
@@ -986,5 +987,16 @@
     "noTorrent": "No se encontró torrent para esta serie",
     "episodes": "episodios",
     "download": "Descargar"
+  },
+  "media": {
+    "refresh": "Actualizar",
+    "saveUrl": "Guardar",
+    "empty": "No se encontraron resultados.",
+    "fetchError": "Error al cargar los resultados",
+    "addToTransmission": "Añadir a Transmission",
+    "addError": "Error al añadir el torrent",
+    "noTorrent": "No se encontró torrent para este elemento",
+    "download": "Descargar",
+    "episodes": "episodios"
   }
 }

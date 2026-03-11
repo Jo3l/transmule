@@ -53,7 +53,7 @@
           <span v-if="job.status === 'running'" class="transfer-dropdown__pct">
             {{ job.percent }}%
             <span v-if="job.speed && job.speed > 512" class="transfer-dropdown__speed">
-              {{ fmtSpeed(job.speed) }}
+              {{ formatSpeed(job.speed) }}
             </span>
           </span>
           <span v-else-if="job.status === 'queued'" class="transfer-dropdown__badge">
@@ -122,21 +122,9 @@ function rowLabel(job: TransferJob) {
   if (job.status === "queued") return "…";
   // running — show byte progress if available, fall back to percent
   if ((job.bytesTotal ?? 0) > 0) {
-    return `${fmtBytes(job.bytesDone ?? 0)} / ${fmtBytes(job.bytesTotal!)}`;
+    return `${formatBytes(job.bytesDone ?? 0)} / ${formatBytes(job.bytesTotal!)}`;
   }
   return `${job.percent}%`;
-}
-
-function fmtBytes(bytes: number): string {
-  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${bytes} B`;
-}
-
-function fmtSpeed(bps: number): string {
-  if (bps >= 1024 * 1024) return `${(bps / (1024 * 1024)).toFixed(1)} MB/s`;
-  return `${Math.round(bps / 1024)} KB/s`;
 }
 
 // Close when clicking outside the widget

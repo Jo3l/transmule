@@ -46,23 +46,14 @@
         >
           <span class="mdi mdi-donkey" />
         </STag>
-        <STag
-          v-else
-          variant="info"
-          size="sm"
-          :title="$t('uploads.tooltip.torrent')"
-        >
+        <STag v-else variant="info" size="sm" :title="$t('uploads.tooltip.torrent')">
           <span class="mdi mdi-magnet" />
         </STag>
       </template>
       <template #cell-client="{ row }">
         <span class="has-text-weight-medium">{{ row.clientName }}</span>
-        <span
-          class="has-text-grey is-size-7 ml-1"
-          v-if="row._type === 'amule' && row.software"
-        >
-          ({{ row.software
-          }}{{ row.softwareVersion ? " " + row.softwareVersion : "" }})
+        <span class="has-text-grey is-size-7 ml-1" v-if="row._type === 'amule' && row.software">
+          ({{ row.software }}{{ row.softwareVersion ? " " + row.softwareVersion : "" }})
         </span>
       </template>
       <template #cell-file="{ row }">
@@ -77,17 +68,13 @@
         <template v-else>&mdash;</template>
       </template>
       <template #cell-progress="{ row }">
-        <template
-          v-if="row._type === 'transmission' && row.peerProgress != null"
-        >
+        <template v-if="row._type === 'transmission' && row.peerProgress != null">
           {{ (row.peerProgress * 100).toFixed(1) }}%
         </template>
         <template v-else>&mdash;</template>
       </template>
       <template #cell-ip="{ row }">
-        <span class="is-size-7"
-          >{{ row.ip }}{{ row.port ? ":" + row.port : "" }}</span
-        >
+        <span class="is-size-7">{{ row.ip }}{{ row.port ? ":" + row.port : "" }}</span>
         <span
           v-if="row.isEncrypted"
           class="mdi mdi-lock has-text-success ml-1"
@@ -125,9 +112,7 @@ const filteredClients = computed(() => {
   return clients.value.filter((c) => c._type === filterSource.value);
 });
 
-const amuleCount = computed(
-  () => clients.value.filter((c) => c._type === "amule").length,
-);
+const amuleCount = computed(() => clients.value.filter((c) => c._type === "amule").length);
 const transmissionCount = computed(
   () => clients.value.filter((c) => c._type === "transmission").length,
 );
@@ -152,30 +137,16 @@ const columns = computed(() => [
   { key: "ip", label: t("uploads.columns.ip"), width: 160 },
 ]);
 
-function fmtSpeed(bytes: number): string {
-  if (!bytes || bytes === 0) return "0 B/s";
-  const units = ["B/s", "KB/s", "MB/s", "GB/s"];
-  let i = 0,
-    val = bytes;
-  while (val >= 1024 && i < units.length - 1) {
-    val /= 1024;
-    i++;
-  }
-  return `${val.toFixed(1)} ${units[i]}`;
-}
-
 const totalSpeedFmt = computed(() =>
-  fmtSpeed(clients.value.reduce((s, c) => s + (c.uploadSpeed || 0), 0)),
+  formatSpeed(clients.value.reduce((s, c) => s + (c.uploadSpeed || 0), 0)),
 );
 const amuleSpeedFmt = computed(() =>
-  fmtSpeed(
-    clients.value
-      .filter((c) => c._type === "amule")
-      .reduce((s, c) => s + (c.uploadSpeed || 0), 0),
+  formatSpeed(
+    clients.value.filter((c) => c._type === "amule").reduce((s, c) => s + (c.uploadSpeed || 0), 0),
   ),
 );
 const transmissionSpeedFmt = computed(() =>
-  fmtSpeed(
+  formatSpeed(
     clients.value
       .filter((c) => c._type === "transmission")
       .reduce((s, c) => s + (c.uploadSpeed || 0), 0),

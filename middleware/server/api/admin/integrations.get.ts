@@ -1,7 +1,5 @@
 export default defineEventHandler((event) => {
-  if (!event.context.user?.isAdmin) {
-    throw createError({ statusCode: 403, statusMessage: "Admin access required" });
-  }
+  requireAdmin(event);
 
   const rawKey = getConfig("tvdb_api_key") ?? "";
 

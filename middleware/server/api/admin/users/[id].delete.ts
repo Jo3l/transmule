@@ -23,16 +23,11 @@ defineRouteMeta({
 });
 
 export default defineEventHandler((event) => {
-  if (!event.context.user?.isAdmin) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: "Admin access required",
-    });
-  }
+  const currentUser = requireAdmin(event);
 
   const id = Number(getRouterParam(event, "id"));
 
-  if (id === event.context.user.userId) {
+  if (id === currentUser.userId) {
     setResponseStatus(event, 400);
     return { error: "Cannot delete your own account" };
   }

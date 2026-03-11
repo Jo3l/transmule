@@ -555,11 +555,12 @@
     "pluginUpload": "Upload Plugin",
     "pluginBuiltin": "Built-in",
     "pluginCustom": "Custom",
-    "pluginDelete": "Delete plugin",
+    "pluginDelete": "Remove",
     "pluginDeleteConfirm": "Delete plugin '{name}'? This cannot be undone.",
     "pluginDocTitle": "How to build a plugin",
     "pluginDocIntro": "Create a .js file that exports a default MediaProvider object. Upload it here and it will be available after the page reloads.",
-    "pluginDocNote": "ESM format (export default) is recommended. The icon field accepts any MDI class (e.g. mdi-magnify). See PROVIDER_PLUGIN.md for the full API reference."
+    "pluginDocNote": "ESM format (export default) is recommended. The icon field accepts any MDI class (e.g. mdi-magnify).",
+    "pluginDocReadMore": "Full plugin API reference (PROVIDER_PLUGIN.md)"
   },
   "themes": {
     "tron": {
@@ -986,5 +987,16 @@
     "noTorrent": "No torrent found for this series",
     "episodes": "episodes",
     "download": "Download"
+  },
+  "media": {
+    "refresh": "Refresh",
+    "saveUrl": "Save",
+    "empty": "No results found.",
+    "fetchError": "Failed to load results",
+    "addToTransmission": "Add to Transmission",
+    "addError": "Failed to add torrent",
+    "noTorrent": "No torrent found for this item",
+    "download": "Download",
+    "episodes": "episodes"
   }
 }
