@@ -13,3 +13,7 @@ data/
 # aMule download data (bind-mounted volumes)
 /downloads/
 /incomplete/
+
+# User-installed provider plugins (not tracked in source control)
+middleware/server/providers/plugins/*
+!middleware/server/providers/plugins/.gitkeep
