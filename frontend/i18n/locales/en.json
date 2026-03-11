@@ -551,7 +551,15 @@
     "providers": "Providers",
     "providersTitle": "Media Providers",
     "providersDescription": "Enable or disable media providers. Disabled providers won't appear in the sidebar or be accessible.",
-    "providersEmpty": "No providers available."
+    "providersEmpty": "No providers available.",
+    "pluginUpload": "Upload Plugin",
+    "pluginBuiltin": "Built-in",
+    "pluginCustom": "Custom",
+    "pluginDelete": "Delete plugin",
+    "pluginDeleteConfirm": "Delete plugin '{name}'? This cannot be undone.",
+    "pluginDocTitle": "How to build a plugin",
+    "pluginDocIntro": "Create a .js file that exports a default MediaProvider object. Upload it here and it will be available after the page reloads.",
+    "pluginDocNote": "ESM format (export default) is recommended. The icon field accepts any MDI class (e.g. mdi-magnify). See PROVIDER_PLUGIN.md for the full API reference."
   },
   "themes": {
     "tron": {

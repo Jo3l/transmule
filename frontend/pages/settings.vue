@@ -377,10 +377,63 @@
         :active="activeTab === 'providers'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-1 mt-3">{{ $t("settings.providersTitle") }}</h6>
-          <p class="has-text-grey is-size-7 mb-4">
-            {{ $t("settings.providersDescription") }}
-          </p>
+          <div class="providers-header">
+            <div>
+              <h6 class="title is-6 mb-1 mt-3">{{ $t("settings.providersTitle") }}</h6>
+              <p class="has-text-grey is-size-7 mb-0">
+                {{ $t("settings.providersDescription") }}
+              </p>
+            </div>
+            <SButton
+              variant="primary"
+              size="sm"
+              icon="mdi-upload"
+              :loading="pluginUploading"
+              @click="triggerPluginUpload"
+            >
+              {{ $t("settings.pluginUpload") }}
+            </SButton>
+            <input
+              ref="pluginFileInput"
+              type="file"
+              accept=".js"
+              style="display: none"
+              @change="onPluginFileSelected"
+            />
+          </div>
+
+          <!-- Docs collapsible -->
+          <details class="plugin-docs mt-3 mb-3">
+            <summary class="plugin-docs-summary">
+              <span class="mdi mdi-book-open-outline mr-1" />
+              {{ $t("settings.pluginDocTitle") }}
+            </summary>
+            <div class="plugin-docs-body">
+              <p class="is-size-7 mb-2">{{ $t("settings.pluginDocIntro") }}</p>
+              <pre class="plugin-docs-code"><code>// my-provider.js
+export default {
+  meta: {
+    id: "my-provider",          // unique string id
+    name: "My Provider",        // display name
+    icon: "mdi-magnify",        // MDI icon class
+    mediaType: "movies",        // "movies" | "shows"
+    description: "Optional."
+  },
+  // Required: returns items + pagination info
+  async list({ query, page, filters }) {
+    // fetch from your source...
+    return { items: [], hasMore: false };
+  },
+  // Optional: returns full MediaItem detail
+  async detail(url) {
+    return { id: url, title: "...", links: [] };
+  }
+};</code></pre>
+              <p class="is-size-7 mt-2 has-text-muted">
+                {{ $t("settings.pluginDocNote") }}
+              </p>
+            </div>
+          </details>
 
           <SLoading v-if="providersLoading" />
 
@@ -393,7 +446,16 @@
             >
               <span class="provider-icon mdi" :class="p.icon" />
               <div class="provider-details">
-                <div class="provider-name">{{ p.name }}</div>
+                <div class="provider-name">
+                  {{ p.name }}
+                  <STag
+                    size="sm"
+                    :variant="p.builtin ? 'default' : 'warning'"
+                    class="ml-1"
+                  >
+                    {{ p.builtin ? $t("settings.pluginBuiltin") : $t("settings.pluginCustom") }}
+                  </STag>
+                </div>
                 <div class="provider-desc">
                   {{ p.description }}
                   <STag
@@ -408,6 +470,14 @@
               <SSwitch
                 :model-value="p.enabled"
                 @update:model-value="onToggleProvider(p.id, $event)"
+              />
+              <SButton
+                v-if="!p.builtin"
+                variant="danger"
+                size="sm"
+                icon="mdi-delete-outline"
+                :title="$t('settings.pluginDelete')"
+                @click="onDeletePlugin(p.id, p.name)"
               />
             </div>
           </div>
@@ -812,9 +882,11 @@ async function clearTvdbKey() {
 // ── Providers ─────────────────────────────────────────────────────────────
 import type { ProviderMeta } from "~/composables/useProviders";
 
-const { loadProviders, toggleProvider } = useProviders();
+const { loadProviders, toggleProvider, uploadPlugin, deletePlugin } = useProviders();
 const providerList = ref<ProviderMeta[]>([]);
 const providersLoading = ref(false);
+const pluginUploading = ref(false);
+const pluginFileInput = ref<HTMLInputElement | null>(null);
 
 async function loadProviderList() {
   providersLoading.value = true;
@@ -831,6 +903,35 @@ async function onToggleProvider(id: string, enabled: boolean) {
   try {
     await toggleProvider(id, enabled);
     providerList.value = providerList.value.map((p) => (p.id === id ? { ...p, enabled } : p));
+  } catch {
+    /* silent */
+  }
+}
+
+function triggerPluginUpload() {
+  pluginFileInput.value?.click();
+}
+
+async function onPluginFileSelected(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+  pluginUploading.value = true;
+  try {
+    await uploadPlugin(file);
+    await loadProviderList();
+  } catch {
+    /* silent */
+  } finally {
+    pluginUploading.value = false;
+    if (pluginFileInput.value) pluginFileInput.value.value = "";
+  }
+}
+
+async function onDeletePlugin(id: string, name: string) {
+  if (!confirm(t("settings.pluginDeleteConfirm", { name }))) return;
+  try {
+    await deletePlugin(id);
+    providerList.value = providerList.value.filter((p) => p.id !== id);
   } catch {
     /* silent */
   }
@@ -1062,6 +1163,13 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
 }
 
 /* Providers */
+.providers-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
 .providers-list {
   display: flex;
   flex-direction: column;
@@ -1094,6 +1202,9 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
   font-weight: 600;
   font-size: 0.9rem;
   color: var(--s-text);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 .provider-desc {
   font-size: 0.78rem;
@@ -1102,5 +1213,39 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
   align-items: center;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+.plugin-docs {
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  overflow: hidden;
+}
+.plugin-docs-summary {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  color: var(--s-text-muted);
+  background: var(--s-bg-surface);
+
+  &:hover {
+    color: var(--s-text);
+  }
+}
+.plugin-docs-body {
+  padding: 0.75rem;
+  background: var(--s-bg);
+  border-top: 1px solid var(--s-border);
+}
+.plugin-docs-code {
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  padding: 0.75rem;
+  font-size: 0.78rem;
+  overflow-x: auto;
+  margin: 0;
+  tab-size: 2;
+  white-space: pre;
 }
 </style>

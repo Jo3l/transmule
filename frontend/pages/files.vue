@@ -221,12 +221,7 @@
                       @click.prevent="handleFolderClick($event, item)"
                       >{{ item.name }}</a
                     >
-                    <span v-else class="fm-filename" :title="item.name">
-                      <a v-if="isVideo(item)" @click.prevent.stop="openVideoPreview(item)">{{
-                        item.name
-                      }}</a>
-                      <template v-else>{{ item.name }}</template>
-                    </span>
+                    <span v-else class="fm-filename" :title="item.name">{{ item.name }}</span>
                   </span>
                 </td>
                 <td class="has-text-right has-text-grey is-size-7">

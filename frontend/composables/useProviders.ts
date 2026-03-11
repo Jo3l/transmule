@@ -12,6 +12,8 @@ export interface ProviderMeta {
   hasDetail: boolean;
   hasCover: boolean;
   filters: ProviderFilter[];
+  builtin: boolean;
+  filename?: string;
 }
 
 export interface ProviderFilter {
@@ -122,11 +124,28 @@ export function useProviders() {
     return data?.cover ?? null;
   }
 
+  async function uploadPlugin(file: File): Promise<void> {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    await apiFetch("/api/providers/upload", { method: "POST", body: form });
+    // Force full reload on next call
+    _providers.value = null;
+  }
+
+  async function deletePlugin(id: string): Promise<void> {
+    await apiFetch(`/api/providers/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (_providers.value) {
+      _providers.value = _providers.value.filter((p) => p.id !== id);
+    }
+  }
+
   return {
     providers: _providers,
     loadProviders,
     getProviders,
     toggleProvider,
+    uploadPlugin,
+    deletePlugin,
     fetchList,
     fetchDetail,
     fetchCover,

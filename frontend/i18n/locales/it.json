@@ -551,7 +551,15 @@
     "providers": "Provider",
     "providersTitle": "Provider multimediali",
     "providersDescription": "Abilita o disabilita i provider. I provider disabilitati non appariranno nella barra laterale.",
-    "providersEmpty": "Nessun provider disponibile."
+    "providersEmpty": "Nessun provider disponibile.",
+    "pluginUpload": "Carica Plugin",
+    "pluginBuiltin": "Integrato",
+    "pluginCustom": "Personalizzato",
+    "pluginDelete": "Elimina plugin",
+    "pluginDeleteConfirm": "Eliminare il plugin '{name}'? Questa operazione non può essere annullata.",
+    "pluginDocTitle": "Come creare un plugin",
+    "pluginDocIntro": "Crea un file .js che esporti un oggetto MediaProvider come default. Caricalo qui e sarà disponibile dopo il ricaricamento della pagina.",
+    "pluginDocNote": "Il formato ESM (export default) è consigliato. Il campo icon accetta qualsiasi classe MDI (es. mdi-magnify). Consulta PROVIDER_PLUGIN.md per il riferimento completo all'API."
   },
   "themes": {
     "tron": {

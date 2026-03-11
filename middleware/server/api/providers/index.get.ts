@@ -4,7 +4,7 @@
  * Returns the list of all registered media providers with their metadata
  * and enabled/disabled status.
  */
-import { ensureProviders, getAllProviders } from "../../providers/loader";
+import { ensureProviders, getAllProviders, isBuiltinProvider, getPluginFilename } from "../../providers/loader";
 import { getConfig } from "../../utils/database";
 
 export default defineEventHandler(async (event) => {
@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
       hasDetail: typeof p.detail === "function",
       hasCover: typeof p.cover === "function",
       filters: p.filters ?? [],
+      builtin: isBuiltinProvider(p.meta.id),
+      filename: getPluginFilename(p.meta.id),
     };
   });
 });
