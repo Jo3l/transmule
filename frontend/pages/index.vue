@@ -2107,21 +2107,20 @@ async function refreshPyload() {
 }
 
 function pushSpeedHistory() {
-  const now = Date.now();
-  speedHistory.value.push({
-    t: now,
-    amule: amuleTotals.value?.speed ?? 0,
-    torrent: torrentTotals.value?.speed_down ?? 0,
-    pyload: pyloadTotals.value?.totalSpeed ?? 0,
-  });
-  const cutoff = now - 15 * 60 * 1000;
-  const firstOk = speedHistory.value.findIndex((p) => p.t >= cutoff);
-  if (firstOk > 0) speedHistory.value.splice(0, firstOk);
+  // history is now accumulated server-side; fetch it from the API
+}
+
+async function fetchSpeedHistory() {
+  try {
+    const data = await apiFetch<{ t: number; amule: number; torrent: number; pyload: number }[]>("/api/speed-history");
+    speedHistory.value = data ?? [];
+  } catch {
+    /* silent */
+  }
 }
 
 async function refresh() {
-  await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload()]);
-  pushSpeedHistory();
+  await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload(), fetchSpeedHistory()]);
   applySortAndFilter();
 }
 
