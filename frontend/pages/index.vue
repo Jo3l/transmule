@@ -60,6 +60,7 @@
           {{ allFiles.length }} {{ $t("downloads.total") }}
         </div>
       </div>
+      <SpeedGraph :history="speedHistory" />
     </div>
 
     <!-- Filters -->
@@ -1361,19 +1362,40 @@
 
       <!-- aMule actions -->
       <template v-if="dlCtxMenu.row?._type === 'amule'">
-        <div class="context-menu-item" @click="doAmuleAction('pause'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doAmuleAction('pause');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-pause" /> {{ $t("downloads.actions.pause") }}
         </div>
-        <div class="context-menu-item" @click="doAmuleAction('resume'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doAmuleAction('resume');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-play" /> {{ $t("downloads.actions.resume") }}
         </div>
-        <div class="context-menu-item" @click="doAmuleAction('stop'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doAmuleAction('stop');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-stop" /> {{ $t("downloads.actions.stop") }}
         </div>
         <div class="context-menu-sep" />
         <div
           class="context-menu-item context-menu-item--danger"
-          @click="doAmuleAction('cancel'); dlCtxMenu.visible = false"
+          @click="
+            doAmuleAction('cancel');
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.cancel") }}
         </div>
@@ -1381,7 +1403,10 @@
           <div class="context-menu-sep" />
           <div
             class="context-menu-item"
-            @click="copyToClipboard(dlCtxMenu.row.ed2kLink); dlCtxMenu.visible = false"
+            @click="
+              copyToClipboard(dlCtxMenu.row.ed2kLink);
+              dlCtxMenu.visible = false;
+            "
           >
             <span class="mdi mdi-donkey" /> {{ $t("downloads.info.copyEd2k") }}
           </div>
@@ -1390,28 +1415,49 @@
 
       <!-- Torrent actions -->
       <template v-else-if="dlCtxMenu.row?._type === 'torrent'">
-        <div class="context-menu-item" @click="doTorrentAction('start'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doTorrentAction('start');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-play" /> {{ $t("downloads.actions.start") }}
         </div>
-        <div class="context-menu-item" @click="doTorrentAction('stop'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doTorrentAction('stop');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
         </div>
         <div
           class="context-menu-item"
-          @click="doTorrentAction('verify'); dlCtxMenu.visible = false"
+          @click="
+            doTorrentAction('verify');
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-check-circle" /> {{ $t("downloads.actions.verify") }}
         </div>
         <div class="context-menu-sep" />
         <div
           class="context-menu-item context-menu-item--danger"
-          @click="confirmTorrentRemove(false); dlCtxMenu.visible = false"
+          @click="
+            confirmTorrentRemove(false);
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.remove") }}
         </div>
         <div
           class="context-menu-item context-menu-item--danger"
-          @click="confirmTorrentRemove(true); dlCtxMenu.visible = false"
+          @click="
+            confirmTorrentRemove(true);
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-delete" /> {{ $t("downloads.actions.removeData") }}
         </div>
@@ -1419,7 +1465,10 @@
           <div class="context-menu-sep" />
           <div
             class="context-menu-item"
-            @click="copyToClipboard(dlCtxMenu.row.magnetLink); dlCtxMenu.visible = false"
+            @click="
+              copyToClipboard(dlCtxMenu.row.magnetLink);
+              dlCtxMenu.visible = false;
+            "
           >
             <span class="mdi mdi-magnet" /> {{ $t("downloads.info.copyMagnet") }}
           </div>
@@ -1428,19 +1477,31 @@
 
       <!-- pyLoad actions -->
       <template v-else-if="dlCtxMenu.row?._type === 'pyload'">
-        <div class="context-menu-item" @click="doPyloadAction('stop'); dlCtxMenu.visible = false">
+        <div
+          class="context-menu-item"
+          @click="
+            doPyloadAction('stop');
+            dlCtxMenu.visible = false;
+          "
+        >
           <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
         </div>
         <div
           class="context-menu-item"
-          @click="doPyloadAction('restart'); dlCtxMenu.visible = false"
+          @click="
+            doPyloadAction('restart');
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-restart" /> {{ $t("downloads.actions.restart") }}
         </div>
         <div class="context-menu-sep" />
         <div
           class="context-menu-item context-menu-item--danger"
-          @click="doPyloadAction('delete'); dlCtxMenu.visible = false"
+          @click="
+            doPyloadAction('delete');
+            dlCtxMenu.visible = false;
+          "
         >
           <span class="mdi mdi-delete" /> {{ $t("downloads.actions.remove") }}
         </div>
@@ -1611,6 +1672,7 @@ const filteredFiles = ref<any[]>([]);
 const amuleTotals = ref<any>(null);
 const torrentTotals = ref<any>(null);
 const pyloadTotals = ref<any>(null);
+const speedHistory = ref<{ t: number; amule: number; torrent: number; pyload: number }[]>([]);
 const amuleCount = computed(() => amuleFiles.value.length);
 const torrentCount = computed(() => torrentFiles.value.length);
 const pyloadCount = computed(() => pyloadFiles.value.length);
@@ -2038,14 +2100,28 @@ async function refreshPyload() {
       _type: "pyload",
       _uid: "pyload-" + p.pid,
     }));
-    pyloadTotals.value = res ? { totalSpeed_fmt: res.totalSpeed_fmt, count: res.count } : null;
+    pyloadTotals.value = res ? { totalSpeed_fmt: res.totalSpeed_fmt, totalSpeed: res.totalSpeed ?? 0, count: res.count } : null;
   } catch {
     /* silent */
   }
 }
 
+function pushSpeedHistory() {
+  const now = Date.now();
+  speedHistory.value.push({
+    t: now,
+    amule: amuleTotals.value?.speed ?? 0,
+    torrent: torrentTotals.value?.speed_down ?? 0,
+    pyload: pyloadTotals.value?.totalSpeed ?? 0,
+  });
+  const cutoff = now - 15 * 60 * 1000;
+  const firstOk = speedHistory.value.findIndex((p) => p.t >= cutoff);
+  if (firstOk > 0) speedHistory.value.splice(0, firstOk);
+}
+
 async function refresh() {
   await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload()]);
+  pushSpeedHistory();
   applySortAndFilter();
 }
 
