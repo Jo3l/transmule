@@ -28,6 +28,8 @@ export default defineEventHandler(async (event) => {
       hasCover: typeof asMedia.cover === "function",
       filters: asMedia.filters ?? [],
       filename: getPluginFilename(p.meta.id),
+      version: (p.meta as any).version ?? null,
+      repository: (p.meta as any).repository ?? null,
     };
   });
 });

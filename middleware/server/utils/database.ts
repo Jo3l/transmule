@@ -57,7 +57,43 @@ function _initSchema(db: DatabaseSync): void {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_download_history_user ON download_history(user_id);
+    CREATE TABLE IF NOT EXISTS plugin_repositories (
+      id       INTEGER PRIMARY KEY AUTOINCREMENT,
+      url      TEXT    UNIQUE NOT NULL,
+      name     TEXT,
+      added_at TEXT    DEFAULT (datetime('now'))
+    );
   `);
+}
+
+// ─── Plugin repository helpers ───────────────────────────────────────────────
+
+export interface PluginRepository {
+  id: number;
+  url: string;
+  name: string | null;
+  added_at: string;
+}
+
+export function getPluginRepositories(): PluginRepository[] {
+  const db = useDatabase();
+  return db
+    .prepare("SELECT id, url, name, added_at FROM plugin_repositories ORDER BY id ASC")
+    .all() as PluginRepository[];
+}
+
+export function addPluginRepository(url: string, name?: string): PluginRepository {
+  const db = useDatabase();
+  db.prepare("INSERT INTO plugin_repositories (url, name) VALUES (?, ?)").run(url, name ?? null);
+  return db
+    .prepare("SELECT id, url, name, added_at FROM plugin_repositories WHERE url = ?")
+    .get(url) as PluginRepository;
+}
+
+export function removePluginRepository(id: number): boolean {
+  const db = useDatabase();
+  const result = db.prepare("DELETE FROM plugin_repositories WHERE id = ?").run(id);
+  return (result as any).changes > 0;
 }
 
 // ─── Config helpers ─────────────────────────────────────────────────────────

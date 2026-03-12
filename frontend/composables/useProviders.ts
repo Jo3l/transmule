@@ -16,6 +16,10 @@ export interface ProviderMeta {
   hasCover: boolean;
   filters: ProviderFilter[];
   filename?: string;
+  /** Plugin version string, if the plugin declares meta.version */
+  version?: string | null;
+  /** Repository manifest URL, if the plugin declares meta.repository */
+  repository?: string | null;
 }
 
 export interface ProviderFilter {
@@ -148,6 +152,19 @@ export function useProviders() {
     }
   }
 
+  async function installFromUrl(url: string): Promise<{ id: string; filename: string }> {
+    const result = await apiFetch<{ id: string; filename: string }>(
+      "/api/providers/install-url",
+      { method: "POST", body: { url } },
+    );
+    _providers.value = null;
+    return result;
+  }
+
+  async function checkUpdates(): Promise<UpdateInfo[]> {
+    return apiFetch<UpdateInfo[]>("/api/providers/check-updates");
+  }
+
   return {
     providers: _providers,
     torrentSearchProviders,
@@ -157,8 +174,19 @@ export function useProviders() {
     toggleProvider,
     uploadPlugin,
     deletePlugin,
+    installFromUrl,
+    checkUpdates,
     fetchList,
     fetchDetail,
     fetchCover,
   };
+}
+
+export interface UpdateInfo {
+  id: string;
+  name: string;
+  installedVersion: string;
+  latestVersion: string;
+  url: string;
+  hasUpdate: boolean;
 }

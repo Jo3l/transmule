@@ -479,7 +479,10 @@ export default {
                 >
                   <span class="provider-icon mdi" :class="p.icon" />
                   <div class="provider-details">
-                    <div class="provider-name">{{ p.name }}</div>
+                    <div class="provider-name">
+                      {{ p.name }}
+                      <STag v-if="p.version" size="sm" variant="default" class="ml-1">v{{ p.version }}</STag>
+                    </div>
                     <div class="provider-desc">
                       {{ p.description }}
                       <STag size="sm" variant="info" class="ml-2">{{ p.mediaType }}</STag>
@@ -489,6 +492,17 @@ export default {
                     :model-value="p.enabled"
                     @update:model-value="onToggleProvider(p.id, $event)"
                   />
+                  <SButton
+                    v-if="isAdmin && pluginUpdates[p.id]"
+                    variant="primary"
+                    size="sm"
+                    :loading="pluginUpdating === p.id"
+                    :title="$t('settings.pluginUpdateAvailable', { version: pluginUpdates[p.id]?.latestVersion })"
+                    @click="onUpdatePlugin(p.id, pluginUpdates[p.id]!.url)"
+                  >
+                    <span class="mdi mdi-arrow-up-circle mr-1" />
+                    {{ $t("settings.pluginUpdate") }}
+                  </SButton>
                   <SButton
                     v-if="isAdmin"
                     variant="warning"
@@ -517,7 +531,10 @@ export default {
                 >
                   <span class="provider-icon mdi" :class="p.icon" />
                   <div class="provider-details">
-                    <div class="provider-name">{{ p.name }}</div>
+                    <div class="provider-name">
+                      {{ p.name }}
+                      <STag v-if="p.version" size="sm" variant="default" class="ml-1">v{{ p.version }}</STag>
+                    </div>
                     <div class="provider-desc">
                       {{ p.description }}
                       <STag size="sm" variant="warning" class="ml-2">torrent-search</STag>
@@ -527,6 +544,17 @@ export default {
                     :model-value="p.enabled"
                     @update:model-value="onToggleProvider(p.id, $event)"
                   />
+                  <SButton
+                    v-if="isAdmin && pluginUpdates[p.id]"
+                    variant="primary"
+                    size="sm"
+                    :loading="pluginUpdating === p.id"
+                    :title="$t('settings.pluginUpdateAvailable', { version: pluginUpdates[p.id]?.latestVersion })"
+                    @click="onUpdatePlugin(p.id, pluginUpdates[p.id]!.url)"
+                  >
+                    <span class="mdi mdi-arrow-up-circle mr-1" />
+                    {{ $t("settings.pluginUpdate") }}
+                  </SButton>
                   <SButton
                     v-if="isAdmin"
                     variant="warning"
@@ -544,6 +572,128 @@ export default {
               class="has-text-muted is-size-7"
             >
               {{ $t("settings.providersEmpty") }}
+            </p>
+          </template>
+
+          <!-- Plugin Repositories -->
+          <SDivider v-if="isAdmin" class="my-4" />
+          <template v-if="isAdmin">
+            <div class="providers-header mb-3">
+              <div>
+                <h6 class="title is-6 mb-1">{{ $t("settings.reposTitle") }}</h6>
+                <p class="has-text-grey is-size-7 mb-0">
+                  {{ $t("settings.reposDescription") }}
+                </p>
+              </div>
+            </div>
+
+            <!-- Add repo input -->
+            <div class="repo-add-row mb-4">
+              <SInput
+                v-model="newRepoUrl"
+                :placeholder="$t('settings.reposAddPlaceholder')"
+                size="sm"
+                class="repo-add-input"
+                @keydown.enter="onAddRepo"
+              />
+              <SButton
+                variant="primary"
+                size="sm"
+                :loading="repoAdding"
+                @click="onAddRepo"
+              >
+                <span class="mdi mdi-plus mr-1" />
+                {{ $t("settings.reposAdd") }}
+              </SButton>
+            </div>
+
+            <SLoading v-if="reposLoading" />
+
+            <template v-else-if="repos.length">
+              <div v-for="repo in repos" :key="repo.id" class="repo-block mb-4">
+                <!-- Repo header -->
+                <div class="repo-header" @click="toggleRepoExpanded(repo.id)">
+                  <span class="mdi mdi-source-repository mr-2" />
+                  <span class="repo-name">{{ repo.name || repo.url }}</span>
+                  <span class="repo-url has-text-grey is-size-7 ml-2" v-if="repo.name">{{ repo.url }}</span>
+                  <div class="repo-header-actions ml-auto">
+                    <SButton
+                      variant="default"
+                      size="sm"
+                      :loading="repoRefreshing === repo.id"
+                      :title="$t('settings.reposRefresh')"
+                      @click.stop="loadRepoPlugins(repo.id)"
+                    >
+                      <span class="mdi mdi-refresh" />
+                    </SButton>
+                    <SButton
+                      variant="danger"
+                      size="sm"
+                      :title="$t('settings.reposRemove')"
+                      @click.stop="onRemoveRepo(repo)"
+                    >
+                      <span class="mdi mdi-delete" />
+                    </SButton>
+                    <span class="mdi repo-chevron" :class="expandedRepos.has(repo.id) ? 'mdi-chevron-up' : 'mdi-chevron-down'" />
+                  </div>
+                </div>
+
+                <!-- Repo plugin list -->
+                <div v-if="expandedRepos.has(repo.id)" class="repo-plugins">
+                  <SLoading v-if="repoRefreshing === repo.id" />
+                  <p v-else-if="repoPluginsError[repo.id]" class="has-text-danger is-size-7 p-2">
+                    {{ repoPluginsError[repo.id] }}
+                  </p>
+                  <template v-else-if="repoPluginsData[repo.id]">
+                    <p v-if="!repoPluginsData[repo.id]!.plugins.length" class="has-text-muted is-size-7 p-2">
+                      {{ $t("settings.reposEmpty") }}
+                    </p>
+                    <div
+                      v-for="rp in repoPluginsData[repo.id]!.plugins"
+                      :key="rp.id"
+                      class="repo-plugin-item"
+                    >
+                      <span class="provider-icon mdi" :class="rp.icon || 'mdi-puzzle'" />
+                      <div class="provider-details">
+                        <div class="provider-name">
+                          {{ rp.name }}
+                          <STag size="sm" variant="default" class="ml-1">v{{ rp.version }}</STag>
+                          <STag v-if="rp.pluginType === 'torrent-search'" size="sm" variant="warning" class="ml-1">torrent-search</STag>
+                          <STag v-else-if="rp.pluginType" size="sm" variant="info" class="ml-1">{{ rp.pluginType }}</STag>
+                        </div>
+                        <div v-if="rp.description" class="provider-desc">{{ rp.description }}</div>
+                      </div>
+                      <STag v-if="rp.installed && !rp.hasUpdate" size="sm" variant="success">
+                        {{ $t("settings.reposPluginInstalled") }}
+                      </STag>
+                      <SButton
+                        v-if="rp.hasUpdate"
+                        variant="primary"
+                        size="sm"
+                        :loading="repoInstalling === rp.id"
+                        @click="onInstallRepoPlugin(rp)"
+                      >
+                        <span class="mdi mdi-arrow-up-circle mr-1" />
+                        {{ $t("settings.pluginUpdate") }}
+                      </SButton>
+                      <SButton
+                        v-else-if="!rp.installed"
+                        variant="success"
+                        size="sm"
+                        :loading="repoInstalling === rp.id"
+                        @click="onInstallRepoPlugin(rp)"
+                      >
+                        <span class="mdi mdi-download mr-1" />
+                        {{ $t("settings.reposPluginInstall") }}
+                      </SButton>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <p v-else class="has-text-muted is-size-7">
+              {{ $t("settings.reposNone") }}
             </p>
           </template>
         </div>
@@ -941,13 +1091,19 @@ async function clearTvdbKey() {
 }
 
 // ── Providers ─────────────────────────────────────────────────────────────
-import type { ProviderMeta } from "~/composables/useProviders";
+import type { ProviderMeta, UpdateInfo } from "~/composables/useProviders";
+import type { RepoPluginEntry, RepoPluginsResult } from "~/composables/usePluginRepos";
 
-const { loadProviders, toggleProvider, uploadPlugin, deletePlugin } = useProviders();
+const { loadProviders, toggleProvider, uploadPlugin, deletePlugin, installFromUrl, checkUpdates } = useProviders();
+const { repos, reposLoading, loadRepos, addRepo, removeRepo, fetchRepoPlugins } = usePluginRepos();
 const providerList = ref<ProviderMeta[]>([]);
 const providersLoading = ref(false);
 const pluginUploading = ref(false);
 const pluginFileInput = ref<HTMLInputElement | null>(null);
+
+// Update tracking
+const pluginUpdates = ref<Record<string, UpdateInfo>>({});
+const pluginUpdating = ref<string | null>(null);
 
 const mediaProviderList = computed(() =>
   providerList.value.filter((p) => p.pluginType !== "torrent-search"),
@@ -960,6 +1116,14 @@ async function loadProviderList() {
   providersLoading.value = true;
   try {
     providerList.value = await loadProviders(true);
+    // Check for updates in background (no await, silent fail)
+    checkUpdates()
+      .then((updates) => {
+        pluginUpdates.value = Object.fromEntries(
+          updates.filter((u) => u.hasUpdate).map((u) => [u.id, u]),
+        );
+      })
+      .catch(() => {});
   } catch {
     /* silent */
   } finally {
@@ -1000,8 +1164,104 @@ async function onDeletePlugin(id: string, name: string) {
   try {
     await deletePlugin(id);
     providerList.value = providerList.value.filter((p) => p.id !== id);
+    delete pluginUpdates.value[id];
   } catch {
     /* silent */
+  }
+}
+
+async function onUpdatePlugin(id: string, url: string) {
+  if (!confirm(t("settings.pluginUpdateConfirm", { name: providerList.value.find((p) => p.id === id)?.name ?? id }))) return;
+  pluginUpdating.value = id;
+  try {
+    await installFromUrl(url);
+    addToast(t("settings.pluginUpdateSuccess"), "success");
+    delete pluginUpdates.value[id];
+    await loadProviderList();
+  } catch (err: any) {
+    addToast(err?.data?.statusMessage || err?.message || t("settings.saveFailed"), "error");
+  } finally {
+    pluginUpdating.value = null;
+  }
+}
+
+// ── Plugin Repositories ────────────────────────────────────────────────────
+
+const newRepoUrl = ref("");
+const repoAdding = ref(false);
+const repoRefreshing = ref<number | null>(null);
+const repoInstalling = ref<string | null>(null);
+const expandedRepos = ref(new Set<number>());
+const repoPluginsData = ref<Record<number, RepoPluginsResult | null>>({});
+const repoPluginsError = ref<Record<number, string>>({});
+
+function toggleRepoExpanded(id: number) {
+  if (expandedRepos.value.has(id)) {
+    expandedRepos.value.delete(id);
+  } else {
+    expandedRepos.value.add(id);
+    if (!repoPluginsData.value[id]) {
+      loadRepoPlugins(id);
+    }
+  }
+  expandedRepos.value = new Set(expandedRepos.value);
+}
+
+async function loadRepoPlugins(repoId: number) {
+  repoRefreshing.value = repoId;
+  delete repoPluginsError.value[repoId];
+  try {
+    repoPluginsData.value[repoId] = await fetchRepoPlugins(repoId);
+  } catch (err: any) {
+    repoPluginsError.value[repoId] =
+      err?.data?.statusMessage || err?.message || t("settings.reposFetchError");
+  } finally {
+    repoRefreshing.value = null;
+  }
+}
+
+async function onAddRepo() {
+  const url = newRepoUrl.value.trim();
+  if (!url) return;
+  repoAdding.value = true;
+  try {
+    await addRepo(url);
+    newRepoUrl.value = "";
+  } catch (err: any) {
+    addToast(err?.data?.statusMessage || err?.message || t("settings.saveFailed"), "error");
+  } finally {
+    repoAdding.value = false;
+  }
+}
+
+async function onRemoveRepo(repo: { id: number; name: string | null; url: string }) {
+  const label = repo.name || repo.url;
+  if (!confirm(t("settings.reposRemoveConfirm", { name: label }))) return;
+  try {
+    await removeRepo(repo.id);
+    delete repoPluginsData.value[repo.id];
+    delete repoPluginsError.value[repo.id];
+    expandedRepos.value.delete(repo.id);
+    expandedRepos.value = new Set(expandedRepos.value);
+  } catch (err: any) {
+    addToast(err?.data?.statusMessage || err?.message || t("settings.saveFailed"), "error");
+  }
+}
+
+async function onInstallRepoPlugin(rp: RepoPluginEntry) {
+  repoInstalling.value = rp.id;
+  try {
+    await installFromUrl(rp.url);
+    addToast(t("settings.reposInstallSuccess"), "success");
+    await loadProviderList();
+    // Refresh all expanded repos to update installed/hasUpdate states
+    for (const repoId of expandedRepos.value) {
+      loadRepoPlugins(repoId);
+    }
+  } catch (err: any) {
+    addToast(err?.data?.statusMessage || err?.message || t("settings.reposInstallError"), "error");
+  } finally {
+    repoInstalling.value = null;
   }
 }
 
@@ -1011,7 +1271,10 @@ onMounted(async () => {
   loading.value = false;
   // Load history after main content so it doesn't block the UI
   if (activeTab.value === "downloadHistory") loadHistory();
-  if (activeTab.value === "providers") loadProviderList();
+  if (activeTab.value === "providers") {
+    loadProviderList();
+    if (isAdmin.value) loadRepos();
+  }
 });
 watch(activeTab, (tab) => {
   if (tab === "downloadHistory" && !historyEntries.value.length && !historyLoading.value) {
@@ -1019,6 +1282,7 @@ watch(activeTab, (tab) => {
   }
   if (tab === "providers" && !providerList.value.length && !providersLoading.value) {
     loadProviderList();
+    if (isAdmin.value && !repos.value.length) loadRepos();
   }
   if (tab === "ports") refresh();
 });
@@ -1315,5 +1579,72 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
   margin: 0;
   tab-size: 2;
   white-space: pre;
+}
+
+/* ── Plugin Repositories ───────────────────────────────────────── */
+.repo-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.repo-add-input {
+  flex: 1;
+  min-width: 0;
+}
+.repo-block {
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  overflow: hidden;
+}
+.repo-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--s-bg-surface);
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.84rem;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--s-bg-hover);
+  }
+}
+.repo-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repo-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+.repo-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.repo-chevron {
+  color: var(--s-text-muted);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.repo-plugins {
+  border-top: 1px solid var(--s-border);
+  background: var(--s-bg);
+}
+.repo-plugin-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--s-border);
+  &:last-child {
+    border-bottom: none;
+  }
 }
 </style>
