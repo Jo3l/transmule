@@ -270,6 +270,59 @@
   --xp-taskpane-end: #003399;
 }
 
+/* ── THEME: Lumon (Severance) ───────────────────────────────────────────────
+   Deep navy corporate darkness lit by a single electric cyan glow.
+   Inspired by Lumon Industries — the severed floor aesthetic.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="lumon"] {
+  --s-bg: #001628;
+  --s-bg-surface: #00203a;
+  --s-bg-surface-alt: #002a4a;
+  --s-bg-overlay: rgba(0, 0, 0, 0.75);
+  --s-bg-input: #001a33;
+  --s-bg-sidebar: #001020;
+  --s-bg-topbar: #001c36;
+  --s-bg-hover: rgba(36, 228, 242, 0.06);
+  --s-border: #0a3a55;
+  --s-border-light: #052540;
+  --s-border-focus: #24e4f2;
+  --s-text: #b8eef2;
+  --s-text-secondary: #7dd8df;
+  --s-text-muted: #2d8a96;
+  --s-text-inverse: #001628;
+  --s-accent: #24e4f2;
+  --s-accent-hover: #1ac8d4;
+  --s-accent-subtle: rgba(36, 228, 242, 0.1);
+  --s-success: #24e4f2;
+  --s-success-subtle: rgba(36, 228, 242, 0.1);
+  --s-warning: #f2c024;
+  --s-warning-subtle: rgba(242, 192, 36, 0.1);
+  --s-danger: #f25c5c;
+  --s-danger-subtle: rgba(242, 92, 92, 0.1);
+  --s-info: #5cd9f2;
+  --s-info-subtle: rgba(92, 217, 242, 0.1);
+  --s-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --s-radius: 0px;
+  --s-radius-lg: 0px;
+  --s-sidebar-text: #2d8a96;
+  --s-sidebar-text-hover: #7dd8df;
+  --s-sidebar-active-bg: #24e4f2;
+  --s-sidebar-active-text: #001628;
+  --s-sidebar-section-text: #1a5a66;
+  --s-sidebar-border: #0a2a3a;
+  --s-topbar-border: #0a2a3a;
+  --s-table-header-bg: #001c36;
+  --s-table-stripe-bg: rgba(36, 228, 242, 0.03);
+  --s-table-hover-bg: rgba(36, 228, 242, 0.06);
+  --s-table-border: #0a3050;
+  --s-scrollbar-thumb: #0a3a55;
+  --s-scrollbar-track: #001628;
+  --s-glow: 0 0 10px rgba(36, 228, 242, 0.3);
+  --s-btn-shadow: #000e1a;
+  --s-btn-outline: var(--s-accent);
+}
+
 /* ── THEME: ZX Spectrum ─────────────────────────────────────────────────────
    Authentic ZX Spectrum 48K colour palette.
    Black/dark-blue background, bright cyan accent, pixel font.
@@ -322,4 +375,3 @@
   --s-btn-shadow: #000000;
   --s-btn-outline: #d8d8d8;
 }
-

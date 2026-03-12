@@ -77,7 +77,9 @@ onMounted(async () => {
     const { init } =
       theme === "matrix"
         ? await import("~/assets/scenes/scene-matrix.js")
-        : await import("~/assets/scenes/scene.js");
+        : theme === "lumon"
+          ? await import("~/assets/scenes/scene-lumon.js")
+          : await import("~/assets/scenes/scene.js");
     destroyScene = init(canvas);
   }
   if (auth.token.value) {

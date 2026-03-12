@@ -209,6 +209,10 @@ async function resolveSceneInit(): Promise<(canvas: HTMLCanvasElement) => (() =>
     const { init } = await import("~/assets/scenes/scene-matrix.js");
     return init;
   }
+  if (theme === "lumon") {
+    const { init } = await import("~/assets/scenes/scene-lumon.js");
+    return init;
+  }
   const { init } = await import("~/assets/scenes/scene.js");
   return init;
 }

@@ -746,6 +746,30 @@
   }
 }
 
+/* ── Lumon-specific overrides ────────────────────────────────────────────── */
+[data-theme="lumon"] {
+  font-family: "Plus Jakarta Sans", sans-serif;
+
+  *,
+  .s-btn,
+  .s-input,
+  .s-select select,
+  .s-tag,
+  .s-alert,
+  .s-tabs__tab,
+  .s-table,
+  .s-checkbox,
+  .s-input-number input,
+  .s-dialog,
+  .s-form-item__label {
+    font-family: "Plus Jakarta Sans", sans-serif !important;
+    border-radius: 0 !important;
+  }
+  .app-sidebar .sidebar-scene {
+    opacity: 0.4 !important;
+  }
+}
+
 /* ── Matrix-specific overrides ───────────────────────────────────────────── */
 [data-theme="matrix"] {
   font-family: "Fira Code", "Cascadia Code", "Courier New", monospace;

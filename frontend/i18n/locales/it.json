@@ -588,6 +588,10 @@
     "spectrum": {
       "name": "ZX Spectrum",
       "description": "Palette autentica ZX Spectrum 48K con font pixel"
+    },
+    "lumon": {
+      "name": "Lumon",
+      "description": "Oscurità azul marina aziendale, bagliore ciano elettrico — estetica del piano separato"
     }
   },
   "ports": {

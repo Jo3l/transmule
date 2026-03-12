@@ -1,4 +1,4 @@
-const THEMES = ["tron", "sark", "light", "matrix", "xp", "spectrum"] as const;
+const THEMES = ["tron", "sark", "light", "matrix", "xp", "spectrum", "lumon"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export const THEME_META: Record<ThemeId, { name: string; icon: string; description: string }> = {
@@ -31,6 +31,11 @@ export const THEME_META: Record<ThemeId, { name: string; icon: string; descripti
     name: "ZX Spectrum",
     icon: "mdi-television-classic",
     description: "Authentic ZX Spectrum 48K palette with pixel font",
+  },
+  lumon: {
+    name: "Lumon",
+    icon: "mdi-office-building",
+    description: "Deep navy corporate darkness, electric cyan glow — severed floor aesthetic",
   },
 };
 

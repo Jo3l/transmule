@@ -369,7 +369,6 @@
         size="md"
         @row-click="onDlRowClick"
         @row-contextmenu="onDlRowContextmenu"
-        @expand="onExpandChange"
       >
         <!-- Type icon cell -->
         <template #cell-icon="{ row }">
@@ -1548,7 +1547,6 @@ watch(lastStopped, (ev) => {
 
 // ── Column definitions ────────────────────────────────────────────────
 const mainColumns = computed<STableColumn[]>(() => [
-  { type: "expand", key: "_expand", width: 30 },
   { key: "icon", label: "", width: 40 },
   { key: "name", label: t("downloads.columns.name") },
   { key: "size", label: t("downloads.columns.size"), width: 100 },
@@ -1698,6 +1696,7 @@ const addingPyload = ref(false);
 const showRemoveDialog = ref(false);
 const removeWithData = ref(false);
 const removing = ref(false);
+const pendingRemoveIds = ref<(number | string)[]>([]);
 
 // ── Detail panel state ────────────────────────────────────────────────
 const openedDetails = ref<string[]>([]);
@@ -2183,6 +2182,7 @@ async function doTorrentAction(action: string) {
 
 function confirmTorrentRemove(withData: boolean) {
   removeWithData.value = withData;
+  pendingRemoveIds.value = selectedTorrents.value.map((t: any) => t._torrentId);
   showRemoveDialog.value = true;
 }
 
@@ -2193,7 +2193,7 @@ async function doTorrentRemove() {
       method: "POST",
       body: {
         action: removeWithData.value ? "remove_data" : "remove",
-        ids: selectedTorrents.value.map((t: any) => t._torrentId),
+        ids: pendingRemoveIds.value,
       },
     });
     selectedItems.clear();
