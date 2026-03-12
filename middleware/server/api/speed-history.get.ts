@@ -1,3 +1,5 @@
+import { getSpeedHistory } from "../utils/speedHistory";
+
 defineRouteMeta({
   openAPI: {
     tags: ["Downloads"],
@@ -9,8 +11,6 @@ defineRouteMeta({
     },
   },
 });
-
-import { getSpeedHistory } from "../utils/speedHistory";
 
 export default defineEventHandler((event) => {
   requireUser(event);
