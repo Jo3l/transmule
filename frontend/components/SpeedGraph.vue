@@ -89,10 +89,13 @@ function draw() {
   const xOf = (t: number) => Math.max(0, ((t - windowStart) / WINDOW_MS) * W);
   const yOf = (v: number) => H - (v / yMax) * (H - 4) - 2;
 
-  // Grid lines at 25 / 50 / 75 %
+  // Grid lines
   ctx.save();
-  ctx.strokeStyle = cssVar("--s-border") || "rgba(128,128,128,0.25)";
-  ctx.lineWidth = 0.5;
+  ctx.globalAlpha = 0.3;
+  ctx.strokeStyle = cssVar("--s-border") || "rgba(128,128,128,1)";
+  ctx.lineWidth = 0.75;
+
+  // Horizontal: 25 / 50 / 75 % (existing)
   for (const frac of [0.25, 0.5, 0.75]) {
     const y = yOf(yMax * frac);
     ctx.beginPath();
@@ -100,6 +103,25 @@ function draw() {
     ctx.lineTo(W, y);
     ctx.stroke();
   }
+
+  // Bottom baseline
+  const yBase = yOf(0);
+  ctx.beginPath();
+  ctx.moveTo(0, yBase);
+  ctx.lineTo(W, yBase);
+  ctx.stroke();
+
+  // Vertical per-minute lines
+  const MS_PER_MIN = 60 * 1000;
+  const firstMinute = Math.ceil(windowStart / MS_PER_MIN) * MS_PER_MIN;
+  for (let tick = firstMinute; tick <= now; tick += MS_PER_MIN) {
+    const x = xOf(tick);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, H);
+    ctx.stroke();
+  }
+
   ctx.restore();
 
   const colors = {
