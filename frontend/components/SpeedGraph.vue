@@ -4,18 +4,10 @@
     <div class="sgg-max-label" v-if="maxLabelText">{{ maxLabelText }}</div>
     <div class="sgg-time-label">15m</div>
     <div class="sgg-legend">
-      <span v-if="hasAmule" class="sgg-item sgg-amule">
-        <span class="sgg-dot" />aMule
-      </span>
-      <span v-if="hasTorrent" class="sgg-item sgg-torrent">
-        <span class="sgg-dot" />Torrent
-      </span>
-      <span v-if="hasPyload" class="sgg-item sgg-pyload">
-        <span class="sgg-dot" />pyLoad
-      </span>
-      <span class="sgg-item sgg-total">
-        <span class="sgg-dot sgg-dot--thick" />Total
-      </span>
+      <span v-if="hasAmule" class="sgg-item sgg-amule"> <span class="sgg-dot" />aMule </span>
+      <span v-if="hasTorrent" class="sgg-item sgg-torrent"> <span class="sgg-dot" />Torrent </span>
+      <span v-if="hasPyload" class="sgg-item sgg-pyload"> <span class="sgg-dot" />pyLoad </span>
+      <span class="sgg-item sgg-total"> <span class="sgg-dot sgg-dot--thick" />Total </span>
     </div>
   </div>
 </template>

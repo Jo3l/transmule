@@ -172,7 +172,7 @@
     </div>
 
     <!-- Mobile cards (≤768px) -->
-    <div class="is-hidden-tablet">
+    <div class="is-hidden-tablet" @click.stop>
       <div v-if="loading" class="has-text-centered py-5 has-text-grey">
         <span class="mdi mdi-loading mdi-spin icon-lg" />
       </div>
@@ -356,7 +356,7 @@
     </div>
 
     <!-- Desktop table + action buttons (≥769px) -->
-    <div class="is-hidden-mobile">
+    <div class="is-hidden-mobile" @click.stop>
       <!-- Unified downloads table -->
       <STable
         :data="filteredFiles"
@@ -2001,6 +2001,7 @@ async function copyToClipboard(text: string) {
 function closeContextMenu() {
   contextMenu.visible = false;
   dlCtxMenu.visible = false;
+  selectedItems.clear();
 }
 
 // ── Sort + filter ─────────────────────────────────────────────────────
@@ -2100,7 +2101,9 @@ async function refreshPyload() {
       _type: "pyload",
       _uid: "pyload-" + p.pid,
     }));
-    pyloadTotals.value = res ? { totalSpeed_fmt: res.totalSpeed_fmt, totalSpeed: res.totalSpeed ?? 0, count: res.count } : null;
+    pyloadTotals.value = res
+      ? { totalSpeed_fmt: res.totalSpeed_fmt, totalSpeed: res.totalSpeed ?? 0, count: res.count }
+      : null;
   } catch {
     /* silent */
   }
@@ -2112,7 +2115,10 @@ function pushSpeedHistory() {
 
 async function fetchSpeedHistory() {
   try {
-    const data = await apiFetch<{ t: number; amule: number; torrent: number; pyload: number }[]>("/api/speed-history");
+    const data =
+      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number }[]>(
+        "/api/speed-history",
+      );
     speedHistory.value = data ?? [];
   } catch {
     /* silent */
