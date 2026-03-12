@@ -7,6 +7,9 @@
  */
 
 import { pushSpeedPoint } from "../utils/speedHistory";
+import { useAmuleClient } from "../utils/amule-client";
+import { useTransmissionClient } from "../utils/transmission-client";
+import { usePyLoadClient } from "../utils/pyload-client";
 
 export default defineNitroPlugin(() => {
   async function poll() {
