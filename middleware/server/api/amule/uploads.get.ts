@@ -71,6 +71,14 @@ export default defineEventHandler(async (event) => {
   const all = [...amuleList, ...transmissionList];
   const totalSpeed = all.reduce((s, c) => s + c.uploadSpeed, 0);
 
+  const amuleTotalUp = amuleList.reduce((s, c) => s + c.uploadSpeed, 0);
+  const transmissionTotalUp = transmissionList.reduce(
+    (s, c) => s + c.uploadSpeed,
+    0,
+  );
+  updateServiceUploadSpeed("amule", amuleTotalUp);
+  updateServiceUploadSpeed("torrent", transmissionTotalUp);
+
   return {
     uploads: {
       count: all.length,

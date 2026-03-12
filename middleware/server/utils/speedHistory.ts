@@ -17,11 +17,13 @@ export interface SpeedPoint {
   amule: number;
   torrent: number;
   pyload: number;
+  up: number;
 }
 
 interface SpeedState {
   history: SpeedPoint[];
   latest: { amule: number; torrent: number; pyload: number };
+  latestUp: { amule: number; torrent: number };
   lastPushed: number;
 }
 
@@ -31,10 +33,14 @@ function getState(): SpeedState {
     (globalThis as any)[KEY] = {
       history: [],
       latest: { amule: 0, torrent: 0, pyload: 0 },
+      latestUp: { amule: 0, torrent: 0 },
       lastPushed: 0,
     } satisfies SpeedState;
   }
-  return (globalThis as any)[KEY] as SpeedState;
+  const s = (globalThis as any)[KEY] as SpeedState;
+  // Migrate old state that lacks latestUp
+  if (!s.latestUp) s.latestUp = { amule: 0, torrent: 0 };
+  return s;
 }
 
 /**
@@ -52,11 +58,23 @@ export function updateServiceSpeed(
   if (now - state.lastPushed < POINT_INTERVAL_MS) return;
   state.lastPushed = now;
 
-  state.history.push({ t: now, ...state.latest });
+  state.history.push({
+    t: now,
+    ...state.latest,
+    up: state.latestUp.amule + state.latestUp.torrent,
+  });
 
   const cutoff = now - WINDOW_MS;
   const firstOk = state.history.findIndex((p) => p.t >= cutoff);
   if (firstOk > 0) state.history.splice(0, firstOk);
+}
+
+/** Called by upload-capable endpoints to record their current upload speed. */
+export function updateServiceUploadSpeed(
+  service: "amule" | "torrent",
+  speed: number,
+): void {
+  getState().latestUp[service] = speed;
 }
 
 export function getSpeedHistory(): SpeedPoint[] {

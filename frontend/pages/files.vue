@@ -975,6 +975,17 @@ function openTransferDialog(sources: string[], mode: "move" | "copy") {
 }
 
 function doTransfer() {
+  if (transferMode.value === "move") {
+    const dest = transferDest.value.replace(/\/+$/, "");
+    const allSame = transferSources.value.every((src) => {
+      const parent = src.includes("/") ? src.replace(/\/[^/]+$/, "") : "";
+      return parent === dest;
+    });
+    if (allSame) {
+      showTransferDialog.value = false;
+      return;
+    }
+  }
   enqueueTransfers(transferSources.value, transferDest.value, transferMode.value, loadDir);
   showTransferDialog.value = false;
   selectedItems.clear();
@@ -1378,6 +1389,14 @@ function onRowDrop(e: DragEvent, item: FileItem) {
 }
 
 function doQuickTransfer(sources: string[], dest: string, copy: boolean) {
+  if (!copy) {
+    const normalDest = dest.replace(/\/+$/, "");
+    const allSame = sources.every((src) => {
+      const parent = src.includes("/") ? src.replace(/\/[^/]+$/, "") : "";
+      return parent === normalDest;
+    });
+    if (allSame) return;
+  }
   enqueueTransfers(sources, dest, copy ? "copy" : "move", loadDir);
   selectedItems.clear();
   showToast(

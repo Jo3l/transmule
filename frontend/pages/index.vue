@@ -1670,7 +1670,9 @@ const filteredFiles = ref<any[]>([]);
 const amuleTotals = ref<any>(null);
 const torrentTotals = ref<any>(null);
 const pyloadTotals = ref<any>(null);
-const speedHistory = ref<{ t: number; amule: number; torrent: number; pyload: number }[]>([]);
+const speedHistory = ref<
+  { t: number; amule: number; torrent: number; pyload: number; up: number }[]
+>([]);
 const amuleCount = computed(() => amuleFiles.value.length);
 const torrentCount = computed(() => torrentFiles.value.length);
 const pyloadCount = computed(() => pyloadFiles.value.length);
@@ -1756,6 +1758,7 @@ function dlRowClass(row: any): string {
 }
 
 function onDlRowClick(row: any, _idx: number, e: MouseEvent) {
+  dlCtxMenu.visible = false;
   if (e.shiftKey && lastClickedRow.value) {
     const uids = filteredFiles.value.map((r: any) => r._uid);
     const a = uids.indexOf(lastClickedRow.value);
@@ -2115,7 +2118,7 @@ function pushSpeedHistory() {
 async function fetchSpeedHistory() {
   try {
     const data =
-      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number }[]>(
+      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; up: number }[]>(
         "/api/speed-history",
       );
     speedHistory.value = data ?? [];

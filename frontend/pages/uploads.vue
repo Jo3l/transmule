@@ -3,7 +3,7 @@
     <h1 class="title is-4 mb-4">{{ $t("uploads.title") }}</h1>
 
     <!-- Totals bar -->
-    <div class="box py-3 mb-4" v-if="clients.length > 0">
+    <div class="box py-3 mb-4">
       <div class="totals-bar">
         <div class="total-item" v-if="amuleCount > 0">
           <span class="mdi mdi-donkey icon-sm" />
@@ -25,6 +25,7 @@
           <strong>{{ totalSpeedFmt }}</strong>
         </div>
       </div>
+      <SpeedGraph :history="speedHistory" />
     </div>
 
     <!-- Filters -->
@@ -97,6 +98,9 @@ const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 const clients = ref<any[]>([]);
 const loading = ref(false);
+const speedHistory = ref<
+  { t: number; amule: number; torrent: number; pyload: number; up: number }[]
+>([]);
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 const filterSource = ref("all");
@@ -153,14 +157,28 @@ const transmissionSpeedFmt = computed(() =>
   ),
 );
 
+async function fetchSpeedHistory() {
+  try {
+    const data =
+      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; up: number }[]>(
+        "/api/speed-history",
+      );
+    speedHistory.value = data ?? [];
+  } catch {
+    /* silent */
+  }
+}
+
 async function refresh() {
   if (!amuleRunning.value) return;
-  try {
-    const res = await apiFetch<any>("/api/amule/uploads");
-    clients.value = res?.uploads?.clients || [];
-  } catch {
-    /* handled */
-  }
+  await Promise.all([
+    apiFetch<any>("/api/amule/uploads")
+      .then((res) => {
+        clients.value = res?.uploads?.clients || [];
+      })
+      .catch(() => {}),
+    fetchSpeedHistory(),
+  ]);
 }
 
 onMounted(() => {

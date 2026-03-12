@@ -191,7 +191,9 @@ const sortedData = computed(() => {
 
 // -- Expand
 const expandedKeys = ref(new Set<string | number>(props.expandKeys || []));
-const hasExpandColumn = computed(() => props.columns.some((c) => c.type === "expand"));
+const hasExpandColumn = computed(
+  () => props.columns.some((c) => c.type === "expand") || !!useSlots().expand,
+);
 
 function isExpanded(key: string | number) {
   return expandedKeys.value.has(key);

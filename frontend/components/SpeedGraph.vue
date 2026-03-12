@@ -8,6 +8,9 @@
       <span v-if="hasTorrent" class="sgg-item sgg-torrent"> <span class="sgg-dot" />Torrent </span>
       <span v-if="hasPyload" class="sgg-item sgg-pyload"> <span class="sgg-dot" />pyLoad </span>
       <span class="sgg-item sgg-total"> <span class="sgg-dot sgg-dot--thick" />Total </span>
+      <span v-if="hasUpload" class="sgg-item sgg-upload">
+        <span class="sgg-dot sgg-dot--dashed" />&#8593;Upload
+      </span>
     </div>
   </div>
 </template>
@@ -16,7 +19,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 
 const props = defineProps<{
-  history: { t: number; amule: number; torrent: number; pyload: number }[];
+  history: { t: number; amule: number; torrent: number; pyload: number; up?: number }[];
 }>();
 
 const WINDOW_MS = 15 * 60 * 1000;
@@ -26,6 +29,7 @@ const maxLabelText = ref("");
 const hasAmule = computed(() => props.history.some((p) => p.amule > 0));
 const hasTorrent = computed(() => props.history.some((p) => p.torrent > 0));
 const hasPyload = computed(() => props.history.some((p) => p.pyload > 0));
+const hasUpload = computed(() => props.history.some((p) => (p.up ?? 0) > 0));
 
 function fmtSpeed(bytes: number): string {
   if (bytes <= 0) return "0 B/s";
@@ -64,18 +68,16 @@ function draw() {
 
   const xOf = (t: number) => Math.max(0, ((t - windowStart) / WINDOW_MS) * W);
   // yOf is only used when we have data; define with a fallback yMax
-  let yMax = 1;
-  let maxSpeed = 0;
+  let maxDown = 0;
+  let maxUp = 0;
   for (const pt of hist) {
     const total = pt.amule + pt.torrent + pt.pyload;
-    if (total > maxSpeed) maxSpeed = total;
+    if (total > maxDown) maxDown = total;
+    if ((pt.up ?? 0) > maxUp) maxUp = pt.up ?? 0;
   }
-  if (maxSpeed > 0) {
-    yMax = maxSpeed * 1.1;
-    maxLabelText.value = fmtSpeed(maxSpeed);
-  } else {
-    maxLabelText.value = "";
-  }
+  const maxSpeed = Math.max(maxDown, maxUp);
+  const yMax = maxSpeed > 0 ? maxSpeed * 1.1 : 1;
+  maxLabelText.value = maxSpeed > 0 ? fmtSpeed(maxSpeed) : "";
   const yOf = (v: number) => H - (v / yMax) * (H - 4) - 2;
 
   // Grid lines — always drawn
@@ -91,7 +93,7 @@ function draw() {
   ctx.stroke();
 
   // Horizontal: 25 / 50 / 75 % (only meaningful when we have data)
-  if (maxSpeed > 0) {
+  if (maxDown > 0 || maxUp > 0) {
     for (const frac of [0.25, 0.5, 0.75]) {
       const y = yOf(yMax * frac);
       ctx.beginPath();
@@ -115,13 +117,14 @@ function draw() {
   ctx.restore();
 
   // No speed lines if fewer than 2 points
-  if (hist.length < 2 || maxSpeed === 0) return;
+  if (hist.length < 2) return;
 
   const colors = {
     amule: cssVar("--s-warning") || "#ff8800",
     torrent: cssVar("--s-info") || "#00aaff",
     pyload: cssVar("--s-success") || "#00cc66",
     total: cssVar("--s-accent") || "#00d4ff",
+    upload: cssVar("--s-error") || "#ff4444",
   };
 
   function drawLine(getValue: (pt: (typeof hist)[0]) => number, color: string, lw: number) {
@@ -148,6 +151,12 @@ function draw() {
   if (hasTorrent.value) drawLine((p) => p.torrent, colors.torrent, 1.5);
   if (hasPyload.value) drawLine((p) => p.pyload, colors.pyload, 1.5);
   drawLine((p) => p.amule + p.torrent + p.pyload, colors.total, 2.5);
+  if (hasUpload.value) {
+    ctx!.save();
+    ctx!.setLineDash([4, 3]);
+    drawLine((p) => p.up ?? 0, colors.upload, 1.5);
+    ctx!.restore();
+  }
 }
 
 watch(() => props.history.length, draw);
@@ -218,6 +227,15 @@ onUnmounted(() => ro?.disconnect());
 .sgg-dot--thick {
   height: 3px;
 }
+.sgg-dot--dashed {
+  background: repeating-linear-gradient(
+    to right,
+    currentColor 0,
+    currentColor 4px,
+    transparent 4px,
+    transparent 7px
+  );
+}
 .sgg-amule .sgg-dot {
   background: var(--s-warning);
 }
@@ -229,5 +247,8 @@ onUnmounted(() => ro?.disconnect());
 }
 .sgg-total .sgg-dot {
   background: var(--s-accent);
+}
+.sgg-upload .sgg-dot {
+  color: var(--s-error);
 }
 </style>

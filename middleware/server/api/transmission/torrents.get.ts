@@ -35,6 +35,7 @@ export default defineEventHandler(async (event) => {
     }
 
     updateServiceSpeed("torrent", totalDown);
+    updateServiceUploadSpeed("torrent", totalUp);
 
     return {
       torrents: {

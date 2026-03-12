@@ -30,6 +30,8 @@ export default defineEventHandler(async (event) => {
   const ed2kConnected = !!stats.connectedServer?.ip;
   const kadId = stats.kadId;
 
+  updateServiceUploadSpeed("amule", stats.uploadSpeed || 0);
+
   return {
     stats: {
       id: stats.id,
