@@ -267,8 +267,8 @@
     },
     "addTorrentDialog": {
       "title": "Add Torrent",
-      "label": "Magnet / URL",
-      "placeholder": "magnet:?xt=urn:btih:... or http://...",
+      "label": "Magnet / URL (one per line)",
+      "placeholder": "magnet:?xt=urn:btih:...\nmagnet:?xt=urn:btih:...",
       "downloadDir": "Download directory (optional)",
       "downloadDirPlaceholder": "Leave empty for default",
       "addPaused": "Add paused",

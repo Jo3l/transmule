@@ -2270,23 +2270,40 @@ async function addPyloadPackage() {
 }
 
 async function addTorrent() {
-  if (!torrentForm.url.trim()) return;
+  const urls = torrentForm.url
+    .split(/\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (!urls.length) return;
   addingTorrent.value = true;
-  const url = torrentForm.url.trim();
+  let added = 0;
+  const errors: string[] = [];
   try {
-    await apiFetch("/api/transmission/torrents", {
-      method: "POST",
-      body: {
-        action: "add",
-        filename: url,
-        paused: torrentForm.paused,
-      },
-    });
-    recordDownload(url, url, "transmission");
-    torrentForm.url = "";
-    torrentForm.paused = false;
-    showAddTorrent.value = false;
-    await refresh();
+    for (const url of urls) {
+      try {
+        await apiFetch("/api/transmission/torrents", {
+          method: "POST",
+          body: {
+            action: "add",
+            filename: url,
+            paused: torrentForm.paused,
+          },
+        });
+        recordDownload(url, url, "transmission");
+        added++;
+      } catch (err: any) {
+        errors.push(err?.data?.statusMessage || err?.message || url);
+      }
+    }
+    if (added > 0) {
+      torrentForm.url = "";
+      torrentForm.paused = false;
+      showAddTorrent.value = false;
+      await refresh();
+    }
+    if (errors.length) {
+      addToast(errors.join("\n"), "error");
+    }
   } finally {
     addingTorrent.value = false;
   }
