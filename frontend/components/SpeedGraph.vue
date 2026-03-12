@@ -66,50 +66,48 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
 
   const hist = props.history;
-  if (hist.length < 2) {
-    maxLabelText.value = "";
-    return;
-  }
 
-  const now = hist[hist.length - 1].t;
+  const now = hist.length > 0 ? hist[hist.length - 1].t : Date.now();
   const windowStart = now - WINDOW_MS;
 
+  const xOf = (t: number) => Math.max(0, ((t - windowStart) / WINDOW_MS) * W);
+  // yOf is only used when we have data; define with a fallback yMax
+  let yMax = 1;
   let maxSpeed = 0;
   for (const pt of hist) {
     const total = pt.amule + pt.torrent + pt.pyload;
     if (total > maxSpeed) maxSpeed = total;
   }
-  if (maxSpeed === 0) {
+  if (maxSpeed > 0) {
+    yMax = maxSpeed * 1.1;
+    maxLabelText.value = fmtSpeed(maxSpeed);
+  } else {
     maxLabelText.value = "";
-    return;
   }
-  const yMax = maxSpeed * 1.1;
-  maxLabelText.value = fmtSpeed(maxSpeed);
-
-  const xOf = (t: number) => Math.max(0, ((t - windowStart) / WINDOW_MS) * W);
   const yOf = (v: number) => H - (v / yMax) * (H - 4) - 2;
 
-  // Grid lines
+  // Grid lines — always drawn
   ctx.save();
   ctx.globalAlpha = 0.3;
   ctx.strokeStyle = cssVar("--s-border") || "rgba(128,128,128,1)";
   ctx.lineWidth = 0.75;
 
-  // Horizontal: 25 / 50 / 75 % (existing)
-  for (const frac of [0.25, 0.5, 0.75]) {
-    const y = yOf(yMax * frac);
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-
   // Bottom baseline
-  const yBase = yOf(0);
   ctx.beginPath();
-  ctx.moveTo(0, yBase);
-  ctx.lineTo(W, yBase);
+  ctx.moveTo(0, H - 1);
+  ctx.lineTo(W, H - 1);
   ctx.stroke();
+
+  // Horizontal: 25 / 50 / 75 % (only meaningful when we have data)
+  if (maxSpeed > 0) {
+    for (const frac of [0.25, 0.5, 0.75]) {
+      const y = yOf(yMax * frac);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
 
   // Vertical per-minute lines
   const MS_PER_MIN = 60 * 1000;
@@ -123,6 +121,9 @@ function draw() {
   }
 
   ctx.restore();
+
+  // No speed lines if fewer than 2 points
+  if (hist.length < 2 || maxSpeed === 0) return;
 
   const colors = {
     amule: cssVar("--s-warning") || "#ff8800",
