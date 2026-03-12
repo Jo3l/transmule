@@ -637,10 +637,12 @@ textarea.s-input {
       background: var(--s-table-hover-bg);
     }
     &.is-selected td {
-      background: var(--s-accent-subtle);
+      background: var(--s-accent-subtle) !important;
+      color: var(--s-text);
     }
     &.is-current td {
-      background: var(--s-accent-subtle);
+      background: var(--s-accent-subtle) !important;
+      color: var(--s-text);
     }
     &.is-connected-server td {
       background: var(--s-accent-subtle);
