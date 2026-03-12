@@ -88,7 +88,7 @@ function draw() {
 
   // Grid lines — always drawn
   ctx.save();
-  ctx.globalAlpha = 0.3;
+  ctx.globalAlpha = 0.8;
   ctx.strokeStyle = cssVar("--s-border") || "rgba(128,128,128,1)";
   ctx.lineWidth = 0.75;
 
