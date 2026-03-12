@@ -149,6 +149,8 @@ export default defineEventHandler(async (event) => {
     .flatMap((p) => p.links)
     .reduce((s, l) => s + l.speed, 0);
 
+  updateServiceSpeed("pyload", totalSpeed);
+
   return {
     packages: allPackages,
     count: allPackages.length,

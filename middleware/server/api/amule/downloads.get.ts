@@ -53,6 +53,8 @@ export default defineEventHandler(async (event) => {
     const totalSize = files.reduce((s, f) => s + f.sizeFull, 0);
     const totalDone = files.reduce((s, f) => s + f.sizeDone, 0);
 
+    updateServiceSpeed("amule", totalSpeed);
+
     return {
       downloads: {
         count: files.length,

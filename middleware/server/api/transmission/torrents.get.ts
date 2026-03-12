@@ -34,6 +34,8 @@ export default defineEventHandler(async (event) => {
       totalDone += t.sizeWhenDone - t.leftUntilDone;
     }
 
+    updateServiceSpeed("torrent", totalDown);
+
     return {
       torrents: {
         count: torrents.length,
