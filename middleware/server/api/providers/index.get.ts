@@ -10,7 +10,7 @@ import {
   getPluginFilename,
 } from "../../providers/loader";
 import type { MediaProvider } from "../../providers/types";
-import { getConfig } from "../../utils/database";
+import { getConfig, getPluginRepoSource } from "../../utils/database";
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
       filename: getPluginFilename(p.meta.id),
       version: (p.meta as any).version ?? null,
       repository: (p.meta as any).repository ?? null,
+      sourceRepoId: getPluginRepoSource(p.meta.id),
     };
   });
 });

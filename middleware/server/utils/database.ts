@@ -63,6 +63,11 @@ function _initSchema(db: DatabaseSync): void {
       name     TEXT,
       added_at TEXT    DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS plugin_repo_sources (
+      plugin_id  TEXT    PRIMARY KEY,
+      repo_id    INTEGER NOT NULL,
+      FOREIGN KEY (repo_id) REFERENCES plugin_repositories(id) ON DELETE CASCADE
+    );
   `);
 }
 
@@ -78,22 +83,68 @@ export interface PluginRepository {
 export function getPluginRepositories(): PluginRepository[] {
   const db = useDatabase();
   return db
-    .prepare("SELECT id, url, name, added_at FROM plugin_repositories ORDER BY id ASC")
+    .prepare(
+      "SELECT id, url, name, added_at FROM plugin_repositories ORDER BY id ASC",
+    )
     .all() as PluginRepository[];
 }
 
-export function addPluginRepository(url: string, name?: string): PluginRepository {
+export function addPluginRepository(
+  url: string,
+  name?: string,
+): PluginRepository {
   const db = useDatabase();
-  db.prepare("INSERT INTO plugin_repositories (url, name) VALUES (?, ?)").run(url, name ?? null);
+  db.prepare("INSERT INTO plugin_repositories (url, name) VALUES (?, ?)").run(
+    url,
+    name ?? null,
+  );
   return db
-    .prepare("SELECT id, url, name, added_at FROM plugin_repositories WHERE url = ?")
+    .prepare(
+      "SELECT id, url, name, added_at FROM plugin_repositories WHERE url = ?",
+    )
     .get(url) as PluginRepository;
 }
 
 export function removePluginRepository(id: number): boolean {
   const db = useDatabase();
-  const result = db.prepare("DELETE FROM plugin_repositories WHERE id = ?").run(id);
+  const result = db
+    .prepare("DELETE FROM plugin_repositories WHERE id = ?")
+    .run(id);
   return (result as any).changes > 0;
+}
+
+/** Record that a plugin was installed from a specific repository. */
+export function setPluginRepoSource(pluginId: string, repoId: number): void {
+  const db = useDatabase();
+  db.prepare(
+    "INSERT OR REPLACE INTO plugin_repo_sources (plugin_id, repo_id) VALUES (?, ?)",
+  ).run(pluginId, repoId);
+}
+
+/** Return the repo id that installed this plugin, or null if manually installed. */
+export function getPluginRepoSource(pluginId: string): number | null {
+  const db = useDatabase();
+  const row = db
+    .prepare("SELECT repo_id FROM plugin_repo_sources WHERE plugin_id = ?")
+    .get(pluginId) as { repo_id: number } | undefined;
+  return row?.repo_id ?? null;
+}
+
+/** Return all plugin_ids that were installed from the given repo. */
+export function getPluginIdsByRepo(repoId: number): string[] {
+  const db = useDatabase();
+  const rows = db
+    .prepare("SELECT plugin_id FROM plugin_repo_sources WHERE repo_id = ?")
+    .all(repoId) as { plugin_id: string }[];
+  return rows.map((r) => r.plugin_id);
+}
+
+/** Remove the repo-source record for a plugin. */
+export function clearPluginRepoSource(pluginId: string): void {
+  const db = useDatabase();
+  db.prepare("DELETE FROM plugin_repo_sources WHERE plugin_id = ?").run(
+    pluginId,
+  );
 }
 
 // ─── Config helpers ─────────────────────────────────────────────────────────

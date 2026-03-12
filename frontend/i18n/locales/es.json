@@ -577,6 +577,8 @@
     "reposPluginInstalled": "Instalado",
     "reposInstallSuccess": "Plugin instalado correctamente",
     "reposInstallError": "Error al instalar el plugin",
+    "reposInstalledTitle": "Instalados desde repositorios",
+    "reposInstalledDescription": "Plugins instalados mediante un repositorio. Desactívalos aquí o elimina el repositorio para desinstalarlos.",
     "pluginDocTitle": "Cómo crear un plugin",
     "pluginDocIntro": "Crea un archivo .js que exporte un objeto MediaProvider por defecto. Súbelo aquí y estará disponible tras recargar la página.",
     "pluginDocNote": "Se recomienda el formato ESM (export default). El campo icon acepta cualquier clase MDI (p.ej. mdi-magnify).",

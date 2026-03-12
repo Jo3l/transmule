@@ -11,7 +11,6 @@ import {
 } from "../providers/loader";
 
 export type { TorrentSearchResult };
-export type { TorrentSource } from "./types";
 
 export interface TorrentSearchOptions {
   query: string;

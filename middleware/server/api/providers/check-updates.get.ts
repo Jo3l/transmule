@@ -27,7 +27,9 @@ export default defineEventHandler(async (event) => {
 
   // Only check plugins that declare meta.repository
   const candidates = providers.filter(
-    (p) => typeof (p.meta as any).repository === "string" && (p.meta as any).repository,
+    (p) =>
+      typeof (p.meta as any).repository === "string" &&
+      (p.meta as any).repository,
   );
 
   const results = await Promise.allSettled(
@@ -44,7 +46,9 @@ export default defineEventHandler(async (event) => {
         throw new Error("Invalid JSON");
       }
 
-      const entry = (manifest?.plugins ?? []).find((e: any) => e.id === p.meta.id);
+      const entry = (manifest?.plugins ?? []).find(
+        (e: any) => e.id === p.meta.id,
+      );
       const latestVersion = entry?.version ?? installedVersion;
       const pluginUrl = entry?.url ?? "";
 

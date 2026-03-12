@@ -22,7 +22,13 @@ export function assertSafeUrl(urlStr: string): URL {
   }
 
   const h = url.hostname.toLowerCase();
-  const blocked = ["localhost", "127.0.0.1", "::1", "0.0.0.0", "169.254.169.254"];
+  const blocked = [
+    "localhost",
+    "127.0.0.1",
+    "::1",
+    "0.0.0.0",
+    "169.254.169.254",
+  ];
   if (blocked.includes(h)) {
     throw createError({ statusCode: 400, statusMessage: "URL not allowed" });
   }

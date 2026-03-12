@@ -36,7 +36,10 @@ export default defineEventHandler(async (event) => {
   const repos = getPluginRepositories();
   const repo = repos.find((r) => r.id === id);
   if (!repo) {
-    throw createError({ statusCode: 404, statusMessage: "Repository not found" });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Repository not found",
+    });
   }
 
   const text = await fetchTextSafe(repo.url);
@@ -44,11 +47,17 @@ export default defineEventHandler(async (event) => {
   try {
     manifest = JSON.parse(text);
   } catch {
-    throw createError({ statusCode: 502, statusMessage: "Invalid JSON from repository" });
+    throw createError({
+      statusCode: 502,
+      statusMessage: "Invalid JSON from repository",
+    });
   }
 
   if (!Array.isArray(manifest?.plugins)) {
-    throw createError({ statusCode: 502, statusMessage: "Invalid repository manifest" });
+    throw createError({
+      statusCode: 502,
+      statusMessage: "Invalid repository manifest",
+    });
   }
 
   await ensureProviders();
@@ -57,7 +66,9 @@ export default defineEventHandler(async (event) => {
   );
 
   const plugins: RepoPluginEntry[] = manifest.plugins.map((entry: any) => {
-    const installedVersion = installed.has(entry.id) ? installed.get(entry.id) : undefined;
+    const installedVersion = installed.has(entry.id)
+      ? installed.get(entry.id)
+      : undefined;
     const hasUpdate =
       installedVersion !== undefined &&
       installedVersion !== null &&

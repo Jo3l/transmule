@@ -20,6 +20,8 @@ export interface ProviderMeta {
   version?: string | null;
   /** Repository manifest URL, if the plugin declares meta.repository */
   repository?: string | null;
+  /** ID of the plugin_repositories row that installed this plugin, if any */
+  sourceRepoId?: number | null;
 }
 
 export interface ProviderFilter {
@@ -153,10 +155,10 @@ export function useProviders() {
   }
 
   async function installFromUrl(url: string): Promise<{ id: string; filename: string }> {
-    const result = await apiFetch<{ id: string; filename: string }>(
-      "/api/providers/install-url",
-      { method: "POST", body: { url } },
-    );
+    const result = await apiFetch<{ id: string; filename: string }>("/api/providers/install-url", {
+      method: "POST",
+      body: { url },
+    });
     _providers.value = null;
     return result;
   }

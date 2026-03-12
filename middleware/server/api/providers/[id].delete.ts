@@ -13,7 +13,7 @@ import {
   getPluginsDir,
   resetPlugins,
 } from "../../providers/loader";
-import { setConfig } from "../../utils/database";
+import { setConfig, getPluginRepoSource } from "../../utils/database";
 
 export default defineEventHandler(async (event) => {
   const user = requireUser(event);
@@ -39,6 +39,16 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 404,
       statusMessage: `Provider "${id}" not found`,
+    });
+  }
+
+  // Repo-installed plugins can only be removed by deleting their repository
+  const sourceRepoId = getPluginRepoSource(id);
+  if (sourceRepoId !== null) {
+    throw createError({
+      statusCode: 409,
+      statusMessage:
+        "Plugin is managed by a repository. Remove the repository to uninstall it.",
     });
   }
 
