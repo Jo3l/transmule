@@ -1034,6 +1034,14 @@ const working = ref(false);
 const treeVisible = ref(false);
 const folderTreeRef = ref<{ refresh: () => void } | null>(null);
 
+// Refreshes both the file list and the folder-tree sidebar.
+// Use this as the post-action callback for any operation that may add,
+// remove, or rename a folder (delete, move, rename, mkdir).
+function loadDirAndTree() {
+  loadDir();
+  folderTreeRef.value?.refresh();
+}
+
 // Persist tree visibility to user preferences
 {
   const { apiFetch: _apiFetch } = useApi();
@@ -1165,7 +1173,7 @@ function doTransfer() {
       return;
     }
   }
-  enqueueTransfers(transferSources.value, transferDest.value, transferMode.value, loadDir);
+  enqueueTransfers(transferSources.value, transferDest.value, transferMode.value, loadDirAndTree);
   showTransferDialog.value = false;
   selectedItems.clear();
   showToast(
@@ -1582,7 +1590,7 @@ function doQuickTransfer(sources: string[], dest: string, copy: boolean) {
     });
     if (allSame) return;
   }
-  enqueueTransfers(sources, dest, copy ? "copy" : "move", loadDir);
+  enqueueTransfers(sources, dest, copy ? "copy" : "move", loadDirAndTree);
   selectedItems.clear();
   showToast(
     t("fileManager.transferStarted", { mode: t(`fileManager.${copy ? "copy" : "move"}`) }),
@@ -1701,7 +1709,7 @@ async function doRename() {
     renamePathOverride.value = null;
     await apiFetch("/api/files/rename", { method: "POST", body: { path, name } });
     showRenameDialog.value = false;
-    loadDir();
+    loadDirAndTree();
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
   } finally {
@@ -1729,7 +1737,7 @@ async function doDelete() {
     });
     showDeleteDialog.value = false;
     selectedItems.clear();
-    loadDir();
+    loadDirAndTree();
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
   } finally {

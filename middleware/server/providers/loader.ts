@@ -10,7 +10,7 @@ import type { MediaProvider, TorrentSearchPlugin, AnyPlugin } from "./types";
 import { readdir } from "node:fs/promises";
 import { resolve, join, dirname, basename } from "node:path";
 import { pathToFileURL } from "node:url";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, watch as fsWatch } from "node:fs";
 import { getConfig } from "../utils/database";
 
 const _providers = new Map<string, AnyPlugin>();
@@ -65,13 +65,36 @@ export function resetPlugins(): void {
   _providers.clear();
   _pluginFilenames.clear();
   _loaded = false;
+  _watcher?.close();
+  _watcher = null;
 }
+
+let _watcher: ReturnType<typeof fsWatch> | null = null;
 
 /** Ensure all providers (bundled defaults + user uploads) are loaded. */
 export async function ensureProviders(): Promise<void> {
   if (_loaded) return;
   _loaded = true;
   await _loadPluginsFromDisk();
+  _startWatcher();
+}
+
+function _startWatcher(): void {
+  if (_watcher) return;
+  const dir = getPluginsDir();
+  try {
+    _watcher = fsWatch(dir, (_event, filename) => {
+      if (filename?.endsWith(".js")) {
+        resetPlugins();
+        _watcher = null; // will be restarted on next ensureProviders call
+      }
+    });
+    _watcher.on("error", () => {
+      _watcher = null;
+    });
+  } catch {
+    // ignore — watcher is best-effort
+  }
 }
 
 async function _loadPluginsFromDisk(): Promise<void> {
