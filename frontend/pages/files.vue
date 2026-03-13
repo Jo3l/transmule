@@ -122,7 +122,186 @@
             <div class="s-loading-spinner" />
           </div>
 
-          <table v-if="!loading || items.length" class="fm-table">
+          <!-- ── Mobile file cards (≤768px) ──────────────────────────── -->
+          <div class="is-hidden-tablet fm-mobile-list">
+            <div v-if="currentPath" class="fm-mobile-up" @click.stop="navigateUp">
+              <span class="mdi mdi-arrow-up-bold-circle fm-icon has-text-grey" />
+              <span class="has-text-grey">{{ $t("fileManager.goUp") }}</span>
+            </div>
+            <div
+              v-if="!loading && sortedItems.length === 0"
+              class="has-text-centered has-text-grey py-5"
+            >
+              <span class="mdi mdi-folder-open-outline fm-empty-icon" />
+              {{ $t("fileManager.empty") }}
+            </div>
+            <div
+              v-for="item in sortedItems"
+              :key="item.name"
+              class="fm-mobile-card"
+              :class="{ 'is-open': mobileOpenedItem === item.name }"
+              @click.stop="onMobileCardTap(item)"
+            >
+              <div class="fm-mc-header">
+                <span class="mdi fm-icon" :class="fileIcon(item)" />
+                <span class="fm-mc-name">{{ item.name }}</span>
+                <span class="fm-mc-size">{{ item.type === "file" ? fmtSize(item.size) : "" }}</span>
+                <span
+                  class="mdi fm-mc-chevron"
+                  :class="mobileOpenedItem === item.name ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                />
+              </div>
+              <div v-if="mobileOpenedItem === item.name" class="fm-mc-panel" @click.stop>
+                <!-- Open (directory only) -->
+                <button
+                  v-if="item.type === 'directory'"
+                  class="fm-mc-action"
+                  @click="
+                    navigate(childPath(item.name));
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
+                </button>
+                <!-- View image -->
+                <button
+                  v-if="isImage(item)"
+                  class="fm-mc-action fm-mc-action--accent"
+                  @click="
+                    openImagePreview(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
+                </button>
+                <!-- Play video -->
+                <button
+                  v-if="isVideo(item)"
+                  class="fm-mc-action fm-mc-action--accent"
+                  @click="
+                    openVideoPreview(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
+                </button>
+                <!-- Play in Webamp -->
+                <button
+                  v-if="isMp3(item)"
+                  class="fm-mc-action fm-mc-action--accent"
+                  @click="
+                    openInWebamp(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
+                </button>
+                <!-- Download (file only) -->
+                <a
+                  v-if="item.type === 'file'"
+                  class="fm-mc-action"
+                  :href="downloadUrl(item.name)"
+                  @click="mobileOpenedItem = null"
+                >
+                  <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
+                </a>
+                <!-- Smart rename (admin + file) -->
+                <button
+                  v-if="isAdmin && item.type === 'file'"
+                  class="fm-mc-action fm-mc-action--accent"
+                  @click="
+                    startSmartRenameForPaths([childPath(item.name)]);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
+                </button>
+                <!-- Move (admin) -->
+                <button
+                  v-if="isAdmin"
+                  class="fm-mc-action"
+                  @click="
+                    openTransferDialog([childPath(item.name)], 'move');
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
+                </button>
+                <!-- Copy -->
+                <button
+                  class="fm-mc-action"
+                  @click="
+                    openTransferDialog([childPath(item.name)], 'copy');
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
+                </button>
+                <!-- Archive actions -->
+                <template v-if="item.type === 'file' && isArchive(item.name)">
+                  <div class="fm-mc-sep" />
+                  <button
+                    class="fm-mc-action"
+                    @click="
+                      doExtractHere(childPath(item.name));
+                      mobileOpenedItem = null;
+                    "
+                  >
+                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                      $t("fileManager.extractHere")
+                    }}
+                  </button>
+                  <button
+                    class="fm-mc-action"
+                    @click="
+                      doExtractToFolder(childPath(item.name), archiveBasename(item.name));
+                      mobileOpenedItem = null;
+                    "
+                  >
+                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                      $t("fileManager.extractToFolder", { name: archiveBasename(item.name) })
+                    }}
+                  </button>
+                  <button
+                    class="fm-mc-action"
+                    @click="
+                      openExtractDialog(childPath(item.name));
+                      mobileOpenedItem = null;
+                    "
+                  >
+                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                      $t("fileManager.extractTo")
+                    }}
+                  </button>
+                </template>
+                <!-- Rename (admin) -->
+                <div v-if="isAdmin" class="fm-mc-sep" />
+                <button
+                  v-if="isAdmin"
+                  class="fm-mc-action"
+                  @click="
+                    startRename(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
+                </button>
+                <!-- Delete (admin) -->
+                <button
+                  v-if="isAdmin"
+                  class="fm-mc-action fm-mc-action--danger"
+                  @click="
+                    confirmDeleteOne(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <table v-if="!loading || items.length" class="fm-table is-hidden-mobile">
             <thead>
               <tr>
                 <th>
@@ -1136,6 +1315,12 @@ onMounted(() => window.addEventListener("keydown", onPreviewKeydown));
 onBeforeUnmount(() => window.removeEventListener("keydown", onPreviewKeydown));
 
 // ── Context menu ─────────────────────────────────────────────────────────────
+const mobileOpenedItem = ref<string | null>(null);
+
+function onMobileCardTap(item: FileItem) {
+  mobileOpenedItem.value = mobileOpenedItem.value === item.name ? null : item.name;
+}
+
 const ctxMenu = ref({ visible: false, x: 0, y: 0, item: null as FileItem | null });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
 
@@ -2068,6 +2253,96 @@ watch(
 .fm-sort-btn.is-active .mdi {
   opacity: 1;
 }
+
+/* ── Mobile file cards ─────────────────────────────────────────────────── */
+.fm-mobile-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem;
+  gap: 0.4rem;
+}
+.fm-mobile-up {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 6px;
+  opacity: 0.65;
+  transition: background 0.1s;
+}
+.fm-mobile-up:hover {
+  background: var(--s-bg-hover);
+  opacity: 1;
+}
+.fm-mobile-card {
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.fm-mobile-card.is-open {
+  border-color: color-mix(in oklab, var(--s-accent) 40%, var(--s-border));
+}
+.fm-mc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+}
+.fm-mc-name {
+  flex: 1;
+  font-size: 0.875rem;
+  word-break: break-word;
+  line-height: 1.35;
+}
+.fm-mc-size {
+  font-size: 0.75rem;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+}
+.fm-mc-chevron {
+  font-size: 1rem;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+}
+.fm-mc-panel {
+  border-top: 1px solid var(--s-border);
+  display: flex;
+  flex-direction: column;
+}
+.fm-mc-action {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--s-text);
+  text-align: left;
+  text-decoration: none;
+  transition: background 0.1s;
+  width: 100%;
+}
+.fm-mc-action:hover {
+  background: var(--s-bg-hover);
+}
+.fm-mc-action--accent {
+  color: var(--s-accent);
+}
+.fm-mc-action--danger {
+  color: var(--s-danger);
+}
+.fm-mc-sep {
+  height: 1px;
+  background: var(--s-border);
+  margin: 2px 0;
+}
+
 .fm-empty-icon {
   font-size: 2.5rem;
   display: block;

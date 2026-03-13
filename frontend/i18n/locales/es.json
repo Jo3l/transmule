@@ -105,6 +105,7 @@
       "all": "Todos",
       "default": "Por defecto"
     },
+    "clearDownloaded": "Limpiar Finalizados",
     "sources": {
       "amule": "aMule",
       "torrent": "Torrent",

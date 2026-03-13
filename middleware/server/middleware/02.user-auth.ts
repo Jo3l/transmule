@@ -34,16 +34,24 @@ export default defineEventHandler((event) => {
     }
   }
 
-  // Require Bearer token
-  const auth = getHeader(event, "authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  // Accept JWT from Authorization: Bearer header OR auth_token cookie.
+  // Cookie transport avoids conflicts when an nginx reverse proxy uses
+  // HTTP Basic auth (which also occupies the Authorization header).
+  const authHeader = getHeader(event, "authorization");
+  let rawToken: string | null = null;
+  if (authHeader?.startsWith("Bearer ")) {
+    rawToken = authHeader.slice(7);
+  } else {
+    rawToken = getCookie(event, "auth_token") ?? null;
+  }
+  if (!rawToken) {
     throw createError({
       statusCode: 401,
       statusMessage: "Authentication required",
     });
   }
 
-  const payload = verifyToken(auth.slice(7));
+  const payload = verifyToken(rawToken);
   if (!payload) {
     throw createError({
       statusCode: 401,

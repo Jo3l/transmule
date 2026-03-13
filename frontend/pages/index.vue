@@ -103,6 +103,18 @@
       </div>
       <!-- Spacer -->
       <div class="column"></div>
+      <!-- Clear downloaded button -->
+      <div class="column is-narrow is-align-self-flex-end pb-3">
+        <SButton
+          size="sm"
+          variant="default"
+          :loading="clearingDownloaded"
+          :title="$t('downloads.clearDownloaded')"
+          @click="clearDownloaded"
+        >
+          <span class="mdi mdi-broom mr-1" />{{ $t("downloads.clearDownloaded") }}
+        </SButton>
+      </div>
       <!-- Action buttons (desktop only, shown when items selected) -->
       <div
         class="column is-narrow is-hidden-mobile"
@@ -181,8 +193,14 @@
         <p>{{ $t("downloads.noDownloads") }}</p>
       </div>
       <div v-else class="mobile-cards">
-        <div v-for="row in filteredFiles" :key="row._uid" class="download-card">
-          <!-- type + name + status -->
+        <div
+          v-for="row in filteredFiles"
+          :key="row._uid"
+          class="download-card"
+          :class="{ 'is-expanded': isOpen(row._uid) }"
+          @click="toggleDetail(row)"
+        >
+          <!-- type + name + status + chevron -->
           <div class="card-header-row">
             <span v-if="row._type === 'amule'" class="mdi mdi-donkey card-type-icon text-warning" />
             <span
@@ -224,6 +242,10 @@
                         : $t("pyload.destCollector")
               }}</STag
             >
+            <span
+              class="mdi card-chevron"
+              :class="isOpen(row._uid) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+            />
           </div>
 
           <!-- Progress bar -->
@@ -301,55 +323,167 @@
             </span>
           </div>
 
-          <!-- Action buttons -->
-          <div class="card-actions">
-            <template v-if="row._type === 'amule'">
-              <SButton
-                v-if="row.status !== 'Paused'"
-                variant="warning"
-                size="sm"
-                @click="doCardAction(row, 'pause')"
-                ><span class="mdi mdi-pause"
-              /></SButton>
-              <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')"
-                ><span class="mdi mdi-play"
-              /></SButton>
-              <SButton variant="info" size="sm" @click="doCardAction(row, 'stop')"
-                ><span class="mdi mdi-stop"
-              /></SButton>
-              <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')"
-                ><span class="mdi mdi-close-circle"
-              /></SButton>
-            </template>
-            <template v-else-if="row._type === 'torrent'">
-              <SButton variant="success" size="sm" @click="doCardAction(row, 'start')"
-                ><span class="mdi mdi-play"
-              /></SButton>
-              <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')"
-                ><span class="mdi mdi-pause"
-              /></SButton>
-              <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove')"
-                ><span class="mdi mdi-close-circle"
-              /></SButton>
-              <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')"
-                ><span class="mdi mdi-delete"
-              /></SButton>
-            </template>
-            <template v-else>
-              <SButton
-                v-if="row.activeLinks > 0"
-                variant="warning"
-                size="sm"
-                @click="doCardAction(row, 'stop')"
-                ><span class="mdi mdi-pause"
-              /></SButton>
-              <SButton variant="warning" size="sm" @click="doCardAction(row, 'restart')"
-                ><span class="mdi mdi-restart"
-              /></SButton>
-              <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')"
-                ><span class="mdi mdi-delete"
-              /></SButton>
-            </template>
+          <!-- Expandable detail panel -->
+          <div v-if="isOpen(row._uid)" class="card-detail" @click.stop>
+            <!-- Action buttons at top -->
+            <div class="card-actions">
+              <template v-if="row._type === 'amule'">
+                <SButton
+                  v-if="row.status !== 'Paused'"
+                  variant="warning"
+                  size="sm"
+                  @click="doCardAction(row, 'pause')"
+                  ><span class="mdi mdi-pause"
+                /></SButton>
+                <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')"
+                  ><span class="mdi mdi-play"
+                /></SButton>
+                <SButton variant="info" size="sm" @click="doCardAction(row, 'stop')"
+                  ><span class="mdi mdi-stop"
+                /></SButton>
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')"
+                  ><span class="mdi mdi-close-circle"
+                /></SButton>
+              </template>
+              <template v-else-if="row._type === 'torrent'">
+                <SButton variant="success" size="sm" @click="doCardAction(row, 'start')"
+                  ><span class="mdi mdi-play"
+                /></SButton>
+                <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')"
+                  ><span class="mdi mdi-pause"
+                /></SButton>
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove')"
+                  ><span class="mdi mdi-close-circle"
+                /></SButton>
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')"
+                  ><span class="mdi mdi-delete"
+                /></SButton>
+              </template>
+              <template v-else>
+                <SButton
+                  v-if="row.activeLinks > 0"
+                  variant="warning"
+                  size="sm"
+                  @click="doCardAction(row, 'stop')"
+                  ><span class="mdi mdi-pause"
+                /></SButton>
+                <SButton variant="warning" size="sm" @click="doCardAction(row, 'restart')"
+                  ><span class="mdi mdi-restart"
+                /></SButton>
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')"
+                  ><span class="mdi mdi-delete"
+                /></SButton>
+              </template>
+            </div>
+
+            <!-- Info key-values -->
+            <div class="card-kv-list">
+              <!-- Hash / ID -->
+              <div class="card-kv-row">
+                <span class="card-kv-label">{{ $t("downloads.info.hash") }}</span>
+                <span class="card-kv-value card-kv-hash">{{
+                  row._type === "amule"
+                    ? row.hash
+                    : row._type === "pyload"
+                      ? "pkg-" + row.pid
+                      : row.hashString
+                }}</span>
+              </div>
+              <!-- Size -->
+              <div class="card-kv-row">
+                <span class="card-kv-label">{{ $t("downloads.info.size") }}</span>
+                <span class="card-kv-value">
+                  <template v-if="row._type === 'amule'"
+                    >{{ row.size_fmt }} ({{ row.size_done_fmt }}
+                    {{ $t("downloads.info.done") }})</template
+                  >
+                  <template v-else>{{ row.totalSize_fmt }}</template>
+                </span>
+              </div>
+              <!-- Speed -->
+              <div class="card-kv-row">
+                <span class="card-kv-label">{{ $t("downloads.info.speed") }}</span>
+                <span class="card-kv-value">{{
+                  row._type === "torrent" ? row.rateDownload_fmt : row.speed_fmt
+                }}</span>
+              </div>
+              <!-- aMule-specific -->
+              <template v-if="row._type === 'amule'">
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.sources") }}</span>
+                  <span class="card-kv-value"
+                    >{{ row.sourceCountXfer || 0 }}/{{ row.sourceCount || 0 }} ({{
+                      row.sourceCountA4AF || 0
+                    }}
+                    {{ $t("downloads.info.a4af") }})</span
+                  >
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.priority") }}</span>
+                  <span class="card-kv-value">{{ row.priority }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.category") }}</span>
+                  <span class="card-kv-value">{{ row.category }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.lastSeenComplete") }}</span>
+                  <span class="card-kv-value">{{ formatTimestamp(row.lastSeenComplete) }}</span>
+                </div>
+              </template>
+              <!-- Torrent-specific -->
+              <template v-if="row._type === 'torrent'">
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.peers") }}</span>
+                  <span class="card-kv-value"
+                    >{{ row.peersSendingToUs }} {{ $t("downloads.info.sending") }},
+                    {{ row.peersGettingFromUs }} {{ $t("downloads.info.receiving") }} ({{
+                      row.peersConnected
+                    }}
+                    {{ $t("downloads.info.connected") }})</span
+                  >
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.eta") }}</span>
+                  <span class="card-kv-value">{{ row.eta_fmt }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.uploaded") }}</span>
+                  <span class="card-kv-value"
+                    >{{ row.uploadedEver_fmt }} ({{
+                      row.uploadRatio >= 0 ? row.uploadRatio.toFixed(2) : "—"
+                    }})</span
+                  >
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.location") }}</span>
+                  <span class="card-kv-value">{{ row.downloadDir }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.info.added") }}</span>
+                  <span class="card-kv-value">{{ formatTimestamp(row.addedDate) }}</span>
+                </div>
+              </template>
+              <!-- pyLoad-specific -->
+              <template v-if="row._type === 'pyload'">
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.pyload.folder") }}</span>
+                  <span class="card-kv-value">{{ row.folder }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.pyload.activeLinks") }}</span>
+                  <span class="card-kv-value has-text-success">{{ row.activeLinks }}</span>
+                </div>
+                <div v-if="row.failedLinks > 0" class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.pyload.failedLinks") }}</span>
+                  <span class="card-kv-value has-text-danger">{{ row.failedLinks }}</span>
+                </div>
+                <div class="card-kv-row">
+                  <span class="card-kv-label">{{ $t("downloads.pyload.finishedLinks") }}</span>
+                  <span class="card-kv-value">{{ row.finishedLinks }} / {{ row.linkCount }}</span>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -2133,6 +2267,63 @@ async function refresh() {
 }
 
 // ── aMule actions ─────────────────────────────────────────────────────
+// ── Clear all finished downloads across all services ────────────────────
+const clearingDownloaded = ref(false);
+
+async function clearDownloaded() {
+  clearingDownloaded.value = true;
+  try {
+    const done = allFiles.value;
+
+    const amuleDone = done
+      .filter((r) => r._type === "amule" && r.status === "Complete")
+      .map((r) => r.hash);
+
+    const torrentDone = done
+      .filter((r) => r._type === "torrent" && r.percentDone >= 1)
+      .map((r) => r._torrentId);
+
+    const pyloadDone = done
+      .filter((r) => r._type === "pyload" && r.finishedLinks === r.linkCount && r.linkCount > 0)
+      .map((r) => r.pid);
+
+    const ops: Promise<any>[] = [];
+
+    if (amuleDone.length) {
+      ops.push(
+        apiFetch("/api/amule/downloads", {
+          method: "POST",
+          body: { action: "cancel", hashes: amuleDone },
+        }).catch(() => {}),
+      );
+    }
+
+    if (torrentDone.length) {
+      ops.push(
+        apiFetch("/api/transmission/torrents", {
+          method: "POST",
+          body: { action: "remove", ids: torrentDone },
+        }).catch(() => {}),
+      );
+    }
+
+    if (pyloadDone.length) {
+      ops.push(
+        apiFetch("/api/pyload/packages", {
+          method: "POST",
+          body: { action: "delete", pids: pyloadDone },
+        }).catch(() => {}),
+      );
+    }
+
+    await Promise.all(ops);
+    selectedItems.clear();
+    await refresh();
+  } finally {
+    clearingDownloaded.value = false;
+  }
+}
+
 async function doAmuleAction(action: string) {
   loading.value = true;
   try {
@@ -2543,6 +2734,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.download-card.is-expanded {
+  border-color: color-mix(in oklab, var(--s-accent) 40%, var(--s-border));
 }
 .card-header-row {
   display: flex;
@@ -2583,5 +2779,43 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 0.35rem;
   padding-top: 0.15rem;
+}
+.card-detail {
+  border-top: 1px solid var(--s-border);
+  padding-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.card-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.card-kv-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.card-kv-label {
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+  width: 7rem;
+}
+.card-kv-value {
+  color: var(--s-text);
+  word-break: break-all;
+}
+.card-kv-hash {
+  font-family: monospace;
+  font-size: 0.7rem;
+  word-break: break-all;
+}
+.card-chevron {
+  font-size: 1rem;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 </style>

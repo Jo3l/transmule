@@ -39,7 +39,12 @@
       <!-- Source badge -->
       <template #cell-source="{ row }">
         <STag :variant="sourceVariant(row.source)" size="sm">
-          {{ row.source.toUpperCase() }}
+          <span
+            v-if="providerIconMap[row.source]"
+            class="mdi"
+            :class="providerIconMap[row.source]"
+            style="margin-right: 3px"
+          />{{ providerLabelMap[row.source] ?? row.source }}
         </STag>
       </template>
 
@@ -201,15 +206,26 @@ const results = ref<SearchResult[]>([]);
 const addingHash = ref("");
 const addedHashes = ref(new Set<string>());
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Per-plugin display helpers (dynamic — driven by loaded plugins) ───────────
 
-function sourceVariant(src: string): "primary" | "success" | "warning" | "info" {
-  const map: Record<string, "primary" | "success" | "warning" | "info"> = {
-    tpb: "primary",
-    nyaa: "success",
-    yts: "warning",
-  };
-  return map[src] ?? "info";
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
+
+const providerLabelMap = computed<Record<string, string>>(() =>
+  Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.name])),
+);
+
+const providerIconMap = computed<Record<string, string>>(() =>
+  Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.icon])),
+);
+
+const providerVariantMap = computed<Record<string, (typeof VARIANT_PALETTE)[number]>>(() =>
+  Object.fromEntries(
+    torrentSearchProviders.value.map((p, i) => [p.id, VARIANT_PALETTE[i % VARIANT_PALETTE.length]]),
+  ),
+);
+
+function sourceVariant(src: string) {
+  return providerVariantMap.value[src] ?? "default";
 }
 
 // ── Search ───────────────────────────────────────────────────────────────────

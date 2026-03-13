@@ -53,9 +53,9 @@ export function useApi() {
       ...(opts.headers as Record<string, string>),
     };
 
-    if (auth.token.value) {
-      headers["Authorization"] = `Bearer ${auth.token.value}`;
-    }
+    // JWT is sent via the auth_token cookie (set by useCookie in useAuth).
+    // Do NOT add an Authorization: Bearer header — that header is used by
+    // nginx HTTP Basic auth on the reverse proxy and would be overwritten.
 
     const isAmuleRoute = path.startsWith("/api/amule/");
 
