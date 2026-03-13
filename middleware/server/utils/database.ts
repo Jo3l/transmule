@@ -22,6 +22,7 @@ export function useDatabase(): DatabaseSync {
     }
     _db = new DatabaseSync(dbPath);
     _db.exec("PRAGMA journal_mode = WAL");
+    _db.exec("PRAGMA foreign_keys = ON");
     _initSchema(_db);
   }
   return _db;
