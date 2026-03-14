@@ -37,12 +37,16 @@ export default defineEventHandler(async (event) => {
   await ensureProviders();
   const pluginIds = getPluginIdsByRepo(id);
 
-  // Delete each plugin file from disk
-  for (const pluginId of pluginIds) {
-    const filename = getPluginFilename(pluginId);
-    if (filename?.endsWith(".js")) {
-      await unlink(join(getPluginsDir(), filename)).catch(() => {});
-    }
+  // Resolve all filenames synchronously before any async unlink call.
+  // The fs.watch watcher calls resetPlugins() (clearing _pluginFilenames) on
+  // the first deletion, so filenames must be captured before any await.
+  const pluginsDir = getPluginsDir();
+  const filesToDelete = pluginIds
+    .map((pid) => getPluginFilename(pid))
+    .filter((f): f is string => !!f && f.endsWith(".js"));
+
+  for (const filename of filesToDelete) {
+    await unlink(join(pluginsDir, filename)).catch(() => {});
   }
   if (pluginIds.length) resetPlugins();
 

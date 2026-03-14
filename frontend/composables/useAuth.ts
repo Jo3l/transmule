@@ -34,9 +34,11 @@ export function useAuth() {
     if (!token.value) return false;
     try {
       const config = useRuntimeConfig();
+      // JWT is sent via the auth_token cookie automatically.
+      // Do NOT add Authorization: Bearer — that header is used by any nginx
+      // HTTP Basic auth on the reverse proxy and would trigger a 401 challenge.
       const data = await $fetch<User>("/api/users/me", {
         baseURL: config.public.apiBase,
-        headers: { Authorization: `Bearer ${token.value}` },
       });
       user.value = data;
       return true;

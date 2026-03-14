@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+nvm install 22 && nvm use 22
+
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 # ── Require Node.js 22+ (node:sqlite is built-in since 22.5) ─────────────────
