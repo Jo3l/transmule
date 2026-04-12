@@ -23,7 +23,7 @@
 services:
   # ── aMule daemon ────────────────────────────────────────────────────────────
   amule:
-    image: ngosang/amule:latest
+    image: ${AMULE_IMAGE:-ngosang/amule:latest}
     container_name: transmule-amule
     restart: unless-stopped
     ports:
@@ -48,7 +48,7 @@ services:
 
   # ── Transmission daemon ─────────────────────────────────────────────────────
   transmission:
-    image: lscr.io/linuxserver/transmission:latest
+    image: ${TRANSMISSION_IMAGE:-lscr.io/linuxserver/transmission:latest}
     container_name: transmule-transmission
     restart: unless-stopped
     ports:
@@ -72,7 +72,7 @@ services:
 
   # ── pyLoad NG download manager ──────────────────────────────────────────────
   pyload:
-    image: lscr.io/linuxserver/pyload-ng:latest
+    image: ${PYLOAD_IMAGE:-lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96}
     container_name: transmule-pyload
     restart: unless-stopped
     expose:

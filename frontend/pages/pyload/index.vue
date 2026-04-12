@@ -168,6 +168,16 @@
               {{ $t("pyload.moveToQueue") }}
             </SButton>
             <SButton
+              v-if="pkg.failedLinks > 0"
+              variant="info"
+              size="sm"
+              :title="$t('downloads.actions.retry')"
+              @click="packageAction('restart', pkg.pid)"
+            >
+              <span class="mdi mdi-refresh" />
+              {{ $t("downloads.actions.retry") }}
+            </SButton>
+            <SButton
               v-if="pkg.activeLinks > 0"
               variant="warning"
               size="sm"

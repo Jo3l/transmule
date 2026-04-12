@@ -249,6 +249,7 @@
       "verify": "Verificar",
       "remove": "Eliminar",
       "removeData": "Eliminar + Datos",
+      "retry": "Reintentar",
       "restart": "Reiniciar"
     },
     "pyload": {

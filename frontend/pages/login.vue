@@ -34,6 +34,10 @@
 <script setup lang="ts">
 definePageMeta({ layout: "auth" });
 
+import { init as initSceneDefault } from "~/assets/scenes/scene.js";
+import { init as initSceneLumon } from "~/assets/scenes/scene-lumon.js";
+import { init as initSceneMatrix } from "~/assets/scenes/scene-matrix.js";
+
 const { t } = useI18n();
 const { apiFetch } = useApi();
 const auth = useAuth();
@@ -74,13 +78,13 @@ onMounted(async () => {
   const canvas = document.getElementById("c");
   if (canvas && canvasEnabled.value) {
     const theme = document.documentElement.getAttribute("data-theme");
-    const { init } =
+    const initScene =
       theme === "matrix"
-        ? await import("~/assets/scenes/scene-matrix.js")
+        ? initSceneMatrix
         : theme === "lumon"
-          ? await import("~/assets/scenes/scene-lumon.js")
-          : await import("~/assets/scenes/scene.js");
-    destroyScene = init(canvas);
+          ? initSceneLumon
+          : initSceneDefault;
+    destroyScene = initScene(canvas);
   }
   if (auth.token.value) {
     const valid = await auth.fetchUser();

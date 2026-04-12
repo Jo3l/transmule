@@ -192,6 +192,9 @@
 <script setup lang="ts">
 import { APP_VERSION } from "~/utils/constants";
 import type { ProviderMeta } from "~/composables/useProviders";
+import { init as initSceneDefault } from "~/assets/scenes/scene.js";
+import { init as initSceneLumon } from "~/assets/scenes/scene-lumon.js";
+import { init as initSceneMatrix } from "~/assets/scenes/scene-matrix.js";
 
 defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
@@ -203,26 +206,19 @@ let themeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const { canvasEnabled } = useTheme();
 
-async function resolveSceneInit(): Promise<(canvas: HTMLCanvasElement) => (() => void) | null> {
+function resolveSceneInit(): (canvas: HTMLCanvasElement) => (() => void) | null {
   const theme = document.documentElement.getAttribute("data-theme");
-  if (theme === "matrix") {
-    const { init } = await import("~/assets/scenes/scene-matrix.js");
-    return init;
-  }
-  if (theme === "lumon") {
-    const { init } = await import("~/assets/scenes/scene-lumon.js");
-    return init;
-  }
-  const { init } = await import("~/assets/scenes/scene.js");
-  return init;
+  if (theme === "matrix") return initSceneMatrix;
+  if (theme === "lumon") return initSceneLumon;
+  return initSceneDefault;
 }
 
 function reinitScene() {
   if (themeTimer) clearTimeout(themeTimer);
-  themeTimer = setTimeout(async () => {
+  themeTimer = setTimeout(() => {
     if (!sidebarCanvas.value) return;
     destroyScene?.();
-    sceneInit = await resolveSceneInit();
+    sceneInit = resolveSceneInit();
     if (sceneInit && sidebarCanvas.value) destroyScene = sceneInit(sidebarCanvas.value);
   }, 1000);
 }
@@ -231,7 +227,7 @@ watch(canvasEnabled, async (enabled) => {
   if (enabled) {
     await nextTick();
     if (!sidebarCanvas.value) return;
-    sceneInit = await resolveSceneInit();
+    sceneInit = resolveSceneInit();
     if (sceneInit) destroyScene = sceneInit(sidebarCanvas.value);
   } else {
     destroyScene?.();
@@ -292,7 +288,7 @@ onMounted(async () => {
   if (!canvasEnabled.value || !sidebarCanvas.value) {
     // no canvas init needed
   } else {
-    sceneInit = await resolveSceneInit();
+    sceneInit = resolveSceneInit();
     destroyScene = sceneInit(sidebarCanvas.value);
   }
   window.addEventListener("app-theme-change", reinitScene);

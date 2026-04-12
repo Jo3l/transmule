@@ -166,6 +166,15 @@
             <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
               >pyLoad ({{ selectedPyload.length }}):</span
             >
+            <SButton
+              v-if="selectedPyloadHasFailed"
+              variant="info"
+              size="sm"
+              @click="doPyloadAction('restart')"
+            >
+              <span class="mdi mdi-refresh mr-1" />
+              {{ $t("downloads.actions.retry") }}
+            </SButton>
             <SButton variant="warning" size="sm" @click="doPyloadAction('stop')">
               <span class="mdi mdi-pause mr-1" />
               {{ $t("downloads.actions.stop") }}
@@ -360,6 +369,14 @@
                 /></SButton>
               </template>
               <template v-else>
+                <SButton
+                  v-if="row.failedLinks > 0"
+                  variant="info"
+                  size="sm"
+                  :title="$t('downloads.actions.retry')"
+                  @click="doCardAction(row, 'restart')"
+                  ><span class="mdi mdi-refresh"
+                /></SButton>
                 <SButton
                   v-if="row.activeLinks > 0"
                   variant="warning"
@@ -1611,6 +1628,16 @@
       <!-- pyLoad actions -->
       <template v-else-if="dlCtxMenu.row?._type === 'pyload'">
         <div
+          v-if="selectedPyloadHasFailed"
+          class="context-menu-item"
+          @click="
+            doPyloadAction('restart');
+            dlCtxMenu.visible = false;
+          "
+        >
+          <span class="mdi mdi-refresh" /> {{ $t("downloads.actions.retry") }}
+        </div>
+        <div
           class="context-menu-item"
           @click="
             doPyloadAction('stop');
@@ -1885,6 +1912,9 @@ const selectedTorrents = computed(() =>
 );
 const selectedPyload = computed(() =>
   filteredFiles.value.filter((r: any) => r._type === "pyload" && selectedItems.has(r._uid)),
+);
+const selectedPyloadHasFailed = computed(() =>
+  selectedPyload.value.some((p: any) => (p.failedLinks || 0) > 0),
 );
 
 function dlRowClass(row: any): string {

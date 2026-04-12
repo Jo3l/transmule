@@ -70,6 +70,23 @@ PYLOAD_PASSWORD=pyload
 docker compose up -d
 ```
 
+> Note: pyLoad is pinned to `version-0.5.0b3.dev96` by default because newer
+> tags introduced API auth changes that currently break middleware auth
+> (`pyload: disconnected`, issue #2). You can override with `PYLOAD_IMAGE`.
+
+### ARM64 (Raspberry Pi / ARM servers)
+
+The main `docker-compose.yml` is ARM64-compatible. The default service images
+are multi-arch, so Docker will pull ARM64 variants automatically on ARM hosts.
+
+If you need to pin custom tags/images for ARM64, set these in `.env`:
+
+```env
+AMULE_IMAGE=ngosang/amule:latest
+TRANSMISSION_IMAGE=lscr.io/linuxserver/transmission:latest
+PYLOAD_IMAGE=lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96
+```
+
 ### 3. Open
 
 - **Frontend / API:** http://localhost:3001
@@ -95,17 +112,20 @@ All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) ha
 
 ## Environment Variables
 
-| Variable                                  | Default         | Description                              |
-| ----------------------------------------- | --------------- | ---------------------------------------- |
-| `PUID` / `PGID`                           | `1000`          | Host user/group IDs for file permissions |
-| `TZ`                                      | `Europe/Madrid` | Timezone                                 |
-| `DOWNLOAD_DIR`                            | `./downloads`   | Completed downloads host path            |
-| `INCOMPLETE_DIR`                          | `./incomplete`  | In-progress downloads host path          |
-| `AMULE_GUI_PASSWORD`                      | —               | aMule EC protocol password (port 4712)   |
-| `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_       | Transmission RPC credentials             |
-| `DATA_DIR`                                | `./data`        | Middleware SQLite database directory     |
-| `JWT_SECRET`                              | `change-me`     | Secret for signing JWT tokens            |
-| `PYLOAD_USER` / `PYLOAD_PASSWORD`         | `pyload`        | pyLoad NG credentials                    |
+| Variable                                  | Default                                               | Description                              |
+| ----------------------------------------- | ----------------------------------------------------- | ---------------------------------------- |
+| `PUID` / `PGID`                           | `1000`                                                | Host user/group IDs for file permissions |
+| `TZ`                                      | `Europe/Madrid`                                       | Timezone                                 |
+| `DOWNLOAD_DIR`                            | `./downloads`                                         | Completed downloads host path            |
+| `INCOMPLETE_DIR`                          | `./incomplete`                                        | In-progress downloads host path          |
+| `AMULE_GUI_PASSWORD`                      | —                                                     | aMule EC protocol password (port 4712)   |
+| `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_                                             | Transmission RPC credentials             |
+| `DATA_DIR`                                | `./data`                                              | Middleware SQLite database directory     |
+| `JWT_SECRET`                              | `change-me`                                           | Secret for signing JWT tokens            |
+| `PYLOAD_USER` / `PYLOAD_PASSWORD`         | `pyload`                                              | pyLoad NG credentials                    |
+| `AMULE_IMAGE`                             | `ngosang/amule:latest`                                | Optional aMule image override            |
+| `TRANSMISSION_IMAGE`                      | `lscr.io/linuxserver/transmission:latest`             | Optional Transmission image override     |
+| `PYLOAD_IMAGE`                            | `lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96` | Optional pyLoad image override           |
 
 ---
 
