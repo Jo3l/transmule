@@ -11,6 +11,7 @@ Deploy TransMule on Unraid using the **Compose Manager** plugin.
    > ⚠️ Without this plugin, neither `docker compose` nor `docker-compose` will be available in the Unraid terminal.
 3. The image is hosted on **GitHub Container Registry** and pulled automatically:
    - `ghcr.io/jo3l/transmule:latest`
+   - Multi-arch manifest: `linux/amd64` and `linux/arm64`
    - No Docker Hub account or login required.
 
 ---
@@ -36,6 +37,7 @@ The script will:
 > **Re-running is safe.** If `.env` already exists its secrets are preserved. `docker-compose.yml` is always refreshed to the latest version.
 
 > **Manual passwords:** Edit `.env` after running the script if you want to set your own values.
+> You can also override image tags in `.env` (`TRANSMULE_APP_IMAGE`, `AMULE_IMAGE`, `TRANSMISSION_IMAGE`, `PYLOAD_IMAGE`).
 
 ### 2. Start the stack
 

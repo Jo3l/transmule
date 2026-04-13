@@ -88,12 +88,11 @@ services:
       - transmule
 
   # ── App (Nitro API + Nuxt SPA via nginx) ──────────────────────────────────
+  # Pulled from GHCR (multi-arch: amd64 + arm64).
   # Single container: supervisord runs nginx (port 3001) and Nitro (loopback).
   # nginx reverse-proxies /api/* and /_scalar to Nitro internally.
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${TRANSMULE_APP_IMAGE:-ghcr.io/jo3l/transmule:latest}
     container_name: transmule-app
     restart: unless-stopped
     ports:

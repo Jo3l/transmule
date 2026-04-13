@@ -7,6 +7,10 @@
 #   4712  → aMule EC protocol
 #   9091  → Transmission RPC
 #   8000  → pyLoad web UI + API
+#
+# Note:
+#   The app service is defined in docker-compose.yml and now pulls from
+#   ghcr.io/jo3l/transmule (multi-arch: amd64 + arm64).
 
 services:
   amule:

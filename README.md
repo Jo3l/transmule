@@ -76,12 +76,14 @@ docker compose up -d
 
 ### ARM64 (Raspberry Pi / ARM servers)
 
-The main `docker-compose.yml` is ARM64-compatible. The default service images
-are multi-arch, so Docker will pull ARM64 variants automatically on ARM hosts.
+The main `docker-compose.yml` is ARM64-compatible. The app image is pulled from
+GHCR and published as a multi-arch manifest (`linux/amd64`, `linux/arm64`).
+Service images are also multi-arch.
 
 If you need to pin custom tags/images for ARM64, set these in `.env`:
 
 ```env
+TRANSMULE_APP_IMAGE=ghcr.io/jo3l/transmule:latest
 AMULE_IMAGE=ngosang/amule:latest
 TRANSMISSION_IMAGE=lscr.io/linuxserver/transmission:latest
 PYLOAD_IMAGE=lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96
@@ -123,6 +125,7 @@ All service-to-service communication (aMule EC, Transmission RPC, pyLoad API) ha
 | `DATA_DIR`                                | `./data`                                              | Middleware SQLite database directory     |
 | `JWT_SECRET`                              | `change-me`                                           | Secret for signing JWT tokens            |
 | `PYLOAD_USER` / `PYLOAD_PASSWORD`         | `pyload`                                              | pyLoad NG credentials                    |
+| `TRANSMULE_APP_IMAGE`                     | `ghcr.io/jo3l/transmule:latest`                       | Optional app image override              |
 | `AMULE_IMAGE`                             | `ngosang/amule:latest`                                | Optional aMule image override            |
 | `TRANSMISSION_IMAGE`                      | `lscr.io/linuxserver/transmission:latest`             | Optional Transmission image override     |
 | `PYLOAD_IMAGE`                            | `lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96` | Optional pyLoad image override           |
