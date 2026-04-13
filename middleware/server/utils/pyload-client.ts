@@ -91,9 +91,16 @@ export interface PyLoadConfig {
 export class PyLoadClient {
   private baseUrl: string;
   private authHeader: string;
+  private username: string;
+  private password: string;
+  private apiKey: string | null = null;
+  private cookieHeader = "";
+  private authMode: "basic" | "apikey" = "basic";
 
   constructor(config: PyLoadConfig) {
     this.baseUrl = config.url.replace(/\/$/, "");
+    this.username = config.username;
+    this.password = config.password;
     this.authHeader =
       "Basic " +
       Buffer.from(`${config.username}:${config.password}`).toString("base64");
@@ -101,50 +108,242 @@ export class PyLoadClient {
 
   // ── Internal helpers ────────────────────────────────────────────────────────
 
-  private endpoint(command: string): string {
-    return `${this.baseUrl}/api/${command}`;
+  private toLegacyCommand(command: string): string {
+    return command.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+  }
+
+  private commandCandidates(command: string): string[] {
+    const candidates = [command, this.toLegacyCommand(command)];
+    return [...new Set(candidates)];
+  }
+
+  private endpointCandidates(command: string): string[] {
+    const commands = this.commandCandidates(command);
+    const paths: string[] = [];
+
+    for (const cmd of commands) {
+      paths.push(`${this.baseUrl}/api/${cmd}`);
+      // Newer pyLoad variants may expose rpc methods below /api/v1.
+      paths.push(`${this.baseUrl}/api/v1/${cmd}`);
+    }
+
+    return [...new Set(paths)];
+  }
+
+  private buildAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.authMode === "apikey" && this.apiKey) {
+      headers["X-API-Key"] = this.apiKey;
+    } else {
+      headers.Authorization = this.authHeader;
+    }
+    if (this.cookieHeader) headers.Cookie = this.cookieHeader;
+    return headers;
+  }
+
+  private updateCookies(res: Response) {
+    const setCookies: string[] =
+      ((res.headers as any).getSetCookie?.() as string[] | undefined) || [];
+
+    if (setCookies.length === 0) {
+      const single = res.headers.get("set-cookie");
+      if (single) setCookies.push(single);
+    }
+
+    if (!setCookies.length) return;
+
+    const jar = new Map<string, string>();
+    if (this.cookieHeader) {
+      for (const pair of this.cookieHeader.split(";")) {
+        const [rawK, ...rest] = pair.trim().split("=");
+        if (!rawK || rest.length === 0) continue;
+        jar.set(rawK, rest.join("="));
+      }
+    }
+
+    for (const cookie of setCookies) {
+      const [pair] = cookie.split(";");
+      const [rawK, ...rest] = pair.trim().split("=");
+      if (!rawK || rest.length === 0) continue;
+      jar.set(rawK, rest.join("="));
+    }
+
+    this.cookieHeader = [...jar.entries()]
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
+  }
+
+  private async ensureSessionCookie(): Promise<boolean> {
+    if (this.cookieHeader.includes("session=")) return true;
+
+    const body = new URLSearchParams();
+    body.set("username", this.username);
+    body.set("password", this.password);
+
+    const res = await fetch(`${this.baseUrl}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      redirect: "manual",
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    this.updateCookies(res);
+
+    // Successful login generally redirects to dashboard and sets session cookie.
+    return (
+      [200, 302, 303].includes(res.status) &&
+      this.cookieHeader.includes("session=")
+    );
+  }
+
+  private async ensureApiKey(): Promise<boolean> {
+    if (this.apiKey) {
+      this.authMode = "apikey";
+      return true;
+    }
+
+    const hasSession = await this.ensureSessionCookie();
+    if (!hasSession) return false;
+
+    const res = await fetch(`${this.baseUrl}/json/generate_apikey`, {
+      method: "POST",
+      headers: {
+        ...this.buildAuthHeaders(),
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        user: this.username,
+        password: this.password,
+        name: "transmule",
+        expires: 0,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    this.updateCookies(res);
+
+    if (!res.ok) return false;
+
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      return false;
+    }
+
+    const key = json?.data?.key;
+    if (json?.success === true && typeof key === "string" && key) {
+      this.apiKey = key;
+      this.authMode = "apikey";
+      return true;
+    }
+
+    return false;
+  }
+
+  private async parseResponseBody(res: Response): Promise<any> {
+    const text = await res.text();
+    if (!text || text === "null") return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  }
+
+  private isCompatAuthError(status: number, body: any): boolean {
+    if (![401, 403].includes(status)) return false;
+    const msg =
+      (typeof body === "object" && body && (body.error || body.message)) ||
+      (typeof body === "string" ? body : "");
+    if (!msg) return true;
+    const normalized = String(msg).toLowerCase();
+    return (
+      normalized.includes("login") ||
+      normalized.includes("credential") ||
+      normalized.includes("api key") ||
+      normalized.includes("access denied") ||
+      normalized.includes("csrf")
+    );
+  }
+
+  private isPyLoadErrorPayload(body: any): body is { error: string } {
+    return (
+      body &&
+      typeof body === "object" &&
+      typeof body.error === "string" &&
+      body.error.length > 0
+    );
+  }
+
+  private throwApiError(status: number, statusText: string, body: any): never {
+    const detail =
+      (this.isPyLoadErrorPayload(body) && body.error) ||
+      (typeof body === "string" && body) ||
+      `${status} ${statusText}`;
+    throw createError({
+      statusCode: 502,
+      statusMessage: `pyLoad API error: ${detail}`,
+    });
   }
 
   private async get<T = unknown>(
     command: string,
     params?: Record<string, string>,
   ): Promise<T> {
-    const url = new URL(this.endpoint(command));
-    if (params) {
-      for (const [k, v] of Object.entries(params)) {
-        url.searchParams.set(k, v);
+    let lastStatus = 0;
+    let lastStatusText = "";
+    let lastBody: any = null;
+    let triedApiKeyUpgrade = false;
+
+    for (const endpoint of this.endpointCandidates(command)) {
+      const url = new URL(endpoint);
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          url.searchParams.set(k, v);
+        }
+      }
+
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(url.toString(), {
+          headers: {
+            ...this.buildAuthHeaders(),
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+
+        this.updateCookies(res);
+        const body = await this.parseResponseBody(res);
+
+        if (res.ok) {
+          if (this.isPyLoadErrorPayload(body)) {
+            this.throwApiError(res.status, res.statusText, body);
+          }
+          return body as T;
+        }
+
+        lastStatus = res.status;
+        lastStatusText = res.statusText;
+        lastBody = body;
+
+        if (!triedApiKeyUpgrade && this.isCompatAuthError(res.status, body)) {
+          triedApiKeyUpgrade = true;
+          const upgraded = await this.ensureApiKey();
+          if (upgraded) {
+            continue;
+          }
+        }
+
+        break;
       }
     }
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: this.authHeader,
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(15_000),
-    });
-
-    if (!res.ok) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `pyLoad API error: ${res.status} ${res.statusText}`,
-      });
-    }
-
-    const json = await res.json();
-    // pyLoad NG returns HTTP 200 with {"error": "...", "traceback": "..."} on bad calls
-    if (
-      json &&
-      typeof json === "object" &&
-      "error" in json &&
-      "traceback" in json
-    ) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `pyLoad API error: ${(json as any).error}`,
-      });
-    }
-    return json as T;
+    this.throwApiError(lastStatus, lastStatusText, lastBody);
   }
 
   private async post<T = unknown>(
@@ -157,46 +356,54 @@ export class PyLoadClient {
       body.append(k, JSON.stringify(v));
     }
 
-    const res = await fetch(this.endpoint(command), {
-      method: "POST",
-      headers: {
-        Authorization: this.authHeader,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body: body.toString(),
-      signal: AbortSignal.timeout(15_000),
-    });
+    let lastStatus = 0;
+    let lastStatusText = "";
+    let lastBody: any = null;
+    let triedApiKeyUpgrade = false;
 
-    if (!res.ok) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `pyLoad API error: ${res.status} ${res.statusText}`,
-      });
-    }
-
-    // Some commands return empty body or "true"
-    const text = await res.text();
-    if (!text || text === "null") return null as T;
-    try {
-      const json = JSON.parse(text);
-      // pyLoad NG returns HTTP 200 with {"error": "...", "traceback": "..."} on bad calls
-      if (
-        json &&
-        typeof json === "object" &&
-        "error" in json &&
-        "traceback" in json
-      ) {
-        throw createError({
-          statusCode: 502,
-          statusMessage: `pyLoad API error: ${(json as any).error}`,
+    for (const endpoint of this.endpointCandidates(command)) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            ...this.buildAuthHeaders(),
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+          body: body.toString(),
+          signal: AbortSignal.timeout(15_000),
         });
+
+        this.updateCookies(res);
+        const responseBody = await this.parseResponseBody(res);
+
+        if (res.ok) {
+          if (this.isPyLoadErrorPayload(responseBody)) {
+            this.throwApiError(res.status, res.statusText, responseBody);
+          }
+          return responseBody as T;
+        }
+
+        lastStatus = res.status;
+        lastStatusText = res.statusText;
+        lastBody = responseBody;
+
+        if (
+          !triedApiKeyUpgrade &&
+          this.isCompatAuthError(res.status, responseBody)
+        ) {
+          triedApiKeyUpgrade = true;
+          const upgraded = await this.ensureApiKey();
+          if (upgraded) {
+            continue;
+          }
+        }
+
+        break;
       }
-      return json as T;
-    } catch (err) {
-      if ((err as any).statusCode) throw err;
-      return text as unknown as T;
     }
+
+    this.throwApiError(lastStatus, lastStatusText, lastBody);
   }
 
   // ── Status ──────────────────────────────────────────────────────────────────
