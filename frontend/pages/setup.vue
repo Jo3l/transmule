@@ -60,10 +60,34 @@ const passwordConfirm = ref("");
 const loading = ref(false);
 const error = ref("");
 
-const { canvasEnabled } = useTheme();
+const { canvasEnabled, currentTheme } = useTheme();
 
 let destroyScene: (() => void) | null = null;
 onUnmounted(() => destroyScene?.());
+
+async function ensureScene() {
+  if (!canvasEnabled.value) {
+    destroyScene?.();
+    destroyScene = null;
+    return;
+  }
+
+  await nextTick();
+  const canvas = document.getElementById("c") as HTMLCanvasElement | null;
+  if (!canvas) return;
+
+  destroyScene?.();
+  const theme = document.documentElement.getAttribute("data-theme") || currentTheme.value;
+  const initScene =
+    theme === "matrix"
+      ? initSceneMatrix
+      : theme === "lumon"
+        ? initSceneLumon
+        : initSceneDefault;
+  destroyScene = initScene(canvas);
+}
+
+watch([canvasEnabled, currentTheme], ensureScene, { immediate: true, flush: "post" });
 
 async function doSetup() {
   error.value = "";
@@ -89,17 +113,6 @@ async function doSetup() {
 }
 
 onMounted(async () => {
-  const canvas = document.getElementById("c");
-  if (canvas && canvasEnabled.value) {
-    const theme = document.documentElement.getAttribute("data-theme");
-    const initScene =
-      theme === "matrix"
-        ? initSceneMatrix
-        : theme === "lumon"
-          ? initSceneLumon
-          : initSceneDefault;
-    destroyScene = initScene(canvas);
-  }
   try {
     const config = useRuntimeConfig();
     const status = await $fetch<{ hasUsers: boolean }>("/api/users/status", {

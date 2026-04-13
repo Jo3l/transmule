@@ -95,6 +95,8 @@ export class PyLoadClient {
   private password: string;
   private apiKey: string | null = null;
   private cookieHeader = "";
+  private csrfToken: string | null = null;
+  private hasSessionAuth = false;
   private authMode: "basic" | "apikey" = "basic";
 
   constructor(config: PyLoadConfig) {
@@ -130,12 +132,31 @@ export class PyLoadClient {
     return [...new Set(paths)];
   }
 
-  private buildAuthHeaders(): Record<string, string> {
+  private extractCsrfToken(html: string): string | null {
+    const inputMatch = html.match(
+      /name=["']csrf_token["'][^>]*value=["']([^"']+)["']/i,
+    );
+    if (inputMatch?.[1]) return inputMatch[1];
+
+    const metaMatch = html.match(
+      /<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']/i,
+    );
+    if (metaMatch?.[1]) return metaMatch[1];
+
+    return null;
+  }
+
+  private buildAuthHeaders(opts?: {
+    includeCsrf?: boolean;
+  }): Record<string, string> {
     const headers: Record<string, string> = {};
     if (this.authMode === "apikey" && this.apiKey) {
       headers["X-API-Key"] = this.apiKey;
     } else {
       headers.Authorization = this.authHeader;
+    }
+    if (opts?.includeCsrf && this.csrfToken && this.authMode !== "apikey") {
+      headers["X-CSRFToken"] = this.csrfToken;
     }
     if (this.cookieHeader) headers.Cookie = this.cookieHeader;
     return headers;
@@ -174,16 +195,35 @@ export class PyLoadClient {
   }
 
   private async ensureSessionCookie(): Promise<boolean> {
-    if (this.cookieHeader.includes("session=")) return true;
+    if (this.hasSessionAuth && this.cookieHeader.includes("session="))
+      return true;
+
+    // Fetch login page first to get a valid CSRF token and initial session cookie.
+    const loginPageRes = await fetch(`${this.baseUrl}/login`, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        ...(this.cookieHeader ? { Cookie: this.cookieHeader } : {}),
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    this.updateCookies(loginPageRes);
+    const loginPageHtml = await loginPageRes.text().catch(() => "");
+    const tokenFromPage = this.extractCsrfToken(loginPageHtml);
+    if (tokenFromPage) this.csrfToken = tokenFromPage;
 
     const body = new URLSearchParams();
+    body.set("do", "login");
     body.set("username", this.username);
     body.set("password", this.password);
+    if (this.csrfToken) body.set("csrf_token", this.csrfToken);
 
     const res = await fetch(`${this.baseUrl}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        ...(this.cookieHeader ? { Cookie: this.cookieHeader } : {}),
       },
       body: body.toString(),
       redirect: "manual",
@@ -191,12 +231,16 @@ export class PyLoadClient {
     });
 
     this.updateCookies(res);
+    const loginResponseHtml = await res.text().catch(() => "");
+    const tokenFromResponse = this.extractCsrfToken(loginResponseHtml);
+    if (tokenFromResponse) this.csrfToken = tokenFromResponse;
 
     // Successful login generally redirects to dashboard and sets session cookie.
-    return (
+    const ok =
       [200, 302, 303].includes(res.status) &&
-      this.cookieHeader.includes("session=")
-    );
+      this.cookieHeader.includes("session=");
+    this.hasSessionAuth = ok;
+    return ok;
   }
 
   private async ensureApiKey(): Promise<boolean> {
@@ -211,7 +255,7 @@ export class PyLoadClient {
     const res = await fetch(`${this.baseUrl}/json/generate_apikey`, {
       method: "POST",
       headers: {
-        ...this.buildAuthHeaders(),
+        ...this.buildAuthHeaders({ includeCsrf: true }),
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -251,6 +295,11 @@ export class PyLoadClient {
    * even if API key creation is not permitted for this user.
    */
   private async ensureCompatibleAuth(): Promise<boolean> {
+    // If the previous auth method was rejected, reset state and rebuild.
+    this.apiKey = null;
+    this.authMode = "basic";
+    this.hasSessionAuth = false;
+
     const hasSession = await this.ensureSessionCookie();
     if (!hasSession) return false;
 
@@ -383,7 +432,7 @@ export class PyLoadClient {
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
-            ...this.buildAuthHeaders(),
+            ...this.buildAuthHeaders({ includeCsrf: true }),
             "Content-Type": "application/x-www-form-urlencoded",
             Accept: "application/json",
           },
