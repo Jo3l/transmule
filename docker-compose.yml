@@ -72,7 +72,7 @@ services:
 
   # ── pyLoad NG download manager ──────────────────────────────────────────────
   pyload:
-    image: ${PYLOAD_IMAGE:-lscr.io/linuxserver/pyload-ng:version-0.5.0b3.dev96}
+    image: ${PYLOAD_IMAGE:-lscr.io/linuxserver/pyload-ng:latest}
     container_name: transmule-pyload
     restart: unless-stopped
     expose:

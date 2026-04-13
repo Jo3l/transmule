@@ -245,6 +245,20 @@ export class PyLoadClient {
     return false;
   }
 
+  /**
+   * Try to upgrade auth when pyLoad rejects credentials.
+   * For newer pyLoad, a logged-in session can already authorize GET RPC calls
+   * even if API key creation is not permitted for this user.
+   */
+  private async ensureCompatibleAuth(): Promise<boolean> {
+    const hasSession = await this.ensureSessionCookie();
+    if (!hasSession) return false;
+
+    // Best-effort: keep working with session auth if key generation is denied.
+    await this.ensureApiKey().catch(() => false);
+    return true;
+  }
+
   private async parseResponseBody(res: Response): Promise<any> {
     const text = await res.text();
     if (!text || text === "null") return null;
@@ -298,7 +312,7 @@ export class PyLoadClient {
     let lastStatus = 0;
     let lastStatusText = "";
     let lastBody: any = null;
-    let triedApiKeyUpgrade = false;
+    let triedCompatAuthUpgrade = false;
 
     for (const endpoint of this.endpointCandidates(command)) {
       const url = new URL(endpoint);
@@ -331,9 +345,12 @@ export class PyLoadClient {
         lastStatusText = res.statusText;
         lastBody = body;
 
-        if (!triedApiKeyUpgrade && this.isCompatAuthError(res.status, body)) {
-          triedApiKeyUpgrade = true;
-          const upgraded = await this.ensureApiKey();
+        if (
+          !triedCompatAuthUpgrade &&
+          this.isCompatAuthError(res.status, body)
+        ) {
+          triedCompatAuthUpgrade = true;
+          const upgraded = await this.ensureCompatibleAuth();
           if (upgraded) {
             continue;
           }
@@ -359,7 +376,7 @@ export class PyLoadClient {
     let lastStatus = 0;
     let lastStatusText = "";
     let lastBody: any = null;
-    let triedApiKeyUpgrade = false;
+    let triedCompatAuthUpgrade = false;
 
     for (const endpoint of this.endpointCandidates(command)) {
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -389,11 +406,11 @@ export class PyLoadClient {
         lastBody = responseBody;
 
         if (
-          !triedApiKeyUpgrade &&
+          !triedCompatAuthUpgrade &&
           this.isCompatAuthError(res.status, responseBody)
         ) {
-          triedApiKeyUpgrade = true;
-          const upgraded = await this.ensureApiKey();
+          triedCompatAuthUpgrade = true;
+          const upgraded = await this.ensureCompatibleAuth();
           if (upgraded) {
             continue;
           }
