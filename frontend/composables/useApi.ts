@@ -85,15 +85,21 @@ export function useApi() {
         throw err;
       }
 
-      // aMule connectivity errors (502, 504, 503, 408) — only for aMule routes
+      // aMule connectivity errors (502, 504, 503, 408) — only for aMule routes.
+      // Notify once when connection first goes down; avoid repeated popups
+      // while the service remains unavailable.
       if (isAmuleRoute && [502, 504, 503, 408].includes(status)) {
+        const wasDown = _amuleDown;
         _amuleDown = true;
-        const serverMsg =
-          err?.response?._data?.statusMessage ||
-          err?.data?.statusMessage ||
-          err?.statusMessage ||
-          "";
-        showToast(amuleErrorMessage(status, serverMsg));
+
+        if (!wasDown) {
+          const serverMsg =
+            err?.response?._data?.statusMessage ||
+            err?.data?.statusMessage ||
+            err?.statusMessage ||
+            "";
+          showToast(amuleErrorMessage(status, serverMsg));
+        }
       }
 
       throw err;
