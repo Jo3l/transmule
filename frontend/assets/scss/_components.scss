@@ -223,13 +223,13 @@
 
   // ── Spinner
   .s-btn__spinner {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 14px;
     height: 14px;
-    border: 2px solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: s-spin 0.6s linear infinite;
+    font-size: 14px;
+    line-height: 1;
     flex-shrink: 0;
   }
 }
@@ -873,20 +873,17 @@ textarea.s-input {
   border-radius: inherit;
 }
 .s-loading-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
-  border: 3px solid var(--s-border);
-  border-top-color: var(--s-accent);
-  border-radius: 50%;
-  animation: s-spin 0.7s linear infinite;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--s-accent);
 }
 
 /* ── Animations ──────────────────────────────────────────────────────────── */
-@keyframes s-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 @keyframes s-fade-in {
   from {
     opacity: 0;

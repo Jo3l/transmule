@@ -6,7 +6,10 @@
       :class="{ 'is-active': hasActive, 'is-open': open }"
       @click="open = !open"
     >
-      <span class="mdi mdi-transfer transfer-systray__icon" :class="{ 'is-spinning': hasActive }" />
+      <span
+        class="mdi transfer-systray__icon"
+        :class="hasActive ? 'mdi-loading mdi-spin' : 'mdi-transfer'"
+      />
       <div v-if="hasActive" class="transfer-systray__bars">
         <div v-for="job in visibleActiveJobs" :key="job.queueId" class="transfer-systray__bar-wrap">
           <div class="transfer-systray__bar" :style="{ width: job.percent + '%' }" />
@@ -106,6 +109,7 @@ function rowIcon(job: TransferJob) {
   if (job.status === "done") return "mdi-check-circle";
   if (job.status === "error") return "mdi-alert-circle";
   if (job.status === "queued") return "mdi-clock-outline";
+  if (job.status === "running") return "mdi-loading mdi-spin";
   if (job.mode === "extract") return "mdi-archive-arrow-down-outline";
   if (job.mode === "compress") return "mdi-archive-arrow-up-outline";
   if (job.mode === "upload") return "mdi-upload";
@@ -166,18 +170,6 @@ onBeforeUnmount(() => window.removeEventListener("mousedown", onMousedown));
 .transfer-systray__icon {
   color: var(--s-accent);
   font-size: 1rem;
-}
-.transfer-systray__icon.is-spinning {
-  animation: transfer-spin 1.5s linear infinite;
-}
-
-@keyframes transfer-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .transfer-systray__bars {
@@ -277,7 +269,6 @@ onBeforeUnmount(() => window.removeEventListener("mousedown", onMousedown));
 }
 .transfer-dropdown__row.is-running .transfer-dropdown__icon {
   color: var(--s-accent);
-  animation: transfer-spin 1.5s linear infinite;
 }
 
 .transfer-dropdown__body {

@@ -346,7 +346,7 @@
                   />
                   <span
                     v-else-if="p.open === null"
-                    class="port-status-icon mdi mdi-progress-clock"
+                    class="port-status-icon mdi mdi-loading mdi-spin"
                   />
                   <span v-else-if="p.open" class="port-status-icon mdi mdi-check-circle" />
                   <span v-else class="port-status-icon mdi mdi-close-circle" />
@@ -1556,7 +1556,6 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
 
     &.is-checking .port-status-icon {
       color: var(--s-text-muted);
-      animation: spin 1.2s linear infinite;
     }
 
     &.is-udp {
@@ -1568,11 +1567,6 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
   }
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 .stt-actions {
   display: flex;
   gap: 6px;

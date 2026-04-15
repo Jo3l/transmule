@@ -8,7 +8,7 @@
     <span class="button-outline">
       <span class="button-shadow">
         <span class="button-inside">
-          <span v-if="loading" class="s-btn__spinner" />
+          <span v-if="loading" class="mdi mdi-loading mdi-spin s-btn__spinner" />
           <span class="button-text">
             <!-- label prop → per-character jump animation -->
             <span v-if="label" class="button-text-characters-container">

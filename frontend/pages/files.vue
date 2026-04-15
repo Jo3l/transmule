@@ -119,7 +119,7 @@
 
           <!-- Loading overlay: locks and dims the list while fetching -->
           <div v-if="loading" class="fm-loading-overlay">
-            <div class="s-loading-spinner" />
+            <span class="mdi mdi-loading mdi-spin s-loading-spinner" />
           </div>
 
           <!-- ── Mobile file cards (≤768px) ──────────────────────────── -->

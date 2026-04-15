@@ -2,7 +2,7 @@
   <div class="s-loading-wrap">
     <slot />
     <div v-if="loading" class="s-loading-overlay">
-      <div class="s-loading-spinner" />
+      <span class="mdi mdi-loading mdi-spin s-loading-spinner" />
     </div>
   </div>
 </template>

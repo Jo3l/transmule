@@ -5,11 +5,10 @@
       {{ $t("ports.title") }}
       <button
         class="port-status-refresh"
-        :class="{ 'is-spinning': checking }"
         :title="$t('ports.refresh')"
         @click="refresh"
       >
-        <span class="mdi mdi-refresh"></span>
+        <span class="mdi" :class="checking ? 'mdi-loading mdi-spin' : 'mdi-refresh'" />
       </button>
     </div>
     <ul class="port-status-list">

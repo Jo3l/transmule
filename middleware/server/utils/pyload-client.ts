@@ -297,6 +297,8 @@ export class PyLoadClient {
   private async ensureCompatibleAuth(): Promise<boolean> {
     // If the previous auth method was rejected, reset state and rebuild.
     this.apiKey = null;
+    this.csrfToken = null;
+    this.cookieHeader = "";
     this.authMode = "basic";
     this.hasSessionAuth = false;
 
@@ -318,20 +320,40 @@ export class PyLoadClient {
     }
   }
 
-  private isCompatAuthError(status: number, body: any): boolean {
-    if (![401, 403].includes(status)) return false;
-    const msg =
-      (typeof body === "object" && body && (body.error || body.message)) ||
-      (typeof body === "string" ? body : "");
-    if (!msg) return true;
-    const normalized = String(msg).toLowerCase();
+  private extractErrorMessage(body: any): string {
+    if (typeof body === "string") return body;
+    if (typeof body === "object" && body) {
+      if (typeof body.error === "string") return body.error;
+      if (typeof body.message === "string") return body.message;
+    }
+    return "";
+  }
+
+  private isCompatAuthMessage(msg: string): boolean {
+    const normalized = msg.toLowerCase();
     return (
       normalized.includes("login") ||
       normalized.includes("credential") ||
       normalized.includes("api key") ||
       normalized.includes("access denied") ||
-      normalized.includes("csrf")
+      normalized.includes("csrf") ||
+      normalized.includes("unauthorized") ||
+      normalized.includes("forbidden") ||
+      normalized.includes("session")
     );
+  }
+
+  private isCompatAuthError(status: number, body: any): boolean {
+    if (![401, 403].includes(status)) return false;
+    const msg = this.extractErrorMessage(body);
+    if (!msg) return true;
+    return this.isCompatAuthMessage(msg);
+  }
+
+  private isCompatAuthPayload(body: any): boolean {
+    const msg = this.extractErrorMessage(body);
+    if (!msg) return false;
+    return this.isCompatAuthMessage(msg);
   }
 
   private isPyLoadErrorPayload(body: any): body is { error: string } {
@@ -384,7 +406,17 @@ export class PyLoadClient {
         const body = await this.parseResponseBody(res);
 
         if (res.ok) {
-          if (this.isPyLoadErrorPayload(body)) {
+          if (
+            this.isPyLoadErrorPayload(body) ||
+            this.isCompatAuthPayload(body)
+          ) {
+            if (!triedCompatAuthUpgrade && this.isCompatAuthPayload(body)) {
+              triedCompatAuthUpgrade = true;
+              const upgraded = await this.ensureCompatibleAuth();
+              if (upgraded) {
+                continue;
+              }
+            }
             this.throwApiError(res.status, res.statusText, body);
           }
           return body as T;
@@ -444,7 +476,20 @@ export class PyLoadClient {
         const responseBody = await this.parseResponseBody(res);
 
         if (res.ok) {
-          if (this.isPyLoadErrorPayload(responseBody)) {
+          if (
+            this.isPyLoadErrorPayload(responseBody) ||
+            this.isCompatAuthPayload(responseBody)
+          ) {
+            if (
+              !triedCompatAuthUpgrade &&
+              this.isCompatAuthPayload(responseBody)
+            ) {
+              triedCompatAuthUpgrade = true;
+              const upgraded = await this.ensureCompatibleAuth();
+              if (upgraded) {
+                continue;
+              }
+            }
             this.throwApiError(res.status, res.statusText, responseBody);
           }
           return responseBody as T;

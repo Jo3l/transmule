@@ -192,8 +192,7 @@
 
     /* Spinner inherits color */
     .s-btn__spinner {
-      border-color: currentColor;
-      border-right-color: transparent;
+      color: currentColor;
     }
   }
 
@@ -606,8 +605,7 @@
 
   /* ═══ Loading spinner ═══ */
   .s-loading-spinner {
-    border-color: #d6d2c2;
-    border-top-color: var(--xp-highlight);
+    color: var(--xp-highlight);
   }
 
   /* ═══ Box (card surfaces): XP groupbox ═══ */
@@ -949,8 +947,7 @@
       }
     }
     .s-btn__spinner {
-      border-color: currentColor;
-      border-right-color: transparent;
+      color: currentColor;
     }
   }
 
