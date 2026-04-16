@@ -48,6 +48,42 @@ export NITRO_TRANSMISSION_URL="http://127.0.0.1:9091/transmission/rpc"
 export NITRO_PYLOAD_URL="http://127.0.0.1:8000"
 export NITRO_PYLOAD_USERNAME="${PYLOAD_USER:-pyload}"
 export NITRO_PYLOAD_PASSWORD="${PYLOAD_PASSWORD:-pyload}"
+# Let local middleware and docker CLI share the same Docker socket in dev mode.
+# Priority: explicit NITRO_DOCKER_SOCKET > DOCKER_HOST unix socket > standard sockets.
+detect_docker_socket() {
+  if [[ -n "${NITRO_DOCKER_SOCKET:-}" ]]; then
+    echo "${NITRO_DOCKER_SOCKET}"
+    return 0
+  fi
+
+  if [[ "${DOCKER_HOST:-}" == unix://* ]]; then
+    echo "${DOCKER_HOST#unix://}"
+    return 0
+  fi
+
+  if [[ -S "/var/run/docker.sock" ]]; then
+    echo "/var/run/docker.sock"
+    return 0
+  fi
+
+  local rootless_sock="/run/user/$(id -u)/docker.sock"
+  if [[ -S "$rootless_sock" ]]; then
+    echo "$rootless_sock"
+    return 0
+  fi
+
+  return 1
+}
+
+if _docker_sock="$(detect_docker_socket)"; then
+  export NITRO_DOCKER_SOCKET="$_docker_sock"
+  if [[ -z "${DOCKER_HOST:-}" ]]; then
+    export DOCKER_HOST="unix://$_docker_sock"
+  fi
+  echo -e "${CYAN}▸ Docker socket configured: ${NITRO_DOCKER_SOCKET}${NC}"
+else
+  echo -e "${YELLOW}Docker socket not found. Set NITRO_DOCKER_SOCKET or DOCKER_HOST (unix://...) to enable container management in dev.${NC}"
+fi
 # Resolve downloads dir to absolute path for the local middleware process
 _dl_raw="${DOWNLOAD_DIR:-./downloads}"
 if [[ "$_dl_raw" = /* ]]; then
@@ -57,6 +93,13 @@ else
 fi
 
 COMPOSE="docker compose -f $ROOT/docker-compose.yml -f $ROOT/docker-compose.dev.yml"
+
+# Fail fast if docker CLI cannot reach the daemon.
+if ! docker info >/dev/null 2>&1; then
+  echo -e "${YELLOW}Cannot connect to Docker daemon. Check Docker service and socket permissions.${NC}"
+  echo -e "${YELLOW}Current DOCKER_HOST=${DOCKER_HOST:-<unset>} NITRO_DOCKER_SOCKET=${NITRO_DOCKER_SOCKET:-<unset>}${NC}"
+  exit 1
+fi
 
 # ── Start Docker containers (aMule + Transmission) ───────────────────────────
 echo -e "${CYAN}▸ Starting aMule, Transmission & pyLoad containers (dev ports exposed)…${NC}"

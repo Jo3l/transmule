@@ -46,7 +46,8 @@
     "unknown": "Sconosciuto",
     "connecting": "Connessione...",
     "connected": "Connesso",
-    "disconnected": "Disconnesso"
+    "disconnected": "Disconnesso",
+    "firewalled": "Dietro firewall"
   },
   "services": {
     "title": "Servizi",

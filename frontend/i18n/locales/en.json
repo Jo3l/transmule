@@ -46,7 +46,8 @@
     "unknown": "Unknown",
     "connecting": "Connecting...",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "firewalled": "Firewalled"
   },
   "services": {
     "title": "Services",

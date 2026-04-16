@@ -6,8 +6,46 @@
  */
 
 import { request as httpRequest, type RequestOptions } from "node:http";
+import { existsSync } from "node:fs";
 
-const SOCKET_PATH = "/var/run/docker.sock";
+const DEFAULT_SOCKET_PATH = "/var/run/docker.sock";
+const ROOTLESS_SOCKET_PATH = `/run/user/${process.getuid?.() ?? 1000}/docker.sock`;
+
+function socketFromDockerHost(): string | null {
+  const raw = process.env.DOCKER_HOST?.trim();
+  if (!raw) return null;
+  if (!raw.startsWith("unix://")) return null;
+  const path = raw.slice("unix://".length);
+  return path || null;
+}
+
+function resolveSocketPath(): string {
+  const explicit = process.env.NITRO_DOCKER_SOCKET?.trim();
+  if (explicit) return explicit;
+
+  const fromDockerHost = socketFromDockerHost();
+  if (fromDockerHost) return fromDockerHost;
+
+  if (existsSync(DEFAULT_SOCKET_PATH)) return DEFAULT_SOCKET_PATH;
+  if (existsSync(ROOTLESS_SOCKET_PATH)) return ROOTLESS_SOCKET_PATH;
+
+  return DEFAULT_SOCKET_PATH;
+}
+
+function normalizeApiVersion(value: string | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("v")) return trimmed;
+  return `v${trimmed}`;
+}
+
+const SOCKET_PATH = resolveSocketPath();
+const API_VERSION = normalizeApiVersion(process.env.NITRO_DOCKER_API_VERSION);
+
+function apiPath(path: string): string {
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return API_VERSION ? `/${API_VERSION}${cleanPath}` : cleanPath;
+}
 
 // Container names as set by docker-compose
 const CONTAINER_NAMES: Record<string, string> = {
@@ -72,10 +110,7 @@ export async function getContainerStatus(
   service: ServiceName,
 ): Promise<{ running: boolean; status: string; startedAt: string | null }> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch(
-    "GET",
-    `/v1.47/containers/${name}/json`,
-  );
+  const { status, data } = await dockerFetch("GET", apiPath(`/containers/${name}/json`));
 
   if (status === 404)
     return { running: false, status: "not_found", startedAt: null };
@@ -93,10 +128,7 @@ export async function getContainerStatus(
 /** Start a stopped container. */
 export async function startContainer(service: ServiceName): Promise<void> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch(
-    "POST",
-    `/v1.47/containers/${name}/start`,
-  );
+  const { status, data } = await dockerFetch("POST", apiPath(`/containers/${name}/start`));
   // 204 = started, 304 = already running
   if (status !== 204 && status !== 304)
     throw new Error(`Docker start failed (${status}): ${data}`);
@@ -105,10 +137,7 @@ export async function startContainer(service: ServiceName): Promise<void> {
 /** Stop a running container (10 s timeout). */
 export async function stopContainer(service: ServiceName): Promise<void> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch(
-    "POST",
-    `/v1.47/containers/${name}/stop?t=10`,
-  );
+  const { status, data } = await dockerFetch("POST", apiPath(`/containers/${name}/stop?t=10`));
   // 204 = stopped, 304 = already stopped
   if (status !== 204 && status !== 304)
     throw new Error(`Docker stop failed (${status}): ${data}`);
