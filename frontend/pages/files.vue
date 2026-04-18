@@ -938,39 +938,41 @@
     :title="$t('fileManager.smartRenameTitle')"
     width="min(1120px, calc(100vw - 2rem))"
   >
-    <div v-if="smartRenameLoading" class="has-text-centered py-4">
-      <SLoading />
-      <p class="mt-2 has-text-grey is-size-7">{{ $t("fileManager.smartRenameLoading") }}</p>
-    </div>
-    <template v-else>
-      <p class="mb-3 is-size-7 has-text-grey">{{ $t("fileManager.smartRenameHint") }}</p>
-      <div class="fm-sr-table-wrap">
-        <table class="table is-fullwidth is-narrow fm-sr-table">
-          <thead>
-            <tr>
-              <th>{{ $t("fileManager.srOriginal") }}</th>
-              <th class="fm-th-arrow"></th>
-              <th>{{ $t("fileManager.srSuggested") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, idx) in smartRenameItems" :key="idx">
-              <td class="fm-sr-original has-text-grey is-size-7">
-                <span class="mdi fm-icon is-size-6 mr-1" :class="srIcon(item.type)" />
-                {{ item.original }}
-              </td>
-              <td class="has-text-centered has-text-grey">
-                <span class="mdi mdi-arrow-right" />
-              </td>
-              <td>
-                <SInput v-model="item.suggested" size="sm" class="fm-sr-input" />
-                <div v-if="item.proposals?.length" class="fm-sr-proposals mt-2">
-                  <div
-                    v-for="(proposal, pIdx) in item.proposals"
-                    :key="`${idx}-${pIdx}-${proposal.source}-${proposal.suggested}`"
-                    class="fm-sr-proposal"
-                  >
-                    <span class="fm-sr-source">{{ srSourceLabel(proposal.source) }}</span>
+    <p class="mb-3 is-size-7 has-text-grey">{{ $t("fileManager.smartRenameHint") }}</p>
+    <div class="fm-sr-table-wrap">
+      <table class="table is-fullwidth is-narrow fm-sr-table">
+        <thead>
+          <tr>
+            <th>{{ $t("fileManager.srOriginal") }}</th>
+            <th class="fm-th-arrow"></th>
+            <th>{{ $t("fileManager.srSuggested") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, idx) in smartRenameItems" :key="idx">
+            <td class="fm-sr-original has-text-grey is-size-7">
+              <span class="mdi fm-icon is-size-6 mr-1" :class="srIcon(item.type)" />
+              {{ item.original }}
+            </td>
+            <td class="has-text-centered has-text-grey">
+              <span class="mdi mdi-arrow-right" />
+            </td>
+            <td>
+              <SInput v-model="item.suggested" size="sm" class="fm-sr-input" />
+              <div v-if="srDisplayProposals(item).length" class="fm-sr-proposals mt-2">
+                <div
+                  v-for="(proposal, pIdx) in srDisplayProposals(item)"
+                  :key="`${idx}-${pIdx}-${proposal.source}-${proposal.suggested}`"
+                  class="fm-sr-proposal"
+                  :class="{ 'is-loading': proposal.loading }"
+                >
+                  <span class="fm-sr-source">{{ srSourceLabel(proposal.source) }}</span>
+                  <template v-if="proposal.loading">
+                    <span class="fm-sr-proposal-loading">
+                      <span class="mdi mdi-loading mdi-spin" />
+                    </span>
+                  </template>
+                  <template v-else>
                     <span class="fm-sr-proposal-name">{{ proposal.suggested }}</span>
                     <div class="fm-sr-actions">
                       <SButton
@@ -982,14 +984,14 @@
                         {{ $t("fileManager.rename") }}
                       </SButton>
                     </div>
-                  </div>
+                  </template>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </template>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showSmartRenameDialog = false">
@@ -998,7 +1000,7 @@
         <SButton
           variant="primary"
           :loading="smartRenameApplying"
-          :disabled="smartRenameLoading || smartRenameItems.length === 0"
+          :disabled="smartRenameItems.length === 0"
           @click="doSmartRename"
         >
           <span class="mdi mdi-check mr-1" />{{ $t("fileManager.smartRenameApply") }}
@@ -1020,8 +1022,19 @@ interface SmartRenameItem {
   originalPath: string;
   original: string;
   suggested: string;
-  proposals?: Array<{ source: string; suggested: string }>;
+  proposals?: SmartRenameProposal[];
   type: string;
+  tmdbLoading?: boolean;
+  tvdbLoading?: boolean;
+}
+
+interface SmartRenameProposal {
+  source: string;
+  suggested: string;
+}
+
+interface SmartRenameDisplayProposal extends SmartRenameProposal {
+  loading?: boolean;
 }
 
 const { t } = useI18n();
@@ -1407,26 +1420,140 @@ function hideCtxMenu() {
 
 // ── Smart Rename ──────────────────────────────────────────────────────────
 const showSmartRenameDialog = ref(false);
-const smartRenameLoading = ref(false);
 const smartRenameApplying = ref(false);
 const smartRenameItems = ref<SmartRenameItem[]>([]);
+const SMART_RENAME_SOURCE_ORDER: Record<string, number> = {
+  cleanup: 0,
+  tmdb: 1,
+  tvdb: 2,
+};
+let smartRenameRunId = 0;
 
-async function startSmartRenameForPaths(paths: string[]) {
-  if (!paths.length) return;
-  showSmartRenameDialog.value = true;
-  smartRenameLoading.value = true;
-  smartRenameItems.value = [];
+function basenameFromPath(relPath: string): string {
+  const idx = relPath.lastIndexOf("/");
+  return idx === -1 ? relPath : relPath.slice(idx + 1);
+}
+
+function sortSmartRenameProposals(proposals: SmartRenameProposal[]): SmartRenameProposal[] {
+  return [...proposals].sort((a, b) => {
+    const aOrder = SMART_RENAME_SOURCE_ORDER[a.source] ?? 99;
+    const bOrder = SMART_RENAME_SOURCE_ORDER[b.source] ?? 99;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return a.suggested.localeCompare(b.suggested, undefined, { sensitivity: "base" });
+  });
+}
+
+function withIntegrationLoaders(item: SmartRenameItem): SmartRenameItem {
+  return {
+    ...item,
+    proposals: sortSmartRenameProposals(item.proposals ?? []),
+    tmdbLoading: true,
+    tvdbLoading: true,
+  };
+}
+
+function srDisplayProposals(item: SmartRenameItem): SmartRenameDisplayProposal[] {
+  const proposals = sortSmartRenameProposals(item.proposals ?? []).map((proposal) => ({
+    ...proposal,
+    loading: false,
+  }));
+
+  if (item.tmdbLoading && !proposals.some((p) => p.source === "tmdb")) {
+    proposals.push({ source: "tmdb", suggested: "", loading: true });
+  }
+  if (item.tvdbLoading && !proposals.some((p) => p.source === "tvdb")) {
+    proposals.push({ source: "tvdb", suggested: "", loading: true });
+  }
+
+  return sortSmartRenameProposals(proposals);
+}
+
+function mergeIntegrationSuggestions(
+  current: SmartRenameItem,
+  incoming?: SmartRenameItem,
+): SmartRenameItem {
+  const existingCleanup = (current.proposals ?? []).filter(
+    (proposal) => proposal.source === "cleanup",
+  );
+  const integrationProposals = (incoming?.proposals ?? []).filter(
+    (proposal) => proposal.source !== "cleanup",
+  );
+
+  return {
+    ...current,
+    type: incoming?.type ?? current.type,
+    proposals: sortSmartRenameProposals([...existingCleanup, ...integrationProposals]),
+    tmdbLoading: false,
+    tvdbLoading: false,
+  };
+}
+
+async function loadSmartRenameIntegrationsForPath(path: string, runId: number) {
   try {
     const res = await apiFetch<{ suggestions: SmartRenameItem[] }>("/api/files/smart-rename", {
       method: "POST",
-      body: { paths },
+      body: {
+        paths: [path],
+        includeCleanup: false,
+        includeIntegrations: true,
+      },
     });
-    smartRenameItems.value = res.suggestions;
+    if (runId !== smartRenameRunId) return;
+
+    const incoming = res.suggestions?.[0];
+    smartRenameItems.value = smartRenameItems.value.map((item) =>
+      item.originalPath === path ? mergeIntegrationSuggestions(item, incoming) : item,
+    );
+  } catch {
+    if (runId !== smartRenameRunId) return;
+    smartRenameItems.value = smartRenameItems.value.map((item) =>
+      item.originalPath === path
+        ? {
+            ...item,
+            tmdbLoading: false,
+            tvdbLoading: false,
+          }
+        : item,
+    );
+  }
+}
+
+async function startSmartRenameForPaths(paths: string[]) {
+  if (!paths.length) return;
+
+  smartRenameRunId += 1;
+  const runId = smartRenameRunId;
+
+  showSmartRenameDialog.value = true;
+  smartRenameItems.value = paths.map((relPath) =>
+    withIntegrationLoaders({
+      originalPath: relPath,
+      original: basenameFromPath(relPath),
+      suggested: basenameFromPath(relPath),
+      proposals: [],
+      type: "unknown",
+    }),
+  );
+
+  try {
+    const res = await apiFetch<{ suggestions: SmartRenameItem[] }>("/api/files/smart-rename", {
+      method: "POST",
+      body: {
+        paths,
+        includeCleanup: true,
+        includeIntegrations: false,
+      },
+    });
+    if (runId !== smartRenameRunId) return;
+
+    smartRenameItems.value = res.suggestions.map((item) => withIntegrationLoaders(item));
+
+    for (const path of paths) {
+      loadSmartRenameIntegrationsForPath(path, runId);
+    }
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
     showSmartRenameDialog.value = false;
-  } finally {
-    smartRenameLoading.value = false;
   }
 }
 
@@ -2294,6 +2421,10 @@ watch(
   background: var(--s-bg-surface);
 }
 
+.fm-sr-proposal.is-loading {
+  opacity: 0.8;
+}
+
 .fm-sr-source {
   min-width: 58px;
   font-size: 0.66rem;
@@ -2309,6 +2440,13 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.fm-sr-proposal-loading {
+  display: inline-flex;
+  align-items: center;
+  color: var(--s-text-secondary);
+  font-size: 0.82rem;
 }
 
 .fm-sr-actions {

@@ -108,6 +108,24 @@
             />
           </SFormItem>
 
+          <SFormItem :label="$t('settings.integrationPreferredLocale')">
+            <SSelect v-model="tvdbLocaleChoice" class="mw-320">
+              <option value="">
+                {{ $t("settings.integrationLocaleAppFallback", { locale }) }}
+              </option>
+              <option
+                v-for="loc in integrationLocaleOptions"
+                :key="`tvdb-${loc.code}`"
+                :value="loc.code"
+              >
+                {{ loc.name }}
+              </option>
+            </SSelect>
+          </SFormItem>
+          <p class="has-text-grey is-size-7 mb-3">
+            {{ $t("settings.integrationPreferredLocaleHelp") }}
+          </p>
+
           <div class="stt-btn-row">
             <SButton variant="primary" :loading="savingTvdb" @click="saveTvdbKey">
               <span class="mdi mdi-content-save mr-1" />
@@ -147,6 +165,24 @@
               class="mw-420"
             />
           </SFormItem>
+
+          <SFormItem :label="$t('settings.integrationPreferredLocale')">
+            <SSelect v-model="tmdbLocaleChoice" class="mw-320">
+              <option value="">
+                {{ $t("settings.integrationLocaleAppFallback", { locale }) }}
+              </option>
+              <option
+                v-for="loc in integrationLocaleOptions"
+                :key="`tmdb-${loc.code}`"
+                :value="loc.code"
+              >
+                {{ loc.name }}
+              </option>
+            </SSelect>
+          </SFormItem>
+          <p class="has-text-grey is-size-7 mb-3">
+            {{ $t("settings.integrationPreferredLocaleHelp") }}
+          </p>
 
           <div class="stt-btn-row">
             <SButton variant="primary" :loading="savingTmdb" @click="saveTmdbKey">
@@ -898,6 +934,57 @@ const availableLocales = computed(() =>
 );
 const selectedLocale = ref(locale.value);
 
+interface LocaleOption {
+  code: string;
+  name: string;
+}
+
+const SUPPORTED_PROVIDER_LOCALES = ["en", "es", "it", "pt", "fr", "de", "ja", "ko", "zh"] as const;
+
+const SUPPORTED_PROVIDER_LOCALE_SET = new Set<string>(SUPPORTED_PROVIDER_LOCALES);
+
+function normalizeLocaleCode(raw: string): string | null {
+  const cleaned = raw.trim().replace(/_/g, "-");
+  if (!cleaned) return null;
+
+  const parts = cleaned.split("-").filter(Boolean);
+  if (parts.length === 0) return null;
+
+  const language = parts[0].toLowerCase();
+  if (!/^[a-z]{2,3}$/.test(language)) return null;
+
+  const region = parts.find((p, idx) => idx > 0 && /^(?:[a-z]{2}|\d{3})$/i.test(p));
+  return region ? `${language}-${region.toUpperCase()}` : language;
+}
+
+function normalizeProviderLocaleChoice(raw?: string): string {
+  const normalized = normalizeLocaleCode(raw ?? "");
+  if (!normalized) return "";
+
+  const language = normalized.split("-")[0]?.toLowerCase() ?? "";
+  if (!SUPPORTED_PROVIDER_LOCALE_SET.has(language)) return "";
+  return language;
+}
+
+const integrationLocaleOptions = computed<LocaleOption[]>(() => {
+  return SUPPORTED_PROVIDER_LOCALES.map((language) => {
+    let languageName = language.toUpperCase();
+    try {
+      const displayNames = new Intl.DisplayNames([locale.value || "en"], {
+        type: "language",
+      });
+      languageName = displayNames.of(language) || languageName;
+    } catch {
+      // Ignore unsupported Intl.DisplayNames environments.
+    }
+
+    return {
+      code: language,
+      name: `${languageName} (${language})`,
+    };
+  });
+});
+
 // Access the nuxt-i18n setLocale which handles lazy-loading + cookie
 const { $i18n } = useNuxtApp();
 
@@ -1182,19 +1269,30 @@ async function removeHistoryEntry(entry: HistoryEntry) {
 // Integrations: TVDB
 const tvdbKeySet = ref(false);
 const tvdbKeyInput = ref("");
+const tvdbLocaleChoice = ref("");
 const savingTvdb = ref(false);
 const tmdbKeySet = ref(false);
 const tmdbKeyInput = ref("");
+const tmdbLocaleChoice = ref("");
 const savingTmdb = ref(false);
 
 async function loadIntegrations() {
   if (!isAdmin.value) return;
   try {
-    const res = await apiFetch<{ tvdbApiKeySet: boolean; tmdbApiKeySet: boolean }>(
-      "/api/admin/integrations",
-    );
+    const res = await apiFetch<{
+      tvdbApiKeySet: boolean;
+      tmdbApiKeySet: boolean;
+      tvdbApiKey?: string;
+      tmdbApiKey?: string;
+      tvdbLocale?: string;
+      tmdbLocale?: string;
+    }>("/api/admin/integrations");
     tvdbKeySet.value = res?.tvdbApiKeySet ?? false;
     tmdbKeySet.value = res?.tmdbApiKeySet ?? false;
+    tvdbKeyInput.value = res?.tvdbApiKey ?? "";
+    tmdbKeyInput.value = res?.tmdbApiKey ?? "";
+    tvdbLocaleChoice.value = normalizeProviderLocaleChoice(res?.tvdbLocale);
+    tmdbLocaleChoice.value = normalizeProviderLocaleChoice(res?.tmdbLocale);
   } catch {
     /* handled */
   }
@@ -1205,9 +1303,11 @@ async function saveTvdbKey() {
   try {
     await apiFetch("/api/admin/integrations", {
       method: "POST",
-      body: { tvdbApiKey: tvdbKeyInput.value },
+      body: {
+        tvdbApiKey: tvdbKeyInput.value,
+        tvdbLocale: tvdbLocaleChoice.value,
+      },
     });
-    tvdbKeyInput.value = "";
     await loadIntegrations();
   } finally {
     savingTvdb.value = false;
@@ -1233,9 +1333,11 @@ async function saveTmdbKey() {
   try {
     await apiFetch("/api/admin/integrations", {
       method: "POST",
-      body: { tmdbApiKey: tmdbKeyInput.value },
+      body: {
+        tmdbApiKey: tmdbKeyInput.value,
+        tmdbLocale: tmdbLocaleChoice.value,
+      },
     });
-    tmdbKeyInput.value = "";
     await loadIntegrations();
   } finally {
     savingTmdb.value = false;

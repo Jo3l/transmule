@@ -14,7 +14,7 @@ export function useApi() {
   const config = useRuntimeConfig();
   const auth = useAuth();
   const { showToast: _toast } = useToast();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   /** Show a toast notification (debounced). */
   function showToast(
@@ -52,6 +52,10 @@ export function useApi() {
     const headers: Record<string, string> = {
       ...(opts.headers as Record<string, string>),
     };
+
+    if (typeof locale.value === "string" && locale.value.trim().length > 0) {
+      headers["x-transmule-locale"] = locale.value;
+    }
 
     // JWT is sent via the auth_token cookie (set by useCookie in useAuth).
     // Do NOT add an Authorization: Bearer header — that header is used by
