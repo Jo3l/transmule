@@ -118,6 +118,46 @@
               {{ $t("settings.tvdbKeyClear") }}
             </SButton>
           </div>
+
+          <br />
+
+          <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.tmdbTitle") }}</h6>
+          <p class="is-size-7 mb-3 text-muted">
+            {{ $t("settings.tmdbDescription") }}
+            <a
+              href="https://developer.themoviedb.org/docs/getting-started"
+              target="_blank"
+              rel="noopener"
+            >
+              developer.themoviedb.org/docs/getting-started
+            </a>
+          </p>
+
+          <SAlert v-if="tmdbKeySet" variant="success" class="mb-3" size="sm">
+            {{ $t("settings.tmdbKeySet") }}
+          </SAlert>
+          <SAlert v-else variant="warning" class="mb-3" size="sm">
+            {{ $t("settings.tmdbKeyNotSet") }}
+          </SAlert>
+
+          <SFormItem :label="$t('settings.tmdbApiKey')">
+            <SInput
+              v-model="tmdbKeyInput"
+              :placeholder="$t('settings.tmdbKeyPlaceholder')"
+              class="mw-420"
+            />
+          </SFormItem>
+
+          <div class="stt-btn-row">
+            <SButton variant="primary" :loading="savingTmdb" @click="saveTmdbKey">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+            <SButton v-if="tmdbKeySet" variant="danger" :loading="savingTmdb" @click="clearTmdbKey">
+              <span class="mdi mdi-delete mr-1" />
+              {{ $t("settings.tmdbKeyClear") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -1143,12 +1183,18 @@ async function removeHistoryEntry(entry: HistoryEntry) {
 const tvdbKeySet = ref(false);
 const tvdbKeyInput = ref("");
 const savingTvdb = ref(false);
+const tmdbKeySet = ref(false);
+const tmdbKeyInput = ref("");
+const savingTmdb = ref(false);
 
 async function loadIntegrations() {
   if (!isAdmin.value) return;
   try {
-    const res = await apiFetch<{ tvdbApiKeySet: boolean }>("/api/admin/integrations");
+    const res = await apiFetch<{ tvdbApiKeySet: boolean; tmdbApiKeySet: boolean }>(
+      "/api/admin/integrations",
+    );
     tvdbKeySet.value = res?.tvdbApiKeySet ?? false;
+    tmdbKeySet.value = res?.tmdbApiKeySet ?? false;
   } catch {
     /* handled */
   }
@@ -1179,6 +1225,34 @@ async function clearTvdbKey() {
     await loadIntegrations();
   } finally {
     savingTvdb.value = false;
+  }
+}
+
+async function saveTmdbKey() {
+  savingTmdb.value = true;
+  try {
+    await apiFetch("/api/admin/integrations", {
+      method: "POST",
+      body: { tmdbApiKey: tmdbKeyInput.value },
+    });
+    tmdbKeyInput.value = "";
+    await loadIntegrations();
+  } finally {
+    savingTmdb.value = false;
+  }
+}
+
+async function clearTmdbKey() {
+  savingTmdb.value = true;
+  try {
+    await apiFetch("/api/admin/integrations", {
+      method: "POST",
+      body: { tmdbApiKey: "" },
+    });
+    tmdbKeyInput.value = "";
+    await loadIntegrations();
+  } finally {
+    savingTmdb.value = false;
   }
 }
 

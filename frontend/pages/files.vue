@@ -936,7 +936,7 @@
   <SDialog
     v-model="showSmartRenameDialog"
     :title="$t('fileManager.smartRenameTitle')"
-    width="700px"
+    width="min(1120px, calc(100vw - 2rem))"
   >
     <div v-if="smartRenameLoading" class="has-text-centered py-4">
       <SLoading />
@@ -964,6 +964,26 @@
               </td>
               <td>
                 <SInput v-model="item.suggested" size="sm" class="fm-sr-input" />
+                <div v-if="item.proposals?.length" class="fm-sr-proposals mt-2">
+                  <div
+                    v-for="(proposal, pIdx) in item.proposals"
+                    :key="`${idx}-${pIdx}-${proposal.source}-${proposal.suggested}`"
+                    class="fm-sr-proposal"
+                  >
+                    <span class="fm-sr-source">{{ srSourceLabel(proposal.source) }}</span>
+                    <span class="fm-sr-proposal-name">{{ proposal.suggested }}</span>
+                    <div class="fm-sr-actions">
+                      <SButton
+                        size="sm"
+                        variant="primary"
+                        :loading="smartRenameApplying"
+                        @click="renameWithProposal(item, proposal.suggested)"
+                      >
+                        {{ $t("fileManager.rename") }}
+                      </SButton>
+                    </div>
+                  </div>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -1000,6 +1020,7 @@ interface SmartRenameItem {
   originalPath: string;
   original: string;
   suggested: string;
+  proposals?: Array<{ source: string; suggested: string }>;
   type: string;
 }
 
@@ -1413,7 +1434,8 @@ async function doSmartRename() {
   smartRenameApplying.value = true;
   try {
     for (const item of smartRenameItems.value) {
-      const newName = item.suggested.trim();
+      const cleanup = item.proposals?.find((p) => p.source === "cleanup")?.suggested;
+      const newName = (cleanup ?? item.suggested).trim();
       if (!newName || newName === item.original) continue;
       await apiFetch("/api/files/rename", {
         method: "POST",
@@ -1422,6 +1444,47 @@ async function doSmartRename() {
     }
     showSmartRenameDialog.value = false;
     selectedItems.clear();
+    loadDir();
+  } catch (err: any) {
+    showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
+  } finally {
+    smartRenameApplying.value = false;
+  }
+}
+
+function srSourceLabel(source: string): string {
+  if (source === "cleanup") return "CLEANUP";
+  if (source === "tmdb") return "TMDB";
+  if (source === "tvdb") return "TVDB";
+  return source.toUpperCase();
+}
+
+function renamedPath(originalPath: string, newName: string): string {
+  const idx = originalPath.lastIndexOf("/");
+  if (idx === -1) return newName;
+  return `${originalPath.slice(0, idx)}/${newName}`;
+}
+
+async function renameWithProposal(item: SmartRenameItem, suggested: string) {
+  const newName = suggested.trim();
+  if (!newName || newName === item.original) return;
+
+  smartRenameApplying.value = true;
+  try {
+    await apiFetch("/api/files/rename", {
+      method: "POST",
+      body: { path: item.originalPath, name: newName },
+    });
+
+    item.originalPath = renamedPath(item.originalPath, newName);
+    item.original = newName;
+    item.suggested = newName;
+
+    smartRenameItems.value = smartRenameItems.value.filter((x) => x !== item);
+    if (smartRenameItems.value.length === 0) {
+      showSmartRenameDialog.value = false;
+      selectedItems.clear();
+    }
     loadDir();
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
@@ -2191,12 +2254,15 @@ watch(
 /* ── Smart Rename dialog table ──────────────────────────────────────────── */
 .fm-sr-table-wrap {
   max-height: 400px;
+  overflow-x: auto;
   overflow-y: auto;
   border: 1px solid var(--s-border);
   border-radius: 6px;
 }
 
 .fm-sr-table {
+  width: max-content;
+  min-width: 100%;
   margin-bottom: 0 !important;
 }
 
@@ -2211,6 +2277,45 @@ watch(
 .fm-sr-input :deep(input) {
   font-size: 0.82rem !important;
 }
+
+.fm-sr-proposals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fm-sr-proposal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--s-border);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+  background: var(--s-bg-surface);
+}
+
+.fm-sr-source {
+  min-width: 58px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--s-text-secondary);
+}
+
+.fm-sr-proposal-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fm-sr-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
 .fm-th-size {
   width: 90px;
 }
