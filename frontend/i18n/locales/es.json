@@ -941,7 +941,7 @@
     "smartRenameTitle": "Renombrado inteligente",
     "smartRenameHint": "Los nombres sugeridos se detectan automáticamente a partir de patrones de TV/película y TVDB. Puedes editarlos antes de aplicar.",
     "smartRenameLoading": "Buscando nombres de medios…",
-    "smartRenameApply": "Aplicar renombrado",
+    "smartRenameApply": "Aplicar renombrado cleanup a todos los archivos",
     "srOriginal": "Nombre original",
     "srSuggested": "Nuevo nombre",
     "ctxOpen": "Abrir",

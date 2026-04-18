@@ -941,7 +941,7 @@
     "smartRenameTitle": "Rinomina intelligente",
     "smartRenameHint": "I nomi suggeriti vengono rilevati automaticamente dai pattern TV/film e da TVDB. Puoi modificarli prima di applicarli.",
     "smartRenameLoading": "Ricerca dei nomi multimediali…",
-    "smartRenameApply": "Applica ridenominazione",
+    "smartRenameApply": "Applica rinomina cleanup a tutti i file",
     "srOriginal": "Nome originale",
     "srSuggested": "Nuovo nome",
     "ctxOpen": "Apri",

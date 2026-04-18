@@ -941,7 +941,7 @@
     "smartRenameTitle": "Smart Rename",
     "smartRenameHint": "Suggested names are auto-detected from TV/movie patterns and TVDB. You can edit them before applying.",
     "smartRenameLoading": "Looking up media names…",
-    "smartRenameApply": "Apply Renames",
+    "smartRenameApply": "Apply Cleanup Rename to All Files",
     "srOriginal": "Original name",
     "srSuggested": "New name",
     "ctxOpen": "Open",
