@@ -123,18 +123,30 @@ async function runExtract(
   dest: string,
   destCreatedByUs: boolean,
 ): Promise<void> {
-  if (isRar(src)) {
-    await extractRar(jobId, src, dest, destCreatedByUs);
-  } else {
+  // Try 7zip first for all formats (including RAR) — it handles RAR3/RAR5
+  // reliably and avoids WASM singleton state issues from node-unrar-js.
+  // Fall back to node-unrar-js only when 7zip itself cannot open the archive.
+  try {
     await extract7z(jobId, src, dest, destCreatedByUs);
+  } catch (err7z: any) {
+    if (isRar(src)) {
+      // 7zip failed on a RAR — try the pure-WASM fallback.
+      const job = globalThis.__transferJobs.get(jobId);
+      if (job) {
+        job.status = "running";
+        job.error = undefined;
+      }
+      await extractRarWasm(jobId, src, dest, destCreatedByUs);
+    } else {
+      throw err7z;
+    }
   }
 }
 
-/** Extract a RAR archive using node-unrar-js (pure WASM — no system binary needed).
- *  Falls back to 7zip-bin if node-unrar-js reports an unknown format (e.g. RAR5
- *  sealed archives or files misidentified as RAR).
+/** Last-resort RAR extractor using node-unrar-js (pure WASM, no system binary).
+ *  Only called when 7zip-bin fails on a .rar file.
  */
-async function extractRar(
+async function extractRarWasm(
   jobId: string,
   src: string,
   dest: string,
@@ -147,7 +159,6 @@ async function extractRar(
       targetPath: dest,
     });
     const { files } = extractor.extract();
-    // Consuming the generator triggers the actual extraction
     for (const _ of files) {
       /* extract each entry */
     }
@@ -157,18 +168,6 @@ async function extractRar(
       job.finishedAt = new Date().toISOString();
     }
   } catch (err: any) {
-    // If the WASM extractor can't recognise the format, fall back to 7zip-bin
-    // which also supports RAR archives and handles edge-cases the WASM doesn't.
-    if (
-      err?.reason === "ERAR_UNKNOWN_FORMAT" ||
-      err?.message === "Unknown archive format"
-    ) {
-      if (job) {
-        job.status = "running";
-        job.error = undefined;
-      }
-      return extract7z(jobId, src, dest, destCreatedByUs);
-    }
     if (job) {
       job.status = "error";
       job.error = err?.message ?? String(err);
