@@ -123,14 +123,14 @@ async function runExtract(
   dest: string,
   destCreatedByUs: boolean,
 ): Promise<void> {
-  // Try 7zip first for all formats (including RAR) — it handles RAR3/RAR5
-  // reliably and avoids WASM singleton state issues from node-unrar-js.
-  // Fall back to node-unrar-js only when 7zip itself cannot open the archive.
+  // 7-Zip 26.00 (installed in the Docker image) supports RAR3/RAR5 natively.
+  // Use it for all formats. Fall back to node-unrar-js WASM only for .rar
+  // files where 7zip reports it cannot open the archive.
   try {
     await extract7z(jobId, src, dest, destCreatedByUs);
   } catch (err7z: any) {
     if (isRar(src)) {
-      // 7zip failed on a RAR — try the pure-WASM fallback.
+      // 7zip failed on this RAR — try the pure-WASM fallback.
       const job = globalThis.__transferJobs.get(jobId);
       if (job) {
         job.status = "running";
@@ -143,8 +143,8 @@ async function runExtract(
   }
 }
 
-/** Last-resort RAR extractor using node-unrar-js (pure WASM, no system binary).
- *  Only called when 7zip-bin fails on a .rar file.
+/** Extract a RAR archive using node-unrar-js (pure WASM, no system binary required).
+ *  Supports RAR3 and RAR5. Does NOT support multi-volume/split archives.
  */
 async function extractRarWasm(
   jobId: string,
@@ -159,8 +159,9 @@ async function extractRarWasm(
       targetPath: dest,
     });
     const { files } = extractor.extract();
+    // Must exhaust the generator — otherwise the C++ archive handle leaks.
     for (const _ of files) {
-      /* extract each entry */
+      /* trigger extraction of each entry */
     }
     if (job) {
       job.done = 1;
@@ -168,9 +169,24 @@ async function extractRarWasm(
       job.finishedAt = new Date().toISOString();
     }
   } catch (err: any) {
+    const reason: string = err?.reason ?? "";
+    let message: string = err?.message ?? String(err);
+
+    // Annotate known limitations so the user gets actionable feedback.
+    if (reason === "ERAR_UNKNOWN_FORMAT") {
+      message =
+        "Unknown archive format — the file may be a multi-volume RAR (not supported) or not a valid RAR archive.";
+    } else if (reason === "ERAR_MISSING_PASSWORD") {
+      message = "This RAR archive is encrypted. Please provide a password.";
+    }
+
+    console.error(
+      `[extract] RAR extraction failed for "${src}": ${reason} — ${message}`,
+    );
+
     if (job) {
       job.status = "error";
-      job.error = err?.message ?? String(err);
+      job.error = message;
       job.finishedAt = new Date().toISOString();
     }
     if (destCreatedByUs) tryCleanup(dest);
