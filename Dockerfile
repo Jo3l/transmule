@@ -48,6 +48,10 @@ RUN apt-get update && \
 COPY --from=mw-builder /app/.output                           .output
 COPY --from=mw-builder /app/node_modules                      node_modules
 
+# Ensure 7zip-bin executables have the execute bit set.
+# (Alpine npm ci may not preserve it; COPY from multi-stage sometimes loses it.)
+RUN find /app/node_modules/7zip-bin -type f -name "7za" -exec chmod +x {} \;
+
 # ── Frontend artefacts ─────────────────────────────────────────────────────
 RUN rm -rf /usr/share/nginx/html/*
 COPY --from=fe-builder /app/.output/public  /usr/share/nginx/html

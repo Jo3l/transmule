@@ -130,7 +130,10 @@ async function runExtract(
   }
 }
 
-/** Extract a RAR archive using node-unrar-js (pure WASM — no system binary needed). */
+/** Extract a RAR archive using node-unrar-js (pure WASM — no system binary needed).
+ *  Falls back to 7zip-bin if node-unrar-js reports an unknown format (e.g. RAR5
+ *  sealed archives or files misidentified as RAR).
+ */
 async function extractRar(
   jobId: string,
   src: string,
@@ -154,6 +157,18 @@ async function extractRar(
       job.finishedAt = new Date().toISOString();
     }
   } catch (err: any) {
+    // If the WASM extractor can't recognise the format, fall back to 7zip-bin
+    // which also supports RAR archives and handles edge-cases the WASM doesn't.
+    if (
+      err?.reason === "ERAR_UNKNOWN_FORMAT" ||
+      err?.message === "Unknown archive format"
+    ) {
+      if (job) {
+        job.status = "running";
+        job.error = undefined;
+      }
+      return extract7z(jobId, src, dest, destCreatedByUs);
+    }
     if (job) {
       job.status = "error";
       job.error = err?.message ?? String(err);
