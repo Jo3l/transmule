@@ -4,18 +4,15 @@
  * Starts a background extraction job for a compressed archive.
  * Returns a jobId immediately; actual work runs fire-and-forget in the same process.
  *
- * Extraction strategy: 7-Zip 26.00 CLI only.
+ * Extraction strategy: unar CLI only.
  *
  * Body: { source: string, destination: string }
  * Returns: { jobId: string }
  */
 
 import { randomUUID } from "node:crypto";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, rmdirSync } from "node:fs";
-import { readFileSync } from "node:fs";
-import os from "node:os";
-import sevenBin from "7zip-bin";
 
 defineRouteMeta({
   openAPI: {
@@ -118,20 +115,20 @@ async function runExtract(
   dest: string,
   destCreatedByUs: boolean,
 ): Promise<void> {
-  await extract7z(jobId, src, dest, destCreatedByUs);
+  await extractWithUnar(jobId, src, dest, destCreatedByUs);
 }
 
-/** Extract any archive using 7-Zip 26.00 (RAR3/RAR5, ZIP, 7z, tar.*, gz, bz2, xz…). */
-function extract7z(
+/** Extract any archive using unar (RAR3/RAR5, ZIP, 7z, tar.*, gz, bz2, xz…). */
+function extractWithUnar(
   jobId: string,
   src: string,
   dest: string,
   destCreatedByUs: boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Lower memory usage when possible by forcing single-thread extraction.
-    const args = ["x", src, `-o${dest}`, "-y", "-aoa", "-mmt=1"];
-    const child = spawn(sevenBin.path7za, args, {
+    // -o: output directory  -f: force overwrite  -q: quiet (no progress bar)
+    const args = [src, "-o", dest, "-f", "-q"];
+    const child = spawn("unar", args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -156,35 +153,20 @@ function extract7z(
         return;
       }
 
-      const combined = `${stdout}\n${stderr}`;
-      const memoryError = /Can't allocate required memory|E_OUTOFMEMORY/i.test(
-        combined,
-      );
-
-      const job = globalThis.__transferJobs.get(jobId);
-      const diagnostics = buildMemoryDiagnostics(src);
       const rawMessage = (
         stderr ||
         stdout ||
-        `7za exited with code ${code}`
+        `unar exited with code ${code}`
       ).trim();
-      const userMessage = memoryError
-        ? [
-            "Can't allocate required memory. Extraction does not load the full archive into RAM, but 7-Zip still needs working memory for RAR dictionaries.",
-            diagnostics,
-            "Try increasing container memory/swap or extracting on host with more RAM.",
-          ]
-            .filter(Boolean)
-            .join(" ")
-        : rawMessage;
 
+      const job = globalThis.__transferJobs.get(jobId);
       if (job) {
         job.status = "error";
-        job.error = userMessage;
+        job.error = rawMessage;
         job.finishedAt = new Date().toISOString();
       }
       if (destCreatedByUs) tryCleanup(dest);
-      reject(new Error(userMessage));
+      reject(new Error(rawMessage));
     });
 
     child.on("error", (err) => {
@@ -199,92 +181,4 @@ function extract7z(
       reject(new Error(rawMessage));
     });
   });
-}
-
-function buildMemoryDiagnostics(src: string): string {
-  const method = getArchiveMethod(src);
-  const dictBytes = parseDictionaryBytes(method);
-  const availableBytes = getAvailableMemoryBytes();
-
-  const parts: string[] = [];
-  if (method) parts.push(`Archive method: ${method}.`);
-  if (dictBytes > 0)
-    parts.push(`Estimated dictionary: ${formatBytes(dictBytes)}.`);
-  if (availableBytes > 0) {
-    parts.push(`Available memory: ${formatBytes(availableBytes)}.`);
-    if (dictBytes > 0 && availableBytes < dictBytes) {
-      parts.push("Available memory is lower than the archive dictionary.");
-    }
-  }
-
-  return parts.join(" ");
-}
-
-function getArchiveMethod(src: string): string {
-  try {
-    const res = spawnSync(sevenBin.path7za, ["l", "-slt", src], {
-      encoding: "utf8",
-      timeout: 15000,
-    });
-    const output = `${res.stdout ?? ""}\n${res.stderr ?? ""}`;
-    const match = output.match(/^Method\s*=\s*(.+)$/m);
-    return match?.[1]?.trim() ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function parseDictionaryBytes(method: string): number {
-  if (!method) return 0;
-  const tokenRe = /(?:^|:)(\d+)([KMG])(?:$|:)/gi;
-  let max = 0;
-  let match: RegExpExecArray | null;
-  while ((match = tokenRe.exec(method)) !== null) {
-    const value = Number(match[1]);
-    const unit = (match[2] ?? "").toUpperCase();
-    if (!Number.isFinite(value) || value <= 0) continue;
-    const bytes =
-      unit === "G"
-        ? value * 1024 * 1024 * 1024
-        : unit === "M"
-          ? value * 1024 * 1024
-          : value * 1024;
-    if (bytes > max) max = bytes;
-  }
-  return max;
-}
-
-function getAvailableMemoryBytes(): number {
-  const limit = readCgroupNumber("/sys/fs/cgroup/memory.max");
-  const current = readCgroupNumber("/sys/fs/cgroup/memory.current");
-  if (limit > 0 && current >= 0) {
-    return Math.max(0, limit - current);
-  }
-
-  // Fallback to process-visible free memory when cgroup values are unavailable.
-  return os.freemem();
-}
-
-function readCgroupNumber(path: string): number {
-  try {
-    const raw = readFileSync(path, "utf8").trim();
-    if (!raw || raw === "max") return -1;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : -1;
-  } catch {
-    return -1;
-  }
-}
-
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-  let value = bytes;
-  let idx = 0;
-  while (value >= 1024 && idx < units.length - 1) {
-    value /= 1024;
-    idx++;
-  }
-  const decimals = value >= 10 || idx === 0 ? 0 : 1;
-  return `${value.toFixed(decimals)} ${units[idx]}`;
 }

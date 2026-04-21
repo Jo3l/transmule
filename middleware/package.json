@@ -10,7 +10,6 @@
     "prepare": "nitropack prepare"
   },
   "dependencies": {
-    "7zip-bin": "^5.2.0",
     "amule-ec-client": "^0.5.2",
     "bcryptjs": "^2",
     "jsonwebtoken": "^9"

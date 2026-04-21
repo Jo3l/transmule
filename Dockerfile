@@ -41,7 +41,7 @@ FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 WORKDIR /app
 
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends nginx supervisor wget xz-utils ca-certificates && \
+  apt-get install -y --no-install-recommends nginx supervisor unar zip tar ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data && \
     chmod 777 /app/data
@@ -49,26 +49,6 @@ RUN apt-get update && \
 # ── Middleware artefacts ───────────────────────────────────────────────────
 COPY --from=mw-builder /app/.output                           .output
 COPY --from=mw-builder /app/node_modules                      node_modules
-
-# ── Full 7-Zip 26.00 binary (replaces bundled p7zip 16.02 stub) ────────────
-# The bundled 7za from 7zip-bin is p7zip 16.02 standalone, which does NOT
-# support RAR extraction. The official 7-Zip binary (7zz) supports RAR3/RAR5,
-# ZIP, 7z, tar and all other formats. We download the upstream binary and
-# overwrite the stub so the rest of the code can use sevenBin.path7za as-is.
-ARG SEVENZ_VERSION=2600
-RUN set -eux; \
-    ARCH="$(uname -m)"; \
-    case "$ARCH" in \
-      x86_64)  PKG="7z${SEVENZ_VERSION}-linux-x64.tar.xz";  BIN_DIR="linux/x64" ;; \
-      aarch64) PKG="7z${SEVENZ_VERSION}-linux-arm64.tar.xz"; BIN_DIR="linux/arm64" ;; \
-      armv7l)  PKG="7z${SEVENZ_VERSION}-linux-arm.tar.xz";   BIN_DIR="linux/arm" ;; \
-      *) echo "Unsupported arch: $ARCH" && exit 1 ;; \
-    esac; \
-    wget -qO /tmp/7z.tar.xz "https://github.com/ip7z/7zip/releases/download/26.00/${PKG}"; \
-    tar -xJf /tmp/7z.tar.xz -C /tmp 7zz; \
-    mv /tmp/7zz "/app/node_modules/7zip-bin/${BIN_DIR}/7za"; \
-    chmod +x "/app/node_modules/7zip-bin/${BIN_DIR}/7za"; \
-    rm /tmp/7z.tar.xz
 
 # ── Frontend artefacts ─────────────────────────────────────────────────────
 RUN rm -rf /usr/share/nginx/html/*

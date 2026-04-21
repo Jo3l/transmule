@@ -1172,33 +1172,8 @@ function doTransfer() {
 }
 
 // ── Archive helpers ───────────────────────────────────────────────────────────
-const DEFAULT_EXTRACT_EXTENSIONS = [
-  ".tar.gz",
-  ".tar.bz2",
-  ".tar.xz",
-  ".zip",
-  ".rar",
-  ".r00",
-  ".r01",
-  ".7z",
-  ".tar",
-  ".tgz",
-  ".gz",
-  ".bz2",
-  ".xz",
-];
-
-const DEFAULT_COMPRESS_FORMATS: CompressFormatOption[] = [
-  { label: "ZIP (.zip)", value: "zip", extension: ".zip" },
-  { label: "7-Zip (.7z)", value: "7z", extension: ".7z" },
-  { label: "TAR (.tar)", value: "tar", extension: ".tar" },
-  { label: "TAR + GZ (.tar.gz)", value: "tar.gz", extension: ".tar.gz" },
-  { label: "TAR + BZ2 (.tar.bz2)", value: "tar.bz2", extension: ".tar.bz2" },
-  { label: "TAR + XZ (.tar.xz)", value: "tar.xz", extension: ".tar.xz" },
-];
-
-const extractExtensions = ref<string[]>(DEFAULT_EXTRACT_EXTENSIONS);
-const compressFormats = ref<CompressFormatOption[]>(DEFAULT_COMPRESS_FORMATS);
+const extractExtensions = ref<string[]>([]);
+const compressFormats = ref<CompressFormatOption[]>([]);
 const compressFormatOptions = computed(() =>
   compressFormats.value.map((f) => ({ label: f.label, value: f.value })),
 );
@@ -1299,7 +1274,8 @@ async function loadArchiveCapabilities() {
       }
     }
   } catch {
-    // Fallback to defaults when capability endpoint is unavailable.
+    extractExtensions.value = [];
+    compressFormats.value = [];
   }
 }
 
