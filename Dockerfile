@@ -7,7 +7,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: build frontend ────────────────────────────────────────────────
-FROM node:22-alpine AS fe-builder
+FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm AS fe-builder
 WORKDIR /app
 
 COPY frontend/package.json frontend/package-lock.json ./
@@ -24,7 +24,7 @@ RUN npm run generate
 
 # ── Stage 2: build middleware ──────────────────────────────────────────────
 # node:sqlite is built into Node 22 — no native compilation needed.
-FROM node:22-alpine AS mw-builder
+FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm AS mw-builder
 WORKDIR /app
 
 COPY middleware/package.json middleware/package-lock.json ./
@@ -35,9 +35,9 @@ COPY middleware/ .
 RUN npm run build
 
 # ── Stage 3: final image ───────────────────────────────────────────────────
-# Use Debian slim (glibc) so better-sqlite3's native addon can resolve
+# Use Debian (glibc) so better-sqlite3's native addon can resolve
 # glibc symbols like fcntl64 that musl/Alpine doesn't provide.
-FROM node:22-bookworm-slim
+FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 WORKDIR /app
 
 RUN apt-get update && \

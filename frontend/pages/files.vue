@@ -237,6 +237,18 @@
                 >
                   <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
                 </button>
+                <!-- Compress -->
+                <button
+                  class="fm-mc-action"
+                  @click="
+                    openCompressDialogForSources([childPath(item.name)], item.name);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{
+                    $t("fileManager.compress")
+                  }}
+                </button>
                 <!-- Archive actions -->
                 <template v-if="item.type === 'file' && isArchive(item.name)">
                   <div class="fm-mc-sep" />
@@ -669,6 +681,18 @@
         <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
       </button>
 
+      <!-- Compress — single item -->
+      <button
+        v-if="!ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openCompressDialogForSources([childPath(ctxMenu.item!.name)], ctxMenu.item!.name);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
+      </button>
+
       <!-- Extract (archive files only) -->
       <template v-if="!ctxIsMulti && ctxMenu.item?.type === 'file' && isArchive(ctxMenu.item.name)">
         <div class="fm-ctx-sep" />
@@ -728,6 +752,18 @@
       >
         <span class="mdi mdi-content-copy mr-2" />{{
           $t("fileManager.copySelected", { count: selectedItems.size })
+        }}
+      </button>
+      <button
+        v-if="ctxIsMulti"
+        class="fm-ctx-item"
+        @click="
+          openCompressDialog();
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{
+          $t("fileManager.compressSelected", { count: selectedItems.size })
         }}
       </button>
 
@@ -810,6 +846,17 @@
           "
         >
           <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
+        </button>
+
+        <!-- Compress -->
+        <button
+          class="fm-ctx-item"
+          @click="
+            openCompressDialogForSources([treeCtxMenu.path], treeCtxMenu.name);
+            hideTreeCtxMenu();
+          "
+        >
+          <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
         </button>
 
         <!-- Rename -->
@@ -907,16 +954,7 @@
       <SInput v-model="compressArchiveName" placeholder="archive" @enter="doCompress" />
     </SFormItem>
     <SFormItem :label="$t('fileManager.compressFormat')">
-      <SSelect
-        v-model="compressFormat"
-        :options="[
-          { label: 'ZIP (.zip)', value: 'zip' },
-          { label: '7-Zip (.7z)', value: '7z' },
-          { label: 'TAR + GZ (.tar.gz)', value: 'tar.gz' },
-          { label: 'TAR + BZ2 (.tar.bz2)', value: 'tar.bz2' },
-          { label: 'TAR + XZ (.tar.xz)', value: 'tar.xz' },
-        ]"
-      />
+      <SSelect v-model="compressFormat" :options="compressFormatOptions" />
     </SFormItem>
     <SFormItem :label="$t('fileManager.destination')">
       <FolderPicker v-model="compressDest" />
@@ -941,6 +979,17 @@ interface FileItem {
   type: "file" | "directory";
   size: number;
   modified: string;
+}
+
+interface CompressFormatOption {
+  value: string;
+  label: string;
+  extension: string;
+}
+
+interface ArchiveCapabilitiesResponse {
+  compressFormats: CompressFormatOption[];
+  extractExtensions: string[];
 }
 
 const { t } = useI18n();
@@ -1123,7 +1172,36 @@ function doTransfer() {
 }
 
 // ── Archive helpers ───────────────────────────────────────────────────────────
-const ARCHIVE_RE = /\.(zip|rar|7z|tar\.gz|tar\.bz2|tar\.xz|tgz|gz|bz2)$/i;
+const DEFAULT_EXTRACT_EXTENSIONS = [
+  ".tar.gz",
+  ".tar.bz2",
+  ".tar.xz",
+  ".zip",
+  ".rar",
+  ".r00",
+  ".r01",
+  ".7z",
+  ".tar",
+  ".tgz",
+  ".gz",
+  ".bz2",
+  ".xz",
+];
+
+const DEFAULT_COMPRESS_FORMATS: CompressFormatOption[] = [
+  { label: "ZIP (.zip)", value: "zip", extension: ".zip" },
+  { label: "7-Zip (.7z)", value: "7z", extension: ".7z" },
+  { label: "TAR (.tar)", value: "tar", extension: ".tar" },
+  { label: "TAR + GZ (.tar.gz)", value: "tar.gz", extension: ".tar.gz" },
+  { label: "TAR + BZ2 (.tar.bz2)", value: "tar.bz2", extension: ".tar.bz2" },
+  { label: "TAR + XZ (.tar.xz)", value: "tar.xz", extension: ".tar.xz" },
+];
+
+const extractExtensions = ref<string[]>(DEFAULT_EXTRACT_EXTENSIONS);
+const compressFormats = ref<CompressFormatOption[]>(DEFAULT_COMPRESS_FORMATS);
+const compressFormatOptions = computed(() =>
+  compressFormats.value.map((f) => ({ label: f.label, value: f.value })),
+);
 
 const IMAGE_RE = /\.(jpe?g|png|gif|webp|avif|bmp|svg|ico|tiff?)$/i;
 const VIDEO_RE = /\.(mp4|webm|ogg|ogv|mov|m4v)$/i;
@@ -1137,7 +1215,8 @@ function isVideo(item: FileItem | null): boolean {
 }
 
 function isArchive(name: string): boolean {
-  return ARCHIVE_RE.test(name);
+  const lower = name.toLowerCase();
+  return extractExtensions.value.some((ext) => lower.endsWith(ext));
 }
 
 function archiveBasename(name: string): string {
@@ -1170,18 +1249,26 @@ function doExtract() {
 
 // ── Compress actions ─────────────────────────────────────────────────────────
 function openCompressDialog() {
-  compressSources.value = Array.from(selectedItems).map(childPath);
-  const first = Array.from(selectedItems)[0] ?? "archive";
-  compressArchiveName.value =
-    items.value.find((i) => i.name === first)?.type === "directory"
-      ? first
-      : first.replace(/\.[^.]+$/, "") || "archive";
-  compressFormat.value = "zip";
-  compressDest.value = currentPath.value;
+  openCompressDialogForSources(
+    Array.from(selectedItems).map(childPath),
+    Array.from(selectedItems)[0] ?? "archive",
+  );
+}
+
+function openCompressDialogForSources(sources: string[], seedName = "archive") {
+  compressSources.value = sources;
+  const seedBase = seedName.split("/").pop() || "archive";
+  compressArchiveName.value = archiveBasename(seedBase) || "archive";
+  compressFormat.value = compressFormats.value[0]?.value || "zip";
+  const first = sources[0] || "";
+  compressDest.value = first.includes("/") ? first.replace(/\/[^/]+$/, "") : currentPath.value;
   showCompressDialog.value = true;
 }
 
 function doCompress() {
+  if (!compressFormats.value.some((f) => f.value === compressFormat.value)) {
+    compressFormat.value = compressFormats.value[0]?.value || "zip";
+  }
   enqueueCompress(
     compressSources.value,
     compressDest.value,
@@ -1192,6 +1279,28 @@ function doCompress() {
   showCompressDialog.value = false;
   selectedItems.clear();
   showToast(t("fileManager.compressStarted"), "success");
+}
+
+async function loadArchiveCapabilities() {
+  try {
+    const caps = await apiFetch<ArchiveCapabilitiesResponse>("/api/files/capabilities");
+
+    if (Array.isArray(caps.extractExtensions) && caps.extractExtensions.length) {
+      extractExtensions.value = caps.extractExtensions
+        .map((ext) => (ext || "").toLowerCase())
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
+    }
+
+    if (Array.isArray(caps.compressFormats) && caps.compressFormats.length) {
+      compressFormats.value = caps.compressFormats;
+      if (!compressFormats.value.some((f) => f.value === compressFormat.value)) {
+        compressFormat.value = compressFormats.value[0].value;
+      }
+    }
+  } catch {
+    // Fallback to defaults when capability endpoint is unavailable.
+  }
 }
 
 // ── Image preview ─────────────────────────────────────────────────────────
@@ -1260,6 +1369,9 @@ function onPreviewKeydown(e: KeyboardEvent) {
 }
 
 onMounted(() => window.addEventListener("keydown", onPreviewKeydown));
+onMounted(() => {
+  void loadArchiveCapabilities();
+});
 onBeforeUnmount(() => window.removeEventListener("keydown", onPreviewKeydown));
 
 // ── Context menu ─────────────────────────────────────────────────────────────

@@ -4,14 +4,15 @@
  * Starts a background compression job.
  * Returns a jobId immediately; actual work runs fire-and-forget in the same process.
  *
- * Supported formats: zip, 7z  → uses node-7z + bundled 7zip-bin binary
- *                    tar.gz, tar.bz2, tar.xz → uses `tar` CLI
+ * Supported formats:
+ *   - zip, 7z               → 7-Zip CLI (bundled via 7zip-bin)
+ *   - tar, tar.gz, tar.bz2, tar.xz → tar CLI
  *
  * Body: {
  *   sources: string[],       // relative paths within downloads root
  *   destination: string,     // relative path to output folder
  *   archiveName: string,     // desired archive filename (without or with extension)
- *   format: "zip" | "7z" | "tar.gz" | "tar.bz2" | "tar.xz"
+ *   format: "zip" | "7z" | "tar" | "tar.gz" | "tar.bz2" | "tar.xz"
  * }
  * Returns: { jobId: string }
  */
@@ -22,7 +23,14 @@ import { spawn } from "node:child_process";
 import { join, basename, dirname } from "node:path";
 import sevenBin from "7zip-bin";
 
-const VALID_FORMATS = ["zip", "7z", "tar.gz", "tar.bz2", "tar.xz"] as const;
+const VALID_FORMATS = [
+  "zip",
+  "7z",
+  "tar",
+  "tar.gz",
+  "tar.bz2",
+  "tar.xz",
+] as const;
 type CompressFormat = (typeof VALID_FORMATS)[number];
 
 defineRouteMeta({
@@ -79,13 +87,15 @@ export default defineEventHandler(async (event) => {
 
   // Build the output archive path (append extension if not already present)
   const ext =
-    format === "tar.gz"
-      ? ".tar.gz"
-      : format === "tar.bz2"
-        ? ".tar.bz2"
-        : format === "tar.xz"
-          ? ".tar.xz"
-          : `.${format}`;
+    format === "tar"
+      ? ".tar"
+      : format === "tar.gz"
+        ? ".tar.gz"
+        : format === "tar.bz2"
+          ? ".tar.bz2"
+          : format === "tar.xz"
+            ? ".tar.xz"
+            : `.${format}`;
   const normalizedName = (archiveName as string).toLowerCase().endsWith(ext)
     ? (archiveName as string)
     : archiveName + ext;
@@ -149,7 +159,13 @@ function runCompress(
     } else {
       // tar formats
       const compressionFlag =
-        format === "tar.gz" ? "-z" : format === "tar.bz2" ? "-j" : "-J"; // tar.xz
+        format === "tar.gz"
+          ? "-z"
+          : format === "tar.bz2"
+            ? "-j"
+            : format === "tar.xz"
+              ? "-J"
+              : "";
       cmd = "tar";
       args = [`-c${compressionFlag}f`, archivePath, ...relNames];
     }

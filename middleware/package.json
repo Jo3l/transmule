@@ -13,8 +13,7 @@
     "7zip-bin": "^5.2.0",
     "amule-ec-client": "^0.5.2",
     "bcryptjs": "^2",
-    "jsonwebtoken": "^9",
-    "node-7z": "github:q2s2t/node-7z"
+    "jsonwebtoken": "^9"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2",

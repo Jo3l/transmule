@@ -4,19 +4,17 @@
  * Starts a background extraction job for a compressed archive.
  * Returns a jobId immediately; actual work runs fire-and-forget in the same process.
  *
- * Uses 7-Zip 26.00 (installed in the Docker image / dev environment) which
- * supports all common formats: RAR3, RAR5, ZIP, 7z, tar.*, gz, bz2, xz…
+ * Extraction strategy: 7-Zip 26.00 CLI only.
  *
  * Body: { source: string, destination: string }
  * Returns: { jobId: string }
  */
 
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmdirSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import os from "node:os";
-import Seven from "node-7z";
 import sevenBin from "7zip-bin";
 
 defineRouteMeta({
@@ -131,28 +129,46 @@ function extract7z(
   destCreatedByUs: boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const stream = Seven.extractFull(src, dest, {
-      $bin: sevenBin.path7za,
-      overwrite: "a", // overwrite all existing files
-      // Lower memory usage for large archives by disabling multithread extraction.
-      method: ["mt=1"],
+    // Lower memory usage when possible by forcing single-thread extraction.
+    const args = ["x", src, `-o${dest}`, "-y", "-aoa", "-mmt=1"];
+    const child = spawn(sevenBin.path7za, args, {
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    stream.on("end", () => {
-      const job = globalThis.__transferJobs.get(jobId);
-      if (job) {
-        job.done = 1;
-        job.status = "done";
-        job.finishedAt = new Date().toISOString();
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.stderr?.on("data", (d: Buffer) => {
+      stderr += d.toString();
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        const job = globalThis.__transferJobs.get(jobId);
+        if (job) {
+          job.done = 1;
+          job.status = "done";
+          job.finishedAt = new Date().toISOString();
+        }
+        resolve();
+        return;
       }
-      resolve();
-    });
 
-    stream.on("error", (err: Error) => {
+      const combined = `${stdout}\n${stderr}`;
+      const memoryError = /Can't allocate required memory|E_OUTOFMEMORY/i.test(
+        combined,
+      );
+
       const job = globalThis.__transferJobs.get(jobId);
-      const rawMessage = err?.message ?? String(err);
       const diagnostics = buildMemoryDiagnostics(src);
-      const userMessage = /Can't allocate required memory/i.test(rawMessage)
+      const rawMessage = (
+        stderr ||
+        stdout ||
+        `7za exited with code ${code}`
+      ).trim();
+      const userMessage = memoryError
         ? [
             "Can't allocate required memory. Extraction does not load the full archive into RAM, but 7-Zip still needs working memory for RAR dictionaries.",
             diagnostics,
@@ -161,6 +177,7 @@ function extract7z(
             .filter(Boolean)
             .join(" ")
         : rawMessage;
+
       if (job) {
         job.status = "error";
         job.error = userMessage;
@@ -168,6 +185,18 @@ function extract7z(
       }
       if (destCreatedByUs) tryCleanup(dest);
       reject(new Error(userMessage));
+    });
+
+    child.on("error", (err) => {
+      const job = globalThis.__transferJobs.get(jobId);
+      const rawMessage = err?.message ?? String(err);
+      if (job) {
+        job.status = "error";
+        job.error = rawMessage;
+        job.finishedAt = new Date().toISOString();
+      }
+      if (destCreatedByUs) tryCleanup(dest);
+      reject(new Error(rawMessage));
     });
   });
 }
