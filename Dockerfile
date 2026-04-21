@@ -39,7 +39,7 @@ FROM node:22-bookworm-slim
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends nginx supervisor wget xz-utils && \
+  apt-get install -y --no-install-recommends nginx supervisor wget xz-utils ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data && \
     chmod 777 /app/data
