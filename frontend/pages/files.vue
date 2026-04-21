@@ -933,6 +933,13 @@
       {{ $t("fileManager.extractHint", { name: extractSource.split("/").pop() }) }}
     </p>
     <FolderPicker v-model="extractDest" />
+    <SFormItem :label="$t('fileManager.password')" class="mt-3">
+      <SInput
+        v-model="extractPassword"
+        type="password"
+        :placeholder="$t('fileManager.passwordPlaceholder')"
+      />
+    </SFormItem>
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showExtractDialog = false">{{ $t("fileManager.cancel") }}</SButton>
@@ -959,6 +966,18 @@
     <SFormItem :label="$t('fileManager.destination')">
       <FolderPicker v-model="compressDest" />
     </SFormItem>
+    <template v-if="compressFormat === 'zip'">
+      <SFormItem>
+        <SCheckbox v-model="compressUsePassword" :label="$t('fileManager.compressUsePassword')" />
+      </SFormItem>
+      <SFormItem v-if="compressUsePassword" :label="$t('fileManager.password')">
+        <SInput
+          v-model="compressPassword"
+          type="password"
+          :placeholder="$t('fileManager.passwordPlaceholder')"
+        />
+      </SFormItem>
+    </template>
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showCompressDialog = false">{{ $t("fileManager.cancel") }}</SButton>
@@ -1134,6 +1153,7 @@ const transferDest = ref("");
 const showExtractDialog = ref(false);
 const extractSource = ref("");
 const extractDest = ref("");
+const extractPassword = ref("");
 
 // ── Compress dialog state ─────────────────────────────────────────────
 const showCompressDialog = ref(false);
@@ -1141,6 +1161,15 @@ const compressSources = ref<string[]>([]);
 const compressArchiveName = ref("");
 const compressFormat = ref("zip");
 const compressDest = ref("");
+const compressUsePassword = ref(false);
+const compressPassword = ref("");
+
+watch(compressFormat, (newFormat) => {
+  if (newFormat !== "zip") {
+    compressUsePassword.value = false;
+    compressPassword.value = "";
+  }
+});
 
 function openTransferDialog(sources: string[], mode: "move" | "copy") {
   transferSources.value = sources;
@@ -1202,24 +1231,30 @@ function archiveBasename(name: string): string {
 
 // ── Extract actions ──────────────────────────────────────────────────────────
 function doExtractHere(sourceRelPath: string) {
-  enqueueExtract(sourceRelPath, currentPath.value, loadDir);
+  enqueueExtract(sourceRelPath, currentPath.value, undefined, loadDir);
   showToast(t("fileManager.extractStarted"), "success");
 }
 
 function doExtractToFolder(sourceRelPath: string, folderName: string) {
   const dest = currentPath.value ? `${currentPath.value}/${folderName}` : folderName;
-  enqueueExtract(sourceRelPath, dest, loadDir);
+  enqueueExtract(sourceRelPath, dest, undefined, loadDir);
   showToast(t("fileManager.extractStarted"), "success");
 }
 
 function openExtractDialog(sourceRelPath: string) {
   extractSource.value = sourceRelPath;
   extractDest.value = currentPath.value;
+  extractPassword.value = "";
   showExtractDialog.value = true;
 }
 
 function doExtract() {
-  enqueueExtract(extractSource.value, extractDest.value, loadDir);
+  enqueueExtract(
+    extractSource.value,
+    extractDest.value,
+    extractPassword.value || undefined,
+    loadDir,
+  );
   showExtractDialog.value = false;
   showToast(t("fileManager.extractStarted"), "success");
 }
@@ -1239,6 +1274,8 @@ function openCompressDialogForSources(sources: string[], seedName = "archive") {
   compressFormat.value = compressFormats.value[0]?.value || "zip";
   const first = sources[0] || "";
   compressDest.value = first.includes("/") ? first.replace(/\/[^/]+$/, "") : currentPath.value;
+  compressUsePassword.value = false;
+  compressPassword.value = "";
   showCompressDialog.value = true;
 }
 
@@ -1246,11 +1283,16 @@ function doCompress() {
   if (!compressFormats.value.some((f) => f.value === compressFormat.value)) {
     compressFormat.value = compressFormats.value[0]?.value || "zip";
   }
+  const pw =
+    compressUsePassword.value && compressFormat.value === "zip"
+      ? compressPassword.value || undefined
+      : undefined;
   enqueueCompress(
     compressSources.value,
     compressDest.value,
     compressArchiveName.value || "archive",
     compressFormat.value,
+    pw,
     loadDir,
   );
   showCompressDialog.value = false;

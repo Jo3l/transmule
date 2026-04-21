@@ -18,6 +18,7 @@ export interface TransferJob {
   name: string; // display name — basename of source
   archiveName?: string; // desired archive name (compress only)
   format?: string; // compression format (compress only)
+  password?: string; // optional password (extract or compress)
   percent: number;
   bytesTotal?: number; // total bytes to transfer (move/copy only)
   bytesDone?: number; // bytes transferred so far
@@ -97,7 +98,12 @@ export function useTransferJobs() {
   // ── Public API ─────────────────────────────────────────────────────────────
 
   /** Enqueue a single archive extraction job. */
-  function enqueueExtract(source: string, destination: string, onSettled?: () => void) {
+  function enqueueExtract(
+    source: string,
+    destination: string,
+    password?: string,
+    onSettled?: () => void,
+  ) {
     const name = source.split("/").pop() ?? source;
     const queueId = createQueueId();
     jobs.value.push({
@@ -106,6 +112,7 @@ export function useTransferJobs() {
       destination,
       mode: "extract",
       name,
+      password,
       percent: 0,
       status: "queued",
     });
@@ -120,6 +127,7 @@ export function useTransferJobs() {
     destination: string,
     archiveName: string,
     format: string,
+    password?: string,
     onSettled?: () => void,
   ) {
     const queueId = createQueueId();
@@ -130,6 +138,7 @@ export function useTransferJobs() {
       destination,
       archiveName,
       format,
+      password,
       mode: "compress",
       name: archiveName,
       percent: 0,
@@ -232,7 +241,7 @@ export function useTransferJobs() {
       if (next.mode === "extract") {
         res = await apiFetch<{ jobId: string }>("/api/files/extract", {
           method: "POST",
-          body: { source: next.source, destination: next.destination },
+          body: { source: next.source, destination: next.destination, password: next.password },
         });
       } else if (next.mode === "compress") {
         res = await apiFetch<{ jobId: string }>("/api/files/compress", {
@@ -242,6 +251,7 @@ export function useTransferJobs() {
             destination: next.destination,
             archiveName: next.archiveName,
             format: next.format,
+            password: next.password,
           },
         });
       } else {

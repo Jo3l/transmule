@@ -4,14 +4,15 @@
  * Starts a background extraction job for a compressed archive.
  * Returns a jobId immediately; actual work runs fire-and-forget in the same process.
  *
- * Extraction strategy: unar CLI only.
+ * Extraction strategy: unar CLI.
+ * Progress: lsar -j for total file count; unar stdout "OK." lines for per-file updates.
  *
- * Body: { source: string, destination: string }
+ * Body: { source: string, destination: string, password?: string }
  * Returns: { jobId: string }
  */
 
 import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmdirSync } from "node:fs";
 
 defineRouteMeta({
@@ -30,7 +31,7 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const body = await readBody(event);
-  const { source, destination } = body ?? {};
+  const { source, destination, password } = body ?? {};
 
   if (
     typeof source !== "string" ||
@@ -41,6 +42,13 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 400,
       statusMessage: "source and destination are required",
+    });
+  }
+
+  if (password !== undefined && typeof password !== "string") {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "password must be a string",
     });
   }
 
@@ -70,6 +78,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  const totalFiles = getArchiveFileCount(absSrc);
   initJobStore();
   const jobId = randomUUID();
 
@@ -79,7 +88,7 @@ export default defineEventHandler(async (event) => {
     mode: "extract",
     sources: [absSrc],
     destination: absDest,
-    total: 1,
+    total: totalFiles,
     done: 0,
     status: "running",
     queuedAt: new Date().toISOString(),
@@ -87,19 +96,47 @@ export default defineEventHandler(async (event) => {
   });
 
   // Fire-and-forget
-  runExtract(jobId, absSrc, absDest, !destExisted).catch((err) => {
-    const job = globalThis.__transferJobs.get(jobId);
-    if (job && job.status !== "error") {
-      job.status = "error";
-      job.error = String(err?.message ?? err);
-      job.finishedAt = new Date().toISOString();
-    }
-  });
+  runExtract(jobId, absSrc, absDest, !destExisted, password || undefined).catch(
+    (err) => {
+      const job = globalThis.__transferJobs.get(jobId);
+      if (job && job.status !== "error") {
+        job.status = "error";
+        job.error = String(err?.message ?? err);
+        job.finishedAt = new Date().toISOString();
+      }
+    },
+  );
 
   return { jobId };
 });
 
 // ── Extraction helpers ────────────────────────────────────────────────────────
+
+/**
+ * Use lsar to count entries in the archive for progress tracking.
+ * Returns 1 if lsar is unavailable or the archive cannot be listed.
+ */
+function getArchiveFileCount(archivePath: string): number {
+  try {
+    const result = spawnSync("lsar", ["-j", archivePath], {
+      encoding: "utf-8",
+      timeout: 15_000,
+    });
+    if (result.status === 0 && result.stdout) {
+      const data = JSON.parse(result.stdout.trim());
+      // lsar -j: { lsarFormatName: "...", lsarContents: [...] }  or plain array
+      const contents: unknown[] = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.lsarContents)
+          ? data.lsarContents
+          : [];
+      return Math.max(1, contents.length);
+    }
+  } catch {
+    /* lsar not available or JSON parse error — fall through */
+  }
+  return 1;
+}
 
 function tryCleanup(dest: string) {
   try {
@@ -114,28 +151,43 @@ async function runExtract(
   src: string,
   dest: string,
   destCreatedByUs: boolean,
+  password?: string,
 ): Promise<void> {
-  await extractWithUnar(jobId, src, dest, destCreatedByUs);
+  await extractWithUnar(jobId, src, dest, destCreatedByUs, password);
 }
 
-/** Extract any archive using unar (RAR3/RAR5, ZIP, 7z, tar.*, gz, bz2, xz…). */
+/** Extract any archive using unar with per-file progress tracking. */
 function extractWithUnar(
   jobId: string,
   src: string,
   dest: string,
   destCreatedByUs: boolean,
+  password?: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    // -o: output directory  -f: force overwrite  -q: quiet (no progress bar)
-    const args = [src, "-o", dest, "-f", "-q"];
+    // -o: output directory  -f: force overwrite  (no -q so we capture "OK." lines)
+    const args = [src, "-o", dest, "-f"];
+    if (password) {
+      args.push("-p", password);
+    }
+
     const child = spawn("unar", args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
 
     let stdout = "";
     let stderr = "";
-    child.stdout?.on("data", (d: Buffer) => {
-      stdout += d.toString();
+    child.stdout?.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stdout += text;
+      // Each successfully extracted file ends with "  OK." — count for progress
+      const extracted = (text.match(/ OK\./g) ?? []).length;
+      if (extracted > 0) {
+        const job = globalThis.__transferJobs.get(jobId);
+        if (job) {
+          job.done = Math.min(job.done + extracted, job.total);
+        }
+      }
     });
     child.stderr?.on("data", (d: Buffer) => {
       stderr += d.toString();
@@ -145,7 +197,7 @@ function extractWithUnar(
       if (code === 0) {
         const job = globalThis.__transferJobs.get(jobId);
         if (job) {
-          job.done = 1;
+          job.done = job.total;
           job.status = "done";
           job.finishedAt = new Date().toISOString();
         }
@@ -153,11 +205,23 @@ function extractWithUnar(
         return;
       }
 
-      const rawMessage = (
-        stderr ||
-        stdout ||
-        `unar exited with code ${code}`
-      ).trim();
+      // Detect wrong/missing password errors
+      const combined = stdout + stderr;
+      let rawMessage: string;
+      if (
+        combined.includes("No files extracted") ||
+        combined.includes("Opening file failed") ||
+        combined.includes("Wrong password") ||
+        combined.includes("Encrypted")
+      ) {
+        rawMessage = "Wrong or missing password";
+      } else {
+        rawMessage = (
+          stderr ||
+          stdout ||
+          `unar exited with code ${code}`
+        ).trim();
+      }
 
       const job = globalThis.__transferJobs.get(jobId);
       if (job) {
