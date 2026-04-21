@@ -131,6 +131,8 @@ function extract7z(
     const stream = Seven.extractFull(src, dest, {
       $bin: sevenBin.path7za,
       overwrite: "a", // overwrite all existing files
+      // Lower memory usage for large archives by disabling multithread extraction.
+      method: ["mt=1"],
     });
 
     stream.on("end", () => {
@@ -145,13 +147,17 @@ function extract7z(
 
     stream.on("error", (err: Error) => {
       const job = globalThis.__transferJobs.get(jobId);
+      const rawMessage = err?.message ?? String(err);
+      const userMessage = /Can't allocate required memory/i.test(rawMessage)
+        ? "Can't allocate required memory. Extraction does not load the full archive into RAM, but 7-Zip still needs working memory for RAR dictionaries. Try increasing container memory/swap or extracting on host with more RAM."
+        : rawMessage;
       if (job) {
         job.status = "error";
-        job.error = err.message;
+        job.error = userMessage;
         job.finishedAt = new Date().toISOString();
       }
       if (destCreatedByUs) tryCleanup(dest);
-      reject(err);
+      reject(new Error(userMessage));
     });
   });
 }
