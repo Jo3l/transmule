@@ -1,0 +1,30 @@
+{
+  "name": "transmule",
+  "version": "1.62",
+  "private": true,
+  "description": "TransMule — unified download manager with custom theming",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "generate": "nuxt generate",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.2",
+    "eslint-plugin-vue": "^10.8.0",
+    "nuxt": "^3",
+    "prettier": "^3.8.1",
+    "prettier-plugin-organize-imports": "^4.3.0",
+    "sass": "^1",
+    "typescript": "^5",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "@nuxtjs/i18n": "^10.2.3",
+    "webamp": "^2.2.0"
+  }
+}

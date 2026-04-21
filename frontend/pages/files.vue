@@ -1195,7 +1195,9 @@ function isArchive(name: string): boolean {
 }
 
 function archiveBasename(name: string): string {
-  return name.replace(/\.(tar\.gz|tar\.bz2|tar\.xz)$/i, "").replace(/\.[^.]+$/, "");
+  return name
+    .replace(/\.(tar\.gz|tar\.bz2|tar\.xz|tar\.lzma|tar\.z|part\d+\.rar)$/i, "")
+    .replace(/\.[^.]+$/, "");
 }
 
 // ── Extract actions ──────────────────────────────────────────────────────────
