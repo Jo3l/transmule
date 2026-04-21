@@ -11,7 +11,8 @@ FROM node:22-alpine AS fe-builder
 WORKDIR /app
 
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN set -eux; \
+  npm ci --no-audit --no-fund || npm ci --no-audit --no-fund
 
 COPY frontend/ .
 
@@ -27,7 +28,8 @@ FROM node:22-alpine AS mw-builder
 WORKDIR /app
 
 COPY middleware/package.json middleware/package-lock.json ./
-RUN npm ci
+RUN set -eux; \
+  npm ci --no-audit --no-fund || npm ci --no-audit --no-fund
 
 COPY middleware/ .
 RUN npm run build
