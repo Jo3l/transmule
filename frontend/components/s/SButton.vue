@@ -52,7 +52,7 @@ defineEmits<{ click: [e: MouseEvent] }>();
 
 const classes = computed(() => [
   "s-btn",
-  props.variant !== "default" && `s-btn--${props.variant}`,
+  `s-btn--${props.variant === "default" ? "primary" : props.variant}`,
   props.size !== "md" && `s-btn--${props.size}`,
   props.block && "s-btn--block",
 ]);

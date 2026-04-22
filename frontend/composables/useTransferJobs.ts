@@ -61,7 +61,7 @@ let _processing = false;
 const _pollingJobs = new Set<string>();
 
 // Per-job settled callbacks (not persisted — functions can't be serialized).
-const _jobCallbacks = new Map<string, () => void>();
+const _jobCallbacks = new Map<string, (error?: string) => void>();
 
 export function useTransferJobs() {
   const { apiFetch, showToast } = useApi();
@@ -102,7 +102,7 @@ export function useTransferJobs() {
     source: string,
     destination: string,
     password?: string,
-    onSettled?: () => void,
+    onSettled?: (error?: string) => void,
   ) {
     const name = source.split("/").pop() ?? source;
     const queueId = createQueueId();
@@ -128,7 +128,7 @@ export function useTransferJobs() {
     archiveName: string,
     format: string,
     password?: string,
-    onSettled?: () => void,
+    onSettled?: (error?: string) => void,
   ) {
     const queueId = createQueueId();
     jobs.value.push({
@@ -153,7 +153,7 @@ export function useTransferJobs() {
     sources: string[],
     destination: string,
     mode: "move" | "copy",
-    onSettled?: () => void,
+    onSettled?: (error?: string) => void,
   ) {
     for (const src of sources) {
       const name = src.split("/").pop() ?? src;
@@ -186,7 +186,7 @@ export function useTransferJobs() {
           job.finishedAt = new Date().toISOString();
           showToast(t("fileManager.transferError", { error: job.error ?? "" }), "error");
           persist();
-          _jobCallbacks.get(queueId)?.();
+          _jobCallbacks.get(queueId)?.(job.error);
           _jobCallbacks.delete(queueId);
         });
     }
@@ -274,7 +274,7 @@ export function useTransferJobs() {
       next.finishedAt = new Date().toISOString();
       showToast(t("fileManager.transferError", { error: next.error ?? "" }), "error");
       persist();
-      _jobCallbacks.get(next.queueId)?.();
+      _jobCallbacks.get(next.queueId)?.(next.error);
       _jobCallbacks.delete(next.queueId);
     }
 
@@ -360,7 +360,7 @@ export function useTransferJobs() {
             _pollingJobs.delete(queueId);
             showToast(t("fileManager.transferError", { error: data.error ?? "" }), "error");
             persist();
-            _jobCallbacks.get(queueId)?.();
+            _jobCallbacks.get(queueId)?.(data.error);
             _jobCallbacks.delete(queueId);
             resolve();
           }

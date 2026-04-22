@@ -154,6 +154,17 @@
                 >
                   <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
                 </button>
+                <!-- Edit text -->
+                <button
+                  v-if="isTextEditable(item)"
+                  class="fm-mc-action fm-mc-action--accent"
+                  @click="
+                    openTextEditor(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
+                </button>
                 <!-- Play video -->
                 <button
                   v-if="isVideo(item)"
@@ -495,11 +506,53 @@
       {{ previewIndex + 1 }} / {{ previewImages.length }}
     </div>
     <template #footer>
-      <div class="flex-end gap-sm">
-        <a class="s-btn" :href="previewImageUrl" download @click="showImageDialog = false">
+      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+        <a
+          class="s-btn"
+          style="display: inline-flex; align-items: center"
+          :href="previewImageUrl"
+          download
+          @click="showImageDialog = false"
+        >
           <span class="mdi mdi-download mr-1" />{{ $t("fileManager.download") }}
         </a>
-        <SButton @click="showImageDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton @click="showImageDialog = false">{{ $t("fileManager.close") }}</SButton>
+      </div>
+    </template>
+  </SDialog>
+
+  <!-- ── Text editor dialog ─────────────────────────────────────────────── -->
+  <SDialog
+    :model-value="showTextDialog"
+    :title="textEditorName"
+    width="90vw"
+    @update:model-value="closeTextEditor"
+  >
+    <textarea
+      v-model="textEditorContent"
+      class="fm-text-editor"
+      :placeholder="$t('fileManager.editTextPlaceholder')"
+      spellcheck="false"
+    />
+    <template #footer>
+      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+        <SButton variant="primary" :loading="savingText" @click="saveTextFile">
+          <span class="mdi mdi-content-save mr-1" />{{ $t("fileManager.save") }}
+        </SButton>
+        <SButton @click="closeTextEditor">{{ $t("fileManager.close") }}</SButton>
+      </div>
+    </template>
+  </SDialog>
+
+  <!-- ── Discard changes confirmation ─────────────────────────────────── -->
+  <SDialog v-model="showDiscardDialog" :title="$t('fileManager.discardTitle')" width="420px">
+    <p>{{ $t("fileManager.discardMessage") }}</p>
+    <template #footer>
+      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+        <SButton variant="danger" @click="confirmDiscard">{{
+          $t("fileManager.discardConfirm")
+        }}</SButton>
+        <SButton @click="showDiscardDialog = false">{{ $t("fileManager.cancel") }}</SButton>
       </div>
     </template>
   </SDialog>
@@ -565,6 +618,18 @@
         "
       >
         <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
+      </button>
+
+      <!-- Edit text -->
+      <button
+        v-if="!ctxIsMulti && isTextEditable(ctxMenu.item)"
+        class="fm-ctx-item fm-ctx-item--accent"
+        @click="
+          openTextEditor(ctxMenu.item!);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
       </button>
 
       <!-- Play video -->
@@ -935,6 +1000,25 @@
     </template>
   </SDialog>
 
+  <!-- ── Extract error dialog ─────────────────────────────────────── -->
+  <SDialog
+    v-model="showExtractErrorDialog"
+    :title="$t('fileManager.extractErrorTitle')"
+    width="480px"
+  >
+    <SAlert variant="danger" class="mb-2">
+      <span class="mdi mdi-alert-circle-outline mr-1" />
+      {{ extractErrorMessage }}
+    </SAlert>
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton variant="primary" @click="showExtractErrorDialog = false">{{
+          $t("fileManager.close")
+        }}</SButton>
+      </div>
+    </template>
+  </SDialog>
+
   <!-- ── Compress dialog ──────────────────────────────────────────── -->
   <SDialog v-model="showCompressDialog" :title="$t('fileManager.compressTitle')" width="480px">
     <SFormItem :label="$t('fileManager.compressName')">
@@ -1135,6 +1219,18 @@ const extractSource = ref("");
 const extractDest = ref("");
 const extractPassword = ref("");
 
+// ── Extract error modal ───────────────────────────────────────────────
+const showExtractErrorDialog = ref(false);
+const extractErrorMessage = ref("");
+
+function onExtractSettled(error?: string) {
+  loadDir();
+  if (error) {
+    extractErrorMessage.value = error;
+    showExtractErrorDialog.value = true;
+  }
+}
+
 // ── Compress dialog state ─────────────────────────────────────────────
 const showCompressDialog = ref(false);
 const compressSources = ref<string[]>([]);
@@ -1211,13 +1307,13 @@ function archiveBasename(name: string): string {
 
 // ── Extract actions ──────────────────────────────────────────────────────────
 function doExtractHere(sourceRelPath: string) {
-  enqueueExtract(sourceRelPath, currentPath.value, undefined, loadDir);
+  enqueueExtract(sourceRelPath, currentPath.value, undefined, onExtractSettled);
   showToast(t("fileManager.extractStarted"), "success");
 }
 
 function doExtractToFolder(sourceRelPath: string, folderName: string) {
   const dest = currentPath.value ? `${currentPath.value}/${folderName}` : folderName;
-  enqueueExtract(sourceRelPath, dest, undefined, loadDir);
+  enqueueExtract(sourceRelPath, dest, undefined, onExtractSettled);
   showToast(t("fileManager.extractStarted"), "success");
 }
 
@@ -1233,7 +1329,7 @@ function doExtract() {
     extractSource.value,
     extractDest.value,
     extractPassword.value || undefined,
-    loadDir,
+    onExtractSettled,
   );
   showExtractDialog.value = false;
   showToast(t("fileManager.extractStarted"), "success");
@@ -1312,6 +1408,68 @@ const previewIndex = ref(0);
 const previewImages = computed(() =>
   items.value.filter((i) => i.type === "file" && IMAGE_RE.test(i.name)),
 );
+
+// ── Text editor ───────────────────────────────────────────────────────────
+const TEXT_EDIT_RE = /\.(txt|cfg|conf|ini|log|json|yaml|yml|toml|md|env|sh|csv)$/i;
+
+function isTextEditable(item: FileItem | null): boolean {
+  return item?.type === "file" && TEXT_EDIT_RE.test(item.name);
+}
+
+const showTextDialog = ref(false);
+const showDiscardDialog = ref(false);
+const textEditorName = ref("");
+const textEditorPath = ref("");
+const textEditorContent = ref("");
+const textEditorOriginal = ref("");
+const savingText = ref(false);
+
+const textEditorDirty = computed(() => textEditorContent.value !== textEditorOriginal.value);
+
+async function openTextEditor(item: FileItem) {
+  const rel = currentPath.value ? `${currentPath.value}/${item.name}` : item.name;
+  try {
+    const data = await apiFetch<{ content: string }>(
+      `/api/files/text?path=${encodeURIComponent(rel)}`,
+    );
+    textEditorPath.value = rel;
+    textEditorName.value = item.name;
+    textEditorContent.value = data.content;
+    textEditorOriginal.value = data.content;
+    showTextDialog.value = true;
+  } catch (e: any) {
+    showToast(e?.data?.statusMessage || t("fileManager.editTextLoadError"), "error");
+  }
+}
+
+async function saveTextFile() {
+  savingText.value = true;
+  try {
+    await apiFetch("/api/files/text", {
+      method: "POST",
+      body: { path: textEditorPath.value, content: textEditorContent.value },
+    });
+    textEditorOriginal.value = textEditorContent.value;
+    showToast(t("fileManager.editTextSaved"), "success");
+  } catch (e: any) {
+    showToast(e?.data?.statusMessage || t("fileManager.editTextSaveError"), "error");
+  } finally {
+    savingText.value = false;
+  }
+}
+
+function closeTextEditor() {
+  if (textEditorDirty.value) {
+    showDiscardDialog.value = true;
+  } else {
+    showTextDialog.value = false;
+  }
+}
+
+function confirmDiscard() {
+  showDiscardDialog.value = false;
+  showTextDialog.value = false;
+}
 
 // ── Video preview ─────────────────────────────────────────────────────────
 const showVideoDialog = ref(false);
@@ -2355,15 +2513,15 @@ watch(
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  max-height: 75vh;
-  overflow: auto;
+  max-height: calc(80vh - 10rem);
+  overflow: hidden;
   background: var(--s-bg);
   border-radius: var(--s-radius);
   position: relative;
 }
 .fm-img-preview__img {
   max-width: 100%;
-  max-height: 75vh;
+  max-height: calc(80vh - 10rem);
   object-fit: contain;
   display: block;
 }
@@ -2423,5 +2581,28 @@ watch(
   margin-top: 0.5rem;
   font-size: 0.8rem;
   color: var(--s-text-secondary);
+}
+
+/* ── Text editor ──────────────────────────────────────────────────── */
+.fm-text-editor {
+  width: 100%;
+  min-height: 50vh;
+  max-height: calc(80vh - 10rem);
+  resize: vertical;
+  background: var(--s-bg-input);
+  color: var(--s-text);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  padding: 0.75rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+
+  &:focus {
+    border-color: var(--s-accent);
+  }
 }
 </style>

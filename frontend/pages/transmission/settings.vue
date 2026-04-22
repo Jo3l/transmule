@@ -310,39 +310,6 @@
         :active="activeTab === 'network'"
       >
         <div class="box">
-          <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.listeningPort") }}</h6>
-          <SFormItem :label="$t('transmission.network.peerPort')">
-            <SInputNumber
-              v-model="network.peerPort"
-              :min="1024"
-              :max="65535"
-              class="w-160"
-              @update:model-value="saveNetwork"
-            />
-            <SButton size="sm" class="ml-3" :loading="testingPort" @click="testPort">
-              <span class="mdi mdi-lan-check mr-1" />
-              {{ $t("transmission.network.testPort") }}
-            </SButton>
-            <STag
-              v-if="portTestResult !== null"
-              :variant="portTestResult ? 'success' : 'danger'"
-              size="sm"
-              class="ml-2"
-            >
-              {{
-                portTestResult ? $t("transmission.network.open") : $t("transmission.network.closed")
-              }}
-            </STag>
-          </SFormItem>
-          <SFormItem :label="$t('transmission.network.randomizePort')">
-            <SSwitch v-model="network.randomPort" @update:model-value="saveNetwork" />
-          </SFormItem>
-          <SFormItem :label="$t('transmission.network.enablePortForwarding')">
-            <SSwitch v-model="network.portForwarding" @update:model-value="saveNetwork" />
-          </SFormItem>
-
-          <SDivider />
-
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.protocol") }}</h6>
           <SFormItem :label="$t('transmission.network.enableUtp')">
             <SSwitch v-model="network.utpEnabled" @update:model-value="saveNetwork" />
@@ -418,9 +385,6 @@ const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slic
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const updatingBlocklist = ref(false);
-const testingPort = ref(false);
-const portTestResult = ref<boolean | null>(null);
-
 const timers: Record<string, ReturnType<typeof setTimeout> | null> = {
   speed: null,
   folders: null,
@@ -617,9 +581,6 @@ async function updateBlocklist() {
 // ── Network ──────────────────────────────────────────────────────────────────
 
 const network = reactive({
-  peerPort: 51413,
-  randomPort: false,
-  portForwarding: true,
   utpEnabled: true,
   peerLimitGlobal: 200,
   peerLimitPerTorrent: 50,
@@ -630,33 +591,12 @@ function saveNetwork() {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
-        "peer-port": network.peerPort,
-        "peer-port-random-on-start": network.randomPort,
-        "port-forwarding-enabled": network.portForwarding,
         "utp-enabled": network.utpEnabled,
         "peer-limit-global": network.peerLimitGlobal,
         "peer-limit-per-torrent": network.peerLimitPerTorrent,
       },
     });
   });
-}
-
-async function testPort() {
-  testingPort.value = true;
-  portTestResult.value = null;
-  try {
-    const res = await apiFetch<any>("/api/transmission/session", {
-      method: "POST",
-      body: { _action: "port-test" },
-    });
-    portTestResult.value = res.portIsOpen ?? false;
-    showToast(
-      res.portIsOpen ? t("transmission.network.portOpen") : t("transmission.network.portClosed"),
-      res.portIsOpen ? "success" : "warning",
-    );
-  } finally {
-    testingPort.value = false;
-  }
 }
 
 // ── Load session ─────────────────────────────────────────────────────────────
@@ -710,9 +650,6 @@ async function fetchSession() {
     privacy.blocklistSize = raw["blocklist-size"] || 0;
 
     // Network
-    network.peerPort = raw["peer-port"] ?? 51413;
-    network.randomPort = raw["peer-port-random-on-start"] ?? false;
-    network.portForwarding = raw["port-forwarding-enabled"] ?? true;
     network.utpEnabled = raw["utp-enabled"] ?? true;
     network.peerLimitGlobal = raw["peer-limit-global"] ?? 200;
     network.peerLimitPerTorrent = raw["peer-limit-per-torrent"] ?? 50;

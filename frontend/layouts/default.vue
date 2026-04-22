@@ -15,6 +15,9 @@
         </div>
 
         <div class="flex-center gap-md">
+          <ClientOnly>
+            <LazyDiskUsageWidget />
+          </ClientOnly>
           <LazyServiceDropdown />
           <!-- Transfer jobs systray -->
           <ClientOnly>

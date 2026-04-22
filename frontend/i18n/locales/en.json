@@ -982,11 +982,22 @@
     "compressUsePassword": "Protect with password",
     "passwordPlaceholder": "Leave blank if not protected",
     "extractDone": "Extraction completed",
+    "extractErrorTitle": "Extraction failed",
+    "close": "Close",
     "compressDone": "Compression completed",
     "extractStarted": "Extraction started in the background",
     "compressStarted": "Compression started in the background",
     "folderTree": "Folder tree",
-    "closeFolderTree": "Close folder tree"
+    "closeFolderTree": "Close folder tree",
+    "editText": "Edit text",
+    "editTextPlaceholder": "File content…",
+    "editTextSaved": "File saved",
+    "editTextLoadError": "Could not load file",
+    "editTextSaveError": "Could not save file",
+    "save": "Save",
+    "discardTitle": "Discard changes?",
+    "discardMessage": "You have unsaved changes. Are you sure you want to close without saving?",
+    "discardConfirm": "Discard"
   },
   "movies": {
     "title": "Movies",

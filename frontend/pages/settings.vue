@@ -918,8 +918,9 @@ watch(currentTheme, (v) => {
 async function applyTheme() {
   savingTheme.value = true;
   try {
-    setTheme(selectedTheme.value as any);
     await saveToServer(selectedTheme.value as any);
+    localStorage.setItem("sark-theme", selectedTheme.value);
+    window.location.reload();
   } finally {
     savingTheme.value = false;
   }

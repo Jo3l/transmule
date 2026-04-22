@@ -28,7 +28,7 @@
     "network": "Red",
     "amuleSettings": "Ajustes aMule",
     "torrentSearch": "Buscar",
-    "transmissionSettings": "Configuración de Transmission",
+    "transmissionSettings": "Ajustes Transmission",
     "pyload": "pyLoad",
     "pyloadDownloads": "Descargas",
     "disabled": "Detenido",
@@ -654,7 +654,7 @@
   },
   "transmission": {
     "settings": {
-      "title": "Configuración de Transmission"
+      "title": "Ajustes Transmission"
     },
     "downloadOptions": "Opciones de descarga",
     "trackers": {
@@ -982,11 +982,22 @@
     "compressUsePassword": "Proteger con contraseña",
     "passwordPlaceholder": "Dejar vacío si no está protegido",
     "extractDone": "Extracción completada",
+    "extractErrorTitle": "Error al extraer",
+    "close": "Cerrar",
     "compressDone": "Compresión completada",
     "extractStarted": "Extracción iniciada en segundo plano",
     "compressStarted": "Compresión iniciada en segundo plano",
     "folderTree": "Árbol de carpetas",
-    "closeFolderTree": "Cerrar árbol de carpetas"
+    "closeFolderTree": "Cerrar árbol de carpetas",
+    "editText": "Editar texto",
+    "editTextPlaceholder": "Contenido del archivo…",
+    "editTextSaved": "Archivo guardado",
+    "editTextLoadError": "No se pudo cargar el archivo",
+    "editTextSaveError": "No se pudo guardar el archivo",
+    "save": "Guardar",
+    "discardTitle": "¿Descartar cambios?",
+    "discardMessage": "Tienes cambios sin guardar. ¿Seguro que quieres cerrar sin guardar?",
+    "discardConfirm": "Descartar"
   },
   "movies": {
     "title": "Películas",
