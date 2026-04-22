@@ -49,26 +49,6 @@
             <span class="mdi mdi-upload mr-1" />{{ $t("fileManager.upload") }}
           </SButton>
           <SButton
-            v-if="isAdmin && selectedFiles.length > 0"
-            size="sm"
-            variant="primary"
-            @click="startSmartRenameForPaths(selectedFiles)"
-          >
-            <span class="mdi mdi-auto-fix mr-1" />{{ $t("fileManager.smartRename") }}
-          </SButton>
-          <SButton
-            v-if="isAdmin && selectedItems.size > 1"
-            size="sm"
-            @click="openTransferDialog(Array.from(selectedItems).map(childPath), 'move')"
-          >
-            <span class="mdi mdi-folder-move mr-1" />
-            {{ $t("fileManager.moveSelected", { count: selectedItems.size }) }}
-          </SButton>
-          <SButton v-if="selectedItems.size > 0" size="sm" @click="openCompressDialog">
-            <span class="mdi mdi-archive-arrow-up-outline mr-1" />
-            {{ $t("fileManager.compressSelected", { count: selectedItems.size }) }}
-          </SButton>
-          <SButton
             v-if="isAdmin && selectedItems.size > 0"
             size="sm"
             variant="danger"

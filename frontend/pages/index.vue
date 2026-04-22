@@ -33,9 +33,7 @@
         <div class="total-item" v-if="amuleTotals">
           <span class="mdi mdi-donkey icon-sm" />
           <strong>{{ amuleTotals.speed_fmt || "0" }}</strong>
-          <span class="has-text-grey is-size-7 ml-1"
-            >({{ amuleCount }} {{ $t("downloads.files") }})</span
-          >
+          <span class="has-text-grey is-size-7 ml-1">({{ amuleCount }} {{ $t("nav.files") }})</span>
         </div>
         <div class="total-item" v-if="torrentTotals">
           <span class="mdi mdi-magnet" />

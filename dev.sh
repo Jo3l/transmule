@@ -31,10 +31,36 @@ for dir in middleware frontend; do
   fi
 done
 
-# ── Warn if unar is not installed ────────────────────────────────────────────
-if ! command -v unar &>/dev/null; then
-  echo -e "${YELLOW}Warning: 'unar' not found. Archive extraction will not work.${NC}"
-  echo -e "${YELLOW}Install it with: sudo apt install unar  (or brew install unar on macOS)${NC}"
+# ── Ensure unar + lsar are installed (required for extraction with progress) ─
+if ! command -v unar &>/dev/null || ! command -v lsar &>/dev/null; then
+  echo -e "${CYAN}▸ Installing unar / lsar…${NC}"
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y --no-install-recommends unar
+  elif command -v brew &>/dev/null; then
+    brew install unar
+  elif command -v pacman &>/dev/null; then
+    sudo pacman -S --noconfirm unarchiver
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y unar
+  else
+    echo -e "${YELLOW}Warning: cannot auto-install unar. Install it manually (apt/brew/pacman/dnf).${NC}"
+  fi
+fi
+
+# ── Ensure zip is installed (required for compression with password) ──────────
+if ! command -v zip &>/dev/null; then
+  echo -e "${CYAN}▸ Installing zip…${NC}"
+  if command -v apt-get &>/dev/null; then
+    sudo apt-get install -y --no-install-recommends zip
+  elif command -v brew &>/dev/null; then
+    brew install zip
+  elif command -v pacman &>/dev/null; then
+    sudo pacman -S --noconfirm zip
+  elif command -v dnf &>/dev/null; then
+    sudo dnf install -y zip
+  else
+    echo -e "${YELLOW}Warning: cannot auto-install zip. Install it manually.${NC}"
+  fi
 fi
 
 # ── Ensure data directory exists ──────────────────────────────────────────────
