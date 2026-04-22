@@ -6,7 +6,7 @@ export default defineNitroConfig({
     openAPI: true,
   },
   rollupConfig: {
-    external: ["amule-ec-client", "node-7z", "7zip-bin"],
+    external: ["amule-ec-client", "node:sqlite"],
   },
   openAPI: {
     meta: {

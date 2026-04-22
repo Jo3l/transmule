@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import sevenBin from "7zip-bin";
 
 type CompressFormatOption = {
   value: string;
@@ -27,14 +26,14 @@ export default defineEventHandler(async (event) => {
   // is not configured/available for the current runtime.
   getDownloadsRoot();
 
-  const has7za = commandAvailable(sevenBin.path7za, ["i"]);
+  const hasUnar = commandAvailable("unar", ["-v"]);
+  const hasZip = commandAvailable("zip", ["-v"]);
   const hasTar = commandAvailable("tar", ["--version"]);
 
   const compressFormats: CompressFormatOption[] = [];
-  if (has7za) {
+  if (hasZip) {
     compressFormats.push(
       { value: "zip", label: "ZIP (.zip)", extension: ".zip" },
-      { value: "7z", label: "7-Zip (.7z)", extension: ".7z" },
     );
   }
   if (hasTar) {
@@ -52,8 +51,8 @@ export default defineEventHandler(async (event) => {
 
   const extractExtensions = new Set<string>();
 
-  // 7-Zip path covers the common archive set in this project.
-  if (has7za) {
+  // unar supports a wide range of archive formats.
+  if (hasUnar) {
     for (const ext of [
       ".zip",
       ".rar",
@@ -67,6 +66,8 @@ export default defineEventHandler(async (event) => {
       ".gz",
       ".bz2",
       ".xz",
+      ".cbz",
+      ".cbr",
     ]) {
       extractExtensions.add(ext);
     }
@@ -81,7 +82,8 @@ export default defineEventHandler(async (event) => {
       (a, b) => b.length - a.length,
     ),
     tools: {
-      has7za,
+      hasUnar,
+      hasZip,
       hasTar,
     },
   };
@@ -93,7 +95,8 @@ function commandAvailable(command: string, args: string[]): boolean {
       encoding: "utf8",
       timeout: 6000,
     });
-    return res.status === 0;
+    // zip -v exits with code 0; unar -v may exit 1 on some builds — treat both as "available"
+    return res.status === 0 || (res.status === 1 && !res.error);
   } catch {
     return false;
   }

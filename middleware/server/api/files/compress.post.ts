@@ -5,14 +5,15 @@
  * Returns a jobId immediately; actual work runs fire-and-forget in the same process.
  *
  * Supported formats:
- *   - zip, 7z               → 7-Zip CLI (bundled via 7zip-bin)
+ *   - zip       → zip CLI (supports optional password via ZipCrypto)
  *   - tar, tar.gz, tar.bz2, tar.xz → tar CLI
  *
  * Body: {
  *   sources: string[],       // relative paths within downloads root
  *   destination: string,     // relative path to output folder
  *   archiveName: string,     // desired archive filename (without or with extension)
- *   format: "zip" | "7z" | "tar" | "tar.gz" | "tar.bz2" | "tar.xz"
+ *   format: "zip" | "tar" | "tar.gz" | "tar.bz2" | "tar.xz",
+ *   password?: string        // optional password (zip only)
  * }
  * Returns: { jobId: string }
  */
@@ -21,11 +22,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { join, basename, dirname } from "node:path";
-import sevenBin from "7zip-bin";
 
 const VALID_FORMATS = [
   "zip",
-  "7z",
   "tar",
   "tar.gz",
   "tar.bz2",
@@ -49,7 +48,7 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const body = await readBody(event);
-  const { sources, destination, archiveName, format } = body ?? {};
+  const { sources, destination, archiveName, format, password } = body ?? {};
 
   if (
     !Array.isArray(sources) ||
@@ -114,7 +113,7 @@ export default defineEventHandler(async (event) => {
     name: normalizedName,
     mode: "compress",
     sources: absSources,
-    destination: archivePath, // store archive path so UI can display it
+    destination: archivePath,
     total: 1,
     done: 0,
     status: "running",
@@ -129,6 +128,7 @@ export default defineEventHandler(async (event) => {
     relNames,
     archivePath,
     format as CompressFormat,
+    typeof password === "string" && password.length > 0 ? password : undefined,
   ).catch((err) => {
     const job = globalThis.__transferJobs.get(jobId);
     if (job) {
@@ -147,15 +147,17 @@ function runCompress(
   relNames: string[],
   archivePath: string,
   format: CompressFormat,
+  password?: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let cmd: string;
     let args: string[];
 
-    if (format === "zip" || format === "7z") {
-      const typeFlag = format === "zip" ? "-tzip" : "-t7z";
-      cmd = sevenBin.path7za;
-      args = ["a", typeFlag, archivePath, ...relNames];
+    if (format === "zip") {
+      cmd = "zip";
+      args = password
+        ? ["-P", password, "-r", "-q", archivePath, ...relNames]
+        : ["-r", "-q", archivePath, ...relNames];
     } else {
       // tar formats
       const compressionFlag =
