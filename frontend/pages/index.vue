@@ -1402,10 +1402,10 @@
         />
       </SFormItem>
       <template #footer>
+        <SButton @click="showAddLink = false">{{ $t("downloads.addEd2kDialog.cancel") }}</SButton>
         <SButton variant="primary" :loading="addingLink" @click="addLink">{{
           $t("downloads.addEd2kDialog.add")
         }}</SButton>
-        <SButton @click="showAddLink = false">{{ $t("downloads.addEd2kDialog.cancel") }}</SButton>
       </template>
     </SDialog>
 
@@ -1425,16 +1425,14 @@
         class="mb-3"
       />
       <template #footer>
-        <SButton variant="primary" :loading="addingTorrent" @click="addTorrent">{{
-          $t("downloads.addTorrentDialog.add")
-        }}</SButton>
         <SButton @click="showAddTorrent = false">{{
           $t("downloads.addTorrentDialog.cancel")
         }}</SButton>
+        <SButton variant="primary" :loading="addingTorrent" @click="addTorrent">{{
+          $t("downloads.addTorrentDialog.add")
+        }}</SButton>
       </template>
     </SDialog>
-
-    <!-- Add pyLoad package dialog -->
     <SDialog v-model="showAddPyload" :title="$t('downloads.addPyloadDialog.title')" width="520px">
       <SFormItem :label="$t('downloads.addPyloadDialog.nameLabel')">
         <SInput
@@ -1451,16 +1449,14 @@
         />
       </SFormItem>
       <template #footer>
-        <SButton variant="primary" :loading="addingPyload" @click="addPyloadPackage">{{
-          $t("downloads.addPyloadDialog.add")
-        }}</SButton>
         <SButton @click="showAddPyload = false">{{
           $t("downloads.addPyloadDialog.cancel")
         }}</SButton>
+        <SButton variant="primary" :loading="addingPyload" @click="addPyloadPackage">{{
+          $t("downloads.addPyloadDialog.add")
+        }}</SButton>
       </template>
     </SDialog>
-
-    <!-- Torrent remove confirmation -->
     <SDialog v-model="showRemoveDialog" :title="$t('downloads.removeDialog.title')" width="400px">
       <p>
         {{ $t("downloads.removeDialog.message", { n: selectedTorrents.length })

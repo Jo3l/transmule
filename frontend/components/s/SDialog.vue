@@ -1,7 +1,12 @@
 <template>
   <Teleport to="body">
-    <div v-if="modelValue" class="s-dialog-overlay" @click.self="close">
-      <div class="s-dialog" :style="{ width }">
+    <div
+      v-if="modelValue"
+      class="s-dialog-overlay"
+      @mousedown.self="overlayMousedown"
+      @mouseup.self="overlayMouseup"
+    >
+      <div class="s-dialog" :style="{ width }" @mousedown.stop="dialogMousedown">
         <div class="s-dialog__header">
           <span>{{ title }}</span>
           <button class="s-dialog__close" @click="close">
@@ -34,6 +39,23 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ "update:modelValue": [val: boolean] }>();
+
+// Only close when both mousedown AND mouseup happen on the overlay itself,
+// not when the user starts a drag inside the dialog and releases outside.
+let mousedownOnOverlay = false;
+
+function overlayMousedown() {
+  mousedownOnOverlay = true;
+}
+
+function dialogMousedown() {
+  mousedownOnOverlay = false;
+}
+
+function overlayMouseup() {
+  if (mousedownOnOverlay) close();
+  mousedownOnOverlay = false;
+}
 
 function close() {
   emit("update:modelValue", false);
