@@ -10,6 +10,14 @@
           <span class="sidebar-version">v{{ APP_VERSION }}</span>
         </div>
       </div>
+
+      <!-- Mobile-only: service controls moved from topbar -->
+      <div class="sidebar-mobile-controls is-hidden-tablet">
+        <LazyServiceDropdown />
+        <SButton size="sm" @click="doLogout">
+          <span class="mdi mdi-logout" />
+        </SButton>
+      </div>
       <div class="menu">
         <ul class="menu-list">
           <li>
@@ -198,6 +206,12 @@ import { init as initSceneMatrix } from "~/assets/scenes/scene-matrix.js";
 
 defineProps<{ open: boolean }>();
 defineEmits<{ close: [] }>();
+
+const auth = useAuth();
+function doLogout() {
+  auth.clear();
+  navigateTo("/login");
+}
 
 const sidebarCanvas = ref<HTMLCanvasElement | null>(null);
 let destroyScene: (() => void) | null = null;

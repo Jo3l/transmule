@@ -25,10 +25,12 @@
             {{ $t("settings.canvasEffectsDescription") }}
           </p>
 
-          <SButton variant="primary" :loading="savingTheme" @click="applyTheme">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("settings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="savingTheme" @click="applyTheme">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -47,10 +49,12 @@
             </SSelect>
           </SFormItem>
 
-          <SButton variant="primary" :loading="savingLocale" @click="applyLocale">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("settings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="savingLocale" @click="applyLocale">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -70,10 +74,12 @@
           <p v-if="selfPwError" class="has-text-danger is-size-7 mb-3">
             {{ selfPwError }}
           </p>
-          <SButton variant="primary" :loading="savingSelfPw" @click="submitSelfPw">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("settings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="savingSelfPw" @click="submitSelfPw">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -259,23 +265,19 @@
 
           <SDivider />
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.addUser") }}</h6>
-          <div class="columns">
-            <div class="column is-4">
+          <div class="add-user-form">
+            <div class="add-user-fields">
               <SFormItem :label="$t('settings.username')"
                 ><SInput v-model="newUsername" size="sm"
               /></SFormItem>
-            </div>
-            <div class="column is-4">
               <SFormItem :label="$t('settings.password')"
                 ><SInput v-model="newPassword" type="password" size="sm"
               /></SFormItem>
-            </div>
-            <div class="column is-2">
               <SFormItem :label="$t('settings.admin')"
                 ><SCheckbox v-model="newIsAdmin"
               /></SFormItem>
             </div>
-            <div class="column is-2 is-flex is-align-items-flex-end">
+            <div class="add-user-action">
               <SButton variant="success" size="sm" @click="addUser">
                 <span class="mdi mdi-account-plus mr-1" />
                 {{ $t("settings.add") }}
@@ -1578,8 +1580,32 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
 </script>
 
 <style scoped>
+/* Add user form */
+.add-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.add-user-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+
+  > * {
+    flex: 1 1 160px;
+    min-width: 120px;
+  }
+}
+
+.add-user-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .stt-btn-row {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
 }

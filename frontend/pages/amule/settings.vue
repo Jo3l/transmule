@@ -19,10 +19,12 @@
 
           <SDivider />
 
-          <SButton variant="primary" :loading="saving" @click="save('general')">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("amuleSettings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="save('general')">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("amuleSettings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -150,10 +152,12 @@
 
           <SDivider />
 
-          <SButton variant="primary" :loading="saving" @click="save('connection')">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("amuleSettings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="save('connection')">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("amuleSettings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -199,10 +203,12 @@
 
           <SDivider />
 
-          <SButton variant="primary" :loading="saving" @click="save('servers')">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("amuleSettings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="save('servers')">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("amuleSettings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -302,10 +308,12 @@
 
           <SDivider />
 
-          <SButton variant="primary" :loading="saving" @click="save('security')">
-            <span class="mdi mdi-content-save mr-1" />
-            {{ $t("amuleSettings.save") }}
-          </SButton>
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="save('security')">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("amuleSettings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
     </STabs>

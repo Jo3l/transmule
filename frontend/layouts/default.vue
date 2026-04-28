@@ -18,17 +18,17 @@
           <ClientOnly>
             <LazyDiskUsageWidget />
           </ClientOnly>
-          <LazyServiceDropdown />
+          <LazyServiceDropdown class="is-hidden-mobile" />
           <!-- Transfer jobs systray -->
           <ClientOnly>
             <LazyTransferSystray />
           </ClientOnly>
-          <span class="has-text-grey-dark is-size-7">
+          <span class="has-text-grey-dark is-size-7 is-hidden-mobile">
             <STag size="sm" class="ml-1">
               <span class="mdi mdi-account" /> {{ user?.username }}
             </STag>
           </span>
-          <SButton size="sm" @click="doLogout">
+          <SButton size="sm" class="is-hidden-mobile" @click="doLogout">
             <span class="mdi mdi-logout" />
           </SButton>
         </div>

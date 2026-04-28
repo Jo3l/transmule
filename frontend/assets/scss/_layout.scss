@@ -79,6 +79,20 @@
     }
   }
 
+  .sidebar-mobile-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--s-sidebar-border);
+
+    // Let the service dropdown grow and fill available space
+    #comp-service-dropdown {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
   .menu {
     padding: 0.5rem 0;
     flex: 1;

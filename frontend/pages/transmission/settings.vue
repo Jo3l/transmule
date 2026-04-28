@@ -16,14 +16,13 @@
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.speed.normal") }}</h6>
 
           <SFormItem :label="$t('transmission.speed.limitDown')">
-            <SSwitch v-model="speed.dlEnabled" @update:model-value="saveSpeed" />
+            <SSwitch v-model="speed.dlEnabled" />
             <SInputNumber
               v-if="speed.dlEnabled"
               v-model="speed.dlSpeed"
               :min="0"
               :step="50"
               class="ml-3 w-160"
-              @update:model-value="saveSpeed"
             />
             <span v-if="speed.dlEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.speed.kbs")
@@ -31,14 +30,13 @@
           </SFormItem>
 
           <SFormItem :label="$t('transmission.speed.limitUp')">
-            <SSwitch v-model="speed.ulEnabled" @update:model-value="saveSpeed" />
+            <SSwitch v-model="speed.ulEnabled" />
             <SInputNumber
               v-if="speed.ulEnabled"
               v-model="speed.ulSpeed"
               :min="0"
               :step="50"
               class="ml-3 w-160"
-              @update:model-value="saveSpeed"
             />
             <span v-if="speed.ulEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.speed.kbs")
@@ -52,63 +50,42 @@
           </h6>
 
           <SFormItem :label="$t('transmission.speed.altEnabled')">
-            <SSwitch v-model="speed.altEnabled" @update:model-value="saveSpeed" />
+            <SSwitch v-model="speed.altEnabled" />
           </SFormItem>
           <SFormItem :label="$t('transmission.speed.altDown')">
-            <SInputNumber
-              v-model="speed.altDown"
-              :min="0"
-              :step="10"
-              class="w-160"
-              @update:model-value="saveSpeed"
-            />
+            <SInputNumber v-model="speed.altDown" :min="0" :step="10" class="w-160" />
             <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
           </SFormItem>
           <SFormItem :label="$t('transmission.speed.altUp')">
-            <SInputNumber
-              v-model="speed.altUp"
-              :min="0"
-              :step="10"
-              class="w-160"
-              @update:model-value="saveSpeed"
-            />
+            <SInputNumber v-model="speed.altUp" :min="0" :step="10" class="w-160" />
             <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
           </SFormItem>
 
           <SFormItem :label="$t('transmission.speed.scheduleAlt')">
-            <SSwitch v-model="speed.altTimeEnabled" @update:model-value="saveSpeed" />
+            <SSwitch v-model="speed.altTimeEnabled" />
           </SFormItem>
 
           <template v-if="speed.altTimeEnabled">
             <SFormItem :label="$t('transmission.speed.startTime')">
-              <SInputNumber
-                v-model="speed.altTimeBegin"
-                :min="0"
-                :max="1439"
-                class="w-160"
-                @update:model-value="saveSpeed"
-              />
+              <SInputNumber v-model="speed.altTimeBegin" :min="0" :max="1439" class="w-160" />
               <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(speed.altTimeBegin) }}</span>
             </SFormItem>
             <SFormItem :label="$t('transmission.speed.endTime')">
-              <SInputNumber
-                v-model="speed.altTimeEnd"
-                :min="0"
-                :max="1439"
-                class="w-160"
-                @update:model-value="saveSpeed"
-              />
+              <SInputNumber v-model="speed.altTimeEnd" :min="0" :max="1439" class="w-160" />
               <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(speed.altTimeEnd) }}</span>
             </SFormItem>
             <SFormItem :label="$t('transmission.speed.scheduledDays')">
-              <SSelect
-                v-model="speed.altTimeDay"
-                :options="dayOptions"
-                class="w-200"
-                @update:model-value="saveSpeed"
-              />
+              <SSelect v-model="speed.altTimeDay" :options="dayOptions" class="w-200" />
             </SFormItem>
           </template>
+
+          <SDivider />
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="saveSpeed">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -123,25 +100,19 @@
             {{ $t("transmission.downloadOptions") }}
           </h6>
           <SFormItem :label="$t('transmission.folders.startWhenAdded')">
-            <SSwitch v-model="folders.startAdded" @update:model-value="saveFolders" />
+            <SSwitch v-model="folders.startAdded" />
           </SFormItem>
           <SFormItem :label="$t('transmission.folders.renamePartial')">
-            <SSwitch v-model="folders.renamePartial" @update:model-value="saveFolders" />
+            <SSwitch v-model="folders.renamePartial" />
           </SFormItem>
           <SFormItem :label="$t('transmission.folders.trashTorrent')">
-            <SSwitch v-model="folders.trashOriginal" @update:model-value="saveFolders" />
+            <SSwitch v-model="folders.trashOriginal" />
           </SFormItem>
 
           <SDivider />
 
           <SFormItem :label="$t('transmission.folders.cacheSize')">
-            <SInputNumber
-              v-model="folders.cacheSizeMb"
-              :min="0"
-              :step="1"
-              class="w-120"
-              @update:model-value="saveFolders"
-            />
+            <SInputNumber v-model="folders.cacheSizeMb" :min="0" :step="1" class="w-120" />
             <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.folders.mb") }}</span>
           </SFormItem>
 
@@ -150,16 +121,23 @@
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.folders.scriptSection") }}</h6>
 
           <SFormItem :label="$t('transmission.folders.runScript')">
-            <SSwitch v-model="folders.scriptEnabled" @update:model-value="saveFolders" />
+            <SSwitch v-model="folders.scriptEnabled" />
           </SFormItem>
           <SFormItem v-if="folders.scriptEnabled" :label="$t('transmission.folders.scriptPath')">
             <SInput
               v-model="folders.scriptFilename"
               :placeholder="$t('transmission.folders.scriptPlaceholder')"
               class="mw-400"
-              @blur="saveFolders"
             />
           </SFormItem>
+
+          <SDivider />
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="saveFolders">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -172,7 +150,7 @@
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.seedRatio") }}</h6>
           <SFormItem :label="$t('transmission.sharing.stopAtRatio')">
-            <SSwitch v-model="sharing.seedRatioLimited" @update:model-value="saveSharing" />
+            <SSwitch v-model="sharing.seedRatioLimited" />
             <SInputNumber
               v-if="sharing.seedRatioLimited"
               v-model="sharing.seedRatioLimit"
@@ -180,7 +158,6 @@
               :step="0.1"
               :precision="2"
               class="ml-3 w-140"
-              @update:model-value="saveSharing"
             />
           </SFormItem>
 
@@ -188,14 +165,13 @@
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.idleSeeding") }}</h6>
           <SFormItem :label="$t('transmission.sharing.stopIfIdle')">
-            <SSwitch v-model="sharing.idleSeedingLimitEnabled" @update:model-value="saveSharing" />
+            <SSwitch v-model="sharing.idleSeedingLimitEnabled" />
             <SInputNumber
               v-if="sharing.idleSeedingLimitEnabled"
               v-model="sharing.idleSeedingLimit"
               :min="1"
               :step="5"
               class="ml-3 w-140"
-              @update:model-value="saveSharing"
             />
             <span v-if="sharing.idleSeedingLimitEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.sharing.minutes")
@@ -206,41 +182,46 @@
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.sharing.queue") }}</h6>
           <SFormItem :label="$t('transmission.sharing.limitDownQueue')">
-            <SSwitch v-model="sharing.downloadQueueEnabled" @update:model-value="saveSharing" />
+            <SSwitch v-model="sharing.downloadQueueEnabled" />
             <SInputNumber
               v-if="sharing.downloadQueueEnabled"
               v-model="sharing.downloadQueueSize"
               :min="1"
               :step="1"
               class="ml-3 w-120"
-              @update:model-value="saveSharing"
             />
           </SFormItem>
           <SFormItem :label="$t('transmission.sharing.limitSeedQueue')">
-            <SSwitch v-model="sharing.seedQueueEnabled" @update:model-value="saveSharing" />
+            <SSwitch v-model="sharing.seedQueueEnabled" />
             <SInputNumber
               v-if="sharing.seedQueueEnabled"
               v-model="sharing.seedQueueSize"
               :min="1"
               :step="1"
               class="ml-3 w-120"
-              @update:model-value="saveSharing"
             />
           </SFormItem>
           <SFormItem :label="$t('transmission.sharing.stalledHandling')">
-            <SSwitch v-model="sharing.queueStalledEnabled" @update:model-value="saveSharing" />
+            <SSwitch v-model="sharing.queueStalledEnabled" />
             <SInputNumber
               v-if="sharing.queueStalledEnabled"
               v-model="sharing.queueStalledMinutes"
               :min="1"
               :step="5"
               class="ml-3 w-120"
-              @update:model-value="saveSharing"
             />
             <span v-if="sharing.queueStalledEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.sharing.minutesStalled")
             }}</span>
           </SFormItem>
+
+          <SDivider />
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="saveSharing">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -253,41 +234,31 @@
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.encryption") }}</h6>
           <SFormItem :label="$t('transmission.privacy.encryptionMode')">
-            <SSelect
-              v-model="privacy.encryption"
-              :options="encryptionOptions"
-              class="w-200"
-              @update:model-value="savePrivacy"
-            />
+            <SSelect v-model="privacy.encryption" :options="encryptionOptions" class="w-200" />
           </SFormItem>
 
           <SDivider />
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.peerDiscovery") }}</h6>
           <SFormItem :label="$t('transmission.privacy.dht')">
-            <SSwitch v-model="privacy.dhtEnabled" @update:model-value="savePrivacy" />
+            <SSwitch v-model="privacy.dhtEnabled" />
           </SFormItem>
           <SFormItem :label="$t('transmission.privacy.pex')">
-            <SSwitch v-model="privacy.pexEnabled" @update:model-value="savePrivacy" />
+            <SSwitch v-model="privacy.pexEnabled" />
           </SFormItem>
           <SFormItem :label="$t('transmission.privacy.lpd')">
-            <SSwitch v-model="privacy.lpdEnabled" @update:model-value="savePrivacy" />
+            <SSwitch v-model="privacy.lpdEnabled" />
           </SFormItem>
 
           <SDivider />
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.privacy.blocklist") }}</h6>
           <SFormItem :label="$t('transmission.privacy.enableBlocklist')">
-            <SSwitch v-model="privacy.blocklistEnabled" @update:model-value="savePrivacy" />
+            <SSwitch v-model="privacy.blocklistEnabled" />
           </SFormItem>
           <template v-if="privacy.blocklistEnabled">
             <SFormItem :label="$t('transmission.privacy.blocklistUrl')">
-              <SInput
-                v-model="privacy.blocklistUrl"
-                placeholder="https://..."
-                class="mw-400"
-                @blur="savePrivacy"
-              />
+              <SInput v-model="privacy.blocklistUrl" placeholder="https://..." class="mw-400" />
             </SFormItem>
             <SFormItem :label="$t('transmission.privacy.blocklistSize')">
               <span
@@ -300,6 +271,14 @@
               </SButton>
             </SFormItem>
           </template>
+
+          <SDivider />
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="savePrivacy">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -312,30 +291,26 @@
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.protocol") }}</h6>
           <SFormItem :label="$t('transmission.network.enableUtp')">
-            <SSwitch v-model="network.utpEnabled" @update:model-value="saveNetwork" />
+            <SSwitch v-model="network.utpEnabled" />
           </SFormItem>
 
           <SDivider />
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.peerLimits") }}</h6>
           <SFormItem :label="$t('transmission.network.globalPeerLimit')">
-            <SInputNumber
-              v-model="network.peerLimitGlobal"
-              :min="1"
-              :step="10"
-              class="w-160"
-              @update:model-value="saveNetwork"
-            />
+            <SInputNumber v-model="network.peerLimitGlobal" :min="1" :step="10" class="w-160" />
           </SFormItem>
           <SFormItem :label="$t('transmission.network.perTorrentPeerLimit')">
-            <SInputNumber
-              v-model="network.peerLimitPerTorrent"
-              :min="1"
-              :step="5"
-              class="w-160"
-              @update:model-value="saveNetwork"
-            />
+            <SInputNumber v-model="network.peerLimitPerTorrent" :min="1" :step="5" class="w-160" />
           </SFormItem>
+
+          <SDivider />
+          <div class="flex-end">
+            <SButton variant="primary" :loading="saving" @click="saveNetwork">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -359,7 +334,7 @@
             class="trackers-textarea"
             :placeholder="$t('torrentSearch.trackersPlaceholder')"
           />
-          <div class="mt-3">
+          <div class="flex-end mt-3">
             <SButton variant="primary" :loading="savingTrackers" @click="saveTrackers">
               <span class="mdi mdi-content-save mr-1" /> {{ $t("settings.save") }}
             </SButton>
@@ -384,19 +359,8 @@ const VALID_TABS = ["speed", "folders", "sharing", "privacy", "network", "tracke
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "speed");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
+const saving = ref(false);
 const updatingBlocklist = ref(false);
-const timers: Record<string, ReturnType<typeof setTimeout> | null> = {
-  speed: null,
-  folders: null,
-  sharing: null,
-  privacy: null,
-  network: null,
-};
-
-function debounce(key: string, fn: () => void) {
-  if (timers[key]) clearTimeout(timers[key]!);
-  timers[key] = setTimeout(fn, 600);
-}
 
 // ── Tab panes ────────────────────────────────────────────────────────────────
 
@@ -444,8 +408,9 @@ function fmtTime(mins: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function saveSpeed() {
-  debounce("speed", async () => {
+async function saveSpeed() {
+  saving.value = true;
+  try {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
@@ -462,7 +427,10 @@ function saveSpeed() {
         "alt-speed-time-day": speed.altTimeDay,
       },
     });
-  });
+    showToast(t("settings.saved"), "success");
+  } finally {
+    saving.value = false;
+  }
 }
 
 // ── Folders ──────────────────────────────────────────────────────────────────
@@ -476,8 +444,9 @@ const folders = reactive({
   scriptFilename: "",
 });
 
-function saveFolders() {
-  debounce("folders", async () => {
+async function saveFolders() {
+  saving.value = true;
+  try {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
@@ -489,7 +458,10 @@ function saveFolders() {
         "script-torrent-done-filename": folders.scriptFilename,
       },
     });
-  });
+    showToast(t("settings.saved"), "success");
+  } finally {
+    saving.value = false;
+  }
 }
 
 // ── Sharing ──────────────────────────────────────────────────────────────────
@@ -507,8 +479,9 @@ const sharing = reactive({
   queueStalledMinutes: 30,
 });
 
-function saveSharing() {
-  debounce("sharing", async () => {
+async function saveSharing() {
+  saving.value = true;
+  try {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
@@ -524,7 +497,10 @@ function saveSharing() {
         "queue-stalled-minutes": sharing.queueStalledMinutes,
       },
     });
-  });
+    showToast(t("settings.saved"), "success");
+  } finally {
+    saving.value = false;
+  }
 }
 
 // ── Privacy ──────────────────────────────────────────────────────────────────
@@ -545,8 +521,9 @@ const encryptionOptions = computed(() => [
   { label: t("transmission.privacy.allowUnencrypted"), value: "tolerated" },
 ]);
 
-function savePrivacy() {
-  debounce("privacy", async () => {
+async function savePrivacy() {
+  saving.value = true;
+  try {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
@@ -558,7 +535,10 @@ function savePrivacy() {
         "blocklist-url": privacy.blocklistUrl,
       },
     });
-  });
+    showToast(t("settings.saved"), "success");
+  } finally {
+    saving.value = false;
+  }
 }
 
 async function updateBlocklist() {
@@ -586,8 +566,9 @@ const network = reactive({
   peerLimitPerTorrent: 50,
 });
 
-function saveNetwork() {
-  debounce("network", async () => {
+async function saveNetwork() {
+  saving.value = true;
+  try {
     await apiFetch("/api/transmission/session", {
       method: "POST",
       body: {
@@ -596,7 +577,10 @@ function saveNetwork() {
         "peer-limit-per-torrent": network.peerLimitPerTorrent,
       },
     });
-  });
+    showToast(t("settings.saved"), "success");
+  } finally {
+    saving.value = false;
+  }
 }
 
 // ── Load session ─────────────────────────────────────────────────────────────

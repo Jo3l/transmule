@@ -231,15 +231,34 @@ export class PyLoadClient {
     });
 
     this.updateCookies(res);
-    const loginResponseHtml = await res.text().catch(() => "");
-    const tokenFromResponse = this.extractCsrfToken(loginResponseHtml);
-    if (tokenFromResponse) this.csrfToken = tokenFromResponse;
 
     // Successful login generally redirects to dashboard and sets session cookie.
     const ok =
       [200, 302, 303].includes(res.status) &&
       this.cookieHeader.includes("session=");
     this.hasSessionAuth = ok;
+
+    if (ok) {
+      // The login response is a redirect (302/303) whose body contains no CSRF token.
+      // Fetch the dashboard with the new session cookie to get the post-login CSRF token
+      // that is valid for the authenticated session.
+      try {
+        const dashRes = await fetch(`${this.baseUrl}/`, {
+          headers: {
+            Accept: "text/html,application/xhtml+xml",
+            Cookie: this.cookieHeader,
+          },
+          signal: AbortSignal.timeout(15_000),
+        });
+        this.updateCookies(dashRes);
+        const dashHtml = await dashRes.text().catch(() => "");
+        const freshToken = this.extractCsrfToken(dashHtml);
+        if (freshToken) this.csrfToken = freshToken;
+      } catch {
+        // Non-fatal: proceed with whatever token we have from the login page.
+      }
+    }
+
     return ok;
   }
 

@@ -15,21 +15,15 @@
             <div class="kv-list">
               <div class="kv-row">
                 <span class="kv-label">{{ $t("kad.kadUsers") }}</span>
-                <span class="kv-value">{{
-                  (kadUsers || 0).toLocaleString()
-                }}</span>
+                <span class="kv-value">{{ (kadUsers || 0).toLocaleString() }}</span>
               </div>
               <div class="kv-row">
                 <span class="kv-label">{{ $t("kad.kadFiles") }}</span>
-                <span class="kv-value">{{
-                  (kadFiles || 0).toLocaleString()
-                }}</span>
+                <span class="kv-value">{{ (kadFiles || 0).toLocaleString() }}</span>
               </div>
               <div class="kv-row">
                 <span class="kv-label">{{ $t("kad.kadNodes") }}</span>
-                <span class="kv-value">{{
-                  (kadNodes || 0).toLocaleString()
-                }}</span>
+                <span class="kv-value">{{ (kadNodes || 0).toLocaleString() }}</span>
               </div>
             </div>
           </div>
@@ -46,10 +40,7 @@
         <div class="columns">
           <div class="column is-6">
             <SFormItem :label="$t('kad.ipAddress')">
-              <SInput
-                v-model="bootstrapIp"
-                :placeholder="$t('kad.ipPlaceholder')"
-              >
+              <SInput v-model="bootstrapIp" :placeholder="$t('kad.ipPlaceholder')">
                 <template #prefix><span class="mdi mdi-ip-network" /></template>
               </SInput>
             </SFormItem>
@@ -63,12 +54,12 @@
               />
             </SFormItem>
           </div>
-          <div class="column is-3 is-flex is-align-items-flex-end">
-            <SButton variant="primary" native-type="submit" :loading="loading">
-              <span class="mdi mdi-connection mr-1" />
-              {{ $t("kad.bootstrapButton") }}
-            </SButton>
-          </div>
+        </div>
+        <div class="flex-end">
+          <SButton variant="primary" native-type="submit" :loading="loading">
+            <span class="mdi mdi-connection mr-1" />
+            {{ $t("kad.bootstrapButton") }}
+          </SButton>
         </div>
       </form>
     </div>

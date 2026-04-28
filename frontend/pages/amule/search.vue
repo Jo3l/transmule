@@ -4,16 +4,14 @@
 
     <div class="box mb-4">
       <form @submit.prevent="startSearch">
-        <div class="columns is-multiline">
-          <div class="column is-6">
-            <SFormItem :label="$t('search.label')">
+        <div class="search-form">
+          <div class="search-form__row search-form__row--main">
+            <SFormItem :label="$t('search.label')" class="search-form__query">
               <SInput v-model="query" :placeholder="$t('search.placeholder')">
                 <template #prefix><span class="mdi mdi-magnify" /></template>
               </SInput>
             </SFormItem>
-          </div>
-          <div class="column is-3">
-            <SFormItem :label="$t('search.type')">
+            <SFormItem :label="$t('search.type')" class="search-form__type">
               <SSelect
                 v-model="searchType"
                 :options="[
@@ -23,22 +21,18 @@
                 ]"
               />
             </SFormItem>
-          </div>
-          <div class="column is-3">
-            <SFormItem :label="$t('search.minSources')">
+            <SFormItem :label="$t('search.minSources')" class="search-form__sources">
               <SInput v-model="avail" type="number" placeholder="0" />
             </SFormItem>
           </div>
-          <div class="column is-3">
-            <SFormItem :label="$t('search.minSize')">
+          <div class="search-form__row search-form__row--size">
+            <SFormItem :label="$t('search.minSize')" class="search-form__size">
               <div class="flex-row gap-sm">
                 <SInput v-model="minSize" type="number" placeholder="0" />
                 <SSelect v-model="minSizeUnit" :options="sizeUnits" />
               </div>
             </SFormItem>
-          </div>
-          <div class="column is-3">
-            <SFormItem :label="$t('search.maxSize')">
+            <SFormItem :label="$t('search.maxSize')" class="search-form__size">
               <div class="flex-row gap-sm">
                 <SInput v-model="maxSize" type="number" placeholder="0" />
                 <SSelect v-model="maxSizeUnit" :options="sizeUnits" />
@@ -46,7 +40,7 @@
             </SFormItem>
           </div>
         </div>
-        <div class="flex-center gap-md">
+        <div class="flex-end gap-md mt-3">
           <SButton
             variant="primary"
             native-type="submit"
@@ -273,3 +267,47 @@ onUnmounted(() => {
   stopPolling();
 });
 </script>
+
+<style scoped>
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.search-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+/* Main row: query grows, type and sources are fixed-ish */
+.search-form__query {
+  flex: 2 1 200px;
+  min-width: 0;
+}
+.search-form__type {
+  flex: 1 1 120px;
+  min-width: 100px;
+}
+.search-form__sources {
+  flex: 1 1 100px;
+  min-width: 80px;
+}
+
+/* Size row: both halves share space equally */
+.search-form__size {
+  flex: 1 1 180px;
+  min-width: 150px;
+}
+
+@media (max-width: 480px) {
+  .search-form__query,
+  .search-form__type,
+  .search-form__sources,
+  .search-form__size {
+    flex: 1 1 100%;
+  }
+}
+</style>

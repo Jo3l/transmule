@@ -1,5 +1,10 @@
 <template>
-  <div id="comp-service-dropdown" v-if="isAdmin && loaded" class="service-dropdown" ref="dropdownRef">
+  <div
+    id="comp-service-dropdown"
+    v-if="isAdmin && loaded"
+    class="service-dropdown"
+    ref="dropdownRef"
+  >
     <SButton size="sm" @click="open = !open">
       <span class="mdi mdi-server-network" />
       <span class="service-dropdown__label">{{ $t("services.title") }}</span>
@@ -13,15 +18,8 @@
           <div class="service-dropdown__row">
             <span class="mdi mdi-donkey service-dropdown__icon" />
             <span class="service-dropdown__name">aMule</span>
-            <STag
-              :variant="services?.amule?.running ? 'success' : 'danger'"
-              size="sm"
-            >
-              {{
-                services?.amule?.running
-                  ? $t("services.running")
-                  : $t("services.stopped")
-              }}
+            <STag :variant="services?.amule?.running ? 'success' : 'danger'" size="sm">
+              {{ services?.amule?.running ? $t("services.running") : $t("services.stopped") }}
             </STag>
           </div>
           <div
@@ -39,15 +37,8 @@
             :loading="loading.amule"
             @click="toggle('amule')"
           >
-            <span
-              class="mdi"
-              :class="services?.amule?.running ? 'mdi-stop' : 'mdi-play'"
-            />
-            {{
-              services?.amule?.running
-                ? $t("services.stop")
-                : $t("services.start")
-            }}
+            <span class="mdi" :class="services?.amule?.running ? 'mdi-stop' : 'mdi-play'" />
+            {{ services?.amule?.running ? $t("services.stop") : $t("services.start") }}
           </SButton>
         </div>
 
@@ -58,21 +49,14 @@
           <div class="service-dropdown__row">
             <span class="mdi mdi-magnet service-dropdown__icon" />
             <span class="service-dropdown__name">Transmission</span>
-            <STag
-              :variant="services?.transmission?.running ? 'success' : 'danger'"
-              size="sm"
-            >
+            <STag :variant="services?.transmission?.running ? 'success' : 'danger'" size="sm">
               {{
-                services?.transmission?.running
-                  ? $t("services.running")
-                  : $t("services.stopped")
+                services?.transmission?.running ? $t("services.running") : $t("services.stopped")
               }}
             </STag>
           </div>
           <div
-            v-if="
-              services?.transmission?.running && services.transmission.startedAt
-            "
+            v-if="services?.transmission?.running && services.transmission.startedAt"
             class="service-dropdown__uptime"
           >
             <span class="mdi mdi-clock-outline" />
@@ -86,15 +70,8 @@
             :loading="loading.transmission"
             @click="toggle('transmission')"
           >
-            <span
-              class="mdi"
-              :class="services?.transmission?.running ? 'mdi-stop' : 'mdi-play'"
-            />
-            {{
-              services?.transmission?.running
-                ? $t("services.stop")
-                : $t("services.start")
-            }}
+            <span class="mdi" :class="services?.transmission?.running ? 'mdi-stop' : 'mdi-play'" />
+            {{ services?.transmission?.running ? $t("services.stop") : $t("services.start") }}
           </SButton>
         </div>
         <SDivider />
@@ -104,15 +81,8 @@
           <div class="service-dropdown__row">
             <span class="mdi mdi-cloud-download service-dropdown__icon" />
             <span class="service-dropdown__name">pyLoad</span>
-            <STag
-              :variant="services?.pyload?.running ? 'success' : 'danger'"
-              size="sm"
-            >
-              {{
-                services?.pyload?.running
-                  ? $t("services.running")
-                  : $t("services.stopped")
-              }}
+            <STag :variant="services?.pyload?.running ? 'success' : 'danger'" size="sm">
+              {{ services?.pyload?.running ? $t("services.running") : $t("services.stopped") }}
             </STag>
           </div>
           <div
@@ -130,15 +100,8 @@
             :loading="loading.pyload"
             @click="toggle('pyload')"
           >
-            <span
-              class="mdi"
-              :class="services?.pyload?.running ? 'mdi-stop' : 'mdi-play'"
-            />
-            {{
-              services?.pyload?.running
-                ? $t("services.stop")
-                : $t("services.start")
-            }}
+            <span class="mdi" :class="services?.pyload?.running ? 'mdi-stop' : 'mdi-play'" />
+            {{ services?.pyload?.running ? $t("services.stop") : $t("services.start") }}
           </SButton>
         </div>
       </div>
@@ -201,6 +164,17 @@ function formatUptime(startedAt: string): string {
   border: 1px solid var(--s-border);
   border-radius: 0.5rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .service-dropdown__panel {
+    position: fixed;
+    top: auto;
+    left: 1rem;
+    right: 1rem;
+    min-width: unset;
+    width: auto;
+  }
 }
 
 .service-dropdown__item {

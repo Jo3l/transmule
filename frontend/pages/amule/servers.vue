@@ -23,8 +23,8 @@
       </template>
     </STable>
 
-    <div class="buttons mt-3">
-      <SButton variant="warning" size="sm" @click="disconnect">
+    <div class="flex-end mt-3">
+      <SButton variant="warning" @click="disconnect">
         <span class="mdi mdi-lan-disconnect mr-1" />
         {{ $t("servers.disconnect") }}
       </SButton>

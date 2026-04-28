@@ -20,7 +20,7 @@
         <div class="log-content">
           <pre>{{ amuleLog || $t("log.noData") }}</pre>
         </div>
-        <div class="buttons mt-3">
+        <div class="flex-end mt-3">
           <SButton variant="primary" size="sm" @click="refresh" :loading="loading">
             <span class="mdi mdi-refresh mr-1" /> {{ $t("log.refresh") }}
           </SButton>
@@ -31,7 +31,7 @@
         <div class="log-content">
           <pre>{{ serverLog || $t("log.noData") }}</pre>
         </div>
-        <div class="buttons mt-3">
+        <div class="flex-end mt-3">
           <SButton variant="primary" size="sm" @click="refresh" :loading="loading">
             <span class="mdi mdi-refresh mr-1" /> {{ $t("log.refresh") }}
           </SButton>
