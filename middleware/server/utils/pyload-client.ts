@@ -1066,16 +1066,8 @@ export class PyLoadClient {
       commands: string[];
       params?: Record<string, string>;
     }> = [
-      { commands: ["get_log"], params: { lines: sanitizedLimit } },
-      { commands: ["get_logs"], params: { lines: sanitizedLimit } },
       { commands: ["get_log"], params: { limit: sanitizedLimit } },
-      { commands: ["get_logs"], params: { limit: sanitizedLimit } },
       { commands: ["get_log"] },
-      { commands: ["get_logs"] },
-      { commands: ["get_logger"] },
-      { commands: ["log"] },
-      { commands: ["get_events"], params: { since: "0" } },
-      { commands: ["get_events"] },
     ];
 
     let lastErr: any = null;
