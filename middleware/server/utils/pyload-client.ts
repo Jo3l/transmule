@@ -157,6 +157,8 @@ export class PyLoadClient {
     }
     if (opts?.includeCsrf && this.csrfToken && this.authMode !== "apikey") {
       headers["X-CSRFToken"] = this.csrfToken;
+      // Some pyLoad/Flask setups only accept the dashed header name.
+      headers["X-CSRF-Token"] = this.csrfToken;
     }
     if (this.cookieHeader) headers.Cookie = this.cookieHeader;
     return headers;
@@ -329,6 +331,15 @@ export class PyLoadClient {
     return true;
   }
 
+  private async refreshSessionCsrf(): Promise<boolean> {
+    this.apiKey = null;
+    this.authMode = "basic";
+    this.csrfToken = null;
+    this.hasSessionAuth = false;
+    this.cookieHeader = "";
+    return this.ensureSessionCookie();
+  }
+
   private async parseResponseBody(res: Response): Promise<any> {
     const text = await res.text();
     if (!text || text === "null") return null;
@@ -467,10 +478,10 @@ export class PyLoadClient {
     command: string,
     data: Record<string, unknown> = {},
   ): Promise<T> {
-    // pyLoad expects form-encoded data where each value is JSON-encoded
-    const body = new URLSearchParams();
-    for (const [k, v] of Object.entries(data)) {
-      body.append(k, JSON.stringify(v));
+    // pyLoad expects form-encoded data where each value is JSON-encoded.
+    // For session-based auth, ensure CSRF/session exist before the first POST.
+    if (this.authMode !== "apikey") {
+      await this.ensureSessionCookie().catch(() => false);
     }
 
     let lastStatus = 0;
@@ -480,6 +491,14 @@ export class PyLoadClient {
 
     for (const endpoint of this.endpointCandidates(command)) {
       for (let attempt = 0; attempt < 2; attempt++) {
+        const body = new URLSearchParams();
+        for (const [k, v] of Object.entries(data)) {
+          body.append(k, JSON.stringify(v));
+        }
+        if (this.csrfToken && this.authMode !== "apikey") {
+          body.append("csrf_token", this.csrfToken);
+        }
+
         const res = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -493,12 +512,22 @@ export class PyLoadClient {
 
         this.updateCookies(res);
         const responseBody = await this.parseResponseBody(res);
+        const csrfInvalid =
+          this.isCompatAuthPayload(responseBody) &&
+          this.extractErrorMessage(responseBody).toLowerCase().includes("csrf");
 
         if (res.ok) {
           if (
             this.isPyLoadErrorPayload(responseBody) ||
             this.isCompatAuthPayload(responseBody)
           ) {
+            if (!triedCompatAuthUpgrade && csrfInvalid) {
+              triedCompatAuthUpgrade = true;
+              const refreshed = await this.refreshSessionCsrf();
+              if (refreshed) {
+                continue;
+              }
+            }
             if (
               !triedCompatAuthUpgrade &&
               this.isCompatAuthPayload(responseBody)
