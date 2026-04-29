@@ -38,11 +38,7 @@
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.downloadCapacity')">
-                <SInput
-                  v-model.number="form.connection.downloadCapacity"
-                  type="number"
-                  class="mw-200"
-                />
+                <SInputNumber v-model="form.connection.downloadCapacity" class="mw-200" />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.capacityHelp") }}
                 </p>
@@ -50,11 +46,7 @@
             </div>
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.uploadCapacity')">
-                <SInput
-                  v-model.number="form.connection.uploadCapacity"
-                  type="number"
-                  class="mw-200"
-                />
+                <SInputNumber v-model="form.connection.uploadCapacity" class="mw-200" />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.capacityHelp") }}
                 </p>
@@ -67,11 +59,7 @@
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxDownloadSpeed')">
-                <SInput
-                  v-model.number="form.connection.maxDownloadSpeed"
-                  type="number"
-                  class="mw-200"
-                />
+                <SInputNumber v-model="form.connection.maxDownloadSpeed" class="mw-200" />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.speedLimitHelp") }}
                 </p>
@@ -79,11 +67,7 @@
             </div>
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxUploadSpeed')">
-                <SInput
-                  v-model.number="form.connection.maxUploadSpeed"
-                  type="number"
-                  class="mw-200"
-                />
+                <SInputNumber v-model="form.connection.maxUploadSpeed" class="mw-200" />
                 <p class="is-size-7 has-text-grey mt-1">
                   {{ $t("amuleSettings.speedLimitHelp") }}
                 </p>
@@ -96,20 +80,12 @@
           <div class="columns is-multiline">
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxFileSources')">
-                <SInput
-                  v-model.number="form.connection.maxFileSources"
-                  type="number"
-                  class="w-160"
-                />
+                <SInputNumber v-model="form.connection.maxFileSources" />
               </SFormItem>
             </div>
             <div class="column is-6">
               <SFormItem :label="$t('amuleSettings.maxConnections')">
-                <SInput
-                  v-model.number="form.connection.maxConnections"
-                  type="number"
-                  class="w-160"
-                />
+                <SInputNumber v-model="form.connection.maxConnections" />
               </SFormItem>
             </div>
           </div>
@@ -117,7 +93,7 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.slotAllocation')">
-            <SInput v-model.number="form.connection.slotAllocation" type="number" class="w-160" />
+            <SInputNumber v-model="form.connection.slotAllocation" />
           </SFormItem>
 
           <SDivider />
@@ -175,7 +151,7 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.deadRetries')">
-            <SInput v-model.number="form.servers.deadRetries" type="number" class="w-120" />
+            <SInputNumber v-model="form.servers.deadRetries" class="w-120" />
           </SFormItem>
 
           <SDivider />
@@ -270,7 +246,7 @@
           <SDivider />
 
           <SFormItem :label="$t('amuleSettings.ipFilterLevel')">
-            <SInput v-model.number="form.security.ipFilterLevel" type="number" class="w-120" />
+            <SInputNumber v-model="form.security.ipFilterLevel" class="w-120" />
             <p class="is-size-7 has-text-grey mt-1">
               {{ $t("amuleSettings.ipFilterLevelHelp") }}
             </p>

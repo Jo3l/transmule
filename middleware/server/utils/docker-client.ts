@@ -65,6 +65,39 @@ interface ContainerInspect {
   };
 }
 
+function decodeDockerLogPayload(payload: string): string {
+  const buf = Buffer.from(payload, "binary");
+
+  // Docker may multiplex stdout/stderr as framed chunks with 8-byte headers.
+  // Header layout: [stream, 0, 0, 0, size(4 bytes BE)].
+  let offset = 0;
+  const frames: string[] = [];
+
+  while (offset + 8 <= buf.length) {
+    const streamType = buf[offset];
+    const size = buf.readUInt32BE(offset + 4);
+
+    if (
+      ![1, 2].includes(streamType) ||
+      size < 0 ||
+      offset + 8 + size > buf.length
+    ) {
+      break;
+    }
+
+    const start = offset + 8;
+    const end = start + size;
+    frames.push(buf.subarray(start, end).toString("utf8"));
+    offset = end;
+  }
+
+  if (frames.length > 0 && offset === buf.length) {
+    return frames.join("");
+  }
+
+  return buf.toString("utf8");
+}
+
 // ── Low-level helpers ────────────────────────────────────────────────────────
 
 function dockerFetch(
@@ -110,7 +143,10 @@ export async function getContainerStatus(
   service: ServiceName,
 ): Promise<{ running: boolean; status: string; startedAt: string | null }> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch("GET", apiPath(`/containers/${name}/json`));
+  const { status, data } = await dockerFetch(
+    "GET",
+    apiPath(`/containers/${name}/json`),
+  );
 
   if (status === 404)
     return { running: false, status: "not_found", startedAt: null };
@@ -128,7 +164,10 @@ export async function getContainerStatus(
 /** Start a stopped container. */
 export async function startContainer(service: ServiceName): Promise<void> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch("POST", apiPath(`/containers/${name}/start`));
+  const { status, data } = await dockerFetch(
+    "POST",
+    apiPath(`/containers/${name}/start`),
+  );
   // 204 = started, 304 = already running
   if (status !== 204 && status !== 304)
     throw new Error(`Docker start failed (${status}): ${data}`);
@@ -137,7 +176,10 @@ export async function startContainer(service: ServiceName): Promise<void> {
 /** Stop a running container (10 s timeout). */
 export async function stopContainer(service: ServiceName): Promise<void> {
   const name = containerName(service);
-  const { status, data } = await dockerFetch("POST", apiPath(`/containers/${name}/stop?t=10`));
+  const { status, data } = await dockerFetch(
+    "POST",
+    apiPath(`/containers/${name}/stop?t=10`),
+  );
   // 204 = stopped, 304 = already stopped
   if (status !== 204 && status !== 304)
     throw new Error(`Docker stop failed (${status}): ${data}`);
@@ -156,4 +198,41 @@ export async function getAllServicesStatus(): Promise<
     getContainerStatus("pyload"),
   ]);
   return { amule, transmission, pyload };
+}
+
+/**
+ * Read recent container logs.
+ * Returns plain text lines (timestamped when requested).
+ */
+export async function getContainerLogs(
+  service: ServiceName,
+  options?: { tail?: number; timestamps?: boolean },
+): Promise<string[]> {
+  const name = containerName(service);
+  const tail = Number.isFinite(options?.tail)
+    ? Math.max(1, Math.min(5000, Math.trunc(options!.tail!)))
+    : 400;
+  const timestamps = options?.timestamps !== false;
+
+  const query = new URLSearchParams({
+    stdout: "1",
+    stderr: "1",
+    tail: String(tail),
+    timestamps: timestamps ? "1" : "0",
+  });
+
+  const { status, data } = await dockerFetch(
+    "GET",
+    apiPath(`/containers/${name}/logs?${query.toString()}`),
+  );
+
+  if (status === 404) return [];
+  if (status !== 200)
+    throw new Error(`Docker logs failed (${status}): ${data}`);
+
+  const text = decodeDockerLogPayload(data);
+  return text
+    .split(/\r?\n/g)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
 }

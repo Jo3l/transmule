@@ -124,24 +124,37 @@ export class PyLoadClient {
     const paths: string[] = [];
 
     for (const cmd of commands) {
+      // pyLoad NG only exposes /api/<func> — /api/v1/ does NOT exist and
+      // causes Flask's 404 handler to return {"error":"Not Found"} as JSON,
+      // which surfaces as a misleading 502 "Not Found" in our middleware.
       paths.push(`${this.baseUrl}/api/${cmd}`);
-      // Newer pyLoad variants may expose rpc methods below /api/v1.
-      paths.push(`${this.baseUrl}/api/v1/${cmd}`);
     }
 
     return [...new Set(paths)];
   }
 
   private extractCsrfToken(html: string): string | null {
-    const inputMatch = html.match(
-      /name=["']csrf_token["'][^>]*value=["']([^"']+)["']/i,
+    // name before value (standard Flask-WTF form input)
+    const m1 = html.match(
+      /name=(["'])csrf_token\1[^>]*value=(["'])([^"']+)\2/i,
     );
-    if (inputMatch?.[1]) return inputMatch[1];
+    if (m1?.[3]) return m1[3];
 
-    const metaMatch = html.match(
-      /<meta[^>]*name=["']csrf-token["'][^>]*content=["']([^"']+)["']/i,
+    // value before name (some template variants)
+    const m2 = html.match(
+      /value=(["'])([^"']+)\1[^>]*name=(["'])csrf_token\3/i,
     );
-    if (metaMatch?.[1]) return metaMatch[1];
+    if (m2?.[2]) return m2[2];
+
+    // meta tag (csrf-token or csrf_token)
+    const m3 = html.match(
+      /<meta[^>]*name=(["'])csrf[-_]token\1[^>]*content=(["'])([^"']+)\2/i,
+    );
+    if (m3?.[3]) return m3[3];
+
+    // JS variable assignment: csrfToken = "TOKEN" / csrf_token: "TOKEN"
+    const m4 = html.match(/csrf[_-]?token["']?\s*[:=]\s*["']([^"']{20,})["']/i);
+    if (m4?.[1]) return m4[1];
 
     return null;
   }
@@ -432,6 +445,49 @@ export class PyLoadClient {
     throw lastErr;
   }
 
+  private async postJsonWithCommandFallbacks<T = unknown>(
+    commands: string[],
+    data: Record<string, unknown> = {},
+  ): Promise<T> {
+    let lastErr: any = null;
+
+    for (const command of commands) {
+      try {
+        return await this.postJson<T>(command, data);
+      } catch (err: any) {
+        lastErr = err;
+        if (this.isNotFoundApiError(err)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastErr;
+  }
+
+  private async getWithCommandFallbacks<T = unknown>(
+    commands: string[],
+    params?: Record<string, string>,
+  ): Promise<{ command: string; data: T }> {
+    let lastErr: any = null;
+
+    for (const command of commands) {
+      try {
+        const data = await this.get<T>(command, params);
+        return { command, data };
+      } catch (err: any) {
+        lastErr = err;
+        if (this.isNotFoundApiError(err)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastErr;
+  }
+
   private async get<T = unknown>(
     command: string,
     params?: Record<string, string>,
@@ -505,9 +561,12 @@ export class PyLoadClient {
     data: Record<string, unknown> = {},
   ): Promise<T> {
     // pyLoad expects form-encoded data where each value is JSON-encoded.
-    // For session-based auth, ensure CSRF/session exist before the first POST.
+    // Prefer API key auth for REST endpoints; fall back to session+CSRF when needed.
     if (this.authMode !== "apikey") {
-      await this.ensureSessionCookie().catch(() => false);
+      const hasApiKey = await this.ensureApiKey().catch(() => false);
+      if (!hasApiKey) {
+        await this.ensureSessionCookie().catch(() => false);
+      }
     }
 
     let lastStatus = 0;
@@ -572,6 +631,113 @@ export class PyLoadClient {
         lastStatus = res.status;
         lastStatusText = res.statusText;
         lastBody = responseBody;
+
+        // HTTP 400 with CSRF error body (Flask-WTF raises BadRequest for bad token).
+        const isCsrf400 =
+          res.status === 400 &&
+          this.extractErrorMessage(responseBody).toLowerCase().includes("csrf");
+
+        if (!triedCompatAuthUpgrade && isCsrf400) {
+          triedCompatAuthUpgrade = true;
+          const refreshed = await this.refreshSessionCsrf();
+          if (refreshed) {
+            continue;
+          }
+        }
+
+        if (
+          !triedCompatAuthUpgrade &&
+          this.isCompatAuthError(res.status, responseBody)
+        ) {
+          triedCompatAuthUpgrade = true;
+          const upgraded = await this.ensureCompatibleAuth();
+          if (upgraded) {
+            continue;
+          }
+        }
+
+        break;
+      }
+    }
+
+    this.throwApiError(lastStatus, lastStatusText, lastBody);
+  }
+
+  private async postJson<T = unknown>(
+    command: string,
+    data: Record<string, unknown> = {},
+  ): Promise<T> {
+    if (this.authMode !== "apikey") {
+      const hasApiKey = await this.ensureApiKey().catch(() => false);
+      if (!hasApiKey) {
+        await this.ensureSessionCookie().catch(() => false);
+      }
+    }
+
+    let lastStatus = 0;
+    let lastStatusText = "";
+    let lastBody: any = null;
+    let triedCompatAuthUpgrade = false;
+
+    for (const endpoint of this.endpointCandidates(command)) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            ...this.buildAuthHeaders({ includeCsrf: true }),
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(data),
+          signal: AbortSignal.timeout(15_000),
+        });
+
+        this.updateCookies(res);
+        const responseBody = await this.parseResponseBody(res);
+        const responseError =
+          this.extractErrorMessage(responseBody).toLowerCase();
+        const csrfInvalid = responseError.includes("csrf");
+
+        if (res.ok) {
+          if (
+            this.isPyLoadErrorPayload(responseBody) ||
+            this.isCompatAuthPayload(responseBody)
+          ) {
+            if (!triedCompatAuthUpgrade && csrfInvalid) {
+              triedCompatAuthUpgrade = true;
+              const refreshed = await this.refreshSessionCsrf();
+              if (refreshed) {
+                continue;
+              }
+            }
+            if (
+              !triedCompatAuthUpgrade &&
+              this.isCompatAuthPayload(responseBody)
+            ) {
+              triedCompatAuthUpgrade = true;
+              const upgraded = await this.ensureCompatibleAuth();
+              if (upgraded) {
+                continue;
+              }
+            }
+            this.throwApiError(res.status, res.statusText, responseBody);
+          }
+          return responseBody as T;
+        }
+
+        lastStatus = res.status;
+        lastStatusText = res.statusText;
+        lastBody = responseBody;
+
+        const isCsrf400 = res.status === 400 && csrfInvalid;
+
+        if (!triedCompatAuthUpgrade && isCsrf400) {
+          triedCompatAuthUpgrade = true;
+          const refreshed = await this.refreshSessionCsrf();
+          if (refreshed) {
+            continue;
+          }
+        }
 
         if (
           !triedCompatAuthUpgrade &&
@@ -711,5 +877,144 @@ export class PyLoadClient {
 
   async stopDownloads(fids: number[]): Promise<void> {
     await this.post("stop_downloads", { file_ids: fids });
+  }
+
+  // ── Configuration ────────────────────────────────────────────────────────
+
+  async getConfig(): Promise<Record<string, any>> {
+    const config = await this.get<Record<string, any>>("get_config");
+    return config || {};
+  }
+
+  async getConfigValue(
+    category: string,
+    option: string,
+    section = "core",
+  ): Promise<unknown> {
+    return this.get<unknown>("get_config_value", {
+      category,
+      option,
+      section,
+    });
+  }
+
+  async getPluginConfig(): Promise<Record<string, any>> {
+    const plugins = await this.get<Record<string, any>>("get_plugin_config");
+    return plugins && typeof plugins === "object" && !Array.isArray(plugins)
+      ? plugins
+      : {};
+  }
+
+  async getAccounts(refresh = false): Promise<any[]> {
+    const accounts = await this.get<any[]>("get_accounts", {
+      refresh: refresh ? "1" : "0",
+    });
+    return Array.isArray(accounts) ? accounts : [];
+  }
+
+  async getAccountTypes(): Promise<string[]> {
+    const types = await this.get<string[]>("get_account_types");
+    return Array.isArray(types)
+      ? types
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean)
+          .sort((left, right) => left.localeCompare(right))
+      : [];
+  }
+
+  async updateAccount(
+    plugin: string,
+    account: string,
+    password?: string,
+    options?: Record<string, unknown>,
+  ): Promise<void> {
+    const payload: Record<string, unknown> = {
+      plugin,
+      account,
+    };
+
+    if (typeof password === "string" && password.length > 0) {
+      payload.password = password;
+    }
+
+    if (options && Object.keys(options).length > 0) {
+      payload.options = options;
+    }
+
+    await this.postJsonWithCommandFallbacks(["update_account"], payload);
+  }
+
+  async removeAccount(plugin: string, account: string): Promise<void> {
+    await this.postJsonWithCommandFallbacks(["remove_account"], {
+      plugin,
+      account,
+    });
+  }
+
+  async getLogs(limit = 400): Promise<{ command: string; data: unknown }> {
+    const sanitizedLimit = Number.isFinite(limit)
+      ? String(Math.max(10, Math.min(2000, Math.trunc(limit))))
+      : "400";
+
+    const commandAttempts: Array<{
+      commands: string[];
+      params?: Record<string, string>;
+    }> = [
+      { commands: ["get_log"], params: { lines: sanitizedLimit } },
+      { commands: ["get_logs"], params: { lines: sanitizedLimit } },
+      { commands: ["get_log"], params: { limit: sanitizedLimit } },
+      { commands: ["get_logs"], params: { limit: sanitizedLimit } },
+      { commands: ["get_log"] },
+      { commands: ["get_logs"] },
+      { commands: ["get_logger"] },
+      { commands: ["log"] },
+      { commands: ["get_events"], params: { since: "0" } },
+      { commands: ["get_events"] },
+    ];
+
+    let lastErr: any = null;
+
+    for (const attempt of commandAttempts) {
+      try {
+        return await this.getWithCommandFallbacks<unknown>(
+          attempt.commands,
+          attempt.params,
+        );
+      } catch (err: any) {
+        lastErr = err;
+        if (this.isNotFoundApiError(err)) {
+          continue;
+        }
+
+        const msg = String(
+          err?.statusMessage || err?.message || "",
+        ).toLowerCase();
+        if (
+          msg.includes("unknown") ||
+          msg.includes("invalid") ||
+          msg.includes("missing")
+        ) {
+          continue;
+        }
+
+        throw err;
+      }
+    }
+
+    throw lastErr;
+  }
+
+  async setConfigValue(
+    category: string,
+    option: string,
+    value: string | number | boolean,
+    section = "core",
+  ): Promise<void> {
+    await this.postJsonWithCommandFallbacks(["set_config_value"], {
+      category,
+      option,
+      value,
+      section,
+    });
   }
 }

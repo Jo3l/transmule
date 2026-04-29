@@ -22,7 +22,7 @@
               v-model="speed.dlSpeed"
               :min="0"
               :step="50"
-              class="ml-3 w-160"
+              class="ml-3"
             />
             <span v-if="speed.dlEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.speed.kbs")
@@ -36,7 +36,7 @@
               v-model="speed.ulSpeed"
               :min="0"
               :step="50"
-              class="ml-3 w-160"
+              class="ml-3"
             />
             <span v-if="speed.ulEnabled" class="ml-2 has-text-grey is-size-7">{{
               $t("transmission.speed.kbs")
@@ -53,11 +53,11 @@
             <SSwitch v-model="speed.altEnabled" />
           </SFormItem>
           <SFormItem :label="$t('transmission.speed.altDown')">
-            <SInputNumber v-model="speed.altDown" :min="0" :step="10" class="w-160" />
+            <SInputNumber v-model="speed.altDown" :min="0" :step="10" />
             <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
           </SFormItem>
           <SFormItem :label="$t('transmission.speed.altUp')">
-            <SInputNumber v-model="speed.altUp" :min="0" :step="10" class="w-160" />
+            <SInputNumber v-model="speed.altUp" :min="0" :step="10" />
             <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
           </SFormItem>
 
@@ -67,11 +67,11 @@
 
           <template v-if="speed.altTimeEnabled">
             <SFormItem :label="$t('transmission.speed.startTime')">
-              <SInputNumber v-model="speed.altTimeBegin" :min="0" :max="1439" class="w-160" />
+              <SInputNumber v-model="speed.altTimeBegin" :min="0" :max="1439" />
               <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(speed.altTimeBegin) }}</span>
             </SFormItem>
             <SFormItem :label="$t('transmission.speed.endTime')">
-              <SInputNumber v-model="speed.altTimeEnd" :min="0" :max="1439" class="w-160" />
+              <SInputNumber v-model="speed.altTimeEnd" :min="0" :max="1439" />
               <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(speed.altTimeEnd) }}</span>
             </SFormItem>
             <SFormItem :label="$t('transmission.speed.scheduledDays')">
@@ -298,10 +298,10 @@
 
           <h6 class="title is-6 mb-3 mt-3">{{ $t("transmission.network.peerLimits") }}</h6>
           <SFormItem :label="$t('transmission.network.globalPeerLimit')">
-            <SInputNumber v-model="network.peerLimitGlobal" :min="1" :step="10" class="w-160" />
+            <SInputNumber v-model="network.peerLimitGlobal" :min="1" :step="10" />
           </SFormItem>
           <SFormItem :label="$t('transmission.network.perTorrentPeerLimit')">
-            <SInputNumber v-model="network.peerLimitPerTorrent" :min="1" :step="5" class="w-160" />
+            <SInputNumber v-model="network.peerLimitPerTorrent" :min="1" :step="5" />
           </SFormItem>
 
           <SDivider />

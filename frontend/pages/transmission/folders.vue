@@ -19,13 +19,7 @@
       <SDivider />
 
       <SFormItem :label="$t('transmission.folders.cacheSize')">
-        <SInputNumber
-          v-model="form.cacheSizeMb"
-          :min="0"
-          :step="1"
-          class="w-160"
-          @update:model-value="save"
-        />
+        <SInputNumber v-model="form.cacheSizeMb" :min="0" :step="1" @update:model-value="save" />
         <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.folders.mb") }}</span>
       </SFormItem>
 

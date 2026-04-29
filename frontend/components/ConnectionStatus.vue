@@ -32,6 +32,14 @@
         <span class="ml-1" :title="pyloadStateLabel">
           <span :class="pyloadStateIcon" />
         </span>
+        <span class="ml-2" :title="proxyStateTitle">
+          {{ $t("connection.proxyShort") }}
+          <span class="ml-1" :class="[proxyStateIcon, proxyStateColorClass]" />
+        </span>
+        <span class="ml-2" :title="reconnectionStateTitle">
+          {{ $t("connection.reconnectionShort") }}
+          <span class="ml-1" :class="[reconnectionStateIcon, reconnectionStateColorClass]" />
+        </span>
       </STag>
     </template>
     <STag v-else variant="info" size="sm">
@@ -49,13 +57,9 @@ const status = ref<any>(null);
 const amuleOk = ref(false);
 const transmissionOk = ref(false);
 const pyloadOk = ref(false);
+const pyloadStatus = ref<Record<string, any> | null>(null);
 
-type ConnectionState =
-  | "connected"
-  | "disconnected"
-  | "connecting"
-  | "unknown"
-  | "firewalled";
+type ConnectionState = "connected" | "disconnected" | "connecting" | "unknown" | "firewalled";
 
 function stateIcon(state: ConnectionState): string {
   if (state === "connected") return "mdi mdi-check-circle";
@@ -70,15 +74,11 @@ function stateLabel(state: ConnectionState): string {
   return t(`connection.${state}`);
 }
 
-const amuleState = computed<ConnectionState>(() =>
-  amuleOk.value ? "connected" : "disconnected",
-);
+const amuleState = computed<ConnectionState>(() => (amuleOk.value ? "connected" : "disconnected"));
 const amuleStateIcon = computed(() => stateIcon(amuleState.value));
 const amuleStateLabel = computed(() => stateLabel(amuleState.value));
 
-const transmissionVariant = computed(() =>
-  transmissionOk.value ? "success" : "danger",
-);
+const transmissionVariant = computed(() => (transmissionOk.value ? "success" : "danger"));
 const transmissionState = computed<ConnectionState>(() =>
   transmissionOk.value ? "connected" : "disconnected",
 );
@@ -91,6 +91,29 @@ const pyloadState = computed<ConnectionState>(() =>
 );
 const pyloadStateIcon = computed(() => stateIcon(pyloadState.value));
 const pyloadStateLabel = computed(() => stateLabel(pyloadState.value));
+
+const proxyEnabled = computed(() => pyloadStatus.value?.proxy_enabled === true);
+const reconnectionEnabled = computed(() => pyloadStatus.value?.reconnect_enabled === true);
+const proxyStateIcon = computed(() =>
+  proxyEnabled.value ? "mdi mdi-check-circle" : "mdi mdi-close-circle",
+);
+const reconnectionStateIcon = computed(() =>
+  reconnectionEnabled.value ? "mdi mdi-check-circle" : "mdi mdi-close-circle",
+);
+const proxyStateColorClass = computed(() =>
+  proxyEnabled.value ? "has-text-success" : "has-text-danger",
+);
+const reconnectionStateColorClass = computed(() =>
+  reconnectionEnabled.value ? "has-text-success" : "has-text-danger",
+);
+const proxyStateTitle = computed(
+  () =>
+    `${t("connection.proxy")}: ${proxyEnabled.value ? t("connection.connected") : t("connection.disconnected")}`,
+);
+const reconnectionStateTitle = computed(
+  () =>
+    `${t("connection.reconnection")}: ${reconnectionEnabled.value ? t("connection.connected") : t("connection.disconnected")}`,
+);
 
 const ed2kState = computed<ConnectionState>(() => {
   if (!status.value?.ed2k) return amuleOk.value ? "unknown" : "disconnected";
@@ -136,8 +159,8 @@ async function refresh() {
   }
 
   transmissionOk.value = trRes.status === "fulfilled" && !!trRes.value?.session;
-  pyloadOk.value =
-    pyRes.status === "fulfilled" && pyRes.value?.connected === true;
+  pyloadOk.value = pyRes.status === "fulfilled" && pyRes.value?.connected === true;
+  pyloadStatus.value = pyRes.status === "fulfilled" ? (pyRes.value?.status ?? null) : null;
 
   loaded.value = true;
 }

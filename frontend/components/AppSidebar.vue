@@ -190,6 +190,18 @@
                 {{ $t("nav.pyloadDownloads") }}
               </NuxtLink>
             </li>
+            <li>
+              <NuxtLink to="/pyload/logs" @click="$emit('close')">
+                <span class="mdi mdi-text-box-outline"></span>
+                {{ $t("nav.pyloadLogs") }}
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/pyload/settings" @click="$emit('close')">
+                <span class="mdi mdi-cog-outline"></span>
+                {{ $t("nav.pyloadSettings") }}
+              </NuxtLink>
+            </li>
           </ul>
         </div>
       </div>

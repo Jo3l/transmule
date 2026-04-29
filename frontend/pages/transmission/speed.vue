@@ -15,7 +15,7 @@
           v-model="form.dlSpeed"
           :min="0"
           :step="50"
-          class="ml-3 w-160"
+          class="ml-3"
           @update:model-value="save"
         />
         <span v-if="form.dlEnabled" class="ml-2 has-text-grey is-size-7">{{
@@ -30,7 +30,7 @@
           v-model="form.ulSpeed"
           :min="0"
           :step="50"
-          class="ml-3 w-160"
+          class="ml-3"
           @update:model-value="save"
         />
         <span v-if="form.ulEnabled" class="ml-2 has-text-grey is-size-7">{{
@@ -49,24 +49,12 @@
       </SFormItem>
 
       <SFormItem :label="$t('transmission.speed.altDown')">
-        <SInputNumber
-          v-model="form.altDown"
-          :min="0"
-          :step="10"
-          class="w-160"
-          @update:model-value="save"
-        />
+        <SInputNumber v-model="form.altDown" :min="0" :step="10" @update:model-value="save" />
         <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
       </SFormItem>
 
       <SFormItem :label="$t('transmission.speed.altUp')">
-        <SInputNumber
-          v-model="form.altUp"
-          :min="0"
-          :step="10"
-          class="w-160"
-          @update:model-value="save"
-        />
+        <SInputNumber v-model="form.altUp" :min="0" :step="10" @update:model-value="save" />
         <span class="ml-2 has-text-grey is-size-7">{{ $t("transmission.speed.kbs") }}</span>
       </SFormItem>
 
@@ -80,20 +68,13 @@
             v-model="form.altTimeBegin"
             :min="0"
             :max="1439"
-            class="w-160"
             @update:model-value="save"
           />
           <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(form.altTimeBegin) }}</span>
         </SFormItem>
 
         <SFormItem :label="$t('transmission.speed.endTime')">
-          <SInputNumber
-            v-model="form.altTimeEnd"
-            :min="0"
-            :max="1439"
-            class="w-160"
-            @update:model-value="save"
-          />
+          <SInputNumber v-model="form.altTimeEnd" :min="0" :max="1439" @update:model-value="save" />
           <span class="ml-2 has-text-grey is-size-7">{{ fmtTime(form.altTimeEnd) }}</span>
         </SFormItem>
 

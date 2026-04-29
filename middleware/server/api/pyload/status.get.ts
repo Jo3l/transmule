@@ -20,11 +20,23 @@ export default defineEventHandler(async (event) => {
   const client = usePyLoadClient();
 
   try {
-    const [status, freeSpace, version] = await Promise.all([
-      client.getStatus(),
-      client.getFreeSpace().catch(() => null),
-      client.getVersion().catch(() => null),
-    ]);
+    const [status, freeSpace, version, proxyEnabled, reconnectEnabled] =
+      await Promise.all([
+        client.getStatus(),
+        client.getFreeSpace().catch(() => null),
+        client.getVersion().catch(() => null),
+        client.getConfigValue("proxy", "enabled", "core").catch(() => null),
+        client.getConfigValue("reconnect", "enabled", "core").catch(() => null),
+      ]);
+
+    const isEnabled = (value: unknown): boolean => {
+      if (typeof value === "boolean") return value;
+      if (typeof value === "number") return value !== 0;
+      if (typeof value === "string") {
+        return ["true", "1", "on", "yes"].includes(value.trim().toLowerCase());
+      }
+      return false;
+    };
 
     return {
       connected: true,
@@ -37,6 +49,8 @@ export default defineEventHandler(async (event) => {
         speed_fmt: formatSpeed(status.speed), // pyLoad reports bytes/s
         download: status.download,
         reconnect: status.reconnect,
+        proxy_enabled: isEnabled(proxyEnabled),
+        reconnect_enabled: isEnabled(reconnectEnabled),
       },
       freeSpace,
       freeSpace_fmt: freeSpace != null ? formatBytes(freeSpace) : null,
