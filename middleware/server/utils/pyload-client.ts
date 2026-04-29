@@ -1059,14 +1059,18 @@ export class PyLoadClient {
 
   async getLogs(limit = 400): Promise<{ command: string; data: unknown }> {
     const sanitizedLimit = Number.isFinite(limit)
-      ? String(Math.max(10, Math.min(2000, Math.trunc(limit))))
-      : "400";
+      ? Math.max(10, Math.min(2000, Math.trunc(limit)))
+      : 400;
+
+    // pyLoad API exposes get_log(offset: int = 0). A negative offset returns
+    // the last N lines when the backend uses Python list slicing semantics.
+    const offset = String(-sanitizedLimit);
 
     const commandAttempts: Array<{
       commands: string[];
       params?: Record<string, string>;
     }> = [
-      { commands: ["get_log"], params: { limit: sanitizedLimit } },
+      { commands: ["get_log"], params: { offset } },
       { commands: ["get_log"] },
     ];
 

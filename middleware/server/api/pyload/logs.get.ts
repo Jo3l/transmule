@@ -231,12 +231,13 @@ export default defineEventHandler(async (event) => {
 
   const total = items.length;
   const sliced = items.slice(-limit);
+  const newestFirst = [...sliced].reverse();
 
   return {
     source: command,
     total,
-    count: sliced.length,
-    items: sliced,
+    count: newestFirst.length,
+    items: newestFirst,
     warning: warning || undefined,
     fetchedAt: new Date().toISOString(),
   };
