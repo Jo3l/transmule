@@ -406,6 +406,32 @@ export class PyLoadClient {
     });
   }
 
+  private isNotFoundApiError(err: any): boolean {
+    const msg = String(err?.statusMessage || err?.message || "").toLowerCase();
+    return err?.statusCode === 502 && msg.includes("not found");
+  }
+
+  private async postWithCommandFallbacks<T = unknown>(
+    commands: string[],
+    data: Record<string, unknown> = {},
+  ): Promise<T> {
+    let lastErr: any = null;
+
+    for (const command of commands) {
+      try {
+        return await this.post<T>(command, data);
+      } catch (err: any) {
+        lastErr = err;
+        if (this.isNotFoundApiError(err)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastErr;
+  }
+
   private async get<T = unknown>(
     command: string,
     params?: Record<string, string>,
@@ -638,27 +664,49 @@ export class PyLoadClient {
   // ── Download control ────────────────────────────────────────────────────────
 
   async pause(): Promise<void> {
-    await this.post("pause_server");
+    await this.postWithCommandFallbacks([
+      "pause_server",
+      "pause",
+      "pause_downloads",
+    ]);
   }
 
   async unpause(): Promise<void> {
-    await this.post("unpause_server");
+    await this.postWithCommandFallbacks([
+      "unpause_server",
+      "unpause",
+      "resume",
+      "resume_downloads",
+    ]);
   }
 
   async togglePause(): Promise<void> {
-    await this.post("toggle_pause");
+    await this.postWithCommandFallbacks(["toggle_pause", "togglepause"]);
   }
 
   async stopAllDownloads(): Promise<void> {
-    await this.post("stop_all_downloads");
+    await this.postWithCommandFallbacks([
+      "stop_all_downloads",
+      "stop_all",
+      "abort_all_downloads",
+      "abort_all",
+    ]);
   }
 
   async restartFailed(): Promise<void> {
-    await this.post("restart_failed");
+    await this.postWithCommandFallbacks([
+      "restart_failed",
+      "restart_failed_downloads",
+      "retry_failed",
+    ]);
   }
 
   async deleteFinished(): Promise<void> {
-    await this.post("delete_finished");
+    await this.postWithCommandFallbacks([
+      "delete_finished",
+      "delete_finished_packages",
+      "clear_finished",
+    ]);
   }
 
   async stopDownloads(fids: number[]): Promise<void> {
