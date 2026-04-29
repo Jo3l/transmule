@@ -559,6 +559,7 @@ export class PyLoadClient {
   private async post<T = unknown>(
     command: string,
     data: Record<string, unknown> = {},
+    opts?: { jsonEncodeValues?: boolean },
   ): Promise<T> {
     // pyLoad expects form-encoded data where each value is JSON-encoded.
     // Prefer API key auth for REST endpoints; fall back to session+CSRF when needed.
@@ -577,11 +578,31 @@ export class PyLoadClient {
     for (const endpoint of this.endpointCandidates(command)) {
       for (let attempt = 0; attempt < 2; attempt++) {
         const body = new URLSearchParams();
+        const jsonEncodeValues = opts?.jsonEncodeValues !== false;
         for (const [k, v] of Object.entries(data)) {
-          body.append(k, JSON.stringify(v));
-        }
-        if (this.csrfToken && this.authMode !== "apikey") {
-          body.append("csrf_token", this.csrfToken);
+          if (jsonEncodeValues) {
+            body.append(k, JSON.stringify(v));
+            continue;
+          }
+
+          if (Array.isArray(v)) {
+            for (const entry of v) {
+              body.append(k, String(entry ?? ""));
+            }
+            continue;
+          }
+
+          if (v == null) {
+            body.append(k, "");
+            continue;
+          }
+
+          if (typeof v === "object") {
+            body.append(k, JSON.stringify(v));
+            continue;
+          }
+
+          body.append(k, String(v));
         }
 
         const res = await fetch(endpoint, {
@@ -807,8 +828,40 @@ export class PyLoadClient {
    * @returns package ID
    */
   async addPackage(name: string, links: string[], dest = 1): Promise<number> {
-    const id = await this.post<number>("add_package", { name, links, dest });
-    return Number(id);
+    const safeName = String(name || "").trim();
+    const safeLinks = links
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+    const payload = {
+      name: safeName,
+      links: safeLinks,
+      dest,
+    };
+
+    // pyLoad API source declares add_package(name, links, dest) as POST.
+    // Prefer JSON body (supported by /api/<func>) and fall back to form body.
+    const commandAttempts = ["add_package", "addPackage"];
+
+    let lastErr: any = null;
+    for (const command of commandAttempts) {
+      try {
+        const result = await this.postJson<unknown>(command, payload);
+        const parsed = Number(result);
+        return Number.isFinite(parsed) ? parsed : -1;
+      } catch (err: any) {
+        lastErr = err;
+      }
+
+      try {
+        const result = await this.post<unknown>(command, payload);
+        const parsed = Number(result);
+        return Number.isFinite(parsed) ? parsed : -1;
+      } catch (err: any) {
+        lastErr = err;
+      }
+    }
+
+    throw lastErr;
   }
 
   /** Delete packages by their IDs. */
@@ -868,11 +921,64 @@ export class PyLoadClient {
   }
 
   async deleteFinished(): Promise<void> {
-    await this.postWithCommandFallbacks([
+    const commandCandidates = [
+      "deleteFinished",
       "delete_finished",
       "delete_finished_packages",
       "clear_finished",
+    ];
+
+    let lastErr: any = null;
+
+    for (const command of commandCandidates) {
+      try {
+        await this.post(command);
+        return;
+      } catch (err: any) {
+        lastErr = err;
+        const detail = String(
+          err?.statusMessage || err?.message || "",
+        ).toLowerCase();
+        const shouldContinue =
+          err?.statusCode === 502 &&
+          (detail.includes("not found") ||
+            detail.includes("internal server error") ||
+            detail.includes("method not allowed"));
+
+        if (shouldContinue) {
+          continue;
+        }
+
+        throw err;
+      }
+    }
+
+    const detail = String(
+      lastErr?.statusMessage || lastErr?.message || "",
+    ).toLowerCase();
+    const shouldManualFallback =
+      lastErr?.statusCode === 502 && detail.includes("not found");
+
+    if (!shouldManualFallback) {
+      throw lastErr;
+    }
+
+    const [queue, collector] = await Promise.all([
+      this.getQueue().catch(() => [] as PyLoadPackage[]),
+      this.getCollector().catch(() => [] as PyLoadPackage[]),
     ]);
+
+    const finishedPids = [...queue, ...collector]
+      .filter((pkg) => Array.isArray(pkg.links) && pkg.links.length > 0)
+      .filter((pkg) => pkg.links!.every((link) => Number(link.status) === 0))
+      .map((pkg) => Number(pkg.pid))
+      .filter((pid) => Number.isFinite(pid));
+
+    if (!finishedPids.length) {
+      return;
+    }
+
+    await this.deletePackages(finishedPids);
   }
 
   async stopDownloads(fids: number[]): Promise<void> {
