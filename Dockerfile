@@ -27,7 +27,8 @@ RUN npm run generate
 FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm AS mw-builder
 WORKDIR /app
 
-COPY middleware/package.json middleware/package-lock.json ./
+COPY middleware/package.json middleware/package-lock.json middleware/apply-patches.js ./
+COPY middleware/patches ./patches
 RUN set -eux; \
   npm ci --no-audit --no-fund || npm ci --no-audit --no-fund
 
@@ -69,6 +70,8 @@ RUN chmod +x /entrypoint.sh
 VOLUME /app/data
 
 ENV NODE_ENV=production
+# Required for @marsaud/smb2 (NTLM crypto uses legacy OpenSSL algorithms)
+ENV NODE_OPTIONS="--experimental-sqlite --openssl-legacy-provider"
 # Nitro binds to loopback — not reachable from outside the container
 ENV NITRO_HOST=127.0.0.1
 ENV NITRO_PORT=3000

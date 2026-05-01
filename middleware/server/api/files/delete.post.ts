@@ -1,4 +1,6 @@
 import { rmSync, existsSync } from "node:fs";
+import { getProvider, resolveMountPath, isMountRoot } from "../../utils/remoteMounts";
+import { getDownloadsRoot, resolveSafe } from "../../utils/files";
 
 defineRouteMeta({
   openAPI: {
@@ -33,6 +35,32 @@ export default defineEventHandler(async (event) => {
   const errors: string[] = [];
   for (const rel of rawPaths) {
     try {
+      // Prevent deleting remote mounts directly
+      if (isMountRoot(rel)) {
+        errors.push(`${rel}: cannot delete a remote mount directly — use unmount instead`);
+        continue;
+      }
+
+      // If path is inside a remote mount, use provider delete
+      const mountInfo = resolveMountPath(rel);
+      if (mountInfo) {
+        const { mount, subPath } = mountInfo;
+        const provider = getProvider(mount);
+        try {
+          await provider.connect();
+          await deleteRecursive(provider, subPath);
+        } catch (err: any) {
+          errors.push(`${rel}: ${err.message}`);
+        } finally {
+          try {
+            await provider.disconnect();
+          } catch {
+            /* ignore */
+          }
+        }
+        continue;
+      }
+
       const target = resolveSafe(root, rel);
       // Prevent deleting the root itself
       if (target === root) {
@@ -55,3 +83,22 @@ export default defineEventHandler(async (event) => {
 
   return { ok: true, errors };
 });
+
+/**
+ * Recursively delete a path using the provider
+ */
+async function deleteRecursive(provider: any, path: string): Promise<void> {
+  const stats = await provider.stat(path).catch(() => null);
+  if (!stats) return;
+  
+  if (stats.isDirectory === true) {
+    const children = await provider.readdir(path).catch(() => []);
+    for (const child of children) {
+      const childPath = path ? `${path}/${child.name}` : child.name;
+      await deleteRecursive(provider, childPath);
+    }
+    await provider.rmdir(path);
+  } else {
+    await provider.unlink(path);
+  }
+}

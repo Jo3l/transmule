@@ -31,23 +31,64 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "name must not contain path separators" });
   }
 
+  // Check if we are inside a remote mount
+  const mountInfo = resolveMountPath(path);
+  if (mountInfo) {
+    const { mount, subPath } = mountInfo;
+    const client = createSmbClient(mount);
+
+    try {
+      const remoteBase = mount.path ? sanitizeSmbPath(mount.path) : "";
+      const cleanSub = sanitizeSmbPath(subPath);
+      const fromRemote = buildRemotePath(mount, subPath);
+      const segs = cleanSub.split("\\");
+      segs[segs.length - 1] = String(name);
+      const toRemote = buildRemotePath(mount, segs.join("\\"));
+
+      // Check existence
+      const fromExists = await withTimeout(client.exists(fromRemote), 8000);
+      if (!fromExists) {
+        throw createError({ statusCode: 404, statusMessage: "Source not found" });
+      }
+      const toExists = await withTimeout(client.exists(toRemote), 8000);
+      if (toExists) {
+        throw createError({ statusCode: 409, statusMessage: "Destination already exists" });
+      }
+
+      await withTimeout(client.rename(fromRemote, toRemote), 8000);
+      return { ok: true, name: String(name) };
+    } catch (err: any) {
+      if (err?.statusCode) throw err;
+      throw createError({
+        statusCode: 500,
+        statusMessage: `Cannot rename on remote share: ${err.message}`,
+      });
+    } finally {
+      try {
+        client.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   const root = getDownloadsRoot();
-  const fromPath = resolveSafe(root, path);
-  const toPath = join(dirname(fromPath), String(name));
+  const fromPathLocal = resolveSafe(root, path);
+  const toPathLocal = join(dirname(fromPathLocal), String(name));
 
   // Validate destination is also within root
-  resolveSafe(root, toPath.slice(root.length).replace(/^[/\\]/, ""));
+  resolveSafe(root, toPathLocal.slice(root.length).replace(/^[/\\]/, ""));
 
-  if (!existsSync(fromPath)) {
+  if (!existsSync(fromPathLocal)) {
     throw createError({ statusCode: 404, statusMessage: "Source not found" });
   }
-  if (existsSync(toPath)) {
+  if (existsSync(toPathLocal)) {
     throw createError({ statusCode: 409, statusMessage: "Destination already exists" });
   }
 
   try {
-    renameSync(fromPath, toPath);
-    return { ok: true, name: basename(toPath) };
+    renameSync(fromPathLocal, toPathLocal);
+    return { ok: true, name: basename(toPathLocal) };
   } catch (err: any) {
     throw createError({ statusCode: 500, statusMessage: err.message });
   }

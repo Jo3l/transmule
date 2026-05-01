@@ -150,7 +150,7 @@ trap cleanup EXIT INT TERM
 
 # ── Start middleware ──────────────────────────────────────────────────────────
 echo -e "${CYAN}▸ Starting middleware (Nitro) on :3000${NC}"
-(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 NODE_OPTIONS="--experimental-sqlite" npm run dev) &
+(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 NODE_OPTIONS="--experimental-sqlite --openssl-legacy-provider" npm run dev) &
 MW_PID=$!
 
 # ── Start frontend ───────────────────────────────────────────────────────────

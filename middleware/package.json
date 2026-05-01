@@ -7,17 +7,21 @@
     "dev": "nitropack dev",
     "build": "nitropack build",
     "preview": "node .output/server/index.mjs",
-    "prepare": "nitropack prepare"
+    "prepare": "nitropack prepare",
+    "postinstall": "node apply-patches.js"
   },
   "dependencies": {
+    "@marsaud/smb2": "^0.18.0",
     "amule-ec-client": "^0.5.2",
     "bcryptjs": "^2",
-    "jsonwebtoken": "^9"
+    "jsonwebtoken": "^9",
+    "webdav": "^5.9.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2",
     "@types/jsonwebtoken": "^9",
     "nitropack": "latest",
+    "patch-package": "^8.0.1",
     "typescript": "^5"
   }
 }

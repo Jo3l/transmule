@@ -14,6 +14,11 @@ This is an AI-assisted project: parts of the code and documentation were develop
 - **aMule** — browse/search the ED2K network, manage downloads, view chunk availability, sources, friends, servers, KAD status and preferences
 - **Transmission** — add torrents via magnet/URL, control downloads, inspect peers/trackers/files, manage network and speed settings
 - **pyLoad NG** — add direct-download packages, monitor link status, stop/restart/delete packages
+- **File Manager** — browse, upload, download, rename, delete, move/copy files through a web UI
+- **Remote mounts** — mount remote storage via **SMB/CIFS** or **WebDAV** and manage files transparently as if they were local
+- **Provider-agnostic system** — the remote mount architecture is designed to be extensible: adding new protocols (SFTP, NFS, S3, …) only requires implementing a simple interface
+- **Archive utilities** — compress files into zip/tar/tar.gz/tar.bz2/tar.xz (with optional password for zip), extract archives, smart rename media files
+- **Image preview, video player, text editor** — preview media files and edit text files directly in the browser
 - **Torrent search** — search torrent indexes from within the UI (extensible via plugins)
 - **Plugin system** — upload `.js` plugins to add media providers (movies, shows, …) or torrent-search indexes without restarting the server
 - **Statistics** — live aMule stats tree and Transmission session stats
@@ -164,6 +169,9 @@ Or use the convenience script at the root:
 | aMule client        | EC binary protocol (custom implementation)                                                                                                 |
 | Transmission client | Transmission RPC JSON API                                                                                                                  |
 | pyLoad client       | pyLoad NG HTTP API                                                                                                                         |
+| SMB client          | [`@marsaud/smb2`](https://www.npmjs.com/package/@marsaud/smb2) — SMB/CIFS protocol implementation                                          |
+| WebDAV client       | [`webdav`](https://www.npmjs.com/package/webdav) — WebDAV protocol implementation                                                           |
+| Background jobs     | In-process job queue for transfers, extracts and compressions (polled via `/api/files/transfer-status`)                                     |
 | Containers          | Docker Compose — `ngosang/amule`, `linuxserver/transmission`, `linuxserver/pyload-ng` + combined app image (nginx + Nitro via supervisord) |
 
 ---

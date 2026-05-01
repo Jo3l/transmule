@@ -49,5 +49,15 @@ export default defineEventHandler((event) => {
   const root = getDownloadsRoot();
 
   const tree = buildTree(root, "", maxDepth, 1);
+
+  // Inject remote mounts as top-level tree nodes
+  for (const mount of loadMounts()) {
+    tree.push({
+      name: mount.name,
+      path: mount.name,
+      children: [],
+    });
+  }
+
   return tree;
 });

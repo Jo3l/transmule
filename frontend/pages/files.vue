@@ -42,6 +42,22 @@
 
         <!-- Action buttons -->
         <div class="fm-actions">
+          <!-- Add remote folder dropdown -->
+          <div v-if="isAdmin" class="fm-dropdown">
+            <SButton size="sm" @click="showRemoteDropdown = !showRemoteDropdown">
+              <span class="mdi mdi-cloud-plus mr-1" />{{ $t("fileManager.addRemoteFolder") }}
+              <span class="mdi mdi-chevron-down ml-1" />
+            </SButton>
+            <div v-if="showRemoteDropdown" class="fm-dropdown-menu">
+              <button class="fm-dropdown-item" @click="openRemoteModal('smb')">
+                <span class="mdi mdi-server-network mr-2" />{{ $t("fileManager.smb") }}
+              </button>
+              <button class="fm-dropdown-item" @click="openRemoteModal('webdav')">
+                <span class="mdi mdi-cloud mr-2" />{{ $t("fileManager.webdav") }}
+              </button>
+            </div>
+          </div>
+
           <SButton v-if="isAdmin" size="sm" @click="showNewFolderDialog = true">
             <span class="mdi mdi-folder-plus mr-1" />{{ $t("fileManager.newFolder") }}
           </SButton>
@@ -145,7 +161,7 @@
                 </button>
                 <!-- View image -->
                 <button
-                  v-if="isImage(item)"
+                  v-if="isImage(item) && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--accent"
                   @click="
                     openImagePreview(item);
@@ -156,7 +172,7 @@
                 </button>
                 <!-- Edit text -->
                 <button
-                  v-if="isTextEditable(item)"
+                  v-if="isTextEditable(item) && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--accent"
                   @click="
                     openTextEditor(item);
@@ -167,7 +183,7 @@
                 </button>
                 <!-- Play video -->
                 <button
-                  v-if="isVideo(item)"
+                  v-if="isVideo(item) && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--accent"
                   @click="
                     openVideoPreview(item);
@@ -178,7 +194,7 @@
                 </button>
                 <!-- Play in Webamp -->
                 <button
-                  v-if="isMp3(item)"
+                  v-if="isMp3(item) && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--accent"
                   @click="
                     openInWebamp(item);
@@ -188,17 +204,19 @@
                   <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
                 </button>
                 <!-- Download (file only) -->
-                <a
+                <button
                   v-if="item.type === 'file'"
                   class="fm-mc-action"
-                  :href="downloadUrl(item.name)"
-                  @click="mobileOpenedItem = null"
+                  @click="
+                    downloadFile(item.name);
+                    mobileOpenedItem = null;
+                  "
                 >
                   <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
-                </a>
+                </button>
                 <!-- Smart rename (admin + file) -->
                 <button
-                  v-if="isAdmin && item.type === 'file'"
+                  v-if="isAdmin && item.type === 'file' && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--accent"
                   @click="
                     startSmartRenameForPaths([childPath(item.name)]);
@@ -207,9 +225,9 @@
                 >
                   <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
                 </button>
-                <!-- Move (admin) -->
+                <!-- Move (admin) — hidden for mount roots -->
                 <button
-                  v-if="isAdmin"
+                  v-if="isAdmin && !item.isRemoteMount"
                   class="fm-mc-action"
                   @click="
                     openTransferDialog([childPath(item.name)], 'move');
@@ -218,7 +236,7 @@
                 >
                   <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
                 </button>
-                <!-- Copy -->
+                <!-- Copy — always allowed -->
                 <button
                   class="fm-mc-action"
                   @click="
@@ -241,7 +259,7 @@
                   }}
                 </button>
                 <!-- Archive actions -->
-                <template v-if="item.type === 'file' && isArchive(item.name)">
+                <template v-if="item.type === 'file' && isArchive(item.name) && !item.isRemoteMount">
                   <div class="fm-mc-sep" />
                   <button
                     class="fm-mc-action"
@@ -278,9 +296,9 @@
                   </button>
                 </template>
                 <!-- Rename (admin) -->
-                <div v-if="isAdmin" class="fm-mc-sep" />
+                <div v-if="isAdmin && !item.isRemoteMount" class="fm-mc-sep" />
                 <button
-                  v-if="isAdmin"
+                  v-if="isAdmin && !item.isRemoteMount"
                   class="fm-mc-action"
                   @click="
                     startRename(item);
@@ -289,9 +307,20 @@
                 >
                   <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
                 </button>
+                <!-- Unmount (admin + remote mount) -->
+                <button
+                  v-if="isAdmin && item.isRemoteMount"
+                  class="fm-mc-action fm-mc-action--danger"
+                  @click="
+                    confirmUnmount(item);
+                    mobileOpenedItem = null;
+                  "
+                >
+                  <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
+                </button>
                 <!-- Delete (admin) -->
                 <button
-                  v-if="isAdmin"
+                  v-if="isAdmin && !item.isRemoteMount"
                   class="fm-mc-action fm-mc-action--danger"
                   @click="
                     confirmDeleteOne(item);
@@ -670,14 +699,16 @@
       </button>
 
       <!-- Download (file only) -->
-      <a
+      <button
         v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
         class="fm-ctx-item"
-        :href="downloadUrl(ctxMenu.item.name)"
-        @click="hideCtxMenu()"
+        @click="
+          downloadFile(ctxMenu.item!.name);
+          hideCtxMenu();
+        "
       >
         <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
-      </a>
+      </button>
 
       <!-- Smart Rename — single file -->
       <button
@@ -705,8 +736,9 @@
       </button>
 
       <!-- Move / Copy — single item -->
+      <!-- Move is hidden for mount roots (cannot move a mount root); copy is allowed -->
       <button
-        v-if="isAdmin && !ctxIsMulti"
+        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
         class="fm-ctx-item"
         @click="
           openTransferDialog([childPath(ctxMenu.item!.name)], 'move');
@@ -728,7 +760,7 @@
 
       <!-- Compress — single item -->
       <button
-        v-if="!ctxIsMulti"
+        v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
         class="fm-ctx-item"
         @click="
           openCompressDialogForSources([childPath(ctxMenu.item!.name)], ctxMenu.item!.name);
@@ -739,7 +771,7 @@
       </button>
 
       <!-- Extract (archive files only) -->
-      <template v-if="!ctxIsMulti && ctxMenu.item?.type === 'file' && isArchive(ctxMenu.item.name)">
+      <template v-if="!ctxIsMulti && ctxMenu.item?.type === 'file' && isArchive(ctxMenu.item.name) && !ctxMenu.item?.isRemoteMount">
         <div class="fm-ctx-sep" />
         <button
           class="fm-ctx-item"
@@ -812,9 +844,9 @@
         }}
       </button>
 
-      <!-- Rename — single item -->
+      <!-- Rename — single item (hidden for remote mounts) -->
       <button
-        v-if="isAdmin && !ctxIsMulti"
+        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
         class="fm-ctx-item"
         @click="
           startRename(ctxMenu.item!);
@@ -826,9 +858,21 @@
 
       <div v-if="isAdmin" class="fm-ctx-sep" />
 
+      <!-- Unmount single (remote mount) -->
+      <button
+        v-if="isAdmin && !ctxIsMulti && ctxMenu.item?.isRemoteMount"
+        class="fm-ctx-item fm-ctx-item--danger"
+        @click="
+          confirmUnmount(ctxMenu.item!);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
+      </button>
+
       <!-- Delete single -->
       <button
-        v-if="isAdmin && !ctxIsMulti"
+        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
         class="fm-ctx-item fm-ctx-item--danger"
         @click="
           confirmDeleteOne(ctxMenu.item!);
@@ -873,16 +917,20 @@
       </button>
 
       <template v-if="isAdmin && treeCtxMenu.path">
-        <!-- Move / Copy -->
-        <button
-          class="fm-ctx-item"
-          @click="
-            openTransferDialog([treeCtxMenu.path], 'move');
-            hideTreeCtxMenu();
-          "
-        >
-          <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
-        </button>
+        <template v-if="!remoteMounts.some((m) => m.name === treeCtxMenu.name)">
+          <!-- Move / Copy -->
+          <button
+            class="fm-ctx-item"
+            @click="
+              openTransferDialog([treeCtxMenu.path], 'move');
+              hideTreeCtxMenu();
+            "
+          >
+            <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
+          </button>
+        </template>
+
+        <!-- Copy is always allowed (even for mount roots) -->
         <button
           class="fm-ctx-item"
           @click="
@@ -893,43 +941,54 @@
           <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
         </button>
 
-        <!-- Compress -->
-        <button
-          class="fm-ctx-item"
-          @click="
-            openCompressDialogForSources([treeCtxMenu.path], treeCtxMenu.name);
-            hideTreeCtxMenu();
-          "
-        >
-          <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
-        </button>
+        <template v-if="!remoteMounts.some((m) => m.name === treeCtxMenu.name)">
+          <!-- Compress -->
+          <button
+            class="fm-ctx-item"
+            @click="
+              openCompressDialogForSources([treeCtxMenu.path], treeCtxMenu.name);
+              hideTreeCtxMenu();
+            "
+          >
+            <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
+          </button>
 
-        <!-- Rename -->
-        <button
-          class="fm-ctx-item"
-          @click="
-            renameTarget = { name: treeCtxMenu.name, type: 'directory', size: 0, modified: '' };
-            renameValue = treeCtxMenu.name;
-            renamePathOverride = treeCtxMenu.path;
-            showRenameDialog = true;
-            hideTreeCtxMenu();
-          "
-        >
-          <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
-        </button>
+          <!-- Rename -->
+          <button
+            class="fm-ctx-item"
+            @click="
+              renameTarget = { name: treeCtxMenu.name, type: 'directory', size: 0, modified: '' };
+              renameValue = treeCtxMenu.name;
+              renamePathOverride = treeCtxMenu.path;
+              showRenameDialog = true;
+              hideTreeCtxMenu();
+            "
+          >
+            <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
+          </button>
 
-        <div class="fm-ctx-sep" />
+          <div class="fm-ctx-sep" />
 
-        <!-- Delete -->
+          <!-- Delete -->
+          <button
+            class="fm-ctx-item fm-ctx-item--danger"
+            @click="
+              deleteTargets = [treeCtxMenu.path];
+              showDeleteDialog = true;
+              hideTreeCtxMenu();
+            "
+          >
+            <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
+          </button>
+        </template>
+
+        <!-- Unmount (remote mount) -->
         <button
+          v-if="remoteMounts.some((m) => m.name === treeCtxMenu.name)"
           class="fm-ctx-item fm-ctx-item--danger"
-          @click="
-            deleteTargets = [treeCtxMenu.path];
-            showDeleteDialog = true;
-            hideTreeCtxMenu();
-          "
+          @click="onTreeUnmount"
         >
-          <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
+          <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
         </button>
       </template>
     </div>
@@ -1006,7 +1065,7 @@
     :title="$t('fileManager.extractErrorTitle')"
     width="480px"
   >
-    <SAlert variant="danger" class="mb-2">
+    <SAlert variant="error" class="mb-2">
       <span class="mdi mdi-alert-circle-outline mr-1" />
       {{ extractErrorMessage }}
     </SAlert>
@@ -1054,6 +1113,71 @@
   </SDialog>
 
   <SmartRenameDialog ref="smartRenameDialogRef" @renamed="onSmartRenameRenamed" />
+
+  <!-- ── Add remote mount dialog ─────────────────────────────────────────────── -->
+  <SDialog v-model="showRemoteDialog" :title="$t('fileManager.addRemoteFolder')" width="480px">
+    <SFormItem :label="$t('fileManager.protocol')">
+      <SSelect v-model="remoteForm.type" :options="protocolOptions" />
+    </SFormItem>
+    
+    <SFormItem :label="$t('fileManager.mountName')">
+      <SInput v-model="remoteForm.name" :placeholder="$t('fileManager.mountName')" />
+    </SFormItem>
+    
+    <!-- SMB fields -->
+    <template v-if="remoteForm.type === 'smb'">
+      <SFormItem :label="$t('fileManager.host')">
+        <SInput v-model="remoteForm.host" placeholder="192.168.1.100" />
+      </SFormItem>
+      <SFormItem :label="$t('fileManager.share')">
+        <SInput v-model="remoteForm.share" placeholder="downloads" />
+      </SFormItem>
+      <SFormItem :label="$t('fileManager.domain')">
+        <SInput v-model="remoteForm.domain" :placeholder="$t('fileManager.domain')" />
+      </SFormItem>
+    </template>
+    
+    <!-- WebDAV fields -->
+    <template v-if="remoteForm.type === 'webdav'">
+      <SFormItem :label="$t('fileManager.url')">
+        <SInput v-model="remoteForm.url" placeholder="https://example.com/dav" />
+      </SFormItem>
+    </template>
+    
+    <SFormItem :label="$t('fileManager.remotePath')">
+      <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
+    </SFormItem>
+    <SFormItem :label="$t('fileManager.username')">
+      <SInput v-model="remoteForm.username" :placeholder="$t('fileManager.username')" />
+    </SFormItem>
+    <SFormItem :label="$t('fileManager.password')">
+      <SInput v-model="remoteForm.password" type="password" :placeholder="$t('fileManager.password')" />
+    </SFormItem>
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton size="sm" variant="info" :loading="validating" @click="validateRemote">
+          <span class="mdi mdi-connection mr-1" />{{ $t("fileManager.validate") }}
+        </SButton>
+        <SButton @click="showRemoteDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton variant="primary" :loading="working" @click="doCreateRemote">
+          {{ $t("fileManager.create") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
+
+  <!-- ── Unmount confirm dialog ───────────────────────────────────────────── -->
+  <SDialog v-model="showUnmountDialog" :title="$t('fileManager.unmount')" width="420px">
+    <p>{{ $t("fileManager.confirmUnmount", { name: unmountTarget?.name }) }}</p>
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton @click="showUnmountDialog = false">{{ $t("fileManager.cancel") }}</SButton>
+        <SButton variant="danger" :loading="working" @click="doUnmount">
+          <span class="mdi mdi-eject mr-1" />{{ $t("fileManager.unmount") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
 </template>
 
 <script setup lang="ts">
@@ -1062,6 +1186,20 @@ interface FileItem {
   type: "file" | "directory";
   size: number;
   modified: string;
+  isRemoteMount?: boolean;
+}
+
+interface RemoteMount {
+  id: string;
+  name: string;
+  type: "smb" | "webdav";
+  host?: string;      // SMB
+  share?: string;     // SMB
+  url?: string;       // WebDAV
+  path?: string;
+  domain?: string;    // SMB
+  username: string;
+  password?: string;
 }
 
 interface CompressFormatOption {
@@ -1080,7 +1218,7 @@ const { apiFetch, showToast } = useApi();
 const auth = useAuth();
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 const config = useRuntimeConfig();
-const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob } = useTransferJobs();
+const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, hasActive } = useTransferJobs();
 const route = useRoute();
 const router = useRouter();
 
@@ -1193,6 +1331,34 @@ const fileInputEl = ref<HTMLInputElement>();
 // ── Dialog state ───────────────────────────────────────────────────────────
 const showNewFolderDialog = ref(false);
 const newFolderName = ref("");
+
+// ── Remote mounts state ────────────────────────────────────────────────────
+const remoteMounts = ref<RemoteMount[]>([]);
+const showRemoteDropdown = ref(false);
+
+// ── Remote mount dialog state ──────────────────────────────────────────────
+const showRemoteDialog = ref(false);
+const remoteForm = reactive({
+  type: "smb" as "smb" | "webdav",
+  name: "",
+  host: "",
+  share: "",
+  url: "",
+  path: "",
+  domain: "",
+  username: "",
+  password: "",
+});
+
+const protocolOptions = [
+  { label: "SMB/CIFS", value: "smb" },
+  { label: "WebDAV", value: "webdav" },
+];
+const validating = ref(false);
+
+// ── Unmount dialog state ───────────────────────────────────────────────────
+const showUnmountDialog = ref(false);
+const unmountTarget = ref<RemoteMount | null>(null);
 
 const showRenameDialog = ref(false);
 const renameTarget = ref<FileItem | null>(null);
@@ -1529,6 +1695,7 @@ function onPreviewKeydown(e: KeyboardEvent) {
 onMounted(() => window.addEventListener("keydown", onPreviewKeydown));
 onMounted(() => {
   void loadArchiveCapabilities();
+  void loadRemoteMounts();
 });
 onBeforeUnmount(() => window.removeEventListener("keydown", onPreviewKeydown));
 
@@ -1589,6 +1756,15 @@ function onRowContextMenu(e: MouseEvent, item: FileItem) {
   };
 }
 
+function onTreeUnmount() {
+  const mount = remoteMounts.value.find((m) => m.name === treeCtxMenu.value.name);
+  if (mount) {
+    unmountTarget.value = mount;
+    showUnmountDialog.value = true;
+  }
+  hideTreeCtxMenu();
+}
+
 function hideCtxMenu() {
   ctxMenu.value.visible = false;
   treeCtxMenu.value.visible = false;
@@ -1622,7 +1798,7 @@ function childPath(name: string) {
 function navigate(path: string) {
   const safe = sanitizePath(path);
   selectedItems.clear();
-  router.replace({ query: safe ? { path: safe } : {} });
+  router.push({ query: safe ? { path: safe } : {} });
 }
 
 function navigateUp() {
@@ -1700,6 +1876,32 @@ function downloadUrl(filename: string): string {
   const base = (config.public.apiBase as string) || "";
   const rel = currentPath.value ? `${currentPath.value}/${filename}` : filename;
   return `${base}/api/files/download?path=${encodeURIComponent(rel)}&token=${encodeURIComponent(auth.token.value || "")}`;
+}
+
+/**
+ * Download a file by fetching it as a blob and creating a temporary anchor.
+ * This allows better error handling for remote SMB files.
+ */
+async function downloadFile(filename: string) {
+  const url = downloadUrl(filename);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.statusMessage || t("fileManager.downloadError"));
+    }
+    const blob = await response.blob();
+    const downloadUrlObj = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrlObj;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrlObj);
+  } catch (err: any) {
+    showToast(err.message || t("fileManager.downloadError"), "error");
+  }
 }
 
 // ── Upload ─────────────────────────────────────────────────────────────────
@@ -1862,6 +2064,155 @@ async function doNewFolder() {
   }
 }
 
+// ── Remote mounts ──────────────────────────────────────────────────────────
+async function loadRemoteMounts() {
+  try {
+    remoteMounts.value = await apiFetch<RemoteMount[]>("/api/files/remote-mounts");
+  } catch {
+    remoteMounts.value = [];
+  }
+}
+
+function openRemoteModal(type: "smb" | "webdav") {
+  showRemoteDropdown.value = false;
+  remoteForm.type = type;
+  remoteForm.name = "";
+  remoteForm.host = "";
+  remoteForm.share = "";
+  remoteForm.url = "";
+  remoteForm.path = "";
+  remoteForm.domain = "";
+  remoteForm.username = "";
+  remoteForm.password = "";
+  showRemoteDialog.value = true;
+}
+
+async function validateRemote() {
+  validating.value = true;
+  try {
+    const body: any = {
+      name: remoteForm.name.trim(),
+      type: remoteForm.type,
+      username: remoteForm.username.trim(),
+      password: remoteForm.password,
+    };
+    
+    if (remoteForm.type === "smb") {
+      body.host = remoteForm.host.trim();
+      body.share = remoteForm.share.trim();
+      body.path = remoteForm.path.trim() || undefined;
+      body.domain = remoteForm.domain.trim() || undefined;
+    } else {
+      body.url = remoteForm.url.trim();
+      body.path = remoteForm.path.trim() || undefined;
+    }
+    
+    // Create temporarily to validate
+    const res = await apiFetch<{ id: string; name: string }>("/api/files/remote-mounts", {
+      method: "POST",
+      body,
+    });
+    // Validate connection
+    const validateRes = await apiFetch<{ ok: boolean; error?: string }>(
+      `/api/files/remote-mounts/${res.id}/validate`,
+      { method: "POST" },
+    );
+    if (validateRes.ok) {
+      showToast(t("fileManager.validationOk"), "success");
+      // Delete the temporary mount so user can recreate with the same form if they want
+      await apiFetch(`/api/files/remote-mounts/${res.id}`, { method: "DELETE" });
+    } else {
+      showToast(t("fileManager.validationFailed", { error: validateRes.error || "" }), "error");
+      await apiFetch(`/api/files/remote-mounts/${res.id}`, { method: "DELETE" });
+    }
+  } catch (err: any) {
+    showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
+  } finally {
+    validating.value = false;
+  }
+}
+
+async function doCreateRemote() {
+  const name = remoteForm.name.trim();
+  if (!name || !remoteForm.username.trim() || !remoteForm.password) {
+    showToast(t("fileManager.missingFields"), "error");
+    return;
+  }
+  
+  if (remoteForm.type === "smb" && (!remoteForm.host.trim() || !remoteForm.share.trim())) {
+    showToast(t("fileManager.missingSmbFields"), "error");
+    return;
+  }
+  
+  if (remoteForm.type === "webdav" && !remoteForm.url.trim()) {
+    showToast(t("fileManager.missingWebdavFields"), "error");
+    return;
+  }
+  
+  working.value = true;
+  try {
+    const body: any = {
+      name,
+      type: remoteForm.type,
+      username: remoteForm.username.trim(),
+      password: remoteForm.password,
+    };
+    
+    if (remoteForm.type === "smb") {
+      body.host = remoteForm.host.trim();
+      body.share = remoteForm.share.trim();
+      body.path = remoteForm.path.trim() || undefined;
+      body.domain = remoteForm.domain.trim() || undefined;
+    } else {
+      body.url = remoteForm.url.trim();
+      body.path = remoteForm.path.trim() || undefined;
+    }
+    
+    await apiFetch("/api/files/remote-mounts", {
+      method: "POST",
+      body,
+    });
+    showToast(t("fileManager.mountCreated"), "success");
+    showRemoteDialog.value = false;
+    await loadRemoteMounts();
+    loadDir();
+    folderTreeRef.value?.refresh();
+  } catch (err: any) {
+    showToast(err?.data?.statusMessage ?? t("fileManager.mountError", { error: err?.data?.statusMessage || "" }), "error");
+  } finally {
+    working.value = false;
+  }
+}
+
+function confirmUnmount(item: FileItem) {
+  const mount = remoteMounts.value.find((m) => m.name === item.name);
+  if (!mount) return;
+  if (hasActive.value) {
+    showToast(t("fileManager.unmountBlocked"), "warning");
+    return;
+  }
+  unmountTarget.value = mount;
+  showUnmountDialog.value = true;
+}
+
+async function doUnmount() {
+  if (!unmountTarget.value) return;
+  working.value = true;
+  try {
+    await apiFetch(`/api/files/remote-mounts/${unmountTarget.value.id}`, { method: "DELETE" });
+    showToast(t("fileManager.mountRemoved"), "success");
+    showUnmountDialog.value = false;
+    unmountTarget.value = null;
+    await loadRemoteMounts();
+    loadDir();
+    folderTreeRef.value?.refresh();
+  } catch (err: any) {
+    showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
+  } finally {
+    working.value = false;
+  }
+}
+
 // ── Rename ─────────────────────────────────────────────────────────────────
 function startRename(item: FileItem) {
   renameTarget.value = item;
@@ -1920,6 +2271,7 @@ async function doDelete() {
 
 // ── Icon mapping ───────────────────────────────────────────────────────────
 function fileIcon(item: FileItem): string {
+  if (item.isRemoteMount) return "mdi-folder-network fm-icon-dir";
   if (item.type === "directory") return "mdi-folder fm-icon-dir";
   const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
   const map: Record<string, string> = {
@@ -2604,5 +2956,41 @@ watch(
   &:focus {
     border-color: var(--s-accent);
   }
+}
+
+/* ── Remote folder dropdown ─────────────────────────────────────────── */
+.fm-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.fm-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 180px;
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  padding: 4px 0;
+}
+.fm-dropdown-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--s-text);
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+.fm-dropdown-item:hover {
+  background: var(--s-bg-hover);
 }
 </style>
