@@ -1,5 +1,7 @@
 # TransMule
 
+![](./frontend/assets/logo/logo320.png)
+
 A unified self-hosted web interface for managing downloads across **aMule** (ED2K/Kademlia), **Transmission** (torrents) and **pyLoad NG** (direct downloads) — all from a single dashboard, deployed with Docker Compose.
 
 This is an AI-assisted project: parts of the code and documentation were developed with AI tooling and reviewed by the maintainer.
