@@ -57,34 +57,30 @@
         <div v-if="tab.status === 'searching'" class="flex-row gap-md mb-2">
           <span class="is-size-7 has-text-grey">
             <span class="mdi mdi-loading mdi-spin mr-1" />
-            Buscando{{ tab.results.length ? ` (${tab.results.length} resultados)` : '…' }}
+            Buscando{{ tab.results.length ? ` (${tab.results.length} resultados)` : "…" }}
           </span>
         </div>
-        <div v-else-if="tab.status === 'complete' && tab.results.length > 0" class="mb-2 is-size-7 has-text-grey">
+        <div
+          v-else-if="tab.status === 'complete' && tab.results.length > 0"
+          class="mb-2 is-size-7 has-text-grey"
+        >
           {{ tab.results.length }} resultados
-          <span v-if="tab.results.filter((r:any) => r.type === 'torrent').length" class="ml-2">
-            <span class="mdi mdi-magnet" /> {{ tab.results.filter((r:any) => r.type === 'torrent').length }}
+          <span v-if="tab.results.filter((r: any) => r.type === 'torrent').length" class="ml-2">
+            <span class="mdi mdi-magnet" />
+            {{ tab.results.filter((r: any) => r.type === "torrent").length }}
           </span>
-          <span v-if="tab.results.filter((r:any) => r.type === 'amule').length" class="ml-2">
-            <span class="mdi mdi-server-network" /> {{ tab.results.filter((r:any) => r.type === 'amule').length }}
+          <span v-if="tab.results.filter((r: any) => r.type === 'amule').length" class="ml-2">
+            <span class="mdi mdi-server-network" />
+            {{ tab.results.filter((r: any) => r.type === "amule").length }}
           </span>
         </div>
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-        <STable
-          :data="pagedResults"
-          :columns="columns"
-          row-key="id"
-          @sort="onSort"
-        >
+        <STable :data="pagedResults" :columns="columns" row-key="id" @sort="onSort">
           <!-- Name header with filter -->
           <template #header-name="{ column }">
-            <SearchFilterHeader
-              v-model="nameFilter"
-              :label="column.label"
-              placeholder="filtrar…"
-            />
+            <SearchFilterHeader v-model="nameFilter" :label="column.label" placeholder="filtrar…" />
           </template>
 
           <!-- Cover -->
@@ -100,7 +96,9 @@
               :movie-details="row.movieDetails"
               @load-cover="loadCover(tab.id, row)"
             />
-            <div v-else class="cell-cover-spacer" />
+            <span v-else class="result-cover-placeholder" :title="row.name">
+              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
+            </span>
           </template>
 
           <!-- Name -->
@@ -113,7 +111,8 @@
             <span
               v-if="row.seedsOrSources != null"
               :class="row.seedsOrSources > 0 ? 'has-text-success' : 'has-text-grey'"
-            >{{ row.seedsOrSources }}</span>
+              >{{ row.seedsOrSources }}</span
+            >
           </template>
 
           <!-- Leechers (torrent only) -->
@@ -121,7 +120,8 @@
             <span
               v-if="row.type === 'torrent' && row.leechers != null"
               :class="row.leechers > 0 ? 'has-text-danger' : 'has-text-grey'"
-            >{{ row.leechers }}</span>
+              >{{ row.leechers }}</span
+            >
           </template>
 
           <!-- Source -->
@@ -189,24 +189,17 @@
 </template>
 
 <script setup lang="ts">
-import { isVideoExt } from "../composables/useSearchTabs";
+import { isVideoExt, detectFileIcon } from "../composables/useSearchTabs";
 
 const { apiFetch } = useApi();
 const route = useRoute();
 
-const {
-  tabs,
-  activeTabId,
-  activeTab,
-  createUnifiedTab,
-  closeTab,
-  switchTab,
-  downloadAmuleHash,
-} = useSearchTabs();
+const { tabs, activeTabId, activeTab, createUnifiedTab, closeTab, switchTab, downloadAmuleHash } =
+  useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────
 
-const unifiedTabs = computed(() => tabs.value.filter((t: any) => t.service === 'unified'));
+const unifiedTabs = computed(() => tabs.value.filter((t: any) => t.service === "unified"));
 
 // ── Form state ──────────────────────────────────────────────
 
@@ -258,8 +251,22 @@ const columns = [
   { key: "cover", label: "", align: "center" as const },
   { prop: "name", label: "Nombre", sortable: true },
   { prop: "size_fmt", label: "Tamaño", width: 110, sortable: true },
-  { key: "seeds", prop: "seedsOrSources", label: "SE", width: 70, sortable: true, align: "right" as const },
-  { key: "leechers", prop: "leechers", label: "LE", width: 70, sortable: true, align: "right" as const },
+  {
+    key: "seeds",
+    prop: "seedsOrSources",
+    label: "SE",
+    width: 70,
+    sortable: true,
+    align: "right" as const,
+  },
+  {
+    key: "leechers",
+    prop: "leechers",
+    label: "LE",
+    width: 70,
+    sortable: true,
+    align: "right" as const,
+  },
   { key: "source", label: "Fuente", width: 130, sortable: true, align: "center" as const },
   { key: "actions", label: "", width: 55, align: "center" as const },
 ];
@@ -288,7 +295,9 @@ const pagedResults = computed(() => {
 
 const totalFiltered = computed(() => filteredResults.value.length);
 
-watch(nameFilter, () => { currentPage.value = 1; });
+watch(nameFilter, () => {
+  currentPage.value = 1;
+});
 watch(filteredResults, () => {
   if (currentPage.value > Math.ceil(filteredResults.value.length / PAGE_SIZE)) {
     currentPage.value = Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE));
@@ -327,10 +336,13 @@ async function addTorrent(row: any) {
   addingHash.value = row.id;
   try {
     await apiFetch("/api/transmission/torrents", {
-      method: "POST", body: { action: "add", filename: row.magnet },
+      method: "POST",
+      body: { action: "add", filename: row.magnet },
     });
     addedTorrents.value.add(row.id);
-  } catch { /* silent */ }
+  } catch {
+    /* silent */
+  }
   addingHash.value = "";
 }
 
@@ -343,7 +355,9 @@ async function downloadAmule(row: any) {
   try {
     await downloadAmuleHash(row.hash);
     downloadedAmule.value.add(row.id);
-  } catch { /* silent */ }
+  } catch {
+    /* silent */
+  }
   downloadingAmule.value = "";
 }
 
@@ -354,8 +368,10 @@ onMounted(() => {
   if (qParam && typeof qParam === "string" && qParam.trim()) {
     createUnifiedTab(qParam.trim());
   }
-  if (unifiedTabs.value.length > 0 &&
-      !unifiedTabs.value.some((t: any) => t.id === activeTabId.value)) {
+  if (
+    unifiedTabs.value.length > 0 &&
+    !unifiedTabs.value.some((t: any) => t.id === activeTabId.value)
+  ) {
     switchTab(unifiedTabs.value[unifiedTabs.value.length - 1].id);
   }
 });
@@ -374,13 +390,10 @@ onMounted(() => {
 .unified-search-btn {
   flex-shrink: 0;
 }
-.cell-cover-spacer {
-  width: 36px;
-  height: 36px;
-}
 :deep(.s-table td:first-child) {
-  width: 60px;
-  min-width: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 /* Hide cover column on mobile */
 @media (max-width: 768px) {

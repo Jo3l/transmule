@@ -2038,7 +2038,8 @@ function uploadFiles(files: File[]) {
 
   const base = (config.public.apiBase as string) || "";
   xhr.open("POST", `${base}/api/files/upload`);
-  xhr.setRequestHeader("Authorization", `Bearer ${auth.token.value}`);
+  // JWT is sent via the auth_token cookie — do NOT add Authorization: Bearer
+  // as that would overwrite the nginx Basic auth header.
   xhr.send(formData);
 }
 

@@ -182,7 +182,12 @@ export function useSearchTabs() {
           const { done, value } = await reader.read();
           if (done) break;
           buf += decoder.decode(value, { stream: true });
-          for (const ev of buf.split("\n\n")) {
+          const parts = buf.split("\n\n");
+          // Keep the last part in the buffer — it may be an incomplete event
+          // that straddles two TCP chunks.  Resetting buf = "" would discard it.
+          buf = parts.pop() ?? "";
+          // Process every complete event
+          for (const ev of parts) {
             const lines = ev.split("\n");
             let type = "", data = "";
             for (const l of lines) {
@@ -203,7 +208,6 @@ export function useSearchTabs() {
               }
             } catch { /* skip */ }
           }
-          buf = "";
         }
       })
       .catch((err) => updateTab(tab.id, { status: "error", error: err?.message ?? "Stream failed" }));
@@ -342,7 +346,9 @@ export function useSearchTabs() {
           const { done, value } = await reader.read();
           if (done) break;
           buf += decoder.decode(value, { stream: true });
-          for (const ev of buf.split("\n\n")) {
+          const parts = buf.split("\n\n");
+          buf = parts.pop() ?? "";
+          for (const ev of parts) {
             const lines = ev.split("\n");
             let type = "", data = "";
             for (const l of lines) {
@@ -359,7 +365,6 @@ export function useSearchTabs() {
               }
             } catch { /* skip */ }
           }
-          buf = "";
         }
       })
       .catch(() => { /* aborted or error */ })
@@ -676,6 +681,41 @@ export function isVideoExt(name: string): boolean {
   if (dot === -1) return true;
   const ext = name.slice(dot).toLowerCase();
   return VIDEO_EXTS.has(ext);
+}
+
+// ── File-type icon detection ──────────────────────────────────────
+
+const _FILE_ICONS: Record<string, string> = {
+  video: "mdi-file-video",
+  audio: "mdi-file-music",
+  image: "mdi-file-image",
+  archive: "mdi-zip-box",
+  pdf: "mdi-file-pdf-box",
+  subtitle: "mdi-subtitles",
+  text: "mdi-file-document-outline",
+  app: "mdi-application",
+};
+
+const _FILE_EXT_MAP: { exts: string[]; type: string }[] = [
+  { exts: ["mkv","mp4","avi","mov","m4v","ts","m2ts","webm","flv","wmv","iso","divx","xvid","3gp","ogm","rm","rmvb"], type: "video" },
+  { exts: ["mp3","flac","wav","aac","ogg","opus","m4a","wma"], type: "audio" },
+  { exts: ["jpg","jpeg","png","gif","bmp","webp","svg"], type: "image" },
+  { exts: ["zip","rar","7z","tar","gz","bz2","xz","zst"], type: "archive" },
+  { exts: ["pdf","epub","mobi","cbr","cbz","djvu"], type: "pdf" },
+  { exts: ["srt","sub","idx","ass","ssa","vtt"], type: "subtitle" },
+  { exts: ["txt","nfo","md","log"], type: "text" },
+  { exts: ["exe","msi","apk","dmg","AppImage","deb","rpm"], type: "app" },
+];
+
+export function detectFileIcon(name: string | undefined): string {
+  if (!name) return "mdi-file";
+  const dot = name.lastIndexOf(".");
+  if (dot === -1) return "mdi-file";
+  const ext = name.slice(dot + 1).toLowerCase();
+  for (const ft of _FILE_EXT_MAP) {
+    if (ft.exts.includes(ext)) return _FILE_ICONS[ft.type] ?? "mdi-file";
+  }
+  return "mdi-file";
 }
 
 /** Quick string hash for deduplicating identical searches. */
