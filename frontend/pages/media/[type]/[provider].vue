@@ -160,17 +160,54 @@
               </div>
             </div>
 
-            <!-- Non-series single download in modal -->
+            <!-- Non-series download(s) in modal -->
             <div v-else-if="modal.item.links?.length" class="dt-modal-download">
-              <SButton
-                size="sm"
-                :variant="isItemDownloaded(modal.item) ? 'warning' : undefined"
-                :loading="busy === modal.item.id"
-                :disabled="!!busy"
-                @click="onDownloadLink(modal!.item, modal!.item.links![0])"
-              >
-                <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
-              </SButton>
+              <template v-if="modal.item.links.length === 1">
+                <SButton
+                  size="sm"
+                  :variant="isItemDownloaded(modal.item) ? 'warning' : undefined"
+                  :loading="busy === modal.item.id"
+                  :disabled="!!busy"
+                  @click="onDownloadLink(modal!.item, modal!.item.links![0])"
+                >
+                  <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
+                </SButton>
+              </template>
+              <template v-else>
+                <div
+                  v-for="link in modal.item.links"
+                  :key="link.hash || link.url"
+                  class="dt-modal-torrent-row"
+                >
+                  <span v-if="link.quality" class="torrent-quality">{{ link.quality }}</span>
+                  <span v-if="link.type" class="torrent-type">{{ link.type }}</span>
+                  <span v-if="link.size" class="torrent-size">{{ link.size }}</span>
+                  <span v-if="link.seeds" class="torrent-seeds">
+                    <span class="mdi mdi-arrow-up-bold" />{{ link.seeds }}
+                  </span>
+                  <span v-if="link.tags?.length" class="torrent-tags">
+                    <span
+                      v-for="tag in link.tags"
+                      :key="tag.label"
+                      :title="tag.tooltip ?? ''"
+                      class="torrent-tag"
+                      :class="tag.variant ? `torrent-tag--${tag.variant}` : ''"
+                    >
+                      <span v-if="tag.icon" :class="['mdi', tag.icon]" class="torrent-tag-icon" />
+                      {{ tag.label }}
+                    </span>
+                  </span>
+                  <SButton
+                    size="sm"
+                    :variant="isLinkDownloaded(link) ? 'warning' : undefined"
+                    :loading="busy === (link.hash || link.url)"
+                    :disabled="!!busy"
+                    @click="onDownloadLink(modal!.item, link)"
+                  >
+                    <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
+                  </SButton>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -274,6 +311,13 @@ function isEpDownloaded(ep: MediaEpisode): boolean {
       return false;
     }) ?? false
   );
+}
+
+function isLinkDownloaded(link: MediaLink): boolean {
+  if (!link) return false;
+  if (link.url && isDownloaded(link.url)) return true;
+  if (link.hash && isDownloadedByHash(link.hash)) return true;
+  return false;
 }
 
 function isItemDownloaded(item: MediaItem): boolean {
@@ -759,6 +803,107 @@ onUnmounted(() => observer?.disconnect());
 .dt-modal-download {
   border-top: 1px solid var(--s-border);
   padding-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Torrent rows inside the modal */
+.dt-modal-torrent-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+
+  & > :last-child {
+    margin-left: auto;
+  }
+}
+
+.torrent-quality {
+  font-weight: 600;
+  color: var(--s-text);
+  min-width: 3rem;
+}
+
+.torrent-type {
+  color: var(--s-text-muted);
+  min-width: 3.5rem;
+  text-transform: capitalize;
+}
+
+.torrent-size {
+  color: var(--s-text-secondary);
+  min-width: 4rem;
+}
+
+.torrent-seeds {
+  display: flex;
+  align-items: center;
+  color: #4caf50;
+  font-size: 0.76rem;
+
+  .mdi {
+    font-size: 0.85rem;
+  }
+}
+
+/* Tag badges in torrent rows */
+.torrent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.torrent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 3px;
+  border: 1px solid;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--s-text-secondary, #888);
+  background: color-mix(in srgb, var(--s-border) 20%, transparent);
+  border-color: var(--s-border);
+}
+.torrent-tag-icon {
+  font-size: 0.6rem;
+}
+
+.torrent-tag--success {
+  color: var(--s-success, #22c55e);
+  background: color-mix(in srgb, var(--s-success, #22c55e) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-success, #22c55e) 25%, transparent);
+}
+.torrent-tag--warning {
+  color: var(--s-warning, #eab308);
+  background: color-mix(in srgb, var(--s-warning, #eab308) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-warning, #eab308) 25%, transparent);
+}
+.torrent-tag--danger {
+  color: var(--s-danger, #ef4444);
+  background: color-mix(in srgb, var(--s-danger, #ef4444) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-danger, #ef4444) 25%, transparent);
+}
+.torrent-tag--info {
+  color: var(--s-info, #3b82f6);
+  background: color-mix(in srgb, var(--s-info, #3b82f6) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-info, #3b82f6) 25%, transparent);
+}
+.torrent-tag--accent {
+  color: var(--s-accent, #a855f7);
+  background: color-mix(in srgb, var(--s-accent, #a855f7) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-accent, #a855f7) 25%, transparent);
+}
+.torrent-tag--primary {
+  color: var(--s-primary, #6366f1);
+  background: color-mix(in srgb, var(--s-primary, #6366f1) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-primary, #6366f1) 25%, transparent);
 }
 
 .episode-row {

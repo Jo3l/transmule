@@ -1218,6 +1218,7 @@
     "addError": "Failed to add torrent",
     "noTorrent": "No torrent found for this item",
     "download": "Download",
-    "episodes": "episodes"
+    "episodes": "episodes",
+    "viewLinks": "View all variants"
   }
 }
