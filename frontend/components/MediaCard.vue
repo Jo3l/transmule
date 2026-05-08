@@ -93,6 +93,18 @@
         </SButton>
       </template>
 
+      <!-- Movies with needsDetail: always show modal button -->
+      <template v-else-if="item.needsDetail">
+        <SButton
+          size="sm"
+          variant="primary"
+          :disabled="!!busy"
+          @click.stop="$emit('open', item)"
+        >
+          <span class="mdi mdi-download mr-1" />{{ $t("media.download") }}
+        </SButton>
+      </template>
+
       <!-- Movies with multiple torrent rows -->
       <template v-else-if="item.links && item.links.length > 1">
         <div v-for="link in item.links" :key="link.hash || link.url" class="torrent-row">
@@ -127,19 +139,9 @@
         </div>
       </template>
 
-      <!-- Single download button (or open modal if needsDetail) -->
+      <!-- Single download button (no needsDetail, single link) -->
       <template v-else>
         <SButton
-          v-if="item.needsDetail"
-          size="sm"
-          :disabled="!!busy"
-          :title="$t('media.viewLinks')"
-          @click.stop="$emit('open', item)"
-        >
-          <span class="mdi mdi-format-list-bulleted mr-1" />{{ $t("media.viewLinks") }}
-        </SButton>
-        <SButton
-          v-else
           size="sm"
           :variant="anyLinkDownloaded ? 'warning' : undefined"
           :loading="busy === item.id"

@@ -1218,7 +1218,6 @@
     "addError": "Error al añadir el torrent",
     "noTorrent": "No se encontró torrent para este elemento",
     "download": "Descargar",
-    "episodes": "episodios",
-    "viewLinks": "Ver todas las variantes"
+    "episodes": "episodios"
   }
 }
