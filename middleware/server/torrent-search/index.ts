@@ -2,13 +2,16 @@
  * Torrent search coordinator.
  *
  * Delegates to registered torrent-search plugins loaded from data/plugins/.
- * Runs the requested plugin(s) in parallel, merges and de-duplicates results.
+ * Runs the requested plugin(s) in parallel, merges, de-duplicates, and
+ * enriches all results with parsed torrent-name tags (quality, codec,
+ * audio, languages, etc.) when the plugin doesn't provide native tags.
  */
 import type { TorrentSearchResult } from "../providers/types";
 import {
   ensureProviders,
   getTorrentSearchProviders,
 } from "../providers/loader";
+import { parseTorrentName } from "./parse-name";
 
 export type { TorrentSearchResult };
 
@@ -64,5 +67,23 @@ export async function searchTorrents(
     }
   }
 
-  return [...map.values()].sort((a, b) => b.seeders - a.seeders);
+  // Enrich all results with parsed torrent-name tags.
+  // Plugins that already provide native tags (e.g. TorrentClaw) keep them;
+  // the parser only fills in for results that have no tags.
+  const results = [...map.values()].sort((a, b) => b.seeders - a.seeders);
+  return results.map(enrichWithParsedTags);
+}
+
+/**
+ * Adds parsed torrent-name tags to results that don't already have tags.
+ * Native plugin tags (e.g. TorrentClaw's TrueSpec scores) are preserved.
+ */
+function enrichWithParsedTags(r: TorrentSearchResult): TorrentSearchResult {
+  // Skip if the plugin already provided tags
+  if (r.tags && r.tags.length > 0) return r;
+
+  const { tags } = parseTorrentName(r.name);
+  if (tags.length === 0) return r;
+
+  return { ...r, tags };
 }

@@ -30,6 +30,11 @@
               <span class="mdi mdi-upload"></span> {{ $t("nav.uploads") }}
             </NuxtLink>
           </li>
+          <li v-if="hasTorrentSearchProviders">
+            <NuxtLink to="/search" @click="$emit('close')">
+              <span class="mdi mdi-magnify"></span> Búsqueda global
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink to="/files" @click="$emit('close')">
               <span class="mdi mdi-folder-multiple"></span> {{ $t("nav.files") }}
@@ -42,7 +47,7 @@
           </li>
         </ul>
 
-        <!-- Dynamic media-type sections (one per unique provider mediaType) -->
+        <!-- Dynamic media-type sections -->
         <div
           v-for="group in mediaGroups"
           :key="group.type"
@@ -266,6 +271,8 @@ onUnmounted(() => {
   window.removeEventListener("app-theme-change", reinitScene);
   destroyScene?.();
 });
+
+// ── Sections state ──────────────────────────────────────
 
 const sectionsOpen = ref<Record<string, boolean>>({});
 const amuleOpen = ref(true);

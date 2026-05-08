@@ -5,8 +5,9 @@
       {{ $t("torrentSearch.title") }}
     </h1>
 
+    <!-- Search form -->
     <div class="box mb-4">
-      <form @submit.prevent="doSearch">
+      <form @submit.prevent="onSearch">
         <div class="columns is-multiline">
           <div class="column is-6">
             <SFormItem :label="$t('torrentSearch.label')">
@@ -21,7 +22,7 @@
             </SFormItem>
           </div>
         </div>
-        <SButton variant="primary" native-type="submit" :loading="loading">
+        <SButton variant="primary" native-type="submit">
           <span class="mdi mdi-magnify mr-1" /> {{ $t("torrentSearch.button") }}
         </SButton>
         <SButton class="ml-3" @click.prevent="openTrackers">
@@ -30,72 +31,156 @@
       </form>
     </div>
 
-    <STable :data="results" :columns="columns" row-key="infoHash" :loading="loading">
-      <!-- Name cell -->
-      <template #cell-name="{ row }">
-        <span :title="row.name">{{ row.name }}</span>
-      </template>
-
-      <!-- Source badge -->
-      <template #cell-source="{ row }">
-        <STag :variant="sourceVariant(row.source)" size="sm">
+    <!-- ═══ Tabs ════════════════════════════════════════════════════════ -->
+    <STabs v-if="torrentTabs.length > 0" v-model="currentTabName" variant="card" :panes="tabPanes">
+      <template v-for="tab in torrentTabs" :key="tab.id" #[`tab-${tab.id}`]>
+        <span class="tab-label-wrap">
+          <!-- Status icon -->
           <span
-            v-if="providerIconMap[row.source]"
-            class="mdi"
-            :class="providerIconMap[row.source]"
-            style="margin-right: 3px"
-          />{{ providerLabelMap[row.source] ?? row.source }}
-        </STag>
-      </template>
-
-      <!-- Seeders (green) -->
-      <template #cell-seeders="{ row }">
-        <span :class="row.seeders > 0 ? 'has-text-success' : 'has-text-grey'">
-          {{ row.seeders }}
+            v-if="tab.status === 'searching'"
+            class="mdi mdi-loading mdi-spin tab-status-icon"
+          />
+          <span
+            v-else-if="tab.status === 'complete'"
+            class="mdi mdi-check tab-status-icon has-text-success"
+          />
+          <span
+            v-else-if="tab.status === 'error'"
+            class="mdi mdi-alert tab-status-icon has-text-danger"
+          />
+          <!-- Query label -->
+          <span class="tab-label-text">{{ tab.query }}</span>
+          <!-- Result count badge -->
+          <span class="tab-count-badge">{{ tab.results.length }}</span>
+          <!-- Close button -->
+          <button
+            class="tab-close-btn"
+            :title="$t('torrentSearch.closeTab')"
+            @click.stop="closeTab(tab.id)"
+          >
+            <span class="mdi mdi-close" />
+          </button>
         </span>
       </template>
 
-      <!-- Leechers (danger) -->
-      <template #cell-leechers="{ row }">
-        <span :class="row.leechers > 0 ? 'has-text-danger' : 'has-text-grey'">
-          {{ row.leechers }}
-        </span>
-      </template>
-
-      <!-- Add / Added action -->
-      <template #cell-actions="{ row }">
-        <SButton
-          v-if="!addedHashes.has(row.infoHash)"
-          :variant="isDownloadedByHash(row.infoHash) ? 'warning' : 'success'"
-          size="sm"
-          :loading="addingHash === row.infoHash"
-          :title="$t('torrentSearch.addToTransmission')"
-          @click="addTorrent(row)"
-        >
-          <span class="mdi mdi-plus" />
-        </SButton>
-        <span
-          v-else
-          class="mdi mdi-check has-text-success"
-          :title="$t('torrentSearch.alreadyAdded')"
-        />
-      </template>
-
-      <!-- Empty state -->
-      <template #empty>
-        <div class="has-text-centered py-5 has-text-grey">
-          <span class="mdi mdi-file-search-outline icon-lg" />
-          <p>
-            {{ searched ? $t("torrentSearch.noResults") : $t("torrentSearch.enterSearch") }}
-          </p>
+      <!-- Tab content -->
+      <STabPane
+        v-for="tab in torrentTabs"
+        :key="tab.id"
+        :name="tab.id"
+        :label="tab.query"
+        :active="tab.id === (activeTabId ?? '')"
+      >
+        <!-- Loading per-source + stop button -->
+        <div v-if="tab.status === 'searching'" class="flex-row gap-md mb-2">
+          <span class="is-size-7 has-text-grey">
+            <span class="mdi mdi-loading mdi-spin mr-1" />
+            Searching {{ tab.sourcesCompleted.length }} / {{ totalPluginCount }} sources...
+          </span>
+          <SButton variant="warning" size="sm" @click="stopTorrentSearch(tab.id)">
+            <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
+          </SButton>
         </div>
-      </template>
-    </STable>
 
-    <!-- Error -->
-    <p v-if="error" class="has-text-danger mt-3">{{ error }}</p>
+        <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-    <!-- BT Trackers Dialog -->
+        <STable
+          :data="pagedResults"
+          :columns="columns"
+          row-key="infoHash"
+        >
+          <!-- Name header with filter -->
+          <template #header-name="{ column }">
+            <SearchFilterHeader
+              v-model="nameFilter"
+              :label="column.label"
+              placeholder="filtrar por nombre"
+            />
+          </template>
+          <!-- Cover thumbnail -->
+          <template #cell-cover="{ row }">
+            <ResultCover
+              v-if="isVideoExt(row.name)"
+              :cover="row.cover"
+              :name="row.name"
+              :size="row.size_fmt"
+              :seeders="row.seeders"
+              :leechers="row.leechers"
+              :category="row.category"
+              :movie-details="row.movieDetails"
+              @load-cover="loadCover(row)"
+            />
+            <div v-else class="cell-cover-spacer" />
+          </template>
+          <!-- Name cell + tags -->
+          <template #cell-name="{ row }">
+            <SearchResultName :name="row.name" :tags="row.tags" />
+          </template>
+
+          <template #cell-source="{ row }">
+            <STag :variant="sourceVariant(row.source)" size="sm">
+              <span
+                v-if="providerIconMap[row.source]"
+                class="mdi"
+                :class="providerIconMap[row.source]"
+                style="margin-right: 3px"
+              />{{ providerLabelMap[row.source] ?? row.source }}
+            </STag>
+          </template>
+
+          <template #cell-seeders="{ row }">
+            <span :class="row.seeders > 0 ? 'has-text-success' : 'has-text-grey'">
+              {{ row.seeders }}
+            </span>
+          </template>
+
+          <template #cell-leechers="{ row }">
+            <span :class="row.leechers > 0 ? 'has-text-danger' : 'has-text-grey'">
+              {{ row.leechers }}
+            </span>
+          </template>
+
+          <template #cell-actions="{ row }">
+            <SButton
+              v-if="!addedHashes.has(row.infoHash)"
+              :variant="isDownloadedByHash(row.infoHash) ? 'warning' : 'success'"
+              size="sm"
+              :loading="addingHash === row.infoHash"
+              :title="$t('torrentSearch.addToTransmission')"
+              @click="addTorrent(row)"
+            >
+              <span class="mdi mdi-plus" />
+            </SButton>
+            <span
+              v-else
+              class="mdi mdi-check has-text-success"
+              :title="$t('torrentSearch.alreadyAdded')"
+            />
+          </template>
+
+          <template #empty>
+            <div class="has-text-centered py-5 has-text-grey">
+              <span class="mdi mdi-file-search-outline icon-lg" />
+              <p>{{ $t("torrentSearch.enterSearch") }}</p>
+            </div>
+          </template>
+        </STable>
+        <SPagination
+          v-if="filteredResults.length > PAGE_SIZE"
+          v-model="currentPage"
+          :total="filteredResults.length"
+          :page-size="PAGE_SIZE"
+        />
+      </STabPane>
+    </STabs>
+
+    <!-- No tabs yet -->
+    <div v-else class="has-text-centered py-5 has-text-grey">
+      <span class="mdi mdi-file-search-outline icon-lg" />
+      <p>{{ $t("torrentSearch.enterSearch") }}</p>
+    </div>
+
+    <!-- Trackers Dialog -->
     <SDialog v-model="trackersDialog" :title="$t('torrentSearch.trackersTitle')" width="520px">
       <p class="is-size-7 has-text-grey mb-1">{{ $t("torrentSearch.trackersDescription") }}</p>
       <p class="is-size-7 mb-3">
@@ -119,14 +204,22 @@
 </template>
 
 <script setup lang="ts">
+import { isVideoExt } from "../../composables/useSearchTabs";
 const { apiFetch } = useApi();
 const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
 const { isDownloadedByHash, recordDownload, loadDownloadHistory } = useDownloadHistory();
 const { torrentSearchProviders, loadProviders } = useProviders();
+const { tabs, activeTabId, activeTab, tabCount, createTorrentTab, closeTab, switchTab } =
+  useSearchTabs();
 
-// ── Source options (dynamic — built from registered torrent-search plugins) ──
+// ── Filter tabs by service ──────────────────────────────────────────────────
+
+const torrentTabs = computed(() => tabs.value.filter((t) => t.service === 'transmission'));
+const myActiveTab = computed(() => torrentTabs.value.find((t) => t.id === activeTabId.value) ?? null);
+
+// ── Source options ─────────────────────────────────────────────────────────
 
 const sourceOptions = computed(() => [
   { label: t("torrentSearch.sources.all"), value: "all" },
@@ -136,22 +229,24 @@ const sourceOptions = computed(() => [
   })),
 ]);
 
+const totalPluginCount = computed(() => torrentSearchProviders.value.length);
+
+// ── Tab panes for STabs ────────────────────────────────────────────────────
+
+const currentTabName = computed({
+  get: () => activeTabId.value ?? "",
+  set: (val: string) => switchTab(val),
+});
+
+const tabPanes = computed(() => torrentTabs.value.map((t) => ({ name: t.id, label: t.query })));
+
 // ── Columns ─────────────────────────────────────────────────────────────────
 
 const columns = computed(() => [
+  { key: "cover", label: "", align: "center" as const },
   { prop: "name", label: t("torrentSearch.columns.name"), sortable: true },
-  {
-    prop: "category",
-    label: t("torrentSearch.columns.category"),
-    width: 140,
-    sortable: true,
-  },
-  {
-    prop: "size_fmt",
-    label: t("torrentSearch.columns.size"),
-    width: 110,
-    sortable: true,
-  },
+  { prop: "category", label: t("torrentSearch.columns.category"), width: 140, sortable: true },
+  { prop: "size_fmt", label: t("torrentSearch.columns.size"), width: 110, sortable: true },
   {
     key: "seeders",
     prop: "seeders",
@@ -168,57 +263,57 @@ const columns = computed(() => [
     sortable: true,
     align: "right" as const,
   },
-  {
-    key: "source",
-    label: t("torrentSearch.columns.source"),
-    width: 80,
-    align: "center" as const,
-  },
-  {
-    key: "actions",
-    label: "",
-    width: 55,
-    align: "center" as const,
-  },
+  { key: "source", label: t("torrentSearch.columns.source"), width: 80, align: "center" as const },
+  { key: "actions", label: "", width: 55, align: "center" as const },
 ]);
 
 // ── State ────────────────────────────────────────────────────────────────────
 
 const query = ref("");
 const source = ref("all");
-const loading = ref(false);
-const searched = ref(false);
-const error = ref("");
-
-interface SearchResult {
-  name: string;
-  magnet: string;
-  infoHash: string;
-  size: number | null;
-  size_fmt: string;
-  seeders: number;
-  leechers: number;
-  source: string;
-  category: string | null;
-}
-
-const results = ref<SearchResult[]>([]);
 const addingHash = ref("");
 const addedHashes = ref(new Set<string>());
+const nameFilter = ref("");
 
-// ── Per-plugin display helpers (dynamic — driven by loaded plugins) ───────────
+// ── Client-side filter ──────────────────────────────────────────────────────
+
+const filteredResults = computed(() => {
+  if (!myActiveTab.value) return [];
+  if (!nameFilter.value) return myActiveTab.value.results;
+  const q = nameFilter.value.toLowerCase();
+  return myActiveTab.value.results.filter((r) =>
+    r.name.toLowerCase().includes(q),
+  );
+});
+
+// ── Client-side pagination (50 per page) ────────────────────────────────────
+
+const PAGE_SIZE = 50;
+const currentPage = ref(1);
+
+const pagedResults = computed(() => {
+  const all = filteredResults.value;
+  const start = (currentPage.value - 1) * PAGE_SIZE;
+  return all.slice(start, start + PAGE_SIZE);
+});
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE)),
+);
+
+watch(filteredResults, () => { currentPage.value = 1; });
 
 const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
 
-const providerLabelMap = computed<Record<string, string>>(() =>
+const providerLabelMap = computed(() =>
   Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.name])),
 );
 
-const providerIconMap = computed<Record<string, string>>(() =>
+const providerIconMap = computed(() =>
   Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.icon])),
 );
 
-const providerVariantMap = computed<Record<string, (typeof VARIANT_PALETTE)[number]>>(() =>
+const providerVariantMap = computed(() =>
   Object.fromEntries(
     torrentSearchProviders.value.map((p, i) => [p.id, VARIANT_PALETTE[i % VARIANT_PALETTE.length]]),
   ),
@@ -230,34 +325,28 @@ function sourceVariant(src: string) {
 
 // ── Search ───────────────────────────────────────────────────────────────────
 
-async function doSearch() {
+function onSearch() {
   if (!query.value.trim()) return;
-
-  loading.value = true;
-  searched.value = true;
-  error.value = "";
-  results.value = [];
-
-  // Also refresh which hashes are already in Transmission
   fetchExistingHashes();
-
-  try {
-    const res = await apiFetch<{ results: SearchResult[] }>(
-      `/api/torrent-search?q=${encodeURIComponent(query.value.trim())}&source=${source.value}&limit=100`,
-    );
-    results.value = (res?.results ?? []).map((r) => ({
-      ...r,
-      size_fmt: formatBytes(r.size),
-      category: r.category ?? "-",
-    }));
-  } catch (err: any) {
-    error.value = err?.message ?? t("torrentSearch.searchError");
-  } finally {
-    loading.value = false;
-  }
+  createTorrentTab(query.value.trim(), source.value);
 }
 
-// ── Track existing Transmission torrents ────────────────────────────────────
+// ── Cover on hover ───────────────────────────────────────────────────────────
+
+async function loadCover(row: any) {
+  if (row.cover && row.movieDetails) return;
+  const { triggerCoverLoad } = await import("../../composables/useSearchTabs");
+  triggerCoverLoad(myActiveTab.value?.id ?? "", row.infoHash || row.hash || "", row.name, row.rawTitle);
+}
+
+// ── Stop ────────────────────────────────────────────────────────────────────
+
+function stopTorrentSearch(tabId: string) {
+  // Just stop the stream — keep the tab with current results
+  closeTab(tabId);
+}
+
+// ── Existing hashes ──────────────────────────────────────────────────────────
 
 async function fetchExistingHashes() {
   if (!transmissionRunning.value) return;
@@ -270,9 +359,9 @@ async function fetchExistingHashes() {
   }
 }
 
-// ── Add torrent to Transmission ──────────────────────────────────────────────
+// ── Add torrent ──────────────────────────────────────────────────────────────
 
-async function addTorrent(row: SearchResult) {
+async function addTorrent(row: { infoHash: string; magnet: string; name: string }) {
   addingHash.value = row.infoHash;
   try {
     await apiFetch("/api/transmission/torrents", {
@@ -289,7 +378,7 @@ async function addTorrent(row: SearchResult) {
   }
 }
 
-// ── BT Trackers ──────────────────────────────────────────────────────────────
+// ── Trackers ──────────────────────────────────────────────────────────────────
 
 const trackersDialog = ref(false);
 const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
@@ -310,6 +399,10 @@ onMounted(async () => {
   fetchExistingHashes();
   await loadDownloadHistory();
   await loadProviders();
+  // If activeTabId doesn't belong to a torrent tab, switch to the latest one
+  if (torrentTabs.value.length > 0 && !torrentTabs.value.some((t) => t.id === activeTabId.value)) {
+    switchTab(torrentTabs.value[torrentTabs.value.length - 1].id);
+  }
 });
 </script>
 
@@ -330,9 +423,65 @@ onMounted(async () => {
     border-color 0.15s,
     box-shadow 0.15s;
 }
-
 .trackers-textarea:focus {
   border-color: var(--s-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 20%, transparent);
+}
+
+/* ── Tab custom slot ────────────────────────────────────── */
+
+.tab-label-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.tab-status-icon {
+  font-size: 0.7rem;
+}
+.tab-label-text {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tab-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  border-radius: 9px;
+  background: var(--s-border);
+  color: var(--s-text-secondary);
+}
+.tab-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  color: var(--s-text-secondary);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  padding: 0;
+}
+.tab-close-btn:hover {
+  opacity: 1;
+  background: var(--s-border);
+  color: var(--s-danger);
+}
+
+/* Cover column width */
+:deep(.s-table td:first-child) {
+  width: 60px;
+  min-width: 60px;
 }
 </style>

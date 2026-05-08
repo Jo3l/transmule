@@ -1,4 +1,4 @@
-# Copilot / Agent instructions
+# Agent instructions
 
 ## Versioning rule
 
