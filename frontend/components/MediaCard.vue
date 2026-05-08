@@ -102,6 +102,18 @@
           <span v-if="link.seeds" class="torrent-seeds">
             <span class="mdi mdi-arrow-up-bold" />{{ link.seeds }}
           </span>
+          <span v-if="link.tags?.length" class="torrent-tags">
+            <span
+              v-for="tag in link.tags"
+              :key="tag.label"
+              :title="tag.tooltip ?? ''"
+              class="torrent-tag"
+              :class="tag.variant ? `torrent-tag--${tag.variant}` : ''"
+            >
+              <span v-if="tag.icon" :class="['mdi', tag.icon]" class="torrent-tag-icon" />
+              {{ tag.label }}
+            </span>
+          </span>
           <SButton
             size="sm"
             :variant="isLinkDownloaded(link) ? 'warning' : undefined"
@@ -115,9 +127,19 @@
         </div>
       </template>
 
-      <!-- Single download button -->
+      <!-- Single download button (or open modal if needsDetail) -->
       <template v-else>
         <SButton
+          v-if="item.needsDetail"
+          size="sm"
+          :disabled="!!busy"
+          :title="$t('media.viewLinks')"
+          @click.stop="$emit('open', item)"
+        >
+          <span class="mdi mdi-format-list-bulleted mr-1" />{{ $t("media.viewLinks") }}
+        </SButton>
+        <SButton
+          v-else
           size="sm"
           :variant="anyLinkDownloaded ? 'warning' : undefined"
           :loading="busy === item.id"
@@ -470,5 +492,63 @@ function onImgError(e: Event) {
   .mdi {
     font-size: 0.85rem;
   }
+}
+
+/* Tag badges in torrent rows */
+.torrent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.torrent-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 3px;
+  border: 1px solid;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--s-text-secondary, #888);
+  background: color-mix(in srgb, var(--s-border) 20%, transparent);
+  border-color: var(--s-border);
+}
+.torrent-tag-icon {
+  font-size: 0.6rem;
+}
+
+.torrent-tag--success {
+  color: var(--s-success, #22c55e);
+  background: color-mix(in srgb, var(--s-success, #22c55e) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-success, #22c55e) 25%, transparent);
+}
+.torrent-tag--warning {
+  color: var(--s-warning, #eab308);
+  background: color-mix(in srgb, var(--s-warning, #eab308) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-warning, #eab308) 25%, transparent);
+}
+.torrent-tag--danger {
+  color: var(--s-danger, #ef4444);
+  background: color-mix(in srgb, var(--s-danger, #ef4444) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-danger, #ef4444) 25%, transparent);
+}
+.torrent-tag--info {
+  color: var(--s-info, #3b82f6);
+  background: color-mix(in srgb, var(--s-info, #3b82f6) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-info, #3b82f6) 25%, transparent);
+}
+.torrent-tag--accent {
+  color: var(--s-accent, #a855f7);
+  background: color-mix(in srgb, var(--s-accent, #a855f7) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-accent, #a855f7) 25%, transparent);
+}
+.torrent-tag--primary {
+  color: var(--s-primary, #6366f1);
+  background: color-mix(in srgb, var(--s-primary, #6366f1) 12%, transparent);
+  border-color: color-mix(in srgb, var(--s-primary, #6366f1) 25%, transparent);
 }
 </style>

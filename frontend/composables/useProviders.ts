@@ -32,6 +32,13 @@ export interface ProviderFilter {
   defaultValue?: string;
 }
 
+export interface MediaTag {
+  label: string;
+  variant?: string;
+  icon?: string;
+  tooltip?: string;
+}
+
 export interface MediaLink {
   label?: string;
   url: string;
@@ -40,6 +47,7 @@ export interface MediaLink {
   size?: string;
   seeds?: number;
   hash?: string;
+  tags?: MediaTag[];
 }
 
 export interface MediaEpisode {
