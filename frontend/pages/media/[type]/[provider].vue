@@ -368,7 +368,7 @@ async function loadItemDetail(item: MediaItem) {
       // Merge detail into the item
       const idx = items.value.findIndex((i) => i.id === item.id);
       if (idx >= 0) {
-        const merged = { ...items.value[idx], ...detail, id: item.id, needsDetail: false };
+        const merged = { ...items.value[idx], ...detail, id: item.id };
         items.value = [...items.value.slice(0, idx), merged, ...items.value.slice(idx + 1)];
         // Update modal if open
         if (modal.value?.item.id === item.id) {
