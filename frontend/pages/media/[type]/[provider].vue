@@ -87,6 +87,25 @@
       />
     </div>
 
+    <!-- Pagination -->
+    <div v-if="items.length" class="provider-pagination">
+      <SButton
+        size="sm"
+        :disabled="currentPage <= 1 || loading"
+        @click="goToPage(currentPage - 1)"
+      >
+        <span class="mdi mdi-chevron-left" /> {{ $t("media.prevPage") }}
+      </SButton>
+      <span class="provider-page-num">{{ $t("media.page", { n: currentPage }) }}</span>
+      <SButton
+        size="sm"
+        :disabled="!hasMore || loading"
+        @click="goToPage(currentPage + 1)"
+      >
+        {{ $t("media.nextPage") }} <span class="mdi mdi-chevron-right" />
+      </SButton>
+    </div>
+
     <p v-else-if="!loading" class="has-text-muted">
       {{ $t("media.empty") }}
     </p>
@@ -273,6 +292,8 @@ const loading = ref(false);
 const error = ref("");
 const busy = ref<string | null>(null);
 const filters = reactive<Record<string, string>>({});
+const currentPage = ref(1);
+const hasMore = ref(false);
 
 // Detail / cover loading
 const detailLoading = ref(new Set<string>());
@@ -500,7 +521,7 @@ async function downloadEpisode(item: MediaItem, ep: MediaEpisode) {
 
 // ── Load ────────────────────────────────────────────────────────────
 
-async function load() {
+async function load(page?: number) {
   loading.value = true;
   error.value = "";
   coverCache.value = {};
@@ -508,6 +529,7 @@ async function load() {
 
   try {
     const params: Record<string, string | number> = { ...filters };
+    if (page) params.page = page;
 
     // Pass URL for dontorrent providers
     if (showUrlBar.value && sourceUrl.value) {
@@ -516,6 +538,8 @@ async function load() {
 
     const data = await fetchList(providerId.value, params);
     items.value = data.items ?? [];
+    currentPage.value = data.page ?? page ?? 1;
+    hasMore.value = data.hasMore ?? false;
 
     // Save URL if applicable
     if (showUrlBar.value) {
@@ -535,6 +559,11 @@ async function load() {
   } finally {
     loading.value = false;
   }
+}
+
+function goToPage(page: number) {
+  if (page < 1) return;
+  load(page);
 }
 
 function saveAndLoad() {
@@ -682,6 +711,23 @@ onUnmounted(() => observer?.disconnect());
   @media (max-width: 540px) {
     grid-template-columns: 1fr;
   }
+}
+
+/* ── Pagination ──────────────────────────────────────────── */
+
+.provider-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.provider-page-num {
+  font-size: 0.85rem;
+  color: var(--s-text-secondary);
+  min-width: 4rem;
+  text-align: center;
 }
 
 /* ── Modal ─────────────────────────────────────────────────────────── */

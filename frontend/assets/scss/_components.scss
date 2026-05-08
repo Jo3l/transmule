@@ -628,11 +628,7 @@ textarea.s-input {
     color: var(--s-text);
     vertical-align: middle;
   }
-  .cell-cover-spacer {
-    display: inline-block;
-    width: 36px;
-    height: 36px;
-  }
+
   &.s-table--stripe tbody tr:nth-child(even) td {
     background: var(--s-table-stripe-bg);
   }
