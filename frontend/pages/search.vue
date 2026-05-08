@@ -194,7 +194,7 @@ import { isVideoExt, detectFileIcon } from "../composables/useSearchTabs";
 const { apiFetch } = useApi();
 const route = useRoute();
 
-const { tabs, activeTabId, activeTab, createUnifiedTab, closeTab, switchTab, downloadAmuleHash } =
+const { tabs, activeTabId, createUnifiedTab, closeTab, switchTab, downloadAmuleHash } =
   useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────

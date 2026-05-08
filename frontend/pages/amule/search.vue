@@ -115,7 +115,7 @@
               @load-cover="loadCover(row)"
             />
             <span v-else class="result-cover-placeholder" :title="row.name">
-              <span :class="['result-cover-icon', detectFileIcon(row.name)]" />
+              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
             </span>
           </template>
           <!-- Name cell + tags -->
@@ -180,8 +180,6 @@ const { t } = useI18n();
 const {
   tabs,
   activeTabId,
-  activeTab,
-  tabCount,
   createAmuleTab,
   closeTab,
   switchTab,
@@ -246,8 +244,6 @@ const pagedResults = computed(() => {
   const start = (currentPage.value - 1) * PAGE_SIZE;
   return all.slice(start, start + PAGE_SIZE);
 });
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE)));
 
 watch(filteredResults, () => {
   currentPage.value = 1;

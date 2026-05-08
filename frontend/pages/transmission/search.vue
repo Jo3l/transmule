@@ -209,7 +209,7 @@ const { t } = useI18n();
 const { addToast } = useToast();
 const { isDownloadedByHash, recordDownload, loadDownloadHistory } = useDownloadHistory();
 const { torrentSearchProviders, loadProviders } = useProviders();
-const { tabs, activeTabId, activeTab, tabCount, createTorrentTab, closeTab, switchTab } =
+const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } =
   useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
@@ -294,8 +294,6 @@ const pagedResults = computed(() => {
   const start = (currentPage.value - 1) * PAGE_SIZE;
   return all.slice(start, start + PAGE_SIZE);
 });
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE)));
 
 watch(filteredResults, () => {
   currentPage.value = 1;
