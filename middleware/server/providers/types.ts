@@ -144,6 +144,30 @@ export interface ProviderFilter {
   defaultValue?: string;
 }
 
+// ── Torrent tag system ─────────────────────────────────────────────────────
+
+/**
+ * A single tag badge shown in the torrent search results, below the name.
+ * Plugins return these via TorrentSearchResult.tags[].
+ */
+export interface TorrentTag {
+  /** Display text (e.g. "2160p", "HEVC", "🇬🇧 EN") */
+  label: string;
+  /**
+   * Color variant for the badge:
+   *   - quality/warning → amber tones (2160p, HDR)
+   *   - info → blue/cyan (codec, source)
+   *   - accent → purple (audio)
+   *   - success → green (score)
+   *   - default → neutral gray
+   */
+  variant?: "default" | "primary" | "success" | "warning" | "danger" | "info" | "accent";
+  /** Optional MDI icon class (e.g. "mdi-shield-check") */
+  icon?: string;
+  /** Tooltip on hover */
+  tooltip?: string;
+}
+
 // ── Torrent-search plugin ──────────────────────────────────────────────────
 
 /**
@@ -164,6 +188,13 @@ export interface TorrentSearchResult {
   source: string;
   /** Human-readable category */
   category: string | null;
+  /** Poster / cover image URL (TMDB or similar) */
+  cover?: string | null;
+  /**
+   * Optional decorative tags rendered below the torrent name.
+   * @since 1.0.0 — added in plugin API v2
+   */
+  tags?: TorrentTag[];
 }
 
 export interface TorrentSearchPlugin {

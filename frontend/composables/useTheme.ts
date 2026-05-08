@@ -88,7 +88,7 @@ export function useTheme() {
     try {
       const { data } = await useFetch("/api/users/preferences", {
         baseURL: useRuntimeConfig().public.apiBase as string,
-        headers: { Authorization: `Bearer ${useCookie("token").value}` },
+        credentials: "include",
       });
       if (data.value && (data.value as any).theme) {
         const t = (data.value as any).theme as ThemeId;
@@ -105,7 +105,7 @@ export function useTheme() {
       await $fetch("/api/users/preferences", {
         baseURL: useRuntimeConfig().public.apiBase as string,
         method: "POST",
-        headers: { Authorization: `Bearer ${useCookie("token").value}` },
+        credentials: "include",
         body: { theme: id },
       });
     } catch {

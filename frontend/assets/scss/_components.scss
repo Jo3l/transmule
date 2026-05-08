@@ -628,13 +628,31 @@ textarea.s-input {
     color: var(--s-text);
     vertical-align: middle;
   }
+  .cell-cover-spacer {
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+  }
   &.s-table--stripe tbody tr:nth-child(even) td {
     background: var(--s-table-stripe-bg);
   }
   tbody tr {
-    transition: background 0.1s;
+    transition: background 0.15s, box-shadow 0.3s ease;
+
     &:hover td {
       background: var(--s-table-hover-bg);
+    }
+
+    &:hover {
+      /* Outer glow wrapping the entire row */
+      box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--s-accent) 12%, transparent),
+        0 0 20px color-mix(in srgb, var(--s-accent) 10%, transparent);
+    }
+
+    /* Left accent glow bar */
+    &:hover td:first-child {
+      box-shadow: inset 3px 0 0 0 var(--s-accent);
     }
     &.is-selected td {
       background: var(--s-accent-subtle) !important;

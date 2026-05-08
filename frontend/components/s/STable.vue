@@ -18,6 +18,9 @@
                 <SCheckbox :model-value="allSelected" @update:model-value="toggleAll" />
               </template>
               <template v-else-if="col.type === 'expand'" />
+              <template v-else-if="$slots[`header-${col.prop || col.key}`]">
+                <slot :name="`header-${col.prop || col.key}`" :column="col" />
+              </template>
               <template v-else>
                 {{ col.label }}
                 <span v-if="col.sortable && sortProp === (col.prop || col.key)" class="sort-icon">
