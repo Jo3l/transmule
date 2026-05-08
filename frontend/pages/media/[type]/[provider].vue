@@ -702,11 +702,15 @@ onUnmounted(() => observer?.disconnect());
   border: 1px solid var(--s-border);
   border-radius: var(--s-radius-lg);
   width: 100%;
-  max-width: 560px;
+  max-width: 55vw;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  @media (max-width: 540px) {
+    max-width: 100vw;
+  }
 }
 
 .dt-modal-header {
@@ -814,6 +818,7 @@ onUnmounted(() => observer?.disconnect());
   align-items: center;
   gap: 0.5rem;
   font-size: 0.78rem;
+  flex-wrap: wrap;
 
   & > :last-child {
     margin-left: auto;
