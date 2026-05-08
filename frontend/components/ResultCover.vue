@@ -1,5 +1,5 @@
 <template>
-  <div ref="coverRef" class="result-cover-wrap" :class="{ 'result-cover-wrap--fadeout': fadingOut }">
+  <div ref="coverRef" class="result-cover-wrap">
     <div
       class="result-cover"
       :class="stateClasses"
@@ -7,12 +7,12 @@
       @mouseenter="onCoverEnter"
       @mouseleave="onCoverLeave"
     >
-      <!-- Eye icon → idle -->
+      <!-- Idle: eye icon as CTA to load cover (only rendered for video files) -->
       <span v-if="state === 'idle'" class="mdi mdi-eye-outline result-cover-icon" />
       <!-- Spinner → loading -->
       <span v-else-if="state === 'loading'" class="mdi mdi-loading mdi-spin result-cover-icon" />
-      <!-- Broken icon → failed -->
-      <span v-else-if="state === 'failed'" class="mdi mdi-image-off-outline result-cover-icon" />
+      <!-- File-type icon → failed (cover fetch failed) -->
+      <span v-else-if="state === 'failed'" :class="['mdi result-cover-icon', fileIcon]" />
     </div>
 
     <!-- Movie card popover → teleported outside overflow clip -->
@@ -42,6 +42,8 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick } from "vue";
+import { detectFileIcon } from "../composables/useSearchTabs";
 import type { CoverDetails } from "../composables/useSearchTabs";
 
 type CoverState = "idle" | "loading" | "loaded" | "failed";
@@ -65,23 +67,8 @@ const cardVisible = ref(false);
 const coverRef = ref<HTMLElement | null>(null);
 const cardRef = ref<HTMLElement | null>(null);
 const cardStyle = ref<Record<string, string>>({});
-const fadingOut = ref(false);
-let fadeTimeout: ReturnType<typeof setTimeout> | null = null;
-
-// ── Fade-out on failure ─────────────────────────────────
-
-watch(state, (s) => {
-  if (s === "failed") {
-    fadeTimeout = setTimeout(() => { fadingOut.value = true; }, 1000);
-  } else {
-    if (fadeTimeout) { clearTimeout(fadeTimeout); fadeTimeout = null; }
-    fadingOut.value = false;
-  }
-});
-
-onUnmounted(() => {
-  if (fadeTimeout) clearTimeout(fadeTimeout);
-});
+let hideTimeout: ReturnType<typeof setTimeout> | null = null;
+let _hovered = false;
 
 // ── State machine ───────────────────────────────────────────
 
@@ -95,6 +82,18 @@ watch(
     if (newCover) state.value = "loaded";
   },
 );
+
+/** When a result has a native cover but no movieDetails yet (e.g. TorrentClaw),
+ *  we transition to "loading" on hover to wait for metadata.  Once movieDetails
+ *  arrive, go back to "loaded" and show the card if the user is still hovering. */
+watch(() => props.movieDetails, (details) => {
+  if (details && state.value === "loading") {
+    state.value = "loaded";
+    if (_hovered) {
+      nextTick(() => showCard());
+    }
+  }
+});
 
 const stateClasses = computed(() => ({
   "result-cover--idle": state.value === "idle",
@@ -110,11 +109,20 @@ const bgStyle = computed(() => {
   return {};
 });
 
+const fileIcon = computed(() => {
+  const icon = detectFileIcon(props.name);
+  // If name has no recognizable extension (e.g. TorrentClaw clean titles),
+  // fall back to category: Movies/TV Shows → video icon
+  if (icon === "mdi-file" && (props.category === "Movies" || props.category === "TV Shows")) {
+    return "mdi-file-video";
+  }
+  return icon;
+});
+
 // ── Hover logic ─────────────────────────────────────────────
 
-let hideTimeout: ReturnType<typeof setTimeout> | null = null;
-
 function onCoverEnter() {
+  _hovered = true;
   if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
 
   if (state.value === "idle") {
@@ -124,25 +132,34 @@ function onCoverEnter() {
       if (state.value === "loading") state.value = "failed";
     }, 10000);
   } else if (state.value === "loaded") {
-    // If cover exists but no movie details yet, trigger a metadata fetch
     if (props.cover && !props.movieDetails) {
+      // Native cover (e.g. TorrentClaw) but no metadata yet —
+      // show spinner until movieDetails arrive, don't show card yet.
+      state.value = "loading";
       emit("loadCover");
+      setTimeout(() => {
+        if (state.value === "loading") state.value = "failed";
+      }, 10000);
+      return;
     }
     showCard();
   }
 }
 
 function onCoverLeave() {
-  if (state.value === "loaded") {
+  _hovered = false;
+  if (state.value === "loaded" || state.value === "loading") {
     hideTimeout = setTimeout(() => { cardVisible.value = false; }, 200);
   }
 }
 
 function onCardEnter() {
+  _hovered = true;
   if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
 }
 
 function onCardLeave() {
+  _hovered = false;
   cardVisible.value = false;
 }
 
@@ -168,12 +185,6 @@ function showCard() {
 .result-cover-wrap {
   display: inline-flex;
   position: relative;
-  transition: opacity 0.3s ease;
-}
-
-.result-cover-wrap--fadeout {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .result-cover {
@@ -195,7 +206,7 @@ function showCard() {
     border-color 0.2s;
 }
 
-/* ── Idle: eye placeholder ── */
+/* ── Idle: eye icon placeholder (CTA to load cover) ── */
 .result-cover--idle {
   background: var(--s-border);
   color: var(--s-text-muted);
@@ -228,11 +239,12 @@ function showCard() {
     0 0 12px color-mix(in srgb, var(--s-accent) 30%, transparent);
 }
 
-/* ── Failed: broken image icon ── */
+/* ── Failed: file-type icon (subtle, no cover available) ── */
 .result-cover--failed {
-  background: var(--s-danger-subtle);
-  color: var(--s-danger);
-  border: 1px dashed var(--s-border-light);
+  background: var(--s-bg-surface-alt);
+  color: var(--s-text-muted);
+  border: 1px solid var(--s-border);
+  font-size: 1.1rem;
   cursor: default;
 }
 
@@ -243,10 +255,24 @@ function showCard() {
 }
 </style>
 
-<!-- Non-scoped: applies to teleported content -->
+<!-- Non-scoped: applies to teleported content and search-page placeholders -->
 <style>
 .movie-card-portal {
   position: fixed;
   z-index: 9999;
+}
+/* Reusable file-type icon placeholder for search tables */
+.result-cover-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  vertical-align: middle;
+  background: var(--s-border);
+  color: var(--s-text-muted);
+  border: 1px dashed var(--s-border-light);
+  font-size: 1.1rem;
 }
 </style>

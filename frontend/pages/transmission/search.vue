@@ -84,11 +84,7 @@
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-        <STable
-          :data="pagedResults"
-          :columns="columns"
-          row-key="infoHash"
-        >
+        <STable :data="pagedResults" :columns="columns" row-key="infoHash">
           <!-- Name header with filter -->
           <template #header-name="{ column }">
             <SearchFilterHeader
@@ -110,7 +106,9 @@
               :movie-details="row.movieDetails"
               @load-cover="loadCover(row)"
             />
-            <div v-else class="cell-cover-spacer" />
+            <span v-else class="result-cover-placeholder" :title="row.name">
+              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
+            </span>
           </template>
           <!-- Name cell + tags -->
           <template #cell-name="{ row }">
@@ -204,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { isVideoExt } from "../../composables/useSearchTabs";
+import { isVideoExt, detectFileIcon } from "../../composables/useSearchTabs";
 const { apiFetch } = useApi();
 const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
@@ -216,8 +214,10 @@ const { tabs, activeTabId, activeTab, tabCount, createTorrentTab, closeTab, swit
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
 
-const torrentTabs = computed(() => tabs.value.filter((t) => t.service === 'transmission'));
-const myActiveTab = computed(() => torrentTabs.value.find((t) => t.id === activeTabId.value) ?? null);
+const torrentTabs = computed(() => tabs.value.filter((t) => t.service === "transmission"));
+const myActiveTab = computed(
+  () => torrentTabs.value.find((t) => t.id === activeTabId.value) ?? null,
+);
 
 // ── Source options ─────────────────────────────────────────────────────────
 
@@ -281,9 +281,7 @@ const filteredResults = computed(() => {
   if (!myActiveTab.value) return [];
   if (!nameFilter.value) return myActiveTab.value.results;
   const q = nameFilter.value.toLowerCase();
-  return myActiveTab.value.results.filter((r) =>
-    r.name.toLowerCase().includes(q),
-  );
+  return myActiveTab.value.results.filter((r) => r.name.toLowerCase().includes(q));
 });
 
 // ── Client-side pagination (50 per page) ────────────────────────────────────
@@ -297,11 +295,11 @@ const pagedResults = computed(() => {
   return all.slice(start, start + PAGE_SIZE);
 });
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE)),
-);
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredResults.value.length / PAGE_SIZE)));
 
-watch(filteredResults, () => { currentPage.value = 1; });
+watch(filteredResults, () => {
+  currentPage.value = 1;
+});
 
 const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
 
@@ -336,7 +334,12 @@ function onSearch() {
 async function loadCover(row: any) {
   if (row.cover && row.movieDetails) return;
   const { triggerCoverLoad } = await import("../../composables/useSearchTabs");
-  triggerCoverLoad(myActiveTab.value?.id ?? "", row.infoHash || row.hash || "", row.name, row.rawTitle);
+  triggerCoverLoad(
+    myActiveTab.value?.id ?? "",
+    row.infoHash || row.hash || "",
+    row.name,
+    row.rawTitle,
+  );
 }
 
 // ── Stop ────────────────────────────────────────────────────────────────────
@@ -477,11 +480,5 @@ onMounted(async () => {
   opacity: 1;
   background: var(--s-border);
   color: var(--s-danger);
-}
-
-/* Cover column width */
-:deep(.s-table td:first-child) {
-  width: 60px;
-  min-width: 60px;
 }
 </style>
