@@ -179,54 +179,41 @@
               </div>
             </div>
 
-            <!-- Non-series download(s) in modal -->
-            <div v-else-if="modal.item.links?.length" class="dt-modal-download">
-              <template v-if="modal.item.links.length === 1">
+            <!-- Non-series download(s) in modal — always use torrent-row format -->
+            <div v-if="modal.item.links?.length" class="dt-modal-download">
+              <div
+                v-for="link in modal.item.links"
+                :key="link.hash || link.url"
+                class="dt-modal-torrent-row"
+              >
+                <span v-if="link.quality" class="torrent-quality">{{ link.quality }}</span>
+                <span v-if="link.type" class="torrent-type">{{ link.type }}</span>
+                <span v-if="link.size" class="torrent-size">{{ link.size }}</span>
+                <span v-if="link.seeds" class="torrent-seeds">
+                  <span class="mdi mdi-arrow-up-bold" />{{ link.seeds }}
+                </span>
+                <span v-if="link.tags?.length" class="torrent-tags">
+                  <span
+                    v-for="tag in link.tags"
+                    :key="tag.label"
+                    :title="tag.tooltip ?? ''"
+                    class="torrent-tag"
+                    :class="tag.variant ? `torrent-tag--${tag.variant}` : ''"
+                  >
+                    <span v-if="tag.icon" :class="['mdi', tag.icon]" class="torrent-tag-icon" />
+                    {{ tag.label }}
+                  </span>
+                </span>
                 <SButton
                   size="sm"
-                  :variant="isItemDownloaded(modal.item) ? 'warning' : undefined"
-                  :loading="busy === modal.item.id"
+                  :variant="isLinkDownloaded(link) ? 'warning' : undefined"
+                  :loading="busy === (link.hash || link.url)"
                   :disabled="!!busy"
-                  @click="onDownloadLink(modal!.item, modal!.item.links![0])"
+                  @click="onDownloadLink(modal!.item, link)"
                 >
                   <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
                 </SButton>
-              </template>
-              <template v-else>
-                <div
-                  v-for="link in modal.item.links"
-                  :key="link.hash || link.url"
-                  class="dt-modal-torrent-row"
-                >
-                  <span v-if="link.quality" class="torrent-quality">{{ link.quality }}</span>
-                  <span v-if="link.type" class="torrent-type">{{ link.type }}</span>
-                  <span v-if="link.size" class="torrent-size">{{ link.size }}</span>
-                  <span v-if="link.seeds" class="torrent-seeds">
-                    <span class="mdi mdi-arrow-up-bold" />{{ link.seeds }}
-                  </span>
-                  <span v-if="link.tags?.length" class="torrent-tags">
-                    <span
-                      v-for="tag in link.tags"
-                      :key="tag.label"
-                      :title="tag.tooltip ?? ''"
-                      class="torrent-tag"
-                      :class="tag.variant ? `torrent-tag--${tag.variant}` : ''"
-                    >
-                      <span v-if="tag.icon" :class="['mdi', tag.icon]" class="torrent-tag-icon" />
-                      {{ tag.label }}
-                    </span>
-                  </span>
-                  <SButton
-                    size="sm"
-                    :variant="isLinkDownloaded(link) ? 'warning' : undefined"
-                    :loading="busy === (link.hash || link.url)"
-                    :disabled="!!busy"
-                    @click="onDownloadLink(modal!.item, link)"
-                  >
-                    <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
-                  </SButton>
-                </div>
-              </template>
+              </div>
             </div>
           </div>
         </div>
