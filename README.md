@@ -12,7 +12,7 @@
     <a href="https://github.com/Jo3l/transmule/stargazers"><img src="https://img.shields.io/github/stars/Jo3l/transmule?style=flat&logo=github&label=Stars" alt="Stars"></a>
     <a href="https://github.com/Jo3l/transmule/actions/workflows/docker-publish.yml"><img src="https://img.shields.io/github/actions/workflow/status/Jo3l/transmule/docker-publish.yml?style=flat&logo=githubactions&label=Build" alt="Build Status"></a>
     <a href="https://github.com/Jo3l/transmule/pkgs/container/transmule"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fjo3l%2Ftransmule-blue?style=flat&logo=docker&label=Image" alt="Docker Image"></a>
-    <a href="https://github.com/Jo3l/transmule/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Jo3l/transmule?style=flat&label=License" alt="License"></a>
+    <a href="https://github.com/Jo3l/transmule/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue?style=flat&label=License" alt="License"></a>
     <a href="https://github.com/Jo3l/transmule/issues"><img src="https://img.shields.io/github/issues/Jo3l/transmule?style=flat&logo=github&label=Issues" alt="Issues"></a>
   </p>
 
