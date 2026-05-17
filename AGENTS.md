@@ -21,3 +21,16 @@ git push && git push --tags
 ```
 
 Pushing the tag triggers the GitHub Actions workflow (`.github/workflows/docker-publish.yml`), which builds and pushes the Docker image to **GitHub Container Registry** with both the version tag (`ghcr.io/jo3l/transmule:1.x`) and `latest`. No extra secrets needed — it uses the built-in `GITHUB_TOKEN`.
+
+## Tag housekeeping
+
+After each `git push --tags`, clean up old tags to keep only the latest 2:
+
+```bash
+# Delete all tags except the two most recent, locally
+git tag -l | sort -V | head -n -2 | xargs -r git tag -d
+# Push deletions to remote
+git push origin --delete $(git tag -l | sort -V | head -n -2)
+```
+
+This prevents tag bloat on the repository and keeps the tag list useful. The two most recent tags are always retained so the Docker CI can still build from the previous tag if needed.
