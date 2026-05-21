@@ -246,7 +246,7 @@ const columns = computed(() => [
   { key: "cover", label: "", align: "center" as const },
   { prop: "name", label: t("torrentSearch.columns.name"), sortable: true },
   { prop: "category", label: t("torrentSearch.columns.category"), width: 140, sortable: true },
-  { prop: "size_fmt", label: t("torrentSearch.columns.size"), width: 110, sortable: true },
+  { prop: "size_fmt", sortProp: "size", label: t("torrentSearch.columns.size"), width: 110, sortable: true },
   {
     key: "seeders",
     prop: "seeders",

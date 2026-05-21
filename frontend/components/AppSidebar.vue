@@ -104,21 +104,6 @@
               </NuxtLink>
             </li>
             <li>
-              <NuxtLink to="/amule/stats" @click="$emit('close')">
-                <span class="mdi mdi-chart-bar"></span> {{ $t("nav.statistics") }}
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/amule/kad" @click="$emit('close')">
-                <span class="mdi mdi-wan"></span> {{ $t("nav.kad") }}
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/amule/log" @click="$emit('close')">
-                <span class="mdi mdi-text-box-outline"></span> {{ $t("nav.log") }}
-              </NuxtLink>
-            </li>
-            <li>
               <NuxtLink to="/amule/settings" @click="$emit('close')">
                 <span class="mdi mdi-cog-outline"></span>
                 {{ $t("nav.amuleSettings") }}
@@ -158,12 +143,6 @@
               </NuxtLink>
             </li>
             <li>
-              <NuxtLink to="/transmission/stats" @click="$emit('close')">
-                <span class="mdi mdi-chart-line"></span>
-                {{ $t("nav.statistics") }}
-              </NuxtLink>
-            </li>
-            <li>
               <NuxtLink to="/transmission/settings" @click="$emit('close')">
                 <span class="mdi mdi-cog-outline"></span>
                 {{ $t("nav.transmissionSettings") }}
@@ -193,12 +172,6 @@
               <NuxtLink to="/pyload" @click="$emit('close')">
                 <span class="mdi mdi-download-multiple"></span>
                 {{ $t("nav.pyloadDownloads") }}
-              </NuxtLink>
-            </li>
-            <li>
-              <NuxtLink to="/pyload/logs" @click="$emit('close')">
-                <span class="mdi mdi-text-box-outline"></span>
-                {{ $t("nav.pyloadLogs") }}
               </NuxtLink>
             </li>
             <li>

@@ -40,6 +40,7 @@ export interface UnifiedItem {
   id: string;
   type: "torrent" | "amule";
   name: string;
+  size: number;
   size_fmt: string;
   seedsOrSources: number;
   leechers?: number;
@@ -400,6 +401,7 @@ export function useSearchTabs() {
             id: itemId,
             type: "amule" as const,
             name: f.name ?? "desconocido",
+            size: f.sizeFull ?? 0,
             size_fmt: f.size_fmt ?? fmtBytes(f.sizeFull),
             seedsOrSources: f.sources ?? 0,
             source: "aMule",
@@ -433,6 +435,7 @@ export function useSearchTabs() {
           id: itemId,
           type: "torrent" as const,
           name: r.name,
+          size: r.size ?? 0,
           size_fmt: r.size_fmt ?? fmtBytes(r.size),
           seedsOrSources: r.seeders ?? 0,
           leechers: r.leechers ?? 0,

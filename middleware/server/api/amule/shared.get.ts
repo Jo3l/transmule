@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
       accept: f.getAccepts || 0,
       accept_all: f.getAllAccepts || 0,
       priority: priorityLabel(f.upPrio),
-      priorityValue: f.upPrio ?? 0,
+      priorityValue: Number(f.upPrio ?? 0) || 0,
       completeSources: f.getCompleteSources || 0,
       comment: f.getComment || "",
       rating: f.getRating || 0,

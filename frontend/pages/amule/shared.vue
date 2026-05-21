@@ -35,8 +35,16 @@
       :data="files"
       :columns="columns"
       :loading="loading"
-      @select="(rows: any[]) => (selected = rows)"
     >
+      <template #cell-priority="{ row }">
+        <SSelect
+          v-model="row.priorityValue"
+          :options="priorityOptions"
+          size="sm"
+          number
+          @update:model-value="(val: number) => setPriority(row, val)"
+        />
+      </template>
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
           {{ $t("shared.noFiles") }}
@@ -44,11 +52,6 @@
       </template>
     </STable>
 
-    <div class="buttons mt-3" v-if="selected.length > 0">
-      <p class="has-text-grey is-size-7">
-        {{ selected.length }} {{ $t("shared.selected") }}
-      </p>
-    </div>
   </div>
 </template>
 
@@ -59,11 +62,9 @@ const { t } = useI18n();
 const data = ref<any>(null);
 const files = ref<any[]>([]);
 const sharedTotals = ref<any>(null);
-const selected = ref<any[]>([]);
 const loading = ref(false);
 
 const columns = computed(() => [
-  { type: "selection" as const, width: 40 },
   { prop: "name", label: t("shared.columns.name"), sortable: true },
   { prop: "size_fmt", label: t("shared.columns.size"), width: 100 },
   { prop: "xfer_fmt", label: t("shared.columns.transferred"), width: 100 },
@@ -74,8 +75,18 @@ const columns = computed(() => [
     width: 80,
     align: "right" as const,
   },
-  { prop: "priority", label: t("shared.columns.priority"), width: 90 },
+  { prop: "priority", label: t("shared.columns.priority"), width: 110 },
 ]);
+
+const priorityOptions = [
+  { label: "Auto", value: 10 },
+  { label: "Auto (Low)", value: 11 },
+  { label: "Auto (Normal)", value: 12 },
+  { label: "Auto (High)", value: 13 },
+  { label: "Low", value: 0 },
+  { label: "Normal", value: 1 },
+  { label: "High", value: 2 },
+];
 
 async function refresh() {
   if (!amuleRunning.value) return;
@@ -100,6 +111,19 @@ async function doReload() {
     await refresh();
   } finally {
     loading.value = false;
+  }
+}
+
+async function setPriority(file: any, priority: number) {
+  if (!file.hash) return;
+  try {
+    await apiFetch("/api/amule/shared", {
+      method: "POST",
+      body: { action: "setPriority", hash: file.hash, priority },
+    });
+  } catch {
+    // Revert to previous value on failure
+    await refresh();
   }
 }
 

@@ -5,11 +5,137 @@
       {{ $t("transmission.settings.title") }}
     </h1>
 
-    <STabs v-model="activeTab" variant="card" :panes="tabPanes">
+    <STabs v-model="activeTab" :panes="tabPanes">
+      <!-- ── Stats ── -->
+      <template #tab-stats>
+        <span class="mdi mdi-chart-bar mr-1" />
+        {{ $t('stats.title') }}
+      </template>
+      <STabPane
+        name="stats"
+        :active="activeTab === 'stats'"
+      >
+        <SLoading :loading="statsLoading">
+          <!-- Session info -->
+          <div class="box mb-4">
+            <h6 class="title is-6 mb-3 mt-3">
+              <span class="mdi mdi-information mr-1" />
+              {{ $t("transmission.stats.sessionInfo") }}
+            </h6>
+            <div class="stat-grid">
+              <div class="stat-item">
+                <span class="stat-label">{{ $t("transmission.stats.version") }}</span
+                ><span class="stat-value">{{ statsSession.version }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">{{ $t("transmission.stats.rpcVersion") }}</span
+                ><span class="stat-value">{{ statsSession.rpcVersion }}</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">{{ $t("transmission.stats.downloadDir") }}</span
+                ><span class="stat-value is-size-7">{{ statsSession.downloadDir }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="columns">
+            <!-- Current session -->
+            <div class="column is-6">
+              <div class="box">
+                <h6 class="title is-6 mb-3 mt-3">
+                  <span class="mdi mdi-clock-outline mr-1" />
+                  {{ $t("transmission.stats.currentSession") }}
+                </h6>
+                <div class="stat-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.activeTorrents") }}</span
+                    ><span class="stat-value">{{ statsLive.activeTorrentCount }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.pausedTorrents") }}</span
+                    ><span class="stat-value">{{ statsLive.pausedTorrentCount }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.totalTorrents") }}</span
+                    ><span class="stat-value">{{ statsLive.torrentCount }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.downloadSpeed") }}</span
+                    ><span class="stat-value has-text-success">{{ statsLive.downloadSpeed_fmt }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.uploadSpeed") }}</span
+                    ><span class="stat-value has-text-info">{{ statsLive.uploadSpeed_fmt }}</span>
+                  </div>
+                </div>
+                <SDivider />
+                <div class="stat-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.downloaded") }}</span
+                    ><span class="stat-value">{{ formatSize(statsCurrent.downloadedBytes) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.uploaded") }}</span
+                    ><span class="stat-value">{{ formatSize(statsCurrent.uploadedBytes) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.filesAdded") }}</span
+                    ><span class="stat-value">{{ statsCurrent.filesAdded }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.activeTime") }}</span
+                    ><span class="stat-value">{{ formatDuration(statsCurrent.secondsActive) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cumulative -->
+            <div class="column is-6">
+              <div class="box">
+                <h6 class="title is-6 mb-3 mt-3">
+                  <span class="mdi mdi-chart-timeline-variant mr-1" />
+                  {{ $t("transmission.stats.allTime") }}
+                </h6>
+                <div class="stat-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.downloaded") }}</span
+                    ><span class="stat-value">{{ formatSize(statsCumulative.downloadedBytes) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.uploaded") }}</span
+                    ><span class="stat-value">{{ formatSize(statsCumulative.uploadedBytes) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.filesAdded") }}</span
+                    ><span class="stat-value">{{ statsCumulative.filesAdded }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.activeTime") }}</span
+                    ><span class="stat-value">{{ formatDuration(statsCumulative.secondsActive) }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.sessionsStarted") }}</span
+                    ><span class="stat-value">{{ statsCumulative.sessionCount }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">{{ $t("transmission.stats.ratioAllTime") }}</span
+                    ><span class="stat-value">{{ allTimeRatio }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SLoading>
+      </STabPane>
+
       <!-- ── Speed ── -->
+      <template #tab-speed>
+        <span class="mdi mdi-speedometer mr-1" />
+        {{ $t('transmission.speed.title') }}
+      </template>
       <STabPane
         name="speed"
-        :label="$t('transmission.speed.title')"
         :active="activeTab === 'speed'"
       >
         <div class="box">
@@ -90,9 +216,12 @@
       </STabPane>
 
       <!-- ── Folders ── -->
+      <template #tab-folders>
+        <span class="mdi mdi-folder mr-1" />
+        {{ $t('transmission.folders.title') }}
+      </template>
       <STabPane
         name="folders"
-        :label="$t('transmission.folders.title')"
         :active="activeTab === 'folders'"
       >
         <div class="box">
@@ -142,9 +271,12 @@
       </STabPane>
 
       <!-- ── Sharing ── -->
+      <template #tab-sharing>
+        <span class="mdi mdi-share-variant mr-1" />
+        {{ $t('transmission.sharing.title') }}
+      </template>
       <STabPane
         name="sharing"
-        :label="$t('transmission.sharing.title')"
         :active="activeTab === 'sharing'"
       >
         <div class="box">
@@ -226,9 +358,12 @@
       </STabPane>
 
       <!-- ── Privacy ── -->
+      <template #tab-privacy>
+        <span class="mdi mdi-incognito mr-1" />
+        {{ $t('transmission.privacy.title') }}
+      </template>
       <STabPane
         name="privacy"
-        :label="$t('transmission.privacy.title')"
         :active="activeTab === 'privacy'"
       >
         <div class="box">
@@ -283,9 +418,12 @@
       </STabPane>
 
       <!-- ── Network ── -->
+      <template #tab-network>
+        <span class="mdi mdi-network mr-1" />
+        {{ $t('transmission.network.title') }}
+      </template>
       <STabPane
         name="network"
-        :label="$t('transmission.network.title')"
         :active="activeTab === 'network'"
       >
         <div class="box">
@@ -315,9 +453,12 @@
       </STabPane>
 
       <!-- ── Trackers ── -->
+      <template #tab-trackers>
+        <span class="mdi mdi-radar mr-1" />
+        {{ $t('transmission.trackers.title') }}
+      </template>
       <STabPane
         name="trackers"
-        :label="$t('transmission.trackers.title')"
         :active="activeTab === 'trackers'"
       >
         <div class="box">
@@ -355,8 +496,8 @@ const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["speed", "folders", "sharing", "privacy", "network", "trackers"];
-const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "speed");
+const VALID_TABS = ["stats", "speed", "folders", "sharing", "privacy", "network", "trackers"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "stats");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const saving = ref(false);
@@ -365,6 +506,7 @@ const updatingBlocklist = ref(false);
 // ── Tab panes ────────────────────────────────────────────────────────────────
 
 const tabPanes = computed<TabPaneDef[]>(() => [
+  { name: "stats", label: t("stats.title") },
   { name: "speed", label: t("transmission.speed.title") },
   { name: "folders", label: t("transmission.folders.title") },
   { name: "sharing", label: t("transmission.sharing.title") },
@@ -372,6 +514,96 @@ const tabPanes = computed<TabPaneDef[]>(() => [
   { name: "network", label: t("transmission.network.title") },
   { name: "trackers", label: t("transmission.trackers.title") },
 ]);
+
+// ── Stats ────────────────────────────────────────────────────────────────────
+
+const statsLoading = ref(false);
+const statsSession = reactive({ version: "", rpcVersion: "", downloadDir: "" });
+const statsLive = reactive({
+  activeTorrentCount: 0,
+  pausedTorrentCount: 0,
+  torrentCount: 0,
+  downloadSpeed: 0,
+  downloadSpeed_fmt: "0 B/s",
+  uploadSpeed: 0,
+  uploadSpeed_fmt: "0 B/s",
+});
+const statsCurrent = reactive({
+  downloadedBytes: 0,
+  uploadedBytes: 0,
+  filesAdded: 0,
+  secondsActive: 0,
+  sessionCount: 0,
+});
+const statsCumulative = reactive({
+  downloadedBytes: 0,
+  uploadedBytes: 0,
+  filesAdded: 0,
+  secondsActive: 0,
+  sessionCount: 0,
+});
+
+const allTimeRatio = computed(() => {
+  if (statsCumulative.downloadedBytes === 0) return "\u2014";
+  return (statsCumulative.uploadedBytes / statsCumulative.downloadedBytes).toFixed(3);
+});
+
+function formatSize(bytes: number) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0, v = bytes;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+}
+
+function formatDuration(seconds: number) {
+  if (!seconds) return "\u2014";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (parts.length === 0) parts.push("<1m");
+  return parts.join(" ");
+}
+
+let statsRefreshInterval: ReturnType<typeof setInterval> | null = null;
+
+async function fetchStats() {
+  if (!transmissionRunning.value) return;
+  try {
+    const { raw, stats } = await apiFetch<any>("/api/transmission/session");
+    statsSession.version = raw.version || "";
+    statsSession.rpcVersion = raw["rpc-version"] || "";
+    statsSession.downloadDir = raw["download-dir"] || "";
+    if (stats) {
+      statsLive.activeTorrentCount = stats.activeTorrentCount || 0;
+      statsLive.pausedTorrentCount = stats.pausedTorrentCount || 0;
+      statsLive.torrentCount = stats.torrentCount || 0;
+      statsLive.downloadSpeed_fmt = stats.downloadSpeed_fmt || "0 B/s";
+      statsLive.uploadSpeed_fmt = stats.uploadSpeed_fmt || "0 B/s";
+      if (stats.currentStats) Object.assign(statsCurrent, stats.currentStats);
+      if (stats.cumulativeStats) Object.assign(statsCumulative, stats.cumulativeStats);
+    }
+    statsLoading.value = false;
+  } catch {
+    /* useApi shows error toast */
+  }
+}
+
+function startStatsPolling() {
+  stopStatsPolling();
+  statsRefreshInterval = setInterval(fetchStats, 5000);
+}
+
+function stopStatsPolling() {
+  if (statsRefreshInterval) {
+    clearInterval(statsRefreshInterval);
+    statsRefreshInterval = null;
+  }
+}
 
 // ── Speed ────────────────────────────────────────────────────────────────────
 
@@ -645,6 +877,11 @@ async function fetchSession() {
 onMounted(() => {
   fetchSession();
   loadTrackers();
+  fetchStats();
+  startStatsPolling();
+});
+onUnmounted(() => {
+  stopStatsPolling();
 });
 </script>
 
@@ -669,5 +906,26 @@ onMounted(() => {
 .trackers-textarea:focus {
   border-color: var(--s-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--s-accent) 20%, transparent);
+}
+
+/* ── Stats ───────────────────────────── */
+.stat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
+}
+.stat-label {
+  color: var(--s-text-muted);
+  font-size: 0.85rem;
+}
+.stat-value {
+  font-weight: 500;
+  font-size: 0.9rem;
 }
 </style>

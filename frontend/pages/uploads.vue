@@ -25,7 +25,7 @@
           <strong>{{ totalSpeedFmt }}</strong>
         </div>
       </div>
-      <SpeedGraph :history="speedHistory" />
+      <SpeedGraph ref="speedGraphRef" :history="speedHistory" />
     </div>
 
     <!-- Filters -->
@@ -98,6 +98,7 @@ const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 const clients = ref<any[]>([]);
 const loading = ref(false);
+const speedGraphRef = ref<{ draw: () => void } | null>(null);
 const speedHistory = ref<
   { t: number; amule: number; torrent: number; pyload: number; up: number }[]
 >([]);
@@ -167,6 +168,7 @@ async function fetchSpeedHistory() {
   } catch {
     /* silent */
   }
+  nextTick(() => speedGraphRef.value?.draw());
 }
 
 async function refresh() {

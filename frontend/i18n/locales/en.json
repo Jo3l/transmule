@@ -35,7 +35,6 @@
     "sharedFiles": "Shared Files",
     "statistics": "Statistics",
     "kad": "KAD",
-    "log": "Logs",
     "transmission": "Transmission",
     "speedLimits": "Speed Limits",
     "folders": "Folders",
@@ -452,7 +451,6 @@
     "bootstrapButton": "Bootstrap"
   },
   "log": {
-    "title": "Logs",
     "amuleLog": "aMule Log",
     "serverLog": "Server Log",
     "noData": "No log data",

@@ -58,7 +58,7 @@
           {{ allFiles.length }} {{ $t("downloads.total") }}
         </div>
       </div>
-      <SpeedGraph :history="speedHistory" />
+      <SpeedGraph ref="speedGraphRef" :history="speedHistory" />
     </div>
 
     <!-- Filters -->
@@ -1825,6 +1825,7 @@ const filteredFiles = ref<any[]>([]);
 const amuleTotals = ref<any>(null);
 const torrentTotals = ref<any>(null);
 const pyloadTotals = ref<any>(null);
+const speedGraphRef = ref<{ draw: () => void } | null>(null);
 const speedHistory = ref<
   { t: number; amule: number; torrent: number; pyload: number; up: number }[]
 >([]);
@@ -2283,6 +2284,7 @@ async function fetchSpeedHistory() {
   } catch {
     /* silent */
   }
+  nextTick(() => speedGraphRef.value?.draw());
 }
 
 async function refresh() {

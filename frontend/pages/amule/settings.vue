@@ -5,11 +5,149 @@
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
     <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("amuleSettings.saved") }}</SAlert>
 
-    <STabs v-model="activeTab" variant="card" :panes="tabPanes">
+    <STabs v-model="activeTab" :panes="tabPanes">
+      <template #tab-stats>
+        <span class="mdi mdi-chart-bar mr-1" />
+        {{ $t('stats.title') }}
+      </template>
+      <template #tab-general>
+        <span class="mdi mdi-tune mr-1" />
+        {{ $t('amuleSettings.general') }}
+      </template>
+      <template #tab-connection>
+        <span class="mdi mdi-lan-connect mr-1" />
+        {{ $t('amuleSettings.connection') }}
+      </template>
+      <template #tab-servers>
+        <span class="mdi mdi-server mr-1" />
+        {{ $t('amuleSettings.servers') }}
+      </template>
+      <template #tab-security>
+        <span class="mdi mdi-shield mr-1" />
+        {{ $t('amuleSettings.security') }}
+      </template>
+      <!-- Stats -->
+      <STabPane
+        name="stats"
+        :active="activeTab === 'stats'"
+      >
+        <SLoading :loading="statsLoading">
+          <div class="columns is-multiline" v-if="amuleStats">
+            <div class="column is-6">
+              <div class="box">
+                <h2 class="subtitle is-5 mb-3">{{ $t("stats.connection") }}</h2>
+                <div class="kv-list">
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.server") }}</span>
+                    <span class="kv-value">{{ amuleStats.serv_name || "—" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.address") }}</span>
+                    <span class="kv-value">{{ amuleStats.serv_addr || "—" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.ed2kId") }}</span>
+                    <span class="kv-value">{{ amuleStats.ed2kId || amuleStats.id || "—" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.kad") }}</span>
+                    <span class="kv-value">{{ connStatus?.kad?.connected ? $t("stats.connected") : $t("stats.disconnected") }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-6">
+              <div class="box">
+                <h2 class="subtitle is-5 mb-3">{{ $t("stats.transfer") }}</h2>
+                <div class="kv-list">
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.downloadSpeed") }}</span>
+                    <span class="kv-value">{{ amuleStats.downloadSpeed_fmt || "0 B/s" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.uploadSpeed") }}</span>
+                    <span class="kv-value">{{ amuleStats.uploadSpeed_fmt || "0 B/s" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.totalDownloaded") }}</span>
+                    <span class="kv-value">{{ amuleStats.totalReceivedBytes_fmt || "0 B" }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.totalUploaded") }}</span>
+                    <span class="kv-value">{{ amuleStats.totalSentBytes_fmt || "0 B" }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-6">
+              <div class="box">
+                <h2 class="subtitle is-5 mb-3">{{ $t("stats.network") }}</h2>
+                <div class="kv-list">
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.ed2kUsers") }}</span>
+                    <span class="kv-value">{{ (amuleStats.ed2kUsers || 0).toLocaleString() }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.ed2kFiles") }}</span>
+                    <span class="kv-value">{{ (amuleStats.ed2kFiles || 0).toLocaleString() }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.kadUsers") }}</span>
+                    <span class="kv-value">{{ (amuleStats.kadUsers || 0).toLocaleString() }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.kadFiles") }}</span>
+                    <span class="kv-value">{{ (amuleStats.kadFiles || 0).toLocaleString() }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.kadNodes") }}</span>
+                    <span class="kv-value">{{ (amuleStats.kadNodes || 0).toLocaleString() }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-6">
+              <div class="box">
+                <h2 class="subtitle is-5 mb-3">{{ $t("stats.queue") }}</h2>
+                <div class="kv-list">
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.uploadQueue") }}</span>
+                    <span class="kv-value">{{ amuleStats.uploadQueueLength || 0 }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.totalSources") }}</span>
+                    <span class="kv-value">{{ amuleStats.totalSourceCount || 0 }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.sharedFiles") }}</span>
+                    <span class="kv-value">{{ amuleStats.sharedFileCount || 0 }}</span>
+                  </div>
+                  <div class="kv-row">
+                    <span class="kv-label">{{ $t("stats.bannedClients") }}</span>
+                    <span class="kv-value">{{ amuleStats.bannedCount || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="box" v-if="statsTree && statsTree.length > 0">
+            <h2 class="subtitle is-5 mb-3">{{ $t("stats.statsTree") }}</h2>
+            <StatsTree :nodes="statsTree" />
+          </div>
+
+          <div v-if="!amuleStats && !statsLoading" class="has-text-centered py-5 has-text-grey">
+            {{ $t("stats.noStats") }}
+          </div>
+        </SLoading>
+      </STabPane>
+
       <!-- General -->
       <STabPane
         name="general"
-        :label="$t('amuleSettings.general')"
         :active="activeTab === 'general'"
       >
         <div class="box">
@@ -31,7 +169,6 @@
       <!-- Connection -->
       <STabPane
         name="connection"
-        :label="$t('amuleSettings.connection')"
         :active="activeTab === 'connection'"
       >
         <div class="box">
@@ -140,7 +277,6 @@
       <!-- Servers -->
       <STabPane
         name="servers"
-        :label="$t('amuleSettings.servers')"
         :active="activeTab === 'servers'"
       >
         <div class="box">
@@ -191,7 +327,6 @@
       <!-- Security -->
       <STabPane
         name="security"
-        :label="$t('amuleSettings.security')"
         :active="activeTab === 'security'"
       >
         <div class="box">
@@ -345,11 +480,12 @@ interface AmulePreferences {
 
 const { t } = useI18n();
 const { apiFetch } = useApi();
+const { amuleRunning } = useServiceGuard();
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["general", "connection", "servers", "security"];
-const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "general");
+const VALID_TABS = ["stats", "general", "connection", "servers", "security"];
+const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "stats");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const saving = ref(false);
@@ -397,6 +533,7 @@ const form = reactive<AmulePreferences>({
 });
 
 const tabPanes = computed<TabPaneDef[]>(() => [
+  { name: "stats", label: t("stats.title") },
   { name: "general", label: t("amuleSettings.general") },
   { name: "connection", label: t("amuleSettings.connection") },
   { name: "servers", label: t("amuleSettings.servers") },
@@ -450,4 +587,35 @@ async function save(section: keyof AmulePreferences) {
 }
 
 onMounted(() => loadPrefs());
+
+// ── Stats ──────────────────────────────────────────────
+const amuleStats = ref<any>(null);
+const connStatus = ref<any>(null);
+const statsTree = ref<any[]>([]);
+const statsLoading = ref(false);
+
+async function refreshStats() {
+  if (!amuleRunning.value) return;
+  statsLoading.value = true;
+  try {
+    const [statsRes, treeRes] = await Promise.all([
+      apiFetch<any>("/api/amule/stats"),
+      apiFetch<any>("/api/amule/raw/stats-tree").catch(() => null),
+    ]);
+    amuleStats.value = statsRes?.stats || null;
+    connStatus.value = statsRes?.connection_status || null;
+    statsTree.value = treeRes?.tree || [];
+  } finally {
+    statsLoading.value = false;
+  }
+}
+
+let statsInterval: ReturnType<typeof setInterval> | null = null;
+onMounted(() => {
+  refreshStats();
+  statsInterval = setInterval(refreshStats, 8000);
+});
+onUnmounted(() => {
+  if (statsInterval) clearInterval(statsInterval);
+});
 </script>
