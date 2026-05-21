@@ -7,35 +7,22 @@
 
     <!-- Status bar -->
     <div v-if="status" class="box mb-4">
-      <div
-        class="flex-center gap-lg flex-wrap"
-      >
+      <div class="flex-center gap-lg flex-wrap">
         <div>
-          <span class="has-text-grey is-size-7"
-            >{{ $t("pyload.speed") }}:
-          </span>
+          <span class="has-text-grey is-size-7">{{ $t("pyload.speed") }}: </span>
           <strong>{{ status.speed_fmt }}</strong>
         </div>
         <div>
-          <span class="has-text-grey is-size-7"
-            >{{ $t("pyload.active") }}:
-          </span>
+          <span class="has-text-grey is-size-7">{{ $t("pyload.active") }}: </span>
           <strong>{{ status.active }}</strong>
         </div>
         <div>
-          <span class="has-text-grey is-size-7"
-            >{{ $t("pyload.queued") }}:
-          </span>
+          <span class="has-text-grey is-size-7">{{ $t("pyload.queued") }}: </span>
           <strong>{{ status.queue }}</strong>
         </div>
         <div v-if="status.freeSpace_fmt">
-          <span class="has-text-grey is-size-7"
-            >{{ $t("pyload.freeSpace") }}:
-          </span>
+          <span class="has-text-grey is-size-7">{{ $t("pyload.freeSpace") }}: </span>
           <strong>{{ status.freeSpace_fmt }}</strong>
-        </div>
-        <div v-if="status.version" class="ml-auto">
-          <span class="has-text-grey is-size-7">v{{ status.version }}</span>
         </div>
 
         <!-- Controls -->
@@ -50,12 +37,7 @@
             <span :class="status.paused ? 'mdi mdi-play' : 'mdi mdi-pause'" />
             {{ status.paused ? $t("pyload.resume") : $t("pyload.pause") }}
           </SButton>
-          <SButton
-            variant="danger"
-            size="sm"
-            :loading="controlling"
-            @click="control('stop_all')"
-          >
+          <SButton variant="danger" size="sm" :loading="controlling" @click="control('stop_all')">
             <span class="mdi mdi-stop" /> {{ $t("pyload.stopAll") }}
           </SButton>
           <SButton
@@ -118,7 +100,7 @@
         v-if="packages.length === 0 && !loadingPackages"
         class="has-text-centered py-5 has-text-grey"
       >
-          <span class="mdi mdi-download-off-outline icon-lg" />
+        <span class="mdi mdi-download-off-outline icon-lg" />
         <p class="mt-2">{{ $t("pyload.noPackages") }}</p>
       </div>
 
@@ -128,11 +110,7 @@
           <span class="mdi mdi-package-variant-closed" />
           <strong>{{ pkg.name }}</strong>
           <STag :variant="destVariant(pkg.dest)" size="sm">
-            {{
-              pkg.dest === "queue"
-                ? $t("pyload.destQueue")
-                : $t("pyload.destCollector")
-            }}
+            {{ pkg.dest === "queue" ? $t("pyload.destQueue") : $t("pyload.destCollector") }}
           </STag>
           <span class="has-text-grey is-size-7">
             {{ pkg.linkCount }} {{ $t("pyload.linksLabel") }} &nbsp;·&nbsp;
@@ -145,11 +123,7 @@
             {{ pkg.failedLinks }} {{ $t("pyload.failed") }}
           </span>
           <STag
-            v-if="
-              pkg.finishedLinks === pkg.linkCount &&
-              pkg.linkCount > 0 &&
-              pkg.activeLinks === 0
-            "
+            v-if="pkg.finishedLinks === pkg.linkCount && pkg.linkCount > 0 && pkg.activeLinks === 0"
             variant="success"
             size="sm"
           >
@@ -209,20 +183,12 @@
         <div v-if="pkg.totalSize > 0" class="mb-2">
           <SProgress :percentage="pkg.progress" />
           <span class="is-size-7 has-text-grey"
-            >{{ pkg.doneSize_fmt }} / {{ pkg.totalSize_fmt }} ({{
-              pkg.progress.toFixed(1)
-            }}%)</span
+            >{{ pkg.doneSize_fmt }} / {{ pkg.totalSize_fmt }} ({{ pkg.progress.toFixed(1) }}%)</span
           >
         </div>
 
         <!-- Links table -->
-        <STable
-          :data="pkg.links"
-          :columns="linkColumns"
-          row-key="fid"
-          size="sm"
-          class="mt-2"
-        >
+        <STable :data="pkg.links" :columns="linkColumns" row-key="fid" size="sm" class="mt-2">
           <template #cell-status="{ row }">
             <STag :variant="statusVariant(row.statusCode)" size="sm">
               {{ row.status }}
@@ -232,15 +198,11 @@
             <span>{{ row.progress.toFixed(1) }}%</span>
           </template>
           <template #cell-speed="{ row }">
-            <span v-if="row.isDownloading" class="has-text-info">{{
-              row.speed_fmt
-            }}</span>
+            <span v-if="row.isDownloading" class="has-text-info">{{ row.speed_fmt }}</span>
             <span v-else class="has-text-grey">—</span>
           </template>
           <template #empty>
-            <span class="has-text-grey is-size-7">{{
-              $t("pyload.noLinks")
-            }}</span>
+            <span class="has-text-grey is-size-7">{{ $t("pyload.noLinks") }}</span>
           </template>
         </STable>
       </div>
@@ -329,9 +291,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function statusVariant(
-  code: number,
-): "success" | "info" | "warning" | "danger" | "default" {
+function statusVariant(code: number): "success" | "info" | "warning" | "danger" | "default" {
   if (code === 0) return "success"; // Finished
   if (code === 12) return "info"; // Downloading
   if (code === 8 || code === 1) return "danger"; // Failed / Offline

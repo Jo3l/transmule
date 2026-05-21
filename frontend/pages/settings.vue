@@ -2,9 +2,18 @@
   <SLoading id="page-settings" :loading="loading">
     <h1 class="title is-4 mb-4">{{ $t("settings.title") }}</h1>
 
-    <STabs v-model="activeTab" variant="card" :panes="tabPanes">
+    <STabs v-model="activeTab" :panes="tabPanes">
+      <template #tab-theme><span class="mdi mdi-palette mr-1" /> {{ $t("settings.theme") }}</template>
+      <template #tab-language><span class="mdi mdi-translate mr-1" /> {{ $t("settings.language") }}</template>
+      <template #tab-account><span class="mdi mdi-account mr-1" /> {{ $t("settings.account") }}</template>
+      <template #tab-integrations><span class="mdi mdi-puzzle mr-1" /> {{ $t("settings.integrations") }}</template>
+      <template #tab-users><span class="mdi mdi-account-group mr-1" /> {{ $t("settings.users") }}</template>
+      <template #tab-downloadHistory><span class="mdi mdi-download mr-1" /> {{ $t("settings.downloadHistory") }}</template>
+      <template #tab-providers><span class="mdi mdi-application-cog mr-1" /> {{ $t("settings.providers") }}</template>
+      <template #tab-ports><span class="mdi mdi-lan mr-1" /> {{ $t("ports.title") }}</template>
+
       <!-- Theme selector -->
-      <STabPane name="theme" :label="$t('settings.theme')" :active="activeTab === 'theme'">
+      <STabPane name="theme" :active="activeTab === 'theme'">
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.theme") }}</h6>
           <p class="has-text-grey is-size-7 mb-4">
@@ -35,7 +44,7 @@
       </STabPane>
 
       <!-- Language selector -->
-      <STabPane name="language" :label="$t('settings.language')" :active="activeTab === 'language'">
+      <STabPane name="language" :active="activeTab === 'language'">
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.language") }}</h6>
           <p class="has-text-grey is-size-7 mb-4">
@@ -59,7 +68,7 @@
       </STabPane>
 
       <!-- Account: change own password -->
-      <STabPane name="account" :label="$t('settings.account')" :active="activeTab === 'account'">
+      <STabPane name="account" :active="activeTab === 'account'">
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.changePassword") }}</h6>
           <SFormItem :label="$t('settings.currentPassword')">
@@ -84,12 +93,7 @@
       </STabPane>
 
       <!-- Admin: Integrations -->
-      <STabPane
-        v-if="isAdmin"
-        name="integrations"
-        :label="$t('settings.integrations')"
-        :active="activeTab === 'integrations'"
-      >
+      <STabPane v-if="isAdmin" name="integrations" :active="activeTab === 'integrations'">
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.tvdbTitle") }}</h6>
           <p class="is-size-7 mb-3 text-muted">
@@ -204,12 +208,7 @@
       </STabPane>
 
       <!-- Admin: Users -->
-      <STabPane
-        v-if="isAdmin"
-        name="users"
-        :label="$t('settings.users')"
-        :active="activeTab === 'users'"
-      >
+      <STabPane v-if="isAdmin" name="users" :active="activeTab === 'users'">
         <div class="box">
           <h6 class="title is-6 mb-3 mt-3">{{ $t("settings.users") }}</h6>
           <STable :data="users" :columns="userCols" stripe>
@@ -288,11 +287,7 @@
       </STabPane>
 
       <!-- Download History -->
-      <STabPane
-        name="downloadHistory"
-        :label="$t('settings.downloadHistory')"
-        :active="activeTab === 'downloadHistory'"
-      >
+      <STabPane name="downloadHistory" :active="activeTab === 'downloadHistory'">
         <div class="box">
           <div class="dh-header">
             <div>
@@ -375,7 +370,7 @@
       </STabPane>
 
       <!-- Public Port Status -->
-      <STabPane name="ports" :label="$t('ports.title')" :active="activeTab === 'ports'">
+      <STabPane name="ports" :active="activeTab === 'ports'">
         <div class="box">
           <div class="ports-panel-header">
             <div>
@@ -449,11 +444,7 @@
       </STabPane>
 
       <!-- Providers -->
-      <STabPane
-        name="providers"
-        :label="$t('settings.providers')"
-        :active="activeTab === 'providers'"
-      >
+      <STabPane name="providers" :active="activeTab === 'providers'">
         <div class="box">
           <div class="providers-header">
             <div>

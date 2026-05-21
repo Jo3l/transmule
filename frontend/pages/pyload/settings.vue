@@ -8,10 +8,13 @@
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
     <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("pyloadSettings.saved") }}</SAlert>
 
-    <STabs v-model="activeTab" variant="card" :panes="tabPanes">
+    <STabs v-model="activeTab" :panes="tabPanes">
+      <template #tab-downloads>
+        <span class="mdi mdi-download mr-1" />
+        {{ $t("pyloadSettings.downloads") }}
+      </template>
       <STabPane
         name="downloads"
-        :label="$t('pyloadSettings.downloads')"
         :active="activeTab === 'downloads'"
       >
         <div class="box">
@@ -77,7 +80,11 @@
         </div>
       </STabPane>
 
-      <STabPane name="proxy" :label="$t('pyloadSettings.proxy')" :active="activeTab === 'proxy'">
+      <template #tab-proxy>
+        <span class="mdi mdi-web mr-1" />
+        {{ $t("pyloadSettings.proxy") }}
+      </template>
+      <STabPane name="proxy" :active="activeTab === 'proxy'">
         <div class="box">
           <div class="columns is-multiline">
             <div class="column is-6">
@@ -131,9 +138,12 @@
         </div>
       </STabPane>
 
+      <template #tab-reconnection>
+        <span class="mdi mdi-lan-disconnect mr-1" />
+        {{ $t("pyloadSettings.reconnection") }}
+      </template>
       <STabPane
         name="reconnection"
-        :label="$t('pyloadSettings.reconnection')"
         :active="activeTab === 'reconnection'"
       >
         <div class="box">
@@ -175,9 +185,12 @@
         </div>
       </STabPane>
 
+      <template #tab-plugins>
+        <span class="mdi mdi-puzzle mr-1" />
+        {{ $t("pyloadSettings.plugins") }}
+      </template>
       <STabPane
         name="plugins"
-        :label="$t('pyloadSettings.plugins')"
         :active="activeTab === 'plugins'"
       >
         <div class="box">
@@ -263,9 +276,12 @@
         </div>
       </STabPane>
 
+      <template #tab-accounts>
+        <span class="mdi mdi-account-group mr-1" />
+        {{ $t("pyloadSettings.accounts") }}
+      </template>
       <STabPane
         name="accounts"
-        :label="$t('pyloadSettings.accounts')"
         :active="activeTab === 'accounts'"
       >
         <div class="box">
@@ -329,6 +345,77 @@
             </SButton>
           </div>
         </div>
+      </STabPane>
+
+      <template #tab-logs>
+        <span class="mdi mdi-text-box-outline mr-1" />
+        {{ $t("pyloadLogs.title") }}
+      </template>
+      <!-- ── Logs tab ──────────────────────────────────── -->
+      <STabPane
+        name="logs"
+        :active="activeTab === 'logs'"
+      >
+        <SLoading :loading="logInitialLoading">
+          <SAlert v-if="logErrorMsg" variant="error" class="mb-4">{{ logErrorMsg }}</SAlert>
+
+          <div class="box mb-4">
+            <div class="columns is-multiline">
+              <div class="column is-5">
+                <SFormItem :label="$t('pyloadLogs.search')">
+                  <SInput v-model="logSearchText" :placeholder="$t('pyloadLogs.searchPlaceholder')" />
+                </SFormItem>
+              </div>
+              <div class="column is-3">
+                <SFormItem :label="$t('pyloadLogs.level')">
+                  <SSelect v-model="logSelectedLevel" :options="logLevelOptions" class="mw-200" />
+                </SFormItem>
+              </div>
+              <div class="column is-2">
+                <SFormItem :label="$t('pyloadLogs.limit')">
+                  <SInputNumber v-model="logLineLimit" :min="10" :step="50" />
+                </SFormItem>
+              </div>
+              <div class="column is-2">
+                <SFormItem :label="$t('pyloadLogs.interval')">
+                  <SSelect v-model="logRefreshMs" :options="logIntervalOptions" class="mw-200" />
+                </SFormItem>
+              </div>
+            </div>
+
+            <div class="flex-end">
+              <SCheckbox v-model="logAutoRefresh">{{ $t("pyloadLogs.autoRefresh") }}</SCheckbox>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="flex-row gap-sm align-center mb-3">
+              <span class="has-text-grey is-size-7">
+                {{ $t("pyloadLogs.source") }}: <strong>{{ logSourceLabel }}</strong>
+              </span>
+              <span class="has-text-grey is-size-7">
+                {{ $t("pyloadLogs.updated") }}: <strong>{{ logLastUpdated || "-" }}</strong>
+              </span>
+            </div>
+
+            <div v-if="logFilteredItems.length === 0" class="has-text-grey is-size-7">
+              {{ $t("pyloadLogs.empty") }}
+            </div>
+
+            <div v-else class="log-content">
+              <div
+                v-for="entry in logFilteredItems"
+                :key="entry.id"
+                class="log-line"
+                :class="`is-${entry.level}`"
+              >
+                <span class="log-ts">{{ entry.timestamp }}</span>
+                <span class="log-level">{{ entry.level.toUpperCase() }}</span>
+                <span class="log-msg">{{ entry.message }}</span>
+              </div>
+            </div>
+          </div>
+        </SLoading>
       </STabPane>
     </STabs>
 
@@ -432,7 +519,7 @@ const saved = ref(false);
 const errorMsg = ref("");
 const route = useRoute();
 const router = useRouter();
-const VALID_TABS = ["downloads", "proxy", "reconnection", "plugins", "accounts"];
+const VALID_TABS = ["downloads", "proxy", "reconnection", "plugins", "accounts", "logs"];
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "downloads");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const pluginQuery = ref("");
@@ -487,6 +574,7 @@ const tabPanes = computed(() => [
   { name: "reconnection", label: t("pyloadSettings.reconnection") },
   { name: "plugins", label: t("pyloadSettings.plugins") },
   { name: "accounts", label: t("pyloadSettings.accounts") },
+  { name: "logs", label: t("pyloadLogs.title") },
 ]);
 
 const accountTypeOptions = computed(() =>
@@ -865,6 +953,143 @@ async function loadData() {
 }
 
 onMounted(loadData);
+
+// ── Log viewer ───────────────────────────────────────
+type PyLoadLogLevel = "debug" | "info" | "warning" | "error" | "critical" | "other";
+
+interface PyLoadLogEntry {
+  id: string;
+  timestamp: string;
+  level: PyLoadLogLevel;
+  message: string;
+}
+
+const logInitialLoading = ref(true);
+const logErrorMsg = ref("");
+const logSource = ref("");
+const logLastUpdated = ref("");
+const logItems = ref<PyLoadLogEntry[]>([]);
+const logSearchText = ref("");
+const logSelectedLevel = ref("all");
+const logLineLimit = ref(400);
+const logAutoRefresh = ref(true);
+const logRefreshMs = ref("5000");
+let logRefreshTimer: ReturnType<typeof setInterval> | null = null;
+
+const logLevelOptions = computed(() => [
+  { label: t("pyloadLogs.levelAll"), value: "all" },
+  { label: "DEBUG", value: "debug" },
+  { label: "INFO", value: "info" },
+  { label: "WARNING", value: "warning" },
+  { label: "ERROR", value: "error" },
+  { label: "CRITICAL", value: "critical" },
+  { label: t("pyloadLogs.levelOther"), value: "other" },
+]);
+
+const logIntervalOptions = computed(() => [
+  { label: "5s", value: "5000" },
+  { label: "10s", value: "10000" },
+  { label: "15s", value: "15000" },
+  { label: "30s", value: "30000" },
+  { label: "60s", value: "60000" },
+]);
+
+const logSourceLabel = computed(() => {
+  if (!logSource.value) return "-";
+  if (logSource.value.startsWith("docker:")) return t("pyloadLogs.sourceDocker");
+  if (logSource.value === "unavailable") return t("pyloadLogs.sourceUnavailable");
+  return t("pyloadLogs.sourceApi", { command: logSource.value });
+});
+
+const logFilteredItems = computed(() => {
+  const query = logSearchText.value.trim().toLowerCase();
+  return logItems.value.filter((entry) => {
+    if (logSelectedLevel.value !== "all" && entry.level !== logSelectedLevel.value) return false;
+    if (!query) return true;
+    return (
+      entry.message.toLowerCase().includes(query) ||
+      entry.timestamp.toLowerCase().includes(query) ||
+      entry.level.toLowerCase().includes(query)
+    );
+  });
+});
+
+function stopLogTimer() {
+  if (!logRefreshTimer) return;
+  clearInterval(logRefreshTimer);
+  logRefreshTimer = null;
+}
+
+function startLogTimer() {
+  stopLogTimer();
+  if (!logAutoRefresh.value) return;
+  const interval = Number.parseInt(logRefreshMs.value, 10);
+  if (!Number.isFinite(interval) || interval < 1000) return;
+  logRefreshTimer = setInterval(() => refreshLogs(true), interval);
+}
+
+async function refreshLogs(silent = false) {
+  if (!silent) {
+    logErrorMsg.value = "";
+  }
+
+  try {
+    const response = await apiFetch<{
+      source?: string;
+      items?: PyLoadLogEntry[];
+      fetchedAt?: string;
+      warning?: string;
+    }>("/api/pyload/logs", {
+      query: {
+        limit: String(Math.max(10, logLineLimit.value || 400)),
+      },
+    });
+
+    logItems.value = Array.isArray(response?.items) ? response.items : [];
+    logSource.value = String(response?.source || "");
+    if (!silent) {
+      const hasLogs = logItems.value.length > 0;
+      const usingDockerFallback = logSource.value.startsWith("docker:");
+      const warningText = String(response?.warning || "");
+      const apiUnavailableWarning = warningText
+        .toLowerCase()
+        .includes("pyload api log endpoint unavailable");
+      logErrorMsg.value =
+        warningText && !(hasLogs && usingDockerFallback)
+          ? apiUnavailableWarning
+            ? t("pyloadLogs.apiUnavailable")
+            : warningText
+          : "";
+    }
+    logLastUpdated.value = response?.fetchedAt
+      ? new Date(response.fetchedAt).toLocaleTimeString()
+      : new Date().toLocaleTimeString();
+  } catch (err: any) {
+    if (!silent) {
+      logErrorMsg.value = err?.data?.statusMessage || err?.statusMessage || t("pyloadLogs.loadError");
+    }
+  } finally {
+    logInitialLoading.value = false;
+  }
+}
+
+watch([logAutoRefresh, logRefreshMs], () => {
+  startLogTimer();
+});
+
+watch(logLineLimit, () => {
+  refreshLogs();
+});
+
+// Start log timer on mount
+onMounted(async () => {
+  await refreshLogs();
+  startLogTimer();
+});
+
+onBeforeUnmount(() => {
+  stopLogTimer();
+});
 </script>
 
 <style scoped>
@@ -926,6 +1151,69 @@ onMounted(loadData);
   .pyload-plugin-sidebar {
     max-height: none;
     overflow-y: visible;
+  }
+}
+
+/* ── Log viewer ──────────────────────────────── */
+.log-content {
+  background: var(--s-bg-surface-alt);
+  border-radius: var(--s-radius);
+  padding: 0.85rem;
+  max-height: 560px;
+  overflow: auto;
+  border: 1px solid var(--s-border);
+  font-family: "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 0.6rem;
+  padding: 0.15rem 0;
+  color: var(--s-text);
+}
+
+.log-line.is-debug {
+  color: var(--s-text-muted);
+}
+
+.log-line.is-info {
+  color: var(--s-info);
+}
+
+.log-line.is-warning {
+  color: var(--s-warning);
+}
+
+.log-line.is-error,
+.log-line.is-critical {
+  color: var(--s-danger);
+}
+
+.log-ts {
+  color: var(--s-text-muted);
+  white-space: nowrap;
+}
+
+.log-level {
+  min-width: 70px;
+  font-weight: 600;
+}
+
+.log-msg {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .log-line {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .log-level {
+    min-width: 0;
   }
 }
 </style>

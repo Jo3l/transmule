@@ -250,7 +250,7 @@ const sortDir = ref<"asc" | "desc">("asc");
 const columns = [
   { key: "cover", label: "", align: "center" as const },
   { prop: "name", label: "Nombre", sortable: true },
-  { prop: "size_fmt", label: "Tamaño", width: 110, sortable: true },
+  { prop: "size_fmt", sortProp: "size", label: "Tamaño", width: 110, sortable: true },
   {
     key: "seeds",
     prop: "seedsOrSources",

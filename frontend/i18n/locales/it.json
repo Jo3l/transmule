@@ -19,7 +19,6 @@
     "sharedFiles": "File condivisi",
     "statistics": "Statistiche",
     "kad": "KAD",
-    "log": "Registri",
     "transmission": "Transmission",
     "speedLimits": "Limiti velocità",
     "folders": "Cartelle",
@@ -430,7 +429,6 @@
     "bootstrapButton": "Bootstrap"
   },
   "log": {
-    "title": "Registri",
     "amuleLog": "Registro aMule",
     "serverLog": "Registro server",
     "noData": "Nessun dato registro",

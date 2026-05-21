@@ -101,6 +101,7 @@
 export interface STableColumn {
   key?: string;
   prop?: string;
+  sortProp?: string;
   label?: string;
   width?: number | string;
   minWidth?: number | string;
@@ -167,7 +168,7 @@ const sortProp = ref("");
 const sortDir = ref<"asc" | "desc">("asc");
 
 function onSort(col: STableColumn) {
-  const p = col.prop || col.key || "";
+  const p = col.sortProp || col.prop || col.key || "";
   if (sortProp.value === p) {
     sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
   } else {

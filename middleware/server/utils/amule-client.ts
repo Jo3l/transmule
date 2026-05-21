@@ -38,6 +38,7 @@ import {
   UIntTag,
   UShortTag,
   StringTag,
+  Hash16Tag,
 } from "amule-ec-client";
 
 // ─── EC Preference request helpers ────────────────────────────────────────────
@@ -573,6 +574,27 @@ class AmuleECClient {
     command: DownloadCommand,
   ): Promise<void> {
     return this.exec(() => this.client.sendDownloadCommand(hash, command));
+  }
+
+  /**
+   * Set upload priority for a shared file using EC_OP_SHARED_SET_PRIO.
+   */
+  async setSharedFilePriority(hash: Buffer, priority: number): Promise<void> {
+    return this.exec(async () => {
+      const req = {
+        buildPacket() {
+          return new Packet(
+            ECOpCode.EC_OP_SHARED_SET_PRIO,
+            Flags.useUtf8Numbers(),
+            [
+              new Hash16Tag(ECTagName.EC_TAG_PARTFILE_HASH, hash),
+              new UIntTag(ECTagName.EC_TAG_KNOWNFILE_PRIO, priority),
+            ],
+          );
+        },
+      };
+      await (this.client as any).connection.sendRequest(req);
+    });
   }
 
   async getUpdate(detailLevel?: ECDetailLevel): Promise<UpdateResponse> {

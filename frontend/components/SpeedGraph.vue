@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
 const props = defineProps<{
   history: { t: number; amule: number; torrent: number; pyload: number; up?: number }[];
@@ -67,7 +67,8 @@ function draw() {
   const windowStart = now - WINDOW_MS;
 
   const xOf = (t: number) => Math.max(0, ((t - windowStart) / WINDOW_MS) * W);
-  // yOf is only used when we have data; define with a fallback yMax
+
+  // Find max speeds from data
   let maxDown = 0;
   let maxUp = 0;
   for (const pt of hist) {
@@ -75,9 +76,11 @@ function draw() {
     if (total > maxDown) maxDown = total;
     if ((pt.up ?? 0) > maxUp) maxUp = pt.up ?? 0;
   }
+
+  const MIN_SCALE_BPS = 12_500_000; // 100 Mbps minimum scale in bytes/s
   const maxSpeed = Math.max(maxDown, maxUp);
-  const yMax = maxSpeed > 0 ? maxSpeed * 1.1 : 1;
-  maxLabelText.value = maxSpeed > 0 ? fmtSpeed(maxSpeed) : "";
+  const yMax = Math.max(maxSpeed * 1.1, MIN_SCALE_BPS);
+  maxLabelText.value = fmtSpeed(Math.max(maxSpeed, MIN_SCALE_BPS));
   const yOf = (v: number) => H - (v / yMax) * (H - 4) - 2;
 
   // Grid lines — always drawn
@@ -119,7 +122,7 @@ function draw() {
   // No speed lines if fewer than 2 points
   if (hist.length < 2) return;
 
-  const colors = {
+  const colors: Record<string, string> = {
     amule: cssVar("--s-warning") || "#ff8800",
     torrent: cssVar("--s-info") || "#00aaff",
     pyload: cssVar("--s-success") || "#00cc66",
@@ -159,7 +162,7 @@ function draw() {
   }
 }
 
-watch(() => props.history.length, draw);
+defineExpose({ draw });
 
 let ro: ResizeObserver | null = null;
 onMounted(() => {
