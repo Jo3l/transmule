@@ -72,7 +72,7 @@
         :active="tab.id === (activeTabId ?? '')"
       >
         <!-- Loading per-source + stop button -->
-        <div v-if="tab.status === 'searching'" class="flex-row gap-md mb-2">
+        <div v-if="tab.status === 'searching'" class="mb-2">
           <span class="is-size-7 has-text-grey">
             <span class="mdi mdi-loading mdi-spin mr-1" />
             Searching {{ tab.sourcesCompleted.length }} / {{ totalPluginCount }} sources...
@@ -120,8 +120,7 @@
               <span
                 v-if="providerIconMap[row.source]"
                 class="mdi"
-                :class="providerIconMap[row.source]"
-                style="margin-right: 3px"
+                :class="[providerIconMap[row.source], 'mr-3px']"
               />{{ providerLabelMap[row.source] ?? row.source }}
             </STag>
           </template>
@@ -139,20 +138,15 @@
           </template>
 
           <template #cell-actions="{ row }">
-            <SButton
-              v-if="!addedHashes.has(row.infoHash)"
-              :variant="isDownloadedByHash(row.infoHash) ? 'warning' : 'success'"
-              size="sm"
-              :loading="addingHash === row.infoHash"
-              :title="$t('torrentSearch.addToTransmission')"
-              @click="addTorrent(row)"
-            >
-              <span class="mdi mdi-plus" />
-            </SButton>
-            <span
-              v-else
-              class="mdi mdi-check has-text-success"
-              :title="$t('torrentSearch.alreadyAdded')"
+            <DownloadButton
+              service="transmission"
+              :url="row.magnet"
+              :hash="row.infoHash"
+              :title="row.name"
+              @download-end="addToast($t('torrentSearch.added', { name: row.name }), 'success')"
+              @download-error="
+                (err) => addToast(err?.message ?? $t('torrentSearch.addError'), 'error')
+              "
             />
           </template>
 
@@ -203,14 +197,11 @@
 
 <script setup lang="ts">
 import { isVideoExt, detectFileIcon } from "../../composables/useSearchTabs";
-const { apiFetch } = useApi();
-const { transmissionRunning } = useServiceGuard();
 const { t } = useI18n();
 const { addToast } = useToast();
-const { isDownloadedByHash, recordDownload, loadDownloadHistory } = useDownloadHistory();
+const { loadDownloadHistory } = useDownloadHistory();
 const { torrentSearchProviders, loadProviders } = useProviders();
-const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } =
-  useSearchTabs();
+const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } = useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
 
@@ -243,15 +234,21 @@ const tabPanes = computed(() => torrentTabs.value.map((t) => ({ name: t.id, labe
 // ── Columns ─────────────────────────────────────────────────────────────────
 
 const columns = computed(() => [
-  { key: "cover", label: "", align: "center" as const },
+  { key: "cover", label: "", width: 60, align: "center" as const },
   { prop: "name", label: t("torrentSearch.columns.name"), sortable: true },
-  { prop: "category", label: t("torrentSearch.columns.category"), width: 140, sortable: true },
-  { prop: "size_fmt", sortProp: "size", label: t("torrentSearch.columns.size"), width: 110, sortable: true },
+  { prop: "category", label: t("torrentSearch.columns.category"), width: 120, sortable: true },
+  {
+    prop: "size_fmt",
+    sortProp: "size",
+    label: t("torrentSearch.columns.size"),
+    width: 100,
+    sortable: true,
+  },
   {
     key: "seeders",
     prop: "seeders",
     label: t("torrentSearch.columns.seeders"),
-    width: 80,
+    width: 70,
     sortable: true,
     align: "right" as const,
   },
@@ -259,20 +256,18 @@ const columns = computed(() => [
     key: "leechers",
     prop: "leechers",
     label: t("torrentSearch.columns.leechers"),
-    width: 80,
+    width: 70,
     sortable: true,
     align: "right" as const,
   },
-  { key: "source", label: t("torrentSearch.columns.source"), width: 80, align: "center" as const },
-  { key: "actions", label: "", width: 55, align: "center" as const },
+  { key: "source", label: t("torrentSearch.columns.source"), width: 75, align: "center" as const },
+  { key: "actions", label: "", width: 78, align: "center" as const },
 ]);
 
 // ── State ────────────────────────────────────────────────────────────────────
 
 const query = ref("");
 const source = ref("all");
-const addingHash = ref("");
-const addedHashes = ref(new Set<string>());
 const nameFilter = ref("");
 
 // ── Client-side filter ──────────────────────────────────────────────────────
@@ -323,7 +318,6 @@ function sourceVariant(src: string) {
 
 function onSearch() {
   if (!query.value.trim()) return;
-  fetchExistingHashes();
   createTorrentTab(query.value.trim(), source.value);
 }
 
@@ -347,39 +341,7 @@ function stopTorrentSearch(tabId: string) {
   closeTab(tabId);
 }
 
-// ── Existing hashes ──────────────────────────────────────────────────────────
-
-async function fetchExistingHashes() {
-  if (!transmissionRunning.value) return;
-  try {
-    const res = await apiFetch<any>("/api/transmission/torrents");
-    const torrents = res?.torrents ?? [];
-    addedHashes.value = new Set(torrents.map((t: any) => (t.hashString ?? "").toLowerCase()));
-  } catch {
-    /* silent */
-  }
-}
-
-// ── Add torrent ──────────────────────────────────────────────────────────────
-
-async function addTorrent(row: { infoHash: string; magnet: string; name: string }) {
-  addingHash.value = row.infoHash;
-  try {
-    await apiFetch("/api/transmission/torrents", {
-      method: "POST",
-      body: { action: "add", filename: row.magnet },
-    });
-    addedHashes.value.add(row.infoHash.toLowerCase());
-    recordDownload(row.magnet, row.name, "transmission");
-    addToast(t("torrentSearch.added", { name: row.name }), "success");
-  } catch (err: any) {
-    addToast(err?.message ?? t("torrentSearch.addError"), "error");
-  } finally {
-    addingHash.value = "";
-  }
-}
-
-// ── Trackers ──────────────────────────────────────────────────────────────────
+// ── Trackers ────────────────────────────────────────────
 
 const trackersDialog = ref(false);
 const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
@@ -397,7 +359,6 @@ async function saveAndClose() {
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  fetchExistingHashes();
   await loadDownloadHistory();
   await loadProviders();
   // If activeTabId doesn't belong to a torrent tab, switch to the latest one
@@ -478,5 +439,18 @@ onMounted(async () => {
   opacity: 1;
   background: var(--s-border);
   color: var(--s-danger);
+}
+
+/* Remove ellipsis from source column */
+:deep(.s-table td:nth-child(7)) {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Force actions column width */
+:deep(.s-table th:nth-child(8)),
+:deep(.s-table td:nth-child(8)) {
+  max-width: 78px;
+  width: 78px;
 }
 </style>

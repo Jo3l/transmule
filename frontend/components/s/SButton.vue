@@ -33,7 +33,7 @@
 const props = withDefaults(
   defineProps<{
     variant?: "default" | "primary" | "success" | "warning" | "danger" | "info" | "text";
-    size?: "sm" | "md" | "lg";
+    size?: "mini" | "sm" | "md" | "lg";
     /** Optional plain-text label. When provided each character gets a staggered jump animation on hover. */
     label?: string;
     loading?: boolean;

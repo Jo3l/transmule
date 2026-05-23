@@ -10,7 +10,7 @@
 
     <div class="fts-scroll">
       <div v-if="loading" class="fts-loading">
-        <span class="mdi mdi-loading mdi-spin s-loading-spinner" style="width: 20px; height: 20px" />
+        <span class="mdi mdi-loading mdi-spin s-loading-spinner icon-folder" />
       </div>
       <template v-else>
         <!-- Root entry -->

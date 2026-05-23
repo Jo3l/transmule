@@ -535,10 +535,9 @@
       {{ previewIndex + 1 }} / {{ previewImages.length }}
     </div>
     <template #footer>
-      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+      <div class="flex-end-center">
         <a
-          class="s-btn"
-          style="display: inline-flex; align-items: center"
+          class="s-btn inline-flex-center"
           :href="previewImageUrl"
           download
           @click="showImageDialog = false"
@@ -564,7 +563,7 @@
       spellcheck="false"
     />
     <template #footer>
-      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+      <div class="flex-end-center">
         <SButton variant="primary" :loading="savingText" @click="saveTextFile">
           <span class="mdi mdi-content-save mr-1" />{{ $t("fileManager.save") }}
         </SButton>
@@ -577,7 +576,7 @@
   <SDialog v-model="showDiscardDialog" :title="$t('fileManager.discardTitle')" width="420px">
     <p>{{ $t("fileManager.discardMessage") }}</p>
     <template #footer>
-      <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem">
+      <div class="flex-end-center">
         <SButton variant="danger" @click="confirmDiscard">{{
           $t("fileManager.discardConfirm")
         }}</SButton>

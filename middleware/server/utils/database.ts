@@ -283,7 +283,7 @@ export function getDownloadedUrls(userId: number): string[] {
   const db = useDatabase();
   const rows = db
     .prepare(
-      "SELECT url FROM download_history WHERE user_id = ? ORDER BY sent_at DESC LIMIT 50",
+      "SELECT url FROM download_history WHERE user_id = ? ORDER BY sent_at DESC LIMIT 500",
     )
     .all(userId) as { url: string }[];
   return rows.map((r) => r.url);

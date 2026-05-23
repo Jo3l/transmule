@@ -77,30 +77,20 @@
 
     <!-- Download footer -->
     <div class="download-card-footer">
-      <!-- Series: episode count badge + open button -->
+      <!-- Series: episode count badge + open modal button -->
       <template v-if="isSeries">
         <span v-if="episodeCount > 0" class="ep-count-badge">
           <span class="mdi mdi-television-play mr-1" />{{ episodeCount }}
           {{ $t("shows.episodes") }}
         </span>
-        <SButton
-          size="sm"
-          :variant="anyLinkDownloaded ? 'warning' : undefined"
-          :disabled="!!busy"
-          @click.stop="$emit('open', item)"
-        >
+        <SButton size="sm" variant="primary" @click.stop="$emit('open', item)">
           <span class="mdi mdi-download mr-1" />{{ $t("shows.download") }}
         </SButton>
       </template>
 
       <!-- Movies with needsDetail: always show modal button -->
       <template v-else-if="item.needsDetail">
-        <SButton
-          size="sm"
-          variant="primary"
-          :disabled="!!busy"
-          @click.stop="$emit('open', item)"
-        >
+        <SButton size="sm" variant="primary" @click.stop="$emit('open', item)">
           <span class="mdi mdi-download mr-1" />{{ $t("media.download") }}
         </SButton>
       </template>
@@ -126,95 +116,49 @@
               {{ tag.label }}
             </span>
           </span>
-          <SButton
+          <DownloadButton
             size="sm"
-            :variant="isLinkDownloaded(link) ? 'warning' : undefined"
-            :loading="busy === (link.hash || link.url)"
-            :disabled="!!busy"
-            :title="$t('movies.addToTransmission')"
-            @click.stop="$emit('download-link', item, link)"
-          >
-            <span class="mdi mdi-download mr-1" />{{ $t("movies.download") }}
-          </SButton>
+            service="transmission"
+            :url="link.url"
+            :hash="link.hash"
+            :title="link.quality ? `${item.title} [${link.quality}]` : item.title"
+            :label="$t('movies.download')"
+          />
         </div>
       </template>
 
       <!-- Single download button (no needsDetail, single link) -->
       <template v-else>
-        <SButton
+        <DownloadButton
           size="sm"
-          :variant="anyLinkDownloaded ? 'warning' : undefined"
-          :loading="busy === item.id"
-          :disabled="!!busy"
-          :title="$t('movies.addToTransmission')"
-          @click.stop="$emit('download-link', item, item.links?.[0] || null)"
-        >
-          <span class="mdi mdi-download mr-1" />{{ $t("movies.download") }}
-        </SButton>
+          service="transmission"
+          :url="item.links?.[0]?.url"
+          :hash="item.links?.[0]?.hash"
+          :title="item.title"
+          :label="$t('movies.download')"
+        />
       </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { MediaLink, MediaEpisode, MediaItem } from "~/composables/useProviders";
+import type { MediaItem } from "~/composables/useProviders";
 
 const props = defineProps<{
   item: MediaItem;
   coverSrc?: string | null;
   coverLoading?: boolean;
-  busy?: string | null;
-  downloadedUrls?: string[];
-  downloadedHashes?: string[];
 }>();
 
 defineEmits<{
   (e: "open", item: MediaItem): void;
-  (e: "download-link", item: MediaItem, link: MediaLink | null): void;
 }>();
 
 const isSeries = computed(() => !!props.item.isSeries);
 
 const episodeCount = computed(() => {
   return props.item.episodes?.length ?? 0;
-});
-
-function isLinkDownloaded(link: MediaLink): boolean {
-  if (!link) return false;
-  const urls = props.downloadedUrls ?? [];
-  const hashes = props.downloadedHashes ?? [];
-  if (link.url && urls.includes(link.url)) return true;
-  if (link.hash && hashes.includes(link.hash.toLowerCase())) return true;
-  return false;
-}
-
-const anyLinkDownloaded = computed(() => {
-  const urls = props.downloadedUrls ?? [];
-  const hashes = props.downloadedHashes ?? [];
-
-  // Check direct links
-  if (
-    props.item.links?.some((l) => {
-      if (l.url && urls.includes(l.url)) return true;
-      if (l.hash && hashes.includes(l.hash.toLowerCase())) return true;
-      return false;
-    })
-  )
-    return true;
-
-  // Check episode links
-  if (
-    props.item.episodes?.some((ep) =>
-      ep.links?.some((l) => {
-        if (l.url && urls.includes(l.url)) return true;
-        if (l.hash && hashes.includes(l.hash.toLowerCase())) return true;
-        return false;
-      }),
-    )
-  )
-    return true;
-
-  return false;
 });
 
 function formatRuntime(minutes: number): string {
@@ -251,16 +195,13 @@ function onImgError(e: Event) {
   border-radius: var(--s-radius-lg);
   overflow: hidden;
   transition: border-color 0.15s;
-
-  &:hover {
-    border-color: var(--s-accent);
-  }
 }
-
+.media-card:hover {
+  border-color: var(--s-accent);
+}
 .media-card[data-item-id] {
   cursor: default;
 }
-
 .media-card-top {
   display: flex;
   gap: 0.75rem;
@@ -268,12 +209,10 @@ function onImgError(e: Event) {
   padding: 0.75rem;
   flex: 1;
 }
-
 .media-cover {
   flex-shrink: 0;
   width: 90px;
 }
-
 .media-poster {
   width: 90px;
   height: 130px;
@@ -283,7 +222,6 @@ function onImgError(e: Event) {
   background: var(--s-bg-muted);
   border-radius: var(--s-radius);
 }
-
 .media-poster-placeholder {
   display: flex;
   align-items: center;
@@ -291,7 +229,6 @@ function onImgError(e: Event) {
   color: var(--s-text-muted);
   font-size: 2rem;
 }
-
 .media-poster-skeleton {
   display: flex;
   align-items: center;
@@ -302,17 +239,10 @@ function onImgError(e: Event) {
   border-radius: var(--s-radius);
   animation: pulse 1.5s ease-in-out infinite;
 }
-
 @keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
-
 .media-info {
   flex: 1;
   min-width: 0;
@@ -320,36 +250,30 @@ function onImgError(e: Event) {
   flex-direction: column;
   gap: 0.3rem;
 }
-
 .media-header {
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
   flex-wrap: wrap;
 }
-
 .media-title {
   font-weight: 700;
   font-size: 0.95rem;
   color: var(--s-text);
   line-height: 1.3;
-
-  &.is-link {
-    color: var(--s-accent);
-    text-decoration: none;
-
-    &:hover {
-      color: var(--s-accent-hover);
-    }
-  }
 }
-
+.media-title.is-link {
+  color: var(--s-accent);
+  text-decoration: none;
+}
+.media-title.is-link:hover {
+  color: var(--s-accent-hover);
+}
 .media-year {
   font-size: 0.78rem;
   color: var(--s-text-muted);
   white-space: nowrap;
 }
-
 .media-meta {
   display: flex;
   flex-wrap: wrap;
@@ -357,29 +281,24 @@ function onImgError(e: Event) {
   font-size: 0.78rem;
   color: var(--s-text-secondary);
 }
-
 .media-meta-item {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
-
-  .mdi {
-    opacity: 0.7;
-    font-size: 0.85rem;
-  }
 }
-
+.media-meta-item .mdi {
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
 .media-star {
   color: #f5c518 !important;
   opacity: 1 !important;
 }
-
 .media-genres {
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
 }
-
 .media-genre-tag {
   font-size: 0.72rem;
   padding: 0.1rem 0.5rem;
@@ -388,7 +307,6 @@ function onImgError(e: Event) {
   color: var(--s-text-muted);
   border: 1px solid var(--s-border);
 }
-
 .media-meta-small {
   font-size: 0.75rem;
   color: var(--s-text-muted);
@@ -396,14 +314,12 @@ function onImgError(e: Event) {
   align-items: flex-start;
   gap: 0.25rem;
   line-height: 1.4;
-
-  .mdi {
-    flex-shrink: 0;
-    margin-top: 0.1rem;
-    opacity: 0.7;
-  }
 }
-
+.media-meta-small .mdi {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  opacity: 0.7;
+}
 .media-actors {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -411,7 +327,6 @@ function onImgError(e: Event) {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 .media-desc-inline {
   font-size: 0.78rem;
   color: var(--s-text-secondary);
@@ -423,8 +338,6 @@ function onImgError(e: Event) {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
-/* Download footer */
 .download-card-footer {
   display: flex;
   flex-direction: column;
@@ -433,70 +346,56 @@ function onImgError(e: Event) {
   border-top: 1px solid var(--s-border);
   margin-top: auto;
 }
-
-/* When single button or series, align right */
 .download-card-footer:has(.ep-count-badge) {
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
 }
-
 .download-card-footer:not(:has(.torrent-row)):not(:has(.ep-count-badge)) {
   align-items: flex-end;
 }
-
 .ep-count-badge {
   display: inline-flex;
   align-items: center;
   font-size: 0.78rem;
   color: var(--s-text-secondary);
   margin-right: auto;
-
-  .mdi {
-    opacity: 0.7;
-  }
 }
-
+.ep-count-badge .mdi {
+  opacity: 0.7;
+}
 .torrent-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.78rem;
-
-  & > :last-child {
-    margin-left: auto;
-  }
 }
-
+.torrent-row > :last-child {
+  margin-left: auto;
+}
 .torrent-quality {
   font-weight: 600;
   color: var(--s-text);
   min-width: 3rem;
 }
-
 .torrent-type {
   color: var(--s-text-muted);
   min-width: 3.5rem;
   text-transform: capitalize;
 }
-
 .torrent-size {
   color: var(--s-text-secondary);
   min-width: 4rem;
 }
-
 .torrent-seeds {
   display: flex;
   align-items: center;
   color: #4caf50;
   font-size: 0.76rem;
-
-  .mdi {
-    font-size: 0.85rem;
-  }
 }
-
-/* Tag badges in torrent rows */
+.torrent-seeds .mdi {
+  font-size: 0.85rem;
+}
 .torrent-tags {
   display: flex;
   flex-wrap: wrap;
@@ -522,7 +421,6 @@ function onImgError(e: Event) {
 .torrent-tag-icon {
   font-size: 0.6rem;
 }
-
 .torrent-tag--success {
   color: var(--s-success, #22c55e);
   background: color-mix(in srgb, var(--s-success, #22c55e) 12%, transparent);

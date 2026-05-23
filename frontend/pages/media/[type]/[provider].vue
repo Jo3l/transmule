@@ -8,7 +8,7 @@
         </h1>
       </div>
       <div class="level-right">
-        <SButton size="sm" @click="load">
+        <SButton size="sm" @click="load(undefined, true)">
           <span class="mdi mdi-refresh mr-1" />{{ $t("media.refresh") }}
         </SButton>
       </div>
@@ -49,7 +49,7 @@
 
     <!-- URL bar (for dontorrent-style providers with no filters but url preference) -->
     <div v-if="showUrlBar" class="dt-url-bar mb-4">
-      <div class="provider-filter-search" style="flex: 1">
+      <div class="provider-filter-search" flex-1>
         <span class="mdi mdi-link" />
         <input
           v-model="sourceUrl"
@@ -79,11 +79,7 @@
         :item="item"
         :cover-src="getCover(item)"
         :cover-loading="coverLoading.has(item.id)"
-        :busy="busy"
-        :downloaded-urls="downloadedUrls"
-        :downloaded-hashes="downloadedHashes"
         @open="openModal"
-        @download-link="onDownloadLink"
       />
     </div>
 
@@ -163,18 +159,17 @@
                 v-for="(ep, i) in modal.item.episodes"
                 :key="ep.code"
                 class="episode-row"
-                :class="{ 'is-loading': busy === ep.code, 'is-odd': i % 2 !== 0 }"
+                :class="{ 'is-odd': i % 2 !== 0 }"
               >
                 <span class="ep-code">{{ ep.code }}</span>
-                <SButton
+                <DownloadButton
                   size="sm"
-                  :variant="isEpDownloaded(ep) ? 'warning' : undefined"
-                  :loading="busy === ep.code"
-                  :disabled="!!busy"
-                  @click="downloadEpisode(modal!.item, ep)"
-                >
-                  <span class="mdi mdi-download mr-1" />{{ $t("media.download") }}
-                </SButton>
+                  service="transmission"
+                  :url="ep.links?.[0]?.url"
+                  :hash="ep.links?.[0]?.hash"
+                  :title="`${modal!.item.title} ${ep.code}`"
+                  :label="$t('media.download')"
+                />
                 <span v-if="ep.date" class="ep-date">{{ ep.date }}</span>
               </div>
             </div>
@@ -204,15 +199,14 @@
                     {{ tag.label }}
                   </span>
                 </span>
-                <SButton
+                <DownloadButton
                   size="sm"
-                  :variant="isLinkDownloaded(link) ? 'warning' : undefined"
-                  :loading="busy === (link.hash || link.url)"
-                  :disabled="!!busy"
-                  @click="onDownloadLink(modal!.item, link)"
-                >
-                  <span class="mdi mdi-download mr-1" />{{ $t("media.addToTransmission") }}
-                </SButton>
+                  service="transmission"
+                  :url="link.url"
+                  :hash="link.hash"
+                  :title="link.quality ? `${modal!.item.title} [${link.quality}]` : modal!.item.title"
+                  :label="$t('media.addToTransmission')"
+                />
               </div>
             </div>
           </div>
@@ -225,8 +219,6 @@
 <script setup lang="ts">
 import type {
   MediaItem,
-  MediaLink,
-  MediaEpisode,
   ProviderMeta,
   ProviderFilter,
 } from "~/composables/useProviders";
@@ -235,8 +227,7 @@ const route = useRoute();
 const { t } = useI18n();
 const { apiFetch } = useApi();
 const { loadProviders, fetchList, fetchDetail, fetchCover } = useProviders();
-const { isDownloaded, isDownloadedByHash, recordDownload, loadDownloadHistory } =
-  useDownloadHistory();
+const { loadDownloadHistory } = useDownloadHistory();
 
 // ── Route params ────────────────────────────────────────────────────
 const providerId = computed(() => String(route.params.provider));
@@ -277,7 +268,6 @@ const urlChanged = computed(() => sourceUrl.value.trim() !== savedUrl.value);
 const items = ref<MediaItem[]>([]);
 const loading = ref(false);
 const error = ref("");
-const busy = ref<string | null>(null);
 const filters = reactive<Record<string, string>>({});
 const currentPage = ref(1);
 const hasMore = ref(false);
@@ -293,17 +283,6 @@ interface ModalState {
 }
 const modal = ref<ModalState | null>(null);
 
-// Download history passthrough
-const downloadedUrls = computed(() => {
-  // Access internal state from useDownloadHistory
-  const urls = useState<string[]>("_downloadedUrls");
-  return urls.value ?? [];
-});
-const downloadedHashes = computed(() => {
-  const hashes = useState<string[]>("_downloadedHashes");
-  return hashes.value ?? [];
-});
-
 // ── Helpers ─────────────────────────────────────────────────────────
 
 function getCover(item: MediaItem): string | null {
@@ -311,32 +290,11 @@ function getCover(item: MediaItem): string | null {
   return coverCache.value[item.id] ?? null;
 }
 
-function isEpDownloaded(ep: MediaEpisode): boolean {
-  return (
-    ep.links?.some((l) => {
-      if (l.url && isDownloaded(l.url)) return true;
-      if (l.hash && isDownloadedByHash(l.hash)) return true;
-      return false;
-    }) ?? false
-  );
-}
 
-function isLinkDownloaded(link: MediaLink): boolean {
-  if (!link) return false;
-  if (link.url && isDownloaded(link.url)) return true;
-  if (link.hash && isDownloadedByHash(link.hash)) return true;
-  return false;
-}
 
-function isItemDownloaded(item: MediaItem): boolean {
-  return (
-    item.links?.some((l) => {
-      if (l.url && isDownloaded(l.url)) return true;
-      if (l.hash && isDownloadedByHash(l.hash)) return true;
-      return false;
-    }) ?? false
-  );
-}
+
+
+
 
 function formatDate(raw: string): string {
   if (!raw) return "";
@@ -446,69 +404,13 @@ function openModal(item: MediaItem) {
 
 // ── Downloads ───────────────────────────────────────────────────────
 
-async function onDownloadLink(item: MediaItem, link: MediaLink | null) {
-  if (busy.value) return;
 
-  // If the item needs detail and we don't have a link yet, fetch
-  if (!link?.url && item.needsDetail) {
-    busy.value = item.id;
-    try {
-      await loadItemDetail(item);
-      // Re-read the updated item
-      const updated = items.value.find((i) => i.id === item.id);
-      link = updated?.links?.[0] ?? null;
-    } finally {
-      if (!link?.url) {
-        busy.value = null;
-        error.value = t("media.noTorrent");
-        return;
-      }
-    }
-  }
 
-  if (!link?.url) {
-    error.value = t("media.noTorrent");
-    return;
-  }
 
-  const key = link.hash || link.url;
-  busy.value = key;
-  try {
-    await apiFetch("/api/transmission/torrents", {
-      method: "POST",
-      body: { action: "add", filename: link.url },
-    });
-    const title = link.quality ? `${item.title} [${link.quality}]` : item.title;
-    recordDownload(link.url, title, "transmission");
-  } catch (err: any) {
-    error.value = err?.data?.statusMessage || err?.message || t("media.addError");
-  } finally {
-    busy.value = null;
-  }
-}
-
-async function downloadEpisode(item: MediaItem, ep: MediaEpisode) {
-  if (busy.value) return;
-  const link = ep.links?.[0];
-  if (!link?.url) return;
-
-  busy.value = ep.code;
-  try {
-    await apiFetch("/api/transmission/torrents", {
-      method: "POST",
-      body: { action: "add", filename: link.url },
-    });
-    recordDownload(link.url, `${item.title} ${ep.code}`, "transmission");
-  } catch (err: any) {
-    error.value = err?.data?.statusMessage || err?.message || t("media.addError");
-  } finally {
-    busy.value = null;
-  }
-}
 
 // ── Load ────────────────────────────────────────────────────────────
 
-async function load(page?: number) {
+async function load(page?: number, forceRefresh = false) {
   loading.value = true;
   error.value = "";
   coverCache.value = {};
@@ -517,6 +419,7 @@ async function load(page?: number) {
   try {
     const params: Record<string, string | number> = { ...filters };
     if (page) params.page = page;
+    if (forceRefresh) params._noCache = 1;
 
     // Pass URL for dontorrent providers
     if (showUrlBar.value && sourceUrl.value) {

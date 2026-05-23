@@ -95,6 +95,11 @@ export interface ProviderMeta {
 
 export interface ProviderSearchParams {
   [key: string]: string | undefined;
+  /**
+   * When truthy, plugins should bypass any internal cache and fetch fresh data.
+   * Set by the frontend when the user clicks the "refresh" button.
+   */
+  _noCache?: string;
 }
 
 export interface ProviderListResult {
@@ -195,6 +200,12 @@ export interface TorrentSearchResult {
    * @since 1.0.0 — added in plugin API v2
    */
   tags?: TorrentTag[];
+  /**
+   * Direct download URL for non-torrent items (e.g. archive.org files sent to pyLoad).
+   * When set, the frontend will use this URL instead of the magnet for download.
+   * @since 1.1.0
+   */
+  downloadUrl?: string;
 }
 
 export interface TorrentSearchPlugin {

@@ -31,6 +31,22 @@
   display: flex;
   justify-content: flex-end;
 }
+.flex-end-center {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.inline-flex-center {
+  display: inline-flex;
+  align-items: center;
+}
+.justify-center {
+  justify-content: center;
+}
+.items-center {
+  align-items: center;
+}
 .flex-wrap {
   flex-wrap: wrap;
 }
@@ -39,6 +55,12 @@
 }
 .ml-auto {
   margin-left: auto;
+}
+.hidden {
+  display: none;
+}
+.mr-3px {
+  margin-right: 3px;
 }
 .gap-xs {
   gap: 0.3rem;
@@ -68,6 +90,10 @@
 }
 .icon-2xl {
   font-size: 3rem;
+}
+.icon-folder {
+  width: 20px;
+  height: 20px;
 }
 
 /* ── Text color utilities ───────────────────────────────────────────────── */

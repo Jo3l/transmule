@@ -468,7 +468,7 @@
               ref="pluginFileInput"
               type="file"
               accept=".js"
-              style="display: none"
+              class="hidden"
               @change="onPluginFileSelected"
             />
           </div>
@@ -933,7 +933,7 @@ interface LocaleOption {
   name: string;
 }
 
-const SUPPORTED_PROVIDER_LOCALES = ["en", "es", "it", "pt", "fr", "de", "ja", "ko", "zh"] as const;
+const SUPPORTED_PROVIDER_LOCALES = ["en", "es", "it", "pt", "fr", "de", "ru", "ja", "ko", "zh"] as const;
 
 const SUPPORTED_PROVIDER_LOCALE_SET = new Set<string>(SUPPORTED_PROVIDER_LOCALES);
 

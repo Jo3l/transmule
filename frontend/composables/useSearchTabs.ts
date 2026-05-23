@@ -53,6 +53,7 @@ export interface UnifiedItem {
   infoHash?: string;
   magnet?: string;
   hash?: string;
+  downloadUrl?: string;
 }
 
 interface BaseTab {
@@ -309,8 +310,8 @@ export function useSearchTabs() {
 
   const _unifiedAbort = new Map<string, AbortController>();
 
-  function createUnifiedTab(query: string) {
-    const hash = quickHash(`${query}|unified`);
+  function createUnifiedTab(query: string, source = "all") {
+    const hash = quickHash(`${query}|unified|${source}`);
     const existing = tabs.value.find((t) => t.searchHash === hash);
     if (existing) { switchTab(existing.id); return existing.id; }
 
@@ -325,15 +326,15 @@ export function useSearchTabs() {
       createdAt: Date.now(),
     };
     pushTab(tab);
-    startUnifiedStream(tab);
+    startUnifiedStream(tab, source);
     return id;
   }
 
-  function startUnifiedStream(tab: UnifiedTab) {
+  function startUnifiedStream(tab: UnifiedTab, source = "all") {
     // 1. Torrent SSE
     const controller = new AbortController();
     _unifiedAbort.set(tab.id, controller);
-    const params = new URLSearchParams({ q: tab.query, source: "all", limit: "100" });
+    const params = new URLSearchParams({ q: tab.query, source, limit: "100" });
     const base = config.public?.apiBase ?? "";
     fetch(`${base}/api/torrent-search/stream?${params}`, {
       credentials: "include", signal: controller.signal,
@@ -371,12 +372,17 @@ export function useSearchTabs() {
       .catch(() => { /* aborted or error */ })
       .finally(() => { _unifiedAbort.delete(tab.id); maybeCompleteUnified(tab.id); });
 
-    // 2. aMule search + polling
-    apiFetch("/api/amule/search", {
-      method: "POST", body: { action: "search", query: tab.query, type: "Global" },
-    }).then(() => {
-      startUnifiedPolling(tab.id);
-    }).catch(() => { /* silent */ });
+    // 2. aMule search + polling (only when searching all sources)
+    if (source === "all") {
+      apiFetch("/api/amule/search", {
+        method: "POST", body: { action: "search", query: tab.query, type: "Global" },
+      }).then(() => {
+        startUnifiedPolling(tab.id);
+      }).catch(() => { /* silent */ });
+    } else {
+      // No aMule results when filtering by a specific plugin
+      maybeCompleteUnified(tab.id);
+    }
   }
 
   function startUnifiedPolling(tabId: string) {
@@ -437,8 +443,8 @@ export function useSearchTabs() {
           name: r.name,
           size: r.size ?? 0,
           size_fmt: r.size_fmt ?? fmtBytes(r.size),
-          seedsOrSources: r.seeders ?? 0,
-          leechers: r.leechers ?? 0,
+          seedsOrSources: r.seeders != null ? r.seeders : null,
+          leechers: r.leechers != null ? r.leechers : null,
           category: r.category ?? null,
           source: r.source ?? "desconocido",
           cover: r.cover ?? null,
@@ -447,6 +453,7 @@ export function useSearchTabs() {
           rawTitle: r.rawTitle,
           infoHash: r.infoHash,
           magnet: r.magnet,
+          downloadUrl: r.downloadUrl,
         });
         changed = true;
       }
