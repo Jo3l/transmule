@@ -2,7 +2,7 @@
   <div id="page-unified-search">
     <h1 class="title is-4 mb-4">
       <span class="mdi mdi-magnify mr-1" />
-      Búsqueda global
+      {{ $t("search.globalSearch") }}
     </h1>
 
     <!-- Search form: input + source select + button -->
@@ -10,7 +10,7 @@
       <form @submit.prevent="onSearch" class="unified-search-form">
         <SInput
           v-model="query"
-          placeholder="Título de película, serie…"
+          :placeholder="$t('search.placeholderGlobal')"
           class="unified-search-input"
           autofocus
         >
@@ -18,7 +18,7 @@
         </SInput>
         <SSelect v-model="searchSource" :options="sourceOptions" class="unified-search-source" />
         <SButton variant="primary" native-type="submit" class="unified-search-btn">
-          <span class="mdi mdi-magnify mr-1" /> Buscar
+          <span class="mdi mdi-magnify mr-1" /> {{ $t("search.button") }}
         </SButton>
       </form>
     </div>
@@ -41,7 +41,7 @@
           />
           <span class="tab-label-text">{{ tab.query }}</span>
           <span class="tab-count-badge">{{ tab.results.length }}</span>
-          <button class="tab-close-btn" title="Cerrar" @click.stop="closeTab(tab.id)">
+          <button class="tab-close-btn" :title="$t('search.closeTab')" @click.stop="closeTab(tab.id)">
             <span class="mdi mdi-close" />
           </button>
         </span>
@@ -58,14 +58,14 @@
         <div v-if="tab.status === 'searching'" class="mb-2">
           <span class="is-size-7 has-text-grey">
             <span class="mdi mdi-loading mdi-spin mr-1" />
-            Buscando{{ tab.results.length ? ` (${tab.results.length} resultados)` : "…" }}
+            {{ tab.results.length ? $t("search.resultsCount", { count: tab.results.length }) : $t("search.searching") }}
           </span>
         </div>
         <div
           v-else-if="tab.status === 'complete' && tab.results.length > 0"
           class="mb-2 is-size-7 has-text-grey has-text-centered"
         >
-          {{ tab.results.length }} resultados
+          {{ $t("search.resultsCount", { count: tab.results.length }) }}
           <span v-if="tab.results.filter((r: any) => r.type === 'torrent').length" class="ml-2">
             <span class="mdi mdi-magnet" />
             {{ tab.results.filter((r: any) => r.type === "torrent").length }}
@@ -81,7 +81,7 @@
         <STable :data="pagedResults" :columns="columns" row-key="id" @sort="onSort">
           <!-- Name header with filter -->
           <template #header-name="{ column }">
-            <SearchFilterHeader v-model="nameFilter" :label="column.label" placeholder="filtrar…" />
+            <SearchFilterHeader v-model="nameFilter" :label="column.label" :placeholder="$t('search.filter')" />
           </template>
 
           <!-- Cover -->
@@ -145,8 +145,8 @@
                   <span class="source-filter-label">{{ src }}</span>
                 </label>
                 <div class="source-filter-actions">
-                  <SButton size="sm" @click="selectAllSources">Todo</SButton>
-                  <SButton size="sm" @click="clearAllSources">Ninguno</SButton>
+                  <SButton size="sm" @click="selectAllSources">{{ $t("search.selectAll") }}</SButton>
+                  <SButton size="sm" @click="clearAllSources">{{ $t("search.selectNone") }}</SButton>
                 </div>
               </div>
             </Teleport>
@@ -180,8 +180,8 @@
           <template #empty>
             <div class="has-text-centered py-5 has-text-grey">
               <span class="mdi mdi-file-search-outline icon-lg" />
-              <p v-if="tab.status === 'searching'">Buscando resultados…</p>
-              <p v-else>Sin resultados para "{{ tab.query }}"</p>
+              <p v-if="tab.status === 'searching'">{{ $t("search.searchingResults") }}</p>
+              <p v-else>{{ $t("search.noResultsFor", { query: tab.query }) }}</p>
             </div>
           </template>
         </STable>
@@ -199,7 +199,7 @@
     <!-- No tabs yet -->
     <div v-else class="has-text-centered py-5 has-text-grey">
       <span class="mdi mdi-file-search-outline icon-lg" />
-      <p>Introduce un término para buscar en ambos servicios</p>
+      <p>{{ $t("search.enterTermBoth") }}</p>
     </div>
   </div>
 </template>
@@ -208,6 +208,7 @@
 import { isVideoExt, detectFileIcon } from "../composables/useSearchTabs";
 
 const route = useRoute();
+const { t } = useI18n();
 const { torrentSearchProviders, loadProviders } = useProviders();
 
 const { tabs, activeTabId, createUnifiedTab, closeTab, switchTab } = useSearchTabs();
@@ -224,7 +225,7 @@ const query = ref("");
 const searchSource = ref("all");
 
 const sourceOptions = computed(() => {
-  const opts: { label: string; value: string }[] = [{ label: "Todos los plugins", value: "all" }];
+  const opts: { label: string; value: string }[] = [{ label: t("search.allPlugins"), value: "all" }];
   for (const p of torrentSearchProviders.value) {
     opts.push({ label: p.name, value: p.id });
   }
@@ -349,12 +350,12 @@ const sortDir = ref<"asc" | "desc">("asc");
 
 const columns = [
   { key: "cover", label: "", width: 50, align: "center" as const },
-  { prop: "name", label: "Nombre", sortable: true },
-  { prop: "size_fmt", sortProp: "size", label: "Tamaño", width: 70, sortable: true },
+  { prop: "name", label: t("search.columns.name"), sortable: true },
+  { prop: "size_fmt", sortProp: "size", label: t("search.columns.size"), width: 70, sortable: true },
   {
     key: "seeds",
     prop: "seedsOrSources",
-    label: "SE",
+    label: t("search.columns.se"),
     width: 50,
     sortable: true,
     align: "right" as const,
@@ -362,12 +363,12 @@ const columns = [
   {
     key: "leechers",
     prop: "leechers",
-    label: "LE",
+    label: t("search.columns.le"),
     width: 50,
     sortable: true,
     align: "right" as const,
   },
-  { key: "source", label: "Fuente", width: 90, sortable: true, align: "center" as const },
+  { key: "source", label: t("search.columns.source"), width: 90, sortable: true, align: "center" as const },
   { key: "actions", label: "", width: 78, align: "center" as const },
 ];
 

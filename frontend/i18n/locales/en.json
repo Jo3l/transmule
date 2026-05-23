@@ -340,16 +340,30 @@
     "download": "Download",
     "alreadyDownloading": "Already in download queue",
     "downloadN": "Download {n} file(s)",
-    "columns": {
-      "name": "Name",
-      "size": "Size",
-      "sources": "Sources"
-    },
     "sizeUnits": {
       "bytes": "bytes",
       "kb": "KB",
       "mb": "MB",
       "gb": "GB"
+    },
+    "globalSearch": "Global Search",
+    "placeholderGlobal": "Movie title, series…",
+    "allPlugins": "All plugins",
+    "closeTab": "Close tab",
+    "filter": "filter…",
+    "searchingResults": "Searching for results…",
+    "noResultsFor": "No results for \"{query}\"",
+    "enterTermBoth": "Enter a term to search both services",
+    "resultsCount": "{count} results",
+    "selectAll": "All",
+    "selectNone": "None",
+    "columns": {
+      "name": "Name",
+      "size": "Size",
+      "sources": "Sources",
+      "se": "SE",
+      "le": "LE",
+      "source": "Source"
     }
   },
   "servers": {

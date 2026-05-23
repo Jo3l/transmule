@@ -32,7 +32,7 @@
           </li>
           <li v-if="hasTorrentSearchProviders">
             <NuxtLink to="/search" @click="$emit('close')">
-              <span class="mdi mdi-magnify"></span> Búsqueda global
+              <span class="mdi mdi-magnify"></span> {{ $t("search.globalSearch") }}
             </NuxtLink>
           </li>
           <li>

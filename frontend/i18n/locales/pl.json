@@ -340,16 +340,30 @@
     "download": "Pobierz",
     "alreadyDownloading": "Już w kolejce pobierania",
     "downloadN": "Pobierz {n} plik(i)",
-    "columns": {
-      "name": "Nazwa",
-      "size": "Rozmiar",
-      "sources": "Źródła"
-    },
     "sizeUnits": {
       "bytes": "bajtów",
       "kb": "KB",
       "mb": "MB",
       "gb": "GB"
+    },
+    "globalSearch": "Wyszukiwanie globalne",
+    "placeholderGlobal": "Tytuł filmu, serialu…",
+    "allPlugins": "Wszystkie wtyczki",
+    "closeTab": "Zamknij kartę",
+    "filter": "filtruj…",
+    "searchingResults": "Szukanie wyników…",
+    "noResultsFor": "Brak wyników dla \"{query}\"",
+    "enterTermBoth": "Wpisz wyszukiwane hasło, aby przeszukać obie usługi",
+    "resultsCount": "{count} wyników",
+    "selectAll": "Wszystkie",
+    "selectNone": "Żadne",
+    "columns": {
+      "name": "Nazwa",
+      "size": "Rozmiar",
+      "sources": "Źródła",
+      "se": "SE",
+      "le": "LE",
+      "source": "Źródło"
     }
   },
   "servers": {
