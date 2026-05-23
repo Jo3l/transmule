@@ -45,6 +45,10 @@
     padding: 2px 16px;
     font-size: 0.8rem;
   }
+  &.s-btn--mini .button-inside {
+    padding: 3px;
+    font-size: 0.7rem;
+  }
   &.s-btn--lg .button-inside {
     padding: 10px 32px;
     font-size: 1rem;
@@ -156,6 +160,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
     gap: 0.4rem;
     padding: 6px 24px calc(6px - 0.125em);
     background-color: var(--btn-fill);
@@ -597,6 +602,7 @@ textarea.s-input {
 .s-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 0.875rem;
   thead th {
     background: var(--s-table-header-bg);
@@ -623,17 +629,22 @@ textarea.s-input {
     }
   }
   tbody td {
-    padding: 0.55rem 0.75rem;
+    padding: 0.45rem 0.5rem;
     border-bottom: 1px solid var(--s-border-light);
     color: var(--s-text);
     vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &.s-table--stripe tbody tr:nth-child(even) td {
     background: var(--s-table-stripe-bg);
   }
   tbody tr {
-    transition: background 0.15s, box-shadow 0.3s ease;
+    transition:
+      background 0.15s,
+      box-shadow 0.3s ease;
 
     &:hover td {
       background: var(--s-table-hover-bg);
@@ -667,10 +678,10 @@ textarea.s-input {
     font-size: 0.8rem;
   }
   &.s-table--sm thead th {
-    padding: 0.4rem 0.6rem;
+    padding: 0.35rem 0.5rem;
   }
   &.s-table--sm tbody td {
-    padding: 0.35rem 0.6rem;
+    padding: 0.3rem 0.5rem;
   }
 }
 

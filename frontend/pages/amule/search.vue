@@ -84,7 +84,7 @@
         :active="tab.id === (activeTabId ?? '')"
       >
         <!-- Progress bar + stop for active search -->
-        <div v-if="tab.status === 'searching'" class="flex-row gap-md mb-2">
+        <div v-if="tab.status === 'searching'" class="flex-row justify-center gap-md mb-2">
           <SButton variant="warning" size="sm" @click="stopSearch(tab.id)">
             <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
           </SButton>
@@ -129,20 +129,12 @@
           <template #cell-sizeFull="{ row }">{{ row.size_fmt }}</template>
           <template #cell-sources="{ row }">{{ row.sources }}</template>
           <template #cell-actions="{ row }">
-            <SButton
-              v-if="!downloadedHashes.has(row.hash)"
-              variant="success"
-              size="sm"
-              :loading="downloadingHash === row.hash"
-              :title="$t('search.download')"
-              @click="downloadOne(row)"
-            >
-              <span class="mdi mdi-download" />
-            </SButton>
-            <span
-              v-else
-              class="mdi mdi-check has-text-success"
-              :title="$t('search.alreadyDownloading')"
+            <DownloadButton
+              service="amule"
+              :hash="row.hash"
+              hide-when-downloaded
+              :downloaded="downloadedHashes.has(row.hash)"
+              @download-end="fetchDownloadHashes()"
             />
           </template>
           <template #empty>
@@ -183,7 +175,6 @@ const {
   createAmuleTab,
   closeTab,
   switchTab,
-  downloadAmuleHash,
 } = useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
@@ -201,17 +192,17 @@ const sizeUnits = computed(() => [
 ]);
 
 const columns = computed(() => [
-  { key: "cover", label: "", align: "center" as const },
+  { key: "cover", label: "", width: 60, align: "center" as const },
   { prop: "name", label: t("search.columns.name"), sortable: true },
-  { prop: "sizeFull", label: t("search.columns.size"), width: 120, sortable: true },
+  { prop: "sizeFull", label: t("search.columns.size"), width: 100, sortable: true },
   {
     prop: "sources",
     label: t("search.columns.sources"),
-    width: 90,
+    width: 80,
     sortable: true,
     align: "right" as const,
   },
-  { key: "actions", label: "", width: 50 },
+  { key: "actions", label: "", width: 78 },
 ]);
 
 const query = ref("");
@@ -221,7 +212,6 @@ const minSize = ref("");
 const minSizeUnit = ref("1048576");
 const maxSize = ref("");
 const maxSizeUnit = ref("1048576");
-const downloadingHash = ref("");
 const downloadedHashes = ref(new Set<string>());
 const nameFilter = ref("");
 
@@ -299,16 +289,7 @@ function stopSearch(tabId: string) {
 
 // ── Download ────────────────────────────────────────────────────────────────
 
-async function downloadOne(row: any) {
-  downloadingHash.value = row.hash;
-  try {
-    await downloadAmuleHash(row.hash);
-    downloadedHashes.value.add(row.hash);
-    await fetchDownloadHashes();
-  } finally {
-    downloadingHash.value = "";
-  }
-}
+
 
 async function fetchDownloadHashes() {
   try {
@@ -418,5 +399,18 @@ onMounted(() => {
   opacity: 1;
   background: var(--s-border);
   color: var(--s-danger);
+}
+
+/* Remove ellipsis from source column */
+:deep(.s-table td:nth-child(4)) {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* Force actions column width */
+:deep(.s-table th:nth-child(5)),
+:deep(.s-table td:nth-child(5)) {
+  max-width: 78px;
+  width: 78px;
 }
 </style>

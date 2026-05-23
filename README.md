@@ -29,7 +29,7 @@
   </p>
 
   <p align="center">
-    🌐 <strong>English</strong> • Español • Italiano
+    🌐 <strong>English</strong> • Español • Português • Italiano • Deutsch • Polski • Türkçe • Русский • हिन्दी
   </p>
 
   <img src="./transmuleDownloads.jpg" alt="TransMule — Unified download manager dashboard showing aMule, Transmission and pyLoad downloads" width="100%">
@@ -77,7 +77,7 @@
 |---------|-------------|
 | **Multi-user auth** | JWT-based login with per-user preferences stored in SQLite |
 | **Light / Dark themes** | Full theme support that respects system preference |
-| **🌐 i18n** | English, Spanish and Italian — with translation framework for more |
+| **🌐 i18n** | English, Español, Português, Italiano, Deutsch, Polski, Türkçe, Русский, हिन्दी — 9 languages |
 | **📱 Mobile-friendly** | Responsive layout with card-based view on small screens |
 | **Statistics** | Live aMule stats tree + Transmission session statistics |
 | **API documentation** | Interactive Swagger docs at [`/_scalar`](http://localhost:3001/_scalar) |
@@ -266,7 +266,7 @@ Tags come from two sources: **native** (returned by the plugin with structured m
 | **Push notifications** | ❌ (planned) | ✅ Apprise (80+ services) |
 | **GeoIP peers** | ❌ | ✅ |
 | **Multi-user auth** | ✅ JWT-based, per-user prefs | ✅ Users, capabilities, SSO |
-| **i18n** | ✅ English, Spanish, Italian | ❌ (English only) |
+| **i18n** | ✅ English, Español, Português, Italiano, Deutsch, Polski, Türkçe, Русский, हिन्दी | ❌ (English only) |
 | **Theming** | ✅ Light / Dark (system-aware) | ✅ Dark mode |
 | **Mobile support** | ✅ Responsive design + card layout | ✅ Responsive |
 | **Docker deployment** | ✅ Single docker-compose.yml, all-in-one | ✅ Docker image |
