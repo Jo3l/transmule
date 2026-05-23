@@ -340,16 +340,30 @@
     "download": "डाउनलोड",
     "alreadyDownloading": "पहले से डाउनलोड कतार में है",
     "downloadN": "{n} फ़ाइल(एँ) डाउनलोड करें",
-    "columns": {
-      "name": "नाम",
-      "size": "आकार",
-      "sources": "स्रोत"
-    },
     "sizeUnits": {
       "bytes": "बाइट्स",
       "kb": "KB",
       "mb": "MB",
       "gb": "GB"
+    },
+    "globalSearch": "वैश्विक खोज",
+    "placeholderGlobal": "फ़िल्म शीर्षक, सीरीज़…",
+    "allPlugins": "सभी प्लगइन",
+    "closeTab": "टैब बंद करें",
+    "filter": "फ़िल्टर…",
+    "searchingResults": "परिणाम खोजे जा रहे हैं…",
+    "noResultsFor": "\"{query}\" के लिए कोई परिणाम नहीं",
+    "enterTermBoth": "दोनों सेवाओं में खोजने के लिए एक शब्द दर्ज करें",
+    "resultsCount": "{count} परिणाम",
+    "selectAll": "सभी",
+    "selectNone": "कोई नहीं",
+    "columns": {
+      "name": "नाम",
+      "size": "आकार",
+      "sources": "स्रोत",
+      "se": "SE",
+      "le": "LE",
+      "source": "स्रोत"
     }
   },
   "servers": {

@@ -1,2 +1,2 @@
-export const APP_VERSION = "1.83";
+export const APP_VERSION = "1.84";
 export const GITHUB_REPO = "Jo3l/transmule";

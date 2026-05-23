@@ -340,16 +340,30 @@
     "download": "Scarica",
     "alreadyDownloading": "Già nella coda di download",
     "downloadN": "Scarica {n} file",
-    "columns": {
-      "name": "Nome",
-      "size": "Dimensione",
-      "sources": "Fonti"
-    },
     "sizeUnits": {
       "bytes": "byte",
       "kb": "KB",
       "mb": "MB",
       "gb": "GB"
+    },
+    "globalSearch": "Ricerca globale",
+    "placeholderGlobal": "Titolo film, serie…",
+    "allPlugins": "Tutti i plugin",
+    "closeTab": "Chiudi scheda",
+    "filter": "filtra…",
+    "searchingResults": "Ricerca risultati in corso…",
+    "noResultsFor": "Nessun risultato per \"{query}\"",
+    "enterTermBoth": "Inserisci un termine per cercare in entrambi i servizi",
+    "resultsCount": "{count} risultati",
+    "selectAll": "Tutti",
+    "selectNone": "Nessuno",
+    "columns": {
+      "name": "Nome",
+      "size": "Dimensione",
+      "sources": "Fonti",
+      "se": "SE",
+      "le": "LE",
+      "source": "Fonte"
     }
   },
   "servers": {

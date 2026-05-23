@@ -340,16 +340,30 @@
     "download": "Скачать",
     "alreadyDownloading": "Уже в очереди загрузок",
     "downloadN": "Скачать {n} файл(ов)",
-    "columns": {
-      "name": "Имя",
-      "size": "Размер",
-      "sources": "Источники"
-    },
     "sizeUnits": {
       "bytes": "байт",
       "kb": "КБ",
       "mb": "МБ",
       "gb": "ГБ"
+    },
+    "globalSearch": "Глобальный поиск",
+    "placeholderGlobal": "Название фильма, сериала…",
+    "allPlugins": "Все плагины",
+    "closeTab": "Закрыть вкладку",
+    "filter": "фильтр…",
+    "searchingResults": "Поиск результатов…",
+    "noResultsFor": "Нет результатов для \"{query}\"",
+    "enterTermBoth": "Введите запрос для поиска в обоих сервисах",
+    "resultsCount": "{count} результатов",
+    "selectAll": "Все",
+    "selectNone": "Нет",
+    "columns": {
+      "name": "Имя",
+      "size": "Размер",
+      "sources": "Источники",
+      "se": "SE",
+      "le": "LE",
+      "source": "Источник"
     }
   },
   "servers": {

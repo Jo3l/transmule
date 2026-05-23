@@ -340,16 +340,30 @@
     "download": "İndir",
     "alreadyDownloading": "Zaten indirme kuyruğunda",
     "downloadN": "{n} dosya indir",
-    "columns": {
-      "name": "Ad",
-      "size": "Boyut",
-      "sources": "Kaynaklar"
-    },
     "sizeUnits": {
       "bytes": "bayt",
       "kb": "KB",
       "mb": "MB",
       "gb": "GB"
+    },
+    "globalSearch": "Genel arama",
+    "placeholderGlobal": "Film adı, dizi…",
+    "allPlugins": "Tüm eklentiler",
+    "closeTab": "Sekmeyi kapat",
+    "filter": "filtrele…",
+    "searchingResults": "Sonuçlar aranıyor…",
+    "noResultsFor": "\"{query}\" için sonuç bulunamadı",
+    "enterTermBoth": "Her iki hizmette aramak için bir terim girin",
+    "resultsCount": "{count} sonuç",
+    "selectAll": "Tümü",
+    "selectNone": "Hiçbiri",
+    "columns": {
+      "name": "Ad",
+      "size": "Boyut",
+      "sources": "Kaynaklar",
+      "se": "SE",
+      "le": "LE",
+      "source": "Kaynak"
     }
   },
   "servers": {
