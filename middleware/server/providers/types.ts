@@ -20,6 +20,11 @@ export interface MediaLink {
   seeds?: number;
   /** Optional hash for deduplication */
   hash?: string;
+  /**
+   * Target download service. Defaults to "transmission" when absent.
+   * Set by plugins that need a different service (e.g. archive.org → "pyload").
+   */
+  service?: "transmission" | "amule" | "pyload" | "direct";
 }
 
 export interface MediaEpisode {

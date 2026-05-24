@@ -107,12 +107,11 @@
     </p>
 
     <!-- Episode / detail modal for series -->
-    <Teleport to="body">
-      <div v-if="modal" class="dt-modal-overlay" @click.self="modal = null">
-        <div class="dt-modal">
-          <div class="dt-modal-header">
-            <span class="dt-modal-title">{{ modal.item.title }}</span>
-            <button class="dt-modal-close" @click="modal = null">
+    <div v-if="modal" class="dt-modal-overlay" @click.self="modal = null">
+      <div class="dt-modal">
+        <div class="dt-modal-header">
+          <span class="dt-modal-title">{{ modal.item.title }}</span>
+          <button class="dt-modal-close" @click="modal = null">
               <span class="mdi mdi-close" />
             </button>
           </div>
@@ -147,8 +146,6 @@
               </div>
             </div>
 
-            <SLoading v-if="detailLoading.has(modal.item.id)" class="mt-3" />
-
             <p v-if="modal.item.description" class="dt-modal-desc">
               {{ modal.item.description }}
             </p>
@@ -164,7 +161,7 @@
                 <span class="ep-code">{{ ep.code }}</span>
                 <DownloadButton
                   size="sm"
-                  service="transmission"
+                  :service="ep.links?.[0]?.service || 'transmission'"
                   :url="ep.links?.[0]?.url"
                   :hash="ep.links?.[0]?.hash"
                   :title="`${modal!.item.title} ${ep.code}`"
@@ -175,12 +172,20 @@
             </div>
 
             <!-- Non-series download(s) in modal — only for items without episodes -->
-            <div v-if="!modal.item.episodes?.length && modal.item.links?.length" class="dt-modal-download">
-              <div
-                v-for="link in modal.item.links"
-                :key="link.hash || link.url"
-                class="dt-modal-torrent-row"
-              >
+            <div v-if="!modal.item.episodes?.length && (modal.item.links?.length || detailLoading.has(modal.item.id))" class="dt-modal-download">
+              <!-- Loading state -->
+              <div v-if="detailLoading.has(modal.item.id)" class="dt-modal-files-loading">
+                <span class="mdi mdi-loading mdi-spin dt-modal-files-spinner" />
+                <span>Loading files…</span>
+              </div>
+              <!-- File links -->
+              <template v-else>
+                <div
+                  v-for="link in modal.item.links"
+                  :key="link.hash || link.url"
+                  class="dt-modal-torrent-row"
+                >
+                <span class="torrent-filename" :title="link.label">{{ link.label }}</span>
                 <span v-if="link.quality" class="torrent-quality">{{ link.quality }}</span>
                 <span v-if="link.type" class="torrent-type">{{ link.type }}</span>
                 <span v-if="link.size" class="torrent-size">{{ link.size }}</span>
@@ -201,18 +206,18 @@
                 </span>
                 <DownloadButton
                   size="sm"
-                  service="transmission"
+                  :service="link.service || 'transmission'"
                   :url="link.url"
                   :hash="link.hash"
                   :title="link.quality ? `${modal!.item.title} [${link.quality}]` : modal!.item.title"
-                  :label="$t('media.addToTransmission')"
+                  :label="$t('media.download')"
                 />
               </div>
+            </template>
             </div>
-          </div>
         </div>
       </div>
-    </Teleport>
+    </div>
   </div>
 </template>
 
@@ -226,6 +231,7 @@ import type {
 import { loadDownloadHistory } from "~/stores/downloadHistory";
 
 const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
 const { apiFetch } = useApi();
 const { showToast } = useToast();
@@ -273,6 +279,9 @@ const error = ref("");
 const filters = reactive<Record<string, string>>({});
 const currentPage = ref(1);
 const hasMore = ref(false);
+
+// Page cache for instant back/forward navigation
+const pageCache = ref<Record<number, MediaItem[]>>({});
 
 // Detail / cover loading
 const detailLoading = ref(new Set<string>());
@@ -332,16 +341,21 @@ async function loadItemDetail(item: MediaItem) {
 
   try {
     const detail = await fetchDetail(providerId.value, item.sourceUrl || item.id);
-    if (detail) {
-      // Merge detail into the item
-      const idx = items.value.findIndex((i) => i.id === item.id);
-      if (idx >= 0) {
-        const merged = { ...items.value[idx], ...detail, id: item.id };
-        items.value = [...items.value.slice(0, idx), merged, ...items.value.slice(idx + 1)];
-        // Update modal if open
-        if (modal.value?.item.id === item.id) {
-          modal.value = { item: merged };
-        }
+    if (!detail) return;
+
+    // Update the item in the list in-place (splice avoids full list re-render)
+    const idx = items.value.findIndex((i) => i.id === item.id);
+    let merged;
+    if (idx >= 0) {
+      merged = { ...items.value[idx], ...detail, id: item.id };
+      items.value.splice(idx, 1, merged);
+    }
+
+    // Update modal if still open — use nextTick to let Vue settle
+    if (merged && modal.value?.item.id === item.id) {
+      await nextTick();
+      if (modal.value?.item.id === item.id) {
+        modal.value = { item: merged };
       }
     }
   } catch {
@@ -412,39 +426,94 @@ function openModal(item: MediaItem) {
 
 // ── Load ────────────────────────────────────────────────────────────
 
+function updateUrl() {
+  const q: Record<string, string> = {};
+  for (const [k, v] of Object.entries(filters)) {
+    if (v) q[k] = String(v);
+  }
+  if (currentPage.value > 1) q.page = String(currentPage.value);
+  router.replace({ query: q }).catch(() => {});
+}
+
+async function loadPage(pageNum: number, forceRefresh = false) {
+  const params: Record<string, string | number> = { ...filters };
+  params.page = pageNum;
+  if (forceRefresh) params._noCache = 1;
+
+  // Pass URL for dontorrent providers
+  if (showUrlBar.value && sourceUrl.value) {
+    params.url = sourceUrl.value.trim();
+  }
+
+  const data = await fetchList(providerId.value, params);
+
+  // Store in cache
+  pageCache.value = { ...pageCache.value, [pageNum]: data.items ?? [] };
+
+  items.value = data.items ?? [];
+  currentPage.value = pageNum;
+  hasMore.value = data.hasMore ?? false;
+
+  // Preload next pages in background
+  if (data.hasMore) {
+    preloadNext(pageNum + 1);
+  }
+
+  updateUrl();
+
+  // Save URL if applicable
+  if (showUrlBar.value) {
+    savedUrl.value = sourceUrl.value.trim();
+    const prefKey = URL_PREF_KEYS[providerId.value];
+    if (prefKey) {
+      apiFetch("/api/preferences", {
+        method: "PUT",
+        body: { [prefKey]: sourceUrl.value.trim() },
+      }).catch(() => {});
+    }
+  }
+}
+
+async function preloadNext(pageNum: number) {
+  if (pageCache.value[pageNum]) return;
+  const params: Record<string, string | number> = { ...filters };
+  params.page = pageNum;
+  try {
+    const data = await fetchList(providerId.value, params);
+    if (data.items?.length) {
+      pageCache.value = { ...pageCache.value, [pageNum]: data.items };
+      if (data.hasMore) preloadNext(pageNum + 1);
+    }
+  } catch {
+    // silent — preload failure is non-critical
+  }
+}
+
 async function load(page?: number, forceRefresh = false) {
+  const targetPage = page ?? 1;
+
+  // Clear cache on new search or refresh
+  if (forceRefresh || (page === undefined && !pageCache.value[1])) {
+    pageCache.value = {};
+    coverCache.value = {};
+  }
+
+  // Serve from cache if available (unless forced refresh)
+  if (!forceRefresh && pageCache.value[targetPage]) {
+    items.value = pageCache.value[targetPage];
+    currentPage.value = targetPage;
+    updateUrl();
+    // Ensure successive pages are preloaded
+    if (hasMore.value) preloadNext(targetPage + 1);
+    return;
+  }
+
   loading.value = true;
   error.value = "";
-  coverCache.value = {};
   observer?.disconnect();
 
   try {
-    const params: Record<string, string | number> = { ...filters };
-    if (page) params.page = page;
-    if (forceRefresh) params._noCache = 1;
-
-    // Pass URL for dontorrent providers
-    if (showUrlBar.value && sourceUrl.value) {
-      params.url = sourceUrl.value.trim();
-    }
-
-    const data = await fetchList(providerId.value, params);
-    items.value = data.items ?? [];
-    currentPage.value = data.page ?? page ?? 1;
-    hasMore.value = data.hasMore ?? false;
-
-    // Save URL if applicable
-    if (showUrlBar.value) {
-      savedUrl.value = sourceUrl.value.trim();
-      const prefKey = URL_PREF_KEYS[providerId.value];
-      if (prefKey) {
-        apiFetch("/api/preferences", {
-          method: "PUT",
-          body: { [prefKey]: sourceUrl.value.trim() },
-        }).catch(() => {});
-      }
-    }
-
+    await loadPage(targetPage, forceRefresh);
     setupObserver();
   } catch (err: any) {
     error.value = err?.data?.statusMessage || err?.message || t("media.fetchError");
@@ -482,6 +551,15 @@ onMounted(async () => {
     filters[f.key] = f.defaultValue ?? "";
   }
 
+  // Restore filters from URL query params (overrides defaults)
+  const pageFromUrl = parseInt(route.query.page as string) || 1;
+  for (const f of meta.filters) {
+    const val = route.query[f.key];
+    if (val && typeof val === "string") {
+      filters[f.key] = val;
+    }
+  }
+
   // Load URL preference if needed
   if (showUrlBar.value) {
     sourceUrl.value = URL_DEFAULTS[providerId.value] || "";
@@ -499,7 +577,13 @@ onMounted(async () => {
   }
 
   await loadDownloadHistory();
-  load();
+  // Only auto-load if the user navigated with a query param or the provider
+  // has no free-text search (e.g. YTS, ShowRSS show popular content on load).
+  const hasQueryFilter = meta.filters?.some((f) => f.key === "query" && f.type === "text");
+  const queryFromUrl = route.query.query as string | undefined;
+  if (!hasQueryFilter || queryFromUrl) {
+    load(pageFromUrl > 1 ? pageFromUrl : undefined, !!queryFromUrl);
+  }
 });
 
 onUnmounted(() => observer?.disconnect());
@@ -731,10 +815,24 @@ onUnmounted(() => observer?.disconnect());
 }
 
 .dt-modal-desc {
-  font-size: 0.84rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
   color: var(--s-text-secondary);
-  line-height: 1.6;
-  margin: 0;
+  margin: 0.5rem 0 0;
+}
+
+.dt-modal-files-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem 0;
+  color: var(--s-text-muted);
+  font-size: 0.85rem;
+}
+
+.dt-modal-files-spinner {
+  font-size: 1.2rem;
 }
 
 .dt-modal-episodes {
@@ -761,6 +859,15 @@ onUnmounted(() => observer?.disconnect());
   & > :last-child {
     margin-left: auto;
   }
+}
+
+.torrent-filename {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--s-text);
 }
 
 .torrent-quality {

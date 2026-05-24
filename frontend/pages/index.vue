@@ -116,76 +116,21 @@
       <!-- Action buttons (desktop only, shown when items selected) -->
       <div
         class="column is-narrow is-hidden-mobile"
-        v-if="selectedAmule.length > 0 || selectedTorrents.length > 0 || selectedPyload.length > 0"
+        v-if="totalSelected > 0"
       >
         <div class="buttons mb-0">
-          <template v-if="selectedAmule.length > 0">
-            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
-              >{{ $t("downloads.sources.amule") }} ({{ selectedAmule.length }}):</span
-            >
-            <SButton variant="warning" size="sm" @click="doAmuleAction('pause')"
-              ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.pause") }}</SButton
-            >
-            <SButton variant="success" size="sm" @click="doAmuleAction('resume')"
-              ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.resume") }}</SButton
-            >
-            <SButton variant="info" size="sm" @click="doAmuleAction('stop')"
-              ><span class="mdi mdi-stop mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
-            >
-            <SButton variant="danger" size="sm" @click="doAmuleAction('cancel')"
-              ><span class="mdi mdi-close-circle mr-1" />
-              {{ $t("downloads.actions.cancel") }}</SButton
-            >
-          </template>
-          <template v-if="selectedTorrents.length > 0">
-            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
-              >{{ $t("downloads.sources.torrent") }} ({{ selectedTorrents.length }}):</span
-            >
-            <SButton variant="success" size="sm" @click="doTorrentAction('start')"
-              ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.start") }}</SButton
-            >
-            <SButton variant="warning" size="sm" @click="doTorrentAction('stop')"
-              ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
-            >
-            <SButton size="sm" @click="doTorrentAction('verify')"
-              ><span class="mdi mdi-check-circle mr-1" />
-              {{ $t("downloads.actions.verify") }}</SButton
-            >
-            <SButton variant="danger" size="sm" @click="confirmTorrentRemove(false)"
-              ><span class="mdi mdi-close-circle mr-1" />
-              {{ $t("downloads.actions.remove") }}</SButton
-            >
-            <SButton variant="danger" size="sm" @click="confirmTorrentRemove(true)"
-              ><span class="mdi mdi-delete mr-1" />
-              {{ $t("downloads.actions.removeData") }}</SButton
-            >
-          </template>
-          <template v-if="selectedPyload.length > 0">
-            <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
-              >pyLoad ({{ selectedPyload.length }}):</span
-            >
-            <SButton
-              v-if="selectedPyloadHasFailed"
-              variant="info"
-              size="sm"
-              @click="doPyloadAction('restart')"
-            >
-              <span class="mdi mdi-refresh mr-1" />
-              {{ $t("downloads.actions.retry") }}
-            </SButton>
-            <SButton variant="warning" size="sm" @click="doPyloadAction('stop')">
-              <span class="mdi mdi-pause mr-1" />
-              {{ $t("downloads.actions.stop") }}
-            </SButton>
-            <SButton variant="warning" size="sm" @click="doPyloadAction('restart')">
-              <span class="mdi mdi-restart mr-1" />
-              {{ $t("downloads.actions.restart") }}
-            </SButton>
-            <SButton variant="danger" size="sm" @click="doPyloadAction('delete')">
-              <span class="mdi mdi-delete mr-1" />
-              {{ $t("downloads.actions.remove") }}
-            </SButton>
-          </template>
+          <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
+            >{{ totalSelected }} selected:</span
+          >
+          <SButton variant="success" size="sm" @click="doUnifiedAction('start')"
+            ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.start") }}</SButton
+          >
+          <SButton variant="warning" size="sm" @click="doUnifiedAction('stop')"
+            ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
+          >
+          <SButton variant="danger" size="sm" @click="doUnifiedAction('cancel')"
+            ><span class="mdi mdi-delete mr-1" /> {{ $t("downloads.actions.cancel") }}</SButton
+          >
         </div>
       </div>
     </div>
@@ -345,9 +290,6 @@
                 <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')"
                   ><span class="mdi mdi-play"
                 /></SButton>
-                <SButton variant="info" size="sm" @click="doCardAction(row, 'stop')"
-                  ><span class="mdi mdi-stop"
-                /></SButton>
                 <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')"
                   ><span class="mdi mdi-close-circle"
                 /></SButton>
@@ -359,21 +301,13 @@
                 <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')"
                   ><span class="mdi mdi-pause"
                 /></SButton>
-                <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove')"
-                  ><span class="mdi mdi-close-circle"
-                /></SButton>
                 <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')"
                   ><span class="mdi mdi-delete"
                 /></SButton>
               </template>
               <template v-else>
-                <SButton
-                  v-if="row.failedLinks > 0"
-                  variant="info"
-                  size="sm"
-                  :title="$t('downloads.actions.retry')"
-                  @click="doCardAction(row, 'restart')"
-                  ><span class="mdi mdi-refresh"
+                <SButton variant="success" size="sm" @click="doCardAction(row, 'restart')"
+                  ><span class="mdi mdi-play"
                 /></SButton>
                 <SButton
                   v-if="row.activeLinks > 0"
@@ -381,9 +315,6 @@
                   size="sm"
                   @click="doCardAction(row, 'stop')"
                   ><span class="mdi mdi-pause"
-                /></SButton>
-                <SButton variant="warning" size="sm" @click="doCardAction(row, 'restart')"
-                  ><span class="mdi mdi-restart"
                 /></SButton>
                 <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')"
                   ><span class="mdi mdi-delete"
@@ -1457,20 +1388,13 @@
         }}</SButton>
       </template>
     </SDialog>
-    <SDialog v-model="showRemoveDialog" :title="$t('downloads.removeDialog.title')" width="400px">
-      <p>
-        {{ $t("downloads.removeDialog.message", { n: selectedTorrents.length })
-        }}{{ removeWithData ? " " + $t("downloads.removeDialog.andData") : "" }}?
-      </p>
+    <SDialog v-model="showCancelDialog" title="Cancel downloads?" width="400px">
+      <p>Cancel {{ cancelTotal }} selected download{{ cancelTotal !== 1 ? 's' : '' }}?</p>
       <template #footer>
-        <SButton variant="danger" :loading="removing" @click="doTorrentRemove">{{
-          removeWithData
-            ? $t("downloads.removeDialog.removeDelete")
-            : $t("downloads.removeDialog.remove")
-        }}</SButton>
-        <SButton @click="showRemoveDialog = false">{{
-          $t("downloads.removeDialog.cancel")
-        }}</SButton>
+        <SButton variant="danger" :loading="cancelling" @click="doCancel">
+          <span class="mdi mdi-delete mr-1" /> {{ $t("downloads.actions.cancel") }}
+        </SButton>
+        <SButton @click="showCancelDialog = false">No</SButton>
       </template>
     </SDialog>
 
@@ -1513,7 +1437,7 @@
             dlCtxMenu.visible = false;
           "
         >
-          <span class="mdi mdi-pause" /> {{ $t("downloads.actions.pause") }}
+          <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
         </div>
         <div
           class="context-menu-item"
@@ -1522,16 +1446,7 @@
             dlCtxMenu.visible = false;
           "
         >
-          <span class="mdi mdi-play" /> {{ $t("downloads.actions.resume") }}
-        </div>
-        <div
-          class="context-menu-item"
-          @click="
-            doAmuleAction('stop');
-            dlCtxMenu.visible = false;
-          "
-        >
-          <span class="mdi mdi-stop" /> {{ $t("downloads.actions.stop") }}
+          <span class="mdi mdi-play" /> {{ $t("downloads.actions.start") }}
         </div>
         <div class="context-menu-sep" />
         <div
@@ -1577,33 +1492,15 @@
         >
           <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
         </div>
-        <div
-          class="context-menu-item"
-          @click="
-            doTorrentAction('verify');
-            dlCtxMenu.visible = false;
-          "
-        >
-          <span class="mdi mdi-check-circle" /> {{ $t("downloads.actions.verify") }}
-        </div>
         <div class="context-menu-sep" />
         <div
           class="context-menu-item context-menu-item--danger"
           @click="
-            confirmTorrentRemove(false);
+            confirmCancel();
             dlCtxMenu.visible = false;
           "
         >
-          <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.remove") }}
-        </div>
-        <div
-          class="context-menu-item context-menu-item--danger"
-          @click="
-            confirmTorrentRemove(true);
-            dlCtxMenu.visible = false;
-          "
-        >
-          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.removeData") }}
+          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.cancel") }}
         </div>
         <template v-if="dlCtxSelectedCount === 1 && dlCtxMenu.row?.magnetLink">
           <div class="context-menu-sep" />
@@ -1622,14 +1519,13 @@
       <!-- pyLoad actions -->
       <template v-else-if="dlCtxMenu.row?._type === 'pyload'">
         <div
-          v-if="selectedPyloadHasFailed"
           class="context-menu-item"
           @click="
             doPyloadAction('restart');
             dlCtxMenu.visible = false;
           "
         >
-          <span class="mdi mdi-refresh" /> {{ $t("downloads.actions.retry") }}
+          <span class="mdi mdi-play" /> {{ $t("downloads.actions.start") }}
         </div>
         <div
           class="context-menu-item"
@@ -1640,15 +1536,6 @@
         >
           <span class="mdi mdi-pause" /> {{ $t("downloads.actions.stop") }}
         </div>
-        <div
-          class="context-menu-item"
-          @click="
-            doPyloadAction('restart');
-            dlCtxMenu.visible = false;
-          "
-        >
-          <span class="mdi mdi-restart" /> {{ $t("downloads.actions.restart") }}
-        </div>
         <div class="context-menu-sep" />
         <div
           class="context-menu-item context-menu-item--danger"
@@ -1657,7 +1544,7 @@
             dlCtxMenu.visible = false;
           "
         >
-          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.remove") }}
+          <span class="mdi mdi-delete" /> {{ $t("downloads.actions.cancel") }}
         </div>
       </template>
     </div>
@@ -1850,11 +1737,19 @@ const showAddPyload = ref(false);
 const pyloadForm = reactive({ name: "", links: "" });
 const addingPyload = ref(false);
 
-// ── Remove dialog ─────────────────────────────────────────────────────
-const showRemoveDialog = ref(false);
-const removeWithData = ref(false);
-const removing = ref(false);
-const pendingRemoveIds = ref<(number | string)[]>([]);
+// ── Cancel dialog ─────────────────────────────────────────────────────
+const showCancelDialog = ref(false);
+const cancelling = ref(false);
+/** Captures selected IDs at dialog-open time so the action still works
+ *  if the selection changes before the user confirms. */
+const cancelTargets = ref<{
+  amule: string[];
+  torrent: number[];
+  pyload: number[];
+}>({ amule: [], torrent: [], pyload: [] });
+const cancelTotal = computed(() =>
+  cancelTargets.value.amule.length + cancelTargets.value.torrent.length + cancelTargets.value.pyload.length,
+);
 
 // ── Detail panel state ────────────────────────────────────────────────
 const openedDetails = ref<string[]>([]);
@@ -1911,6 +1806,26 @@ const selectedPyload = computed(() =>
 const selectedPyloadHasFailed = computed(() =>
   selectedPyload.value.some((p: any) => (p.failedLinks || 0) > 0),
 );
+
+const totalSelected = computed(() =>
+  selectedAmule.value.length + selectedTorrents.value.length + selectedPyload.value.length,
+);
+
+function doUnifiedAction(action: 'start' | 'stop' | 'cancel') {
+  if (selectedAmule.value.length) {
+    doAmuleAction(action === 'start' ? 'resume' : action === 'stop' ? 'pause' : 'cancel');
+  }
+  if (selectedTorrents.value.length) {
+    if (action === 'cancel') {
+      confirmCancel();
+    } else {
+      doTorrentAction(action);
+    }
+  }
+  if (selectedPyload.value.length) {
+    doPyloadAction(action === 'start' ? 'restart' : action === 'cancel' ? 'delete' : action);
+  }
+}
 
 function dlRowClass(row: any): string {
   return selectedItems.has(row._uid) ? "is-selected" : "";
@@ -2400,27 +2315,56 @@ async function doTorrentAction(action: string) {
   }
 }
 
-function confirmTorrentRemove(withData: boolean) {
-  removeWithData.value = withData;
-  pendingRemoveIds.value = selectedTorrents.value.map((t: any) => t._torrentId);
-  showRemoveDialog.value = true;
+function confirmCancel() {
+  cancelTargets.value = {
+    amule: selectedAmule.value.map((f: any) => f.hash),
+    torrent: selectedTorrents.value.map((t: any) => t._torrentId),
+    pyload: selectedPyload.value.map((p: any) => p.pid),
+  };
+  showCancelDialog.value = true;
 }
 
-async function doTorrentRemove() {
-  removing.value = true;
+async function doCancel() {
+  cancelling.value = true;
   try {
-    await apiFetch("/api/transmission/torrents", {
-      method: "POST",
-      body: {
-        action: removeWithData.value ? "remove_data" : "remove",
-        ids: pendingRemoveIds.value,
-      },
-    });
+    const ops: Promise<any>[] = [];
+    const targets = cancelTargets.value;
+
+    if (targets.amule.length) {
+      ops.push(
+        apiFetch("/api/amule/downloads", {
+          method: "POST",
+          body: { action: "cancel", hashes: targets.amule },
+        }),
+      );
+    }
+
+    if (targets.torrent.length) {
+      ops.push(
+        apiFetch("/api/transmission/torrents", {
+          method: "POST",
+          body: { action: "remove_data", ids: targets.torrent },
+        }),
+      );
+    }
+
+    if (targets.pyload.length) {
+      for (const pid of targets.pyload) {
+        ops.push(
+          apiFetch("/api/pyload/packages", {
+            method: "POST",
+            body: { action: "delete", pids: [pid] },
+          }),
+        );
+      }
+    }
+
+    await Promise.all(ops);
     selectedItems.clear();
-    showRemoveDialog.value = false;
+    showCancelDialog.value = false;
     await refresh();
   } finally {
-    removing.value = false;
+    cancelling.value = false;
   }
 }
 
@@ -2447,7 +2391,7 @@ async function doCardAction(row: any, action: string) {
   selectedItems.clear();
   selectedItems.add(row._uid);
   if (row._type === "torrent" && (action === "remove" || action === "remove_data")) {
-    confirmTorrentRemove(action === "remove_data");
+    confirmCancel();
     return;
   }
   try {

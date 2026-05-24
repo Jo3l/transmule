@@ -48,6 +48,10 @@ export interface MediaLink {
   seeds?: number;
   hash?: string;
   tags?: MediaTag[];
+  /**
+   * Target download service. Defaults to "transmission" when absent.
+   */
+  service?: "transmission" | "amule" | "pyload" | "direct";
 }
 
 export interface MediaEpisode {
@@ -107,6 +111,11 @@ export function useProviders() {
   /** Returns enabled torrent-search plugins */
   const torrentSearchProviders = computed(() =>
     (_providers.value ?? []).filter((p) => p.pluginType === "torrent-search" && p.enabled),
+  );
+
+  /** Returns enabled media (non-torrent) plugins */
+  const mediaProviders = computed(() =>
+    (_providers.value ?? []).filter((p) => p.pluginType !== "torrent-search" && p.enabled),
   );
 
   const hasTorrentSearchProviders = computed(() => torrentSearchProviders.value.length > 0);
@@ -178,6 +187,7 @@ export function useProviders() {
   return {
     providers: _providers,
     torrentSearchProviders,
+    mediaProviders,
     hasTorrentSearchProviders,
     loadProviders,
     getProviders,
