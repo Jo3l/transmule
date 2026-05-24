@@ -8,8 +8,8 @@
     v-bind="$attrs"
     @click.stop="handleClick"
   >
-    <span v-if="isDownloadedComputed" class="mdi mdi-check mr-1" />
-    <span v-else class="mdi mdi-download mr-1" />
+    <span v-if="!internalLoading && isDownloadedComputed" class="mdi mdi-check mr-1" />
+    <span v-else-if="!internalLoading" class="mdi mdi-download mr-1" />
     <template v-if="label">{{ label }}</template>
     <slot v-else />
   </SButton>

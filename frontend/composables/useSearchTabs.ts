@@ -338,8 +338,9 @@ export function useSearchTabs() {
   }
 
   function startUnifiedStream(tab: UnifiedTab, source = "all") {
-    // 1. Torrent SSE (skip when searching only aMule)
-    if (source !== "amule") {
+    // 1. Torrent SSE (skip when searching only aMule or a media provider)
+    const isMediaSource = source === "archive-org";
+    if (source !== "amule" && !isMediaSource) {
       const controller = new AbortController();
       _unifiedAbort.set(tab.id, controller);
       const params = new URLSearchParams({ q: tab.query, source, limit: "100" });
@@ -388,7 +389,30 @@ export function useSearchTabs() {
       }).then(() => {
         startUnifiedPolling(tab.id);
       }).catch(() => { /* silent */ });
-    } else {
+    }
+
+    // 3. Media provider search (when searching all or a specific media source)
+    if (source === "all" || source === "archive-org") {
+      const qs = new URLSearchParams();
+      qs.set("id", "archive-org");
+      qs.set("query", tab.query);
+      qs.set("limit", "50");
+      const base = config.public?.apiBase ?? "";
+      fetch(`${base}/api/providers/list?${qs}`, {
+        credentials: "include",
+      })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = await res.json();
+        const mediaItems = data?.items ?? [];
+        appendMediaResults(tab.id, mediaItems, "archive-org");
+      })
+      .catch(() => { /* silent */ })
+      .finally(() => { maybeCompleteUnified(tab.id); });
+    }
+
+    // When no external searches started, mark ready
+    if (source !== "all" && source !== "amule" && source !== "archive-org") {
       // No aMule results when filtering by a specific plugin
       maybeCompleteUnified(tab.id);
     }
@@ -469,6 +493,48 @@ export function useSearchTabs() {
       }
       if (!changed) return t;
       t.results.sort((a, b) => b.seedsOrSources - a.seedsOrSources);
+      return { ...t, totalResults: t.results.length, results: [...t.results] } as UnifiedTab;
+    });
+  }
+
+  /**
+   * Append results from a media provider (non-torrent) to a unified tab.
+   * Each media item becomes a single result row with a downloadUrl.
+   */
+  function appendMediaResults(tabId: string, mediaItems: any[], sourceId: string) {
+    tabs.value = tabs.value.map((t) => {
+      if (t.id !== tabId || t.type !== "unified") return t;
+      const seen = new Set(t.results.map((r) => r.id));
+      let changed = false;
+      for (const item of mediaItems) {
+        const itemId = `media_${item.id}`;
+        if (seen.has(itemId)) continue;
+        seen.add(itemId);
+        const firstLink = item.links?.[0];
+        const entry: any = {
+          id: itemId,
+          type: "torrent" as const,
+          name: item.title || "Unknown",
+          size: 0,
+          size_fmt: item.size || "",
+          seedsOrSources: 0,
+          leechers: 0,
+          category: item.genre || "Media",
+          source: sourceId,
+          cover: item.cover ?? null,
+          infoHash: item.id,
+        };
+        // If item has a torrent (magnet), default to Transmission download
+        if (item.magnet) {
+          entry.magnet = item.magnet;
+          entry.infoHash = item.infoHash || item.id;
+        } else {
+          entry.downloadUrl = firstLink?.url || item.sourceUrl;
+        }
+        t.results.push(entry);
+        changed = true;
+      }
+      if (!changed) return t;
       return { ...t, totalResults: t.results.length, results: [...t.results] } as UnifiedTab;
     });
   }

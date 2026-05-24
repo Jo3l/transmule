@@ -50,7 +50,7 @@
             <span class="mdi mdi-harddisk" />{{ item.size }}
           </span>
           <span v-if="item.language && item.language !== 'en'" class="media-meta-item">
-            <span class="mdi mdi-translate" />{{ item.language.toUpperCase() }}
+            <span class="mdi mdi-translate" />{{ (Array.isArray(item.language) ? item.language[0] : item.language).toUpperCase() }}
           </span>
         </div>
 
@@ -130,7 +130,7 @@
           </span>
           <DownloadButton
             size="sm"
-            service="transmission"
+            :service="link.service || 'transmission'"
             :url="link.url"
             :hash="link.hash"
             :title="link.quality ? `${item.title} [${link.quality}]` : item.title"
@@ -139,11 +139,10 @@
         </div>
       </template>
 
-      <!-- Single download button (no needsDetail, single link) -->
       <template v-else>
         <DownloadButton
           size="sm"
-          service="transmission"
+          :service="item.links?.[0]?.service || 'transmission'"
           :url="item.links?.[0]?.url"
           :hash="item.links?.[0]?.hash"
           :title="item.title"

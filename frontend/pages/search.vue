@@ -116,7 +116,7 @@
 <script setup lang="ts">
 const route = useRoute();
 const { t } = useI18n();
-const { torrentSearchProviders, loadProviders } = useProviders();
+const { torrentSearchProviders, mediaProviders, loadProviders } = useProviders();
 
 const providerLabelMap = computed(() => {
   const map: Record<string, string> = { amule: "aMule" };
@@ -162,6 +162,12 @@ const sourceOptions = computed(() => {
   ];
   for (const p of torrentSearchProviders.value) {
     opts.push({ label: p.name, value: p.id });
+  }
+  // Add media providers that can appear in global search
+  for (const p of mediaProviders.value) {
+    if (p.id === "archive-org") {
+      opts.push({ label: p.name, value: p.id });
+    }
   }
   return opts;
 });
