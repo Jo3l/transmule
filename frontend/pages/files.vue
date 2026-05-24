@@ -1,6 +1,22 @@
 <template>
   <div id="page-files" class="fm-page" @click="hideCtxMenu" @keydown.esc.window="hideCtxMenu">
-    <h1 class="title is-4 mb-4">{{ $t("fileManager.title") }}</h1>
+    <div class="fm-header-row mb-4">
+      <h1 class="title is-4">{{ $t("fileManager.title") }}</h1>
+      <div class="fm-header-search">
+        <SInput
+          v-model="searchQuery"
+          :placeholder="$t('fileManager.searchPlaceholder')"
+          size="sm"
+          @keydown.enter="doSearch"
+        />
+        <SButton size="sm" variant="primary" :loading="searching" @click="doSearch">
+          <span class="mdi mdi-magnify" />
+        </SButton>
+        <SButton v-if="hasSearched" size="sm" @click="clearSearch">
+          <span class="mdi mdi-close" />
+        </SButton>
+      </div>
+    </div>
 
     <!-- Not configured -->
     <SAlert v-if="notConfigured" variant="warning">
@@ -120,19 +136,19 @@
 
           <!-- ── Mobile file cards (≤768px) ──────────────────────────── -->
           <div class="is-hidden-tablet fm-mobile-list">
-            <div v-if="currentPath" class="fm-mobile-up" @click.stop="navigateUp">
+            <div v-if="currentPath && !hasSearched" class="fm-mobile-up" @click.stop="navigateUp">
               <span class="mdi mdi-arrow-up-bold-circle fm-icon has-text-grey" />
               <span class="has-text-grey">{{ $t("fileManager.goUp") }}</span>
             </div>
             <div
-              v-if="!loading && sortedItems.length === 0"
+              v-if="!loading && displayItems.length === 0"
               class="has-text-centered has-text-grey py-5"
             >
               <span class="mdi mdi-folder-open-outline fm-empty-icon" />
-              {{ $t("fileManager.empty") }}
+              {{ hasSearched ? $t("fileManager.searchEmpty") : $t("fileManager.empty") }}
             </div>
             <div
-              v-for="item in sortedItems"
+              v-for="item in displayItems"
               :key="item.name"
               class="fm-mobile-card"
               :class="{ 'is-open': mobileOpenedItem === item.name }"
@@ -140,7 +156,10 @@
             >
               <div class="fm-mc-header">
                 <span class="mdi fm-icon" :class="fileIcon(item)" />
-                <span class="fm-mc-name">{{ item.name }}</span>
+                <span class="fm-mc-name">
+                  <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
+                  {{ item.name }}
+                </span>
                 <span class="fm-mc-size">{{ item.type === "file" ? fmtSize(item.size) : "" }}</span>
                 <span
                   class="mdi fm-mc-chevron"
@@ -397,7 +416,7 @@
             </thead>
             <tbody>
               <!-- Go up -->
-              <tr v-if="currentPath" class="fm-up-row">
+              <tr v-if="currentPath && !hasSearched" class="fm-up-row">
                 <td colspan="3">
                   <a class="fm-name-cell" @click.prevent="navigateUp">
                     <span class="mdi mdi-arrow-up-bold-circle fm-icon has-text-grey" />
@@ -408,7 +427,7 @@
 
               <!-- Directory / file rows -->
               <tr
-                v-for="item in sortedItems"
+                v-for="item in displayItems"
                 :key="item.name"
                 :draggable="isAdmin"
                 :class="{
@@ -427,6 +446,9 @@
                 <td>
                   <span class="fm-name-cell">
                     <span class="mdi fm-icon" :class="fileIcon(item)" />
+                    <template v-if="item.relpath">
+                      <a class="fm-relpath" @click.prevent="navigate(item.relpath)">{{ item.relpath }}/</a>
+                    </template>
                     <a
                       v-if="item.type === 'directory'"
                       @click.prevent="handleFolderClick($event, item)"
@@ -444,10 +466,10 @@
               </tr>
 
               <!-- Empty state -->
-              <tr v-if="!loading && items.length === 0">
+              <tr v-if="!loading && displayItems.length === 0">
                 <td colspan="3" class="has-text-centered has-text-grey py-5">
                   <span class="mdi mdi-folder-open-outline fm-empty-icon" />
-                  {{ $t("fileManager.empty") }}
+                  {{ hasSearched ? $t("fileManager.searchEmpty") : $t("fileManager.empty") }}
                 </td>
               </tr>
             </tbody>
@@ -1186,6 +1208,8 @@ interface FileItem {
   size: number;
   modified: string;
   isRemoteMount?: boolean;
+  /** Relative path from the search root (only present in search results) */
+  relpath?: string;
 }
 
 interface RemoteMount {
@@ -1242,6 +1266,38 @@ const notConfigured = ref(false);
 const working = ref(false);
 const treeVisible = ref(false);
 const folderTreeRef = ref<{ refresh: () => void } | null>(null);
+
+// ── Search ──────────────────────────────────────────────────────────────────
+const searchQuery = ref("");
+const searchResults = ref<FileItem[]>([]);
+const searching = ref(false);
+const hasSearched = computed(() => searchResults.value.length > 0 || (searching.value && searchQuery.value.trim().length > 0));
+
+const displayItems = computed(() =>
+  hasSearched.value ? searchResults.value : sortedItems.value,
+);
+
+async function doSearch() {
+  const q = searchQuery.value.trim();
+  if (!q) return;
+  searching.value = true;
+  try {
+    const res = await apiFetch<{ results: FileItem[] }>(
+      `/api/files/search?path=${encodeURIComponent(currentPath.value)}&q=${encodeURIComponent(q)}`,
+    );
+    searchResults.value = res.results;
+  } catch (err: any) {
+    showToast(err?.data?.statusMessage ?? "Search failed", "error");
+    searchResults.value = [];
+  } finally {
+    searching.value = false;
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = "";
+  searchResults.value = [];
+}
 
 // Refreshes both the file list and the folder-tree sidebar.
 // Use this as the post-action callback for any operation that may add,
@@ -2359,6 +2415,37 @@ watch(
   overflow: hidden;
 }
 
+/* ── Header row (title + search) ──────────────────────────────────────────── */
+.fm-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.fm-header-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.fm-header-search .s-input {
+  width: 220px;
+}
+@media (max-width: 480px) {
+  .fm-header-search .s-input {
+    width: 140px;
+  }
+}
+.fm-relpath {
+  color: var(--s-text-secondary);
+  font-size: 0.85em;
+  cursor: pointer;
+}
+.fm-relpath:hover {
+  color: var(--s-accent);
+  text-decoration: underline;
+}
+
 /* Toolbar */
 .fm-toolbar {
   display: flex;
@@ -2504,7 +2591,6 @@ watch(
 .fm-actions {
   display: flex;
   gap: 0.4rem;
-  flex-shrink: 0;
   flex-wrap: wrap;
 }
 

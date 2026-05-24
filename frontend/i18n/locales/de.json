@@ -1056,6 +1056,8 @@
     "newName": "Neuer Name",
     "goUp": "Übergeordneter Ordner",
     "empty": "Dieser Ordner ist leer",
+    "searchPlaceholder": "Dateien suchen...",
+    "searchEmpty": "Keine Ergebnisse",
     "dropToUpload": "Dateien hier ablegen zum Hochladen",
     "uploading": "Lade hoch…",
     "uploadingMultiple": "Lade {count} Dateien hoch…",

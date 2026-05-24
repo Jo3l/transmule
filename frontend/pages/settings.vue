@@ -1154,7 +1154,7 @@ const historyCols = computed<STableColumn[]>(() => [
   { key: "title", label: t("settings.downloadHistoryColumns.title") },
   { key: "service", label: t("settings.downloadHistoryColumns.service"), width: 110 },
   { key: "date", label: t("settings.downloadHistoryColumns.date"), width: 160 },
-  { key: "actions", label: "", width: 200 },
+  { key: "actions", label: "" },
 ]);
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -1764,6 +1764,7 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
 .stt-actions {
   display: flex;
   gap: 6px;
+  justify-content: flex-end;
 }
 .dh-header {
   display: flex;

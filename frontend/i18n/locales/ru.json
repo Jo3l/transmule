@@ -1056,6 +1056,8 @@
     "newName": "Новое имя",
     "goUp": "Родительская папка",
     "empty": "Эта папка пуста",
+    "searchPlaceholder": "Поиск файлов...",
+    "searchEmpty": "Нет результатов",
     "dropToUpload": "Перетащите файлы сюда для загрузки",
     "uploading": "Загрузка…",
     "uploadingMultiple": "Загрузка {count} файлов…",

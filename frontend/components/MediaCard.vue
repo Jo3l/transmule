@@ -83,15 +83,27 @@
           <span class="mdi mdi-television-play mr-1" />{{ episodeCount }}
           {{ $t("shows.episodes") }}
         </span>
-        <SButton size="sm" variant="primary" @click.stop="$emit('open', item)">
-          <span class="mdi mdi-download mr-1" />{{ $t("shows.download") }}
+        <SButton
+          size="sm"
+          :variant="anyDownloaded ? 'warning' : 'primary'"
+          @click.stop="$emit('open', item)"
+        >
+          <span v-if="anyDownloaded" class="mdi mdi-check mr-1" />
+          <span v-else class="mdi mdi-download mr-1" />
+          {{ $t("shows.download") }}
         </SButton>
       </template>
 
       <!-- Movies with needsDetail: always show modal button -->
       <template v-else-if="item.needsDetail">
-        <SButton size="sm" variant="primary" @click.stop="$emit('open', item)">
-          <span class="mdi mdi-download mr-1" />{{ $t("media.download") }}
+        <SButton
+          size="sm"
+          :variant="anyDownloaded ? 'warning' : 'primary'"
+          @click.stop="$emit('open', item)"
+        >
+          <span v-if="anyDownloaded" class="mdi mdi-check mr-1" />
+          <span v-else class="mdi mdi-download mr-1" />
+          {{ $t("media.download") }}
         </SButton>
       </template>
 
@@ -145,6 +157,9 @@
 <script setup lang="ts">
 import type { MediaItem } from "~/composables/useProviders";
 
+import { titles, urls, hashes, loadDownloadHistory } from "~/stores/downloadHistory";
+loadDownloadHistory();
+
 const props = defineProps<{
   item: MediaItem;
   coverSrc?: string | null;
@@ -159,6 +174,40 @@ const isSeries = computed(() => !!props.item.isSeries);
 
 const episodeCount = computed(() => {
   return props.item.episodes?.length ?? 0;
+});
+
+/** True if any link (episode link or flat link) is already in the download history. */
+const anyDownloaded = computed(() => {
+  const item = props.item;
+
+  // Check episode links for series
+  if (item.episodes) {
+    for (const ep of item.episodes) {
+      // Check episode code/title against store titles
+      if (ep.code && titles.value.some((t) => t.trim() === ep.code.trim())) return true;
+      // Check each episode link
+      for (const link of ep.links || []) {
+        if (link.url && urls.value.includes(link.url)) return true;
+        if (link.hash && hashes.value.includes(link.hash.toLowerCase())) return true;
+      }
+    }
+  }
+
+  // Check flat links (movies without episodes, or needsDetail items that have them loaded)
+  if (item.links) {
+    for (const link of item.links) {
+      if (link.url && urls.value.includes(link.url)) return true;
+      if (link.hash && hashes.value.includes(link.hash.toLowerCase())) return true;
+    }
+  }
+
+  // For needsDetail items (links not loaded yet), check the title
+  if (item.needsDetail) {
+    // Since the episode count is usually shown, check individual titles
+    if (item.title && titles.value.some((t) => t.trim() === item.title.trim())) return true;
+  }
+
+  return false;
 });
 
 function formatRuntime(minutes: number): string {

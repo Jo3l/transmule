@@ -274,9 +274,20 @@ export function addDownloadEntry(
   service: string,
 ): void {
   const db = useDatabase();
-  db.prepare(
-    "INSERT INTO download_history (user_id, url, title, service) VALUES (?, ?, ?, ?)",
-  ).run(userId, url, title || null, service);
+  // Check if the same URL was already recorded for this user
+  const existing = db
+    .prepare("SELECT id FROM download_history WHERE user_id = ? AND url = ?")
+    .get(userId, url) as { id: number } | undefined;
+  if (existing) {
+    // Already exists — update the timestamp so it appears at the top
+    db.prepare(
+      "UPDATE download_history SET sent_at = datetime('now'), title = ?, service = ? WHERE id = ?",
+    ).run(title || null, service, existing.id);
+  } else {
+    db.prepare(
+      "INSERT INTO download_history (user_id, url, title, service) VALUES (?, ?, ?, ?)",
+    ).run(userId, url, title || null, service);
+  }
 }
 
 export function getDownloadedUrls(userId: number): string[] {
@@ -287,6 +298,15 @@ export function getDownloadedUrls(userId: number): string[] {
     )
     .all(userId) as { url: string }[];
   return rows.map((r) => r.url);
+}
+
+export function getDownloadHistoryItems(userId: number): { url: string; title: string | null }[] {
+  const db = useDatabase();
+  return db
+    .prepare(
+      "SELECT url, title FROM download_history WHERE user_id = ? ORDER BY sent_at DESC LIMIT 500",
+    )
+    .all(userId) as { url: string; title: string | null }[];
 }
 
 export function getDownloadHistoryCount(userId: number): number {

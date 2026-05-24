@@ -84,7 +84,10 @@
         :active="tab.id === (activeTabId ?? '')"
       >
         <!-- Progress bar + stop for active search -->
-        <div v-if="tab.status === 'searching'" class="flex-row justify-center gap-md mb-2">
+        <div
+          v-if="tab.status === 'searching'"
+          class="flex-row justify-center gap-md mb-2 align-items-center"
+        >
           <SButton variant="warning" size="sm" @click="stopSearch(tab.id)">
             <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
           </SButton>
@@ -95,62 +98,21 @@
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-        <STable :data="pagedResults" :columns="columns" row-key="hash">
-          <!-- Name header with filter -->
-          <template #header-name="{ column }">
-            <SearchFilterHeader
-              v-model="nameFilter"
-              :label="column.label"
-              placeholder="filtrar por nombre"
-            />
-          </template>
-          <!-- Cover thumbnail -->
-          <template #cell-cover="{ row }">
-            <ResultCover
-              v-if="isVideoExt(row.name)"
-              :cover="row.cover"
-              :name="row.name"
-              :size="row.size_fmt"
-              :movie-details="row.movieDetails"
-              @load-cover="loadCover(row)"
-            />
-            <span v-else class="result-cover-placeholder" :title="row.name">
-              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
-            </span>
-          </template>
-          <!-- Name cell + tags -->
-          <template #cell-name="{ row }">
-            <SearchResultName
-              :name="row.name"
-              :tags="row.tags"
-              :name-class="downloadedHashes.has(row.hash) ? 'has-text-danger' : ''"
-            />
-          </template>
-          <template #cell-sizeFull="{ row }">{{ row.size_fmt }}</template>
-          <template #cell-sources="{ row }">{{ row.sources }}</template>
-          <template #cell-actions="{ row }">
-            <DownloadButton
-              service="amule"
-              :hash="row.hash"
-              hide-when-downloaded
-              :downloaded="downloadedHashes.has(row.hash)"
-              @download-end="fetchDownloadHashes()"
-            />
-          </template>
-          <template #empty>
-            <div class="has-text-centered py-5 has-text-grey">
-              <span class="mdi mdi-file-search-outline icon-lg" />
-              <p>
-                {{ $t("search.enterSearch") }}
-              </p>
-            </div>
-          </template>
-        </STable>
-        <SPagination
-          v-if="filteredResults.length > PAGE_SIZE"
-          v-model="currentPage"
+        <SearchResultsTable
+          :data="pagedResults"
+          :columns="columns"
           :total="filteredResults.length"
+          :page="currentPage"
           :page-size="PAGE_SIZE"
+          :name-filter="nameFilter"
+          :empty-text="$t('search.enterSearch')"
+          :provider-icon-map="providerIconMap"
+          :provider-label-map="providerLabelMap"
+          :source-variant="sourceVariant"
+          row-key="hash"
+          @update:page="currentPage = $event"
+          @update:name-filter="nameFilter = $event"
+          @load-cover="loadCover($event)"
         />
       </STabPane>
     </STabs>
@@ -164,18 +126,10 @@
 </template>
 
 <script setup lang="ts">
-import { isVideoExt, detectFileIcon } from "../../composables/useSearchTabs";
 const { apiFetch } = useApi();
-const { amuleRunning } = useServiceGuard();
 const { t } = useI18n();
 
-const {
-  tabs,
-  activeTabId,
-  createAmuleTab,
-  closeTab,
-  switchTab,
-} = useSearchTabs();
+const { tabs, activeTabId, createAmuleTab, closeTab, switchTab } = useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
 
@@ -194,15 +148,31 @@ const sizeUnits = computed(() => [
 const columns = computed(() => [
   { key: "cover", label: "", width: 60, align: "center" as const },
   { prop: "name", label: t("search.columns.name"), sortable: true },
-  { prop: "sizeFull", label: t("search.columns.size"), width: 100, sortable: true },
+  { prop: "size_fmt", label: t("search.columns.size"), width: 85, sortable: true },
   {
+    key: "seeds",
     prop: "sources",
-    label: t("search.columns.sources"),
-    width: 80,
+    label: t("search.columns.se"),
+    width: 50,
     sortable: true,
     align: "right" as const,
   },
-  { key: "actions", label: "", width: 78 },
+  {
+    key: "leechers",
+    prop: "leechers",
+    label: t("search.columns.le"),
+    width: 50,
+    sortable: true,
+    align: "right" as const,
+  },
+  {
+    key: "source",
+    label: t("search.columns.source"),
+    width: 110,
+    sortable: true,
+    align: "center" as const,
+  },
+  { key: "actions", label: "", width: 78, align: "center" as const },
 ]);
 
 const query = ref("");
@@ -212,7 +182,6 @@ const minSize = ref("");
 const minSizeUnit = ref("1048576");
 const maxSize = ref("");
 const maxSizeUnit = ref("1048576");
-const downloadedHashes = ref(new Set<string>());
 const nameFilter = ref("");
 
 // ── Client-side filter ──────────────────────────────────────────────────────
@@ -246,11 +215,19 @@ const currentTabName = computed({
 
 const tabPanes = computed(() => amuleTabs.value.map((t) => ({ name: t.id, label: t.query })));
 
+// ── Provider maps (for source column in SearchResultsTable) ──────────
+const providerLabelMap: Record<string, string> = { amule: "aMule" };
+const providerIconMap: Record<string, string> = { amule: "mdi-server-network" };
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
+const providerVariantMap: Record<string, string> = { amule: "accent" };
+function sourceVariant(src: string) {
+  return providerVariantMap[src] ?? "default";
+}
+
 // ── Search ─────────────────────────────────────────────────────────────────
 
 function onSearch() {
   if (!query.value.trim()) return;
-  fetchDownloadHashes();
   createAmuleTab({
     query: query.value.trim(),
     searchType: searchType.value,
@@ -287,24 +264,9 @@ function stopSearch(tabId: string) {
   import("../../composables/useSearchTabs").then((m) => m.stopAmuleSearch(tabId));
 }
 
-// ── Download ────────────────────────────────────────────────────────────────
-
-
-
-async function fetchDownloadHashes() {
-  try {
-    const res = await apiFetch<any>("/api/amule/downloads");
-    const files = res?.downloads?.files || [];
-    downloadedHashes.value = new Set(files.map((f: any) => f.hash));
-  } catch {
-    /* silent */
-  }
-}
-
 // ── Init ───────────────────────────────────────────────────────────────────
 
 onMounted(() => {
-  fetchDownloadHashes();
   // If activeTabId doesn't belong to an amule tab, switch to the latest one
   if (amuleTabs.value.length > 0 && !amuleTabs.value.some((t) => t.id === activeTabId.value)) {
     switchTab(amuleTabs.value[amuleTabs.value.length - 1].id);
@@ -399,18 +361,5 @@ onMounted(() => {
   opacity: 1;
   background: var(--s-border);
   color: var(--s-danger);
-}
-
-/* Remove ellipsis from source column */
-:deep(.s-table td:nth-child(4)) {
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* Force actions column width */
-:deep(.s-table th:nth-child(5)),
-:deep(.s-table td:nth-child(5)) {
-  max-width: 78px;
-  width: 78px;
 }
 </style>

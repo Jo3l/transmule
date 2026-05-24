@@ -30,18 +30,20 @@
           <template #cell-users="{ row }">{{ row.users?.toLocaleString() }}</template>
           <template #cell-files="{ row }">{{ row.files?.toLocaleString() }}</template>
           <template #cell-actions="{ row }">
-            <SButton
-              variant="success"
-              size="sm"
-              :disabled="row.connected || connecting"
-              :loading="connecting && !row.connected"
-              @click="doAction('connect', row)"
-            >
-              <span
-                :class="row.connected ? 'mdi mdi-check-circle mr-1' : 'mdi mdi-lan-connect mr-1'"
-              />
-              {{ row.connected ? $t("servers.connected") : $t("servers.connect") }}
-            </SButton>
+            <div class="flex-end">
+              <SButton
+                variant="success"
+                size="sm"
+                :disabled="row.connected || connecting"
+                :loading="connecting && !row.connected"
+                @click="doAction('connect', row)"
+              >
+                <span
+                  :class="row.connected ? 'mdi mdi-check-circle mr-1' : 'mdi mdi-lan-connect mr-1'"
+                />
+                {{ row.connected ? $t("servers.connected") : $t("servers.connect") }}
+              </SButton>
+            </div>
           </template>
           <template #empty>
             <div class="has-text-centered py-5 has-text-grey">
@@ -239,7 +241,7 @@ const columns = computed(() => [
     sortable: true,
     align: "right" as const,
   },
-  { key: "actions", label: t("servers.columns.actions"), width: 120 },
+  { key: "actions", label: "" },
 ]);
 
 async function refreshServers() {

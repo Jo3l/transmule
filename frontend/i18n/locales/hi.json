@@ -1056,6 +1056,8 @@
     "newName": "नया नाम",
     "goUp": "पैरेंट फ़ोल्डर",
     "empty": "यह फ़ोल्डर खाली है",
+    "searchPlaceholder": "फ़ाइलें खोजें...",
+    "searchEmpty": "कोई परिणाम नहीं",
     "dropToUpload": "अपलोड करने के लिए फ़ाइलें यहाँ छोड़ें",
     "uploading": "अपलोड हो रहा है…",
     "uploadingMultiple": "{count} फ़ाइलें अपलोड हो रही हैं…",

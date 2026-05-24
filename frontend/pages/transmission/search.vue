@@ -84,84 +84,23 @@
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-        <STable :data="pagedResults" :columns="columns" row-key="infoHash">
-          <!-- Name header with filter -->
-          <template #header-name="{ column }">
-            <SearchFilterHeader
-              v-model="nameFilter"
-              :label="column.label"
-              placeholder="filtrar por nombre"
-            />
-          </template>
-          <!-- Cover thumbnail -->
-          <template #cell-cover="{ row }">
-            <ResultCover
-              v-if="isVideoExt(row.name)"
-              :cover="row.cover"
-              :name="row.name"
-              :size="row.size_fmt"
-              :seeders="row.seeders"
-              :leechers="row.leechers"
-              :category="row.category"
-              :movie-details="row.movieDetails"
-              @load-cover="loadCover(row)"
-            />
-            <span v-else class="result-cover-placeholder" :title="row.name">
-              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
-            </span>
-          </template>
-          <!-- Name cell + tags -->
-          <template #cell-name="{ row }">
-            <SearchResultName :name="row.name" :tags="row.tags" />
-          </template>
-
-          <template #cell-source="{ row }">
-            <STag :variant="sourceVariant(row.source)" size="sm">
-              <span
-                v-if="providerIconMap[row.source]"
-                class="mdi"
-                :class="[providerIconMap[row.source], 'mr-3px']"
-              />{{ providerLabelMap[row.source] ?? row.source }}
-            </STag>
-          </template>
-
-          <template #cell-seeders="{ row }">
-            <span :class="row.seeders > 0 ? 'has-text-success' : 'has-text-grey'">
-              {{ row.seeders }}
-            </span>
-          </template>
-
-          <template #cell-leechers="{ row }">
-            <span :class="row.leechers > 0 ? 'has-text-danger' : 'has-text-grey'">
-              {{ row.leechers }}
-            </span>
-          </template>
-
-          <template #cell-actions="{ row }">
-            <DownloadButton
-              service="transmission"
-              :url="row.magnet"
-              :hash="row.infoHash"
-              :title="row.name"
-              @download-end="addToast($t('torrentSearch.added', { name: row.name }), 'success')"
-              @download-error="
-                (err) => addToast(err?.message ?? $t('torrentSearch.addError'), 'error')
-              "
-            />
-          </template>
-
-          <template #empty>
-            <div class="has-text-centered py-5 has-text-grey">
-              <span class="mdi mdi-file-search-outline icon-lg" />
-              <p>{{ $t("torrentSearch.enterSearch") }}</p>
-            </div>
-          </template>
-        </STable>
-        <SPagination
-          v-if="filteredResults.length > PAGE_SIZE"
-          v-model="currentPage"
+        <SearchResultsTable
+          :data="pagedResults"
+          :columns="columns"
           :total="filteredResults.length"
+          :page="currentPage"
           :page-size="PAGE_SIZE"
+          :name-filter="nameFilter"
+          :empty-text="$t('torrentSearch.enterSearch')"
+          :provider-icon-map="providerIconMap"
+          :provider-label-map="providerLabelMap"
+          :source-variant="sourceVariant"
+          row-key="infoHash"
+          @update:page="currentPage = $event"
+          @update:name-filter="nameFilter = $event"
+          @load-cover="loadCover($event)"
+          @download-end="addToast($t('torrentSearch.added', { name: $event.name }), 'success')"
+          @download-error="(err, row) => addToast(err?.message ?? $t('torrentSearch.addError'), 'error')"
         />
       </STabPane>
     </STabs>
@@ -196,10 +135,9 @@
 </template>
 
 <script setup lang="ts">
-import { isVideoExt, detectFileIcon } from "../../composables/useSearchTabs";
 const { t } = useI18n();
 const { addToast } = useToast();
-const { loadDownloadHistory } = useDownloadHistory();
+import { loadDownloadHistory } from "~/stores/downloadHistory";
 const { torrentSearchProviders, loadProviders } = useProviders();
 const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } = useSearchTabs();
 
@@ -245,7 +183,7 @@ const columns = computed(() => [
     sortable: true,
   },
   {
-    key: "seeders",
+    key: "seeds",
     prop: "seeders",
     label: t("torrentSearch.columns.seeders"),
     width: 70,
@@ -260,7 +198,7 @@ const columns = computed(() => [
     sortable: true,
     align: "right" as const,
   },
-  { key: "source", label: t("torrentSearch.columns.source"), width: 75, align: "center" as const },
+  { key: "source", label: t("torrentSearch.columns.source"), width: 110, sortable: true, align: "center" as const },
   { key: "actions", label: "", width: 78, align: "center" as const },
 ]);
 
@@ -441,16 +379,4 @@ onMounted(async () => {
   color: var(--s-danger);
 }
 
-/* Remove ellipsis from source column */
-:deep(.s-table td:nth-child(7)) {
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* Force actions column width */
-:deep(.s-table th:nth-child(8)),
-:deep(.s-table td:nth-child(8)) {
-  max-width: 78px;
-  width: 78px;
-}
 </style>

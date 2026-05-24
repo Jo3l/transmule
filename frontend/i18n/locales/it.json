@@ -959,6 +959,8 @@
     "newName": "Nuovo nome",
     "goUp": "Cartella superiore",
     "empty": "Questa cartella è vuota",
+    "searchPlaceholder": "Cerca file...",
+    "searchEmpty": "Nessun risultato",
     "dropToUpload": "Trascina i file qui per caricarli",
     "uploading": "Caricamento…",
     "uploadingMultiple": "Caricamento di {count} file…",
@@ -1084,7 +1086,8 @@
   "movies": {
     "title": "Film",
     "refresh": "Aggiorna",
-    "searchPlaceholder": "Cerca film...",
+"searchPlaceholder": "Cerca file...",
+    "searchEmpty": "Nessun risultato",
     "filterAll": "Tutti",
     "labelSearch": "Ricerca",
     "labelGenre": "Genere",

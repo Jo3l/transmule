@@ -11,8 +11,10 @@ defineRouteMeta({
   },
 });
 
+import { _searchFilters } from "./search.post";
+
 export default defineEventHandler(async (event) => {
-  requireUser(event);
+  const { userId } = requireUser(event);
 
   try {
     const client = useAmuleClient();
@@ -21,7 +23,7 @@ export default defineEventHandler(async (event) => {
       client.searchStatus(),
     ]);
 
-    const files = (results?.files || []).map((f) => ({
+    let files = (results?.files || []).map((f) => ({
       hash: hashToHex(f.hash),
       name: f.fileName,
       sizeFull: f.sizeFull || 0,
@@ -30,6 +32,14 @@ export default defineEventHandler(async (event) => {
       completeSources: f.completeSourceCount || 0,
       downloadStatus: f.downloadStatus || 0,
     }));
+
+    // Apply server-side search filters (library's EC protocol can't pass them)
+    const sf = _searchFilters.get(userId);
+    if (sf) {
+      if (sf.availability) files = files.filter((f) => f.sources >= sf.availability!);
+      if (sf.minSize) files = files.filter((f) => f.sizeFull >= sf.minSize!);
+      if (sf.maxSize) files = files.filter((f) => f.sizeFull <= sf.maxSize!);
+    }
 
     return {
       results: {

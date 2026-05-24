@@ -1672,7 +1672,7 @@ const { apiFetch } = useApi();
 const { t } = useI18n();
 const { addToast } = useToast();
 const { lastStopped, services, loaded } = useServices();
-const { recordDownload } = useDownloadHistory();
+import { recordDownload } from "~/stores/downloadHistory";
 
 const amuleStopped = computed(
   () => loaded.value && services.value !== null && !services.value.amule.running,
