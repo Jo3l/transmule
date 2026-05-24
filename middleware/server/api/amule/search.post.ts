@@ -63,6 +63,9 @@ defineRouteMeta({
   },
 });
 
+/** Per-user search filters for server-side result filtering. */
+export const _searchFilters = new Map<number, { availability?: number; minSize?: number; maxSize?: number }>();
+
 export default defineEventHandler(async (event) => {
   requireUser(event);
 
@@ -92,11 +95,20 @@ export default defineEventHandler(async (event) => {
         const searchType = typeMap[body.type] ?? SearchType.GLOBAL;
 
         const filters: Record<string, any> = {};
-        if (body.avail) filters.minAvailability = Number(body.avail);
+        if (body.avail) filters.availability = Number(body.avail);
         if (body.min_size) filters.minSize = Number(body.min_size);
         if (body.max_size) filters.maxSize = Number(body.max_size);
         if (body.file_type) filters.fileType = body.file_type;
         if (body.extension) filters.extension = body.extension;
+
+        // Store filters for server-side result filtering (library's EC protocol
+        // doesn't support passing filters to aMule correctly)
+        const { userId } = requireUser(event);
+        _searchFilters.set(userId, {
+          availability: filters.availability,
+          minSize: filters.minSize,
+          maxSize: filters.maxSize,
+        });
 
         await client.searchAsync(body.query, searchType, filters);
         return { success: true, action: "search", query: body.query };

@@ -174,8 +174,8 @@
               </div>
             </div>
 
-            <!-- Non-series download(s) in modal — always use torrent-row format -->
-            <div v-if="modal.item.links?.length" class="dt-modal-download">
+            <!-- Non-series download(s) in modal — only for items without episodes -->
+            <div v-if="!modal.item.episodes?.length && modal.item.links?.length" class="dt-modal-download">
               <div
                 v-for="link in modal.item.links"
                 :key="link.hash || link.url"
@@ -223,11 +223,13 @@ import type {
   ProviderFilter,
 } from "~/composables/useProviders";
 
+import { loadDownloadHistory } from "~/stores/downloadHistory";
+
 const route = useRoute();
 const { t } = useI18n();
 const { apiFetch } = useApi();
+const { showToast } = useToast();
 const { loadProviders, fetchList, fetchDetail, fetchCover } = useProviders();
-const { loadDownloadHistory } = useDownloadHistory();
 
 // ── Route params ────────────────────────────────────────────────────
 const providerId = computed(() => String(route.params.provider));

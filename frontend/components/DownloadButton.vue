@@ -1,12 +1,5 @@
 <template>
-  <!-- aMule mode: hide button, show check when downloaded -->
-  <span
-    v-if="service === 'amule' && hideWhenDownloaded && isDownloaded"
-    class="mdi mdi-check has-text-success"
-    :title="t('search.alreadyDownloading')"
-  />
   <SButton
-    v-else
     :size="size"
     :variant="computedVariant"
     :loading="internalLoading"
@@ -15,7 +8,7 @@
     v-bind="$attrs"
     @click.stop="handleClick"
   >
-    <span v-if="isDownloaded" class="mdi mdi-check mr-1" />
+    <span v-if="isDownloadedComputed" class="mdi mdi-check mr-1" />
     <span v-else class="mdi mdi-download mr-1" />
     <template v-if="label">{{ label }}</template>
     <slot v-else />
@@ -25,8 +18,10 @@
 <script setup lang="ts">
 const { t } = useI18n();
 const { apiFetch } = useApi();
-const { isDownloaded: _isDownloaded, isDownloadedByHash, recordDownload } = useDownloadHistory();
 
+import { titles, urls, hashes, loadDownloadHistory, reloadDownloadHistory } from "~/stores/downloadHistory";
+
+// ── Props ────────────────────────────────────────────────────────────
 const props = withDefaults(defineProps<{
   url?: string;
   hash?: string;
@@ -37,10 +32,9 @@ const props = withDefaults(defineProps<{
   label?: string;
   downloaded?: boolean;
   disabled?: boolean;
-  hideWhenDownloaded?: boolean;
 }>(), {
   size: "sm",
-  variant: "success",
+  variant: "primary",
 });
 
 const emit = defineEmits<{
@@ -50,33 +44,53 @@ const emit = defineEmits<{
   "download-error": [error: any];
 }>();
 
+// ── State ────────────────────────────────────────────────────────────
 const internalLoading = ref(false);
 const justDownloaded = ref(false);
 
-const isDownloaded = computed(() => {
-  if (props.downloaded !== undefined) return props.downloaded;
+// Load shared history singleton (first call only, subsequent are no-ops)
+loadDownloadHistory();
+
+// Watch the shared store: when titles/urls/hashes arrive or change, check if this
+// button's title, URL, or hash was already downloaded.
+watch(
+  [titles, urls, hashes],
+  () => {
+    const myTitle = props.title;
+    const myUrl = props.url;
+    const myHash = props.hash;
+    if (myTitle && titles.value.some((t: string) => t.trim() === myTitle.trim())) {
+      justDownloaded.value = true;
+    } else if (myUrl && urls.value.includes(myUrl)) {
+      justDownloaded.value = true;
+    } else if (myHash && hashes.value.includes(myHash.toLowerCase())) {
+      justDownloaded.value = true;
+    }
+  },
+  { immediate: true },
+);
+
+const isDownloadedComputed = computed(() => {
   if (justDownloaded.value) return true;
-  if (props.service === "transmission") {
-    if (props.url && _isDownloaded(props.url)) return true;
-    if (props.hash && isDownloadedByHash(props.hash)) return true;
-  }
+  if (props.downloaded !== undefined) return props.downloaded;
   return false;
 });
 
 const isDisabled = computed(
-  () => props.disabled || internalLoading.value || isDownloaded.value,
+  () => props.disabled || internalLoading.value,
 );
 
 const computedVariant = computed(() => {
-  if (isDownloaded.value) return "warning";
+  if (isDownloadedComputed.value) return "warning";
   return props.variant;
 });
 
 const computedTooltip = computed(() => {
-  if (isDownloaded.value) return t("search.alreadyDownloading");
+  if (isDownloadedComputed.value) return t("search.alreadyDownloading");
   return undefined;
 });
 
+// ── Handle click ─────────────────────────────────────────────────────
 async function handleClick() {
   if (isDisabled.value) return;
 
@@ -91,7 +105,13 @@ async function handleClick() {
         body: { action: "add", filename: props.url },
       });
       if (props.url) {
-        await recordDownload(props.url, props.title || "", "transmission");
+        // Persist to download history server, then reload the shared list
+        apiFetch("/api/download-history", {
+          method: "POST",
+          body: { url: props.url, title: props.title || "", service: "transmission" },
+        })
+          .then(() => reloadDownloadHistory())
+          .catch(() => {});
       }
     } else if (props.service === "amule") {
       if (props.hash) {
@@ -99,6 +119,14 @@ async function handleClick() {
           method: "POST",
           body: { action: "download", hashes: [props.hash] },
         });
+        // Persist to download history, then reload the shared list
+        const historyUrl = props.url || `ed2k:${props.hash}`;
+        apiFetch("/api/download-history", {
+          method: "POST",
+          body: { url: historyUrl, title: props.title || "", service: "amule" },
+        })
+          .then(() => reloadDownloadHistory())
+          .catch(() => {});
       }
     } else if (props.service === "pyload") {
       if (props.url) {

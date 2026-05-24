@@ -78,120 +78,29 @@
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
-        <STable :data="pagedResults" :columns="columns" row-key="id" @sort="onSort">
-          <!-- Name header with filter -->
-          <template #header-name="{ column }">
-            <SearchFilterHeader v-model="nameFilter" :label="column.label" :placeholder="$t('search.filter')" />
-          </template>
-
-          <!-- Cover -->
-          <template #cell-cover="{ row }">
-            <ResultCover
-              v-if="isVideoExt(row.name)"
-              :cover="row.cover"
-              :name="row.name"
-              :size="row.size_fmt"
-              :seeders="row.type === 'torrent' ? row.seedsOrSources : undefined"
-              :leechers="row.type === 'torrent' ? row.leechers : undefined"
-              :category="row.category"
-              :movie-details="row.movieDetails"
-              @load-cover="loadCover(tab.id, row)"
-            />
-            <span v-else class="result-cover-placeholder" :title="row.name">
-              <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
-            </span>
-          </template>
-
-          <!-- Name -->
-          <template #cell-name="{ row }">
-            <SearchResultName :name="row.name" :tags="row.tags" />
-          </template>
-
-          <!-- Seeds / Sources -->
-          <template #cell-seeds="{ row }">
-            <span
-              v-if="row.seedsOrSources != null"
-              :class="row.seedsOrSources > 0 ? 'has-text-success' : 'has-text-grey'"
-              >{{ row.seedsOrSources }}</span
-            >
-          </template>
-
-          <!-- Leechers (torrent only) -->
-          <template #cell-leechers="{ row }">
-            <span
-              v-if="row.type === 'torrent' && row.leechers != null"
-              :class="row.leechers > 0 ? 'has-text-danger' : 'has-text-grey'"
-              >{{ row.leechers }}</span
-            >
-          </template>
-
-          <!-- Source -->
-          <template #header-source="{ column }">
-            <SButton size="mini" @click.stop="toggleSourceFilter($event)">
-              <span class="mdi mdi-filter-variant" />
-            </SButton>
-            <Teleport to="body">
-              <div
-                v-if="showSourceFilter"
-                class="source-filter-dropdown"
-                :style="sourceFilterStyle"
-                @click.stop
-              >
-                <label v-for="src in sortedSources" :key="src" class="source-filter-item">
-                  <SCheckbox
-                    :model-value="activeSourceFilters?.has(src) ?? false"
-                    @update:model-value="toggleSource(src)"
-                  />
-                  <span class="source-filter-label">{{ src }}</span>
-                </label>
-                <div class="source-filter-actions">
-                  <SButton size="sm" @click="selectAllSources">{{ $t("search.selectAll") }}</SButton>
-                  <SButton size="sm" @click="clearAllSources">{{ $t("search.selectNone") }}</SButton>
-                </div>
-              </div>
-            </Teleport>
-          </template>
-          <template #cell-source="{ row }">
-            <STag :variant="row.type === 'amule' ? 'accent' : 'info'" size="sm">
-              <span v-if="row.type === 'amule'" class="mdi mdi-server-network mr-1" />
-              <span v-else class="mdi mdi-magnet mr-1" />
-              {{ row.source }}
-            </STag>
-          </template>
-
-          <!-- Actions -->
-          <template #cell-actions="{ row }">
-            <DownloadButton
-              v-if="row.downloadUrl"
-              service="pyload"
-              :url="row.downloadUrl"
-              :title="row.name"
-            />
-            <DownloadButton
-              v-else-if="row.type === 'torrent'"
-              service="transmission"
-              :url="row.magnet"
-              :hash="row.infoHash"
-              :title="row.name"
-            />
-            <DownloadButton v-else service="amule" :hash="row.hash" hide-when-downloaded />
-          </template>
-
-          <template #empty>
-            <div class="has-text-centered py-5 has-text-grey">
-              <span class="mdi mdi-file-search-outline icon-lg" />
-              <p v-if="tab.status === 'searching'">{{ $t("search.searchingResults") }}</p>
-              <p v-else>{{ $t("search.noResultsFor", { query: tab.query }) }}</p>
-            </div>
-          </template>
-        </STable>
-
-        <SPagination
-          v-if="totalFiltered > PAGE_SIZE"
-          v-model="currentPage"
+        <SearchResultsTable
+          :data="pagedResults"
+          :columns="columns"
           :total="totalFiltered"
+          :page="currentPage"
           :page-size="PAGE_SIZE"
-          class="mt-2"
+          :name-filter="nameFilter"
+          :empty-text="tab.status === 'searching' ? $t('search.searchingResults') : $t('search.noResultsFor', { query: tab.query })"
+          :has-source-filter="true"
+          :show-source-filter="showSourceFilter"
+          :sorted-sources="sortedSources"
+          :active-source-filters="activeSourceFilters"
+          :provider-icon-map="providerIconMap"
+          :provider-label-map="providerLabelMap"
+          :source-variant="sourceVariant"
+          row-key="id"
+          @sort="onSort"
+          @update:page="currentPage = $event"
+          @update:name-filter="nameFilter = $event"
+          @load-cover="loadCover(tab.id, $event)"
+          @toggle-source="toggleSource"
+          @select-all-sources="selectAllSources"
+          @clear-all-sources="clearAllSources"
         />
       </STabPane>
     </STabs>
@@ -205,15 +114,37 @@
 </template>
 
 <script setup lang="ts">
-import { isVideoExt, detectFileIcon } from "../composables/useSearchTabs";
-
 const route = useRoute();
 const { t } = useI18n();
 const { torrentSearchProviders, loadProviders } = useProviders();
 
-const { tabs, activeTabId, createUnifiedTab, closeTab, switchTab } = useSearchTabs();
+const providerLabelMap = computed(() => {
+  const map: Record<string, string> = { amule: "aMule" };
+  for (const p of torrentSearchProviders.value) {
+    map[p.id] = p.name;
+  }
+  return map;
+});
+const providerIconMap = computed(() => {
+  const map: Record<string, string> = { amule: "mdi-server-network" };
+  for (const p of torrentSearchProviders.value) {
+    map[p.id] = p.icon;
+  }
+  return map;
+});
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
+const providerVariantMap = computed(() => {
+  const map: Record<string, string> = { amule: "accent" };
+  torrentSearchProviders.value.forEach((p, i) => {
+    map[p.id] = VARIANT_PALETTE[i % VARIANT_PALETTE.length];
+  });
+  return map;
+});
+function sourceVariant(src: string) {
+  return providerVariantMap.value[src] ?? "default";
+}
 
-// ── Load providers on mount ────────────────────────────────
+const { tabs, activeTabId, createUnifiedTab, closeTab, switchTab } = useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────
 
@@ -225,7 +156,10 @@ const query = ref("");
 const searchSource = ref("all");
 
 const sourceOptions = computed(() => {
-  const opts: { label: string; value: string }[] = [{ label: t("search.allPlugins"), value: "all" }];
+  const opts: { label: string; value: string }[] = [
+    { label: t("search.allPlugins"), value: "all" },
+    { label: t("downloads.sources.amule"), value: "amule" },
+  ];
   for (const p of torrentSearchProviders.value) {
     opts.push({ label: p.name, value: p.id });
   }
@@ -235,7 +169,6 @@ const sourceOptions = computed(() => {
 // ── Source filter (per-search, column filter) ──────────────
 const showSourceFilter = ref(false);
 const activeSourceFilters = ref<Set<string> | null>(null);
-const sourceFilterTriggerEl = ref<HTMLElement | null>(null);
 
 const allSources = computed(() => {
   const s = new Set<string>();
@@ -248,46 +181,11 @@ const allSources = computed(() => {
 
 const sortedSources = computed(() => [...allSources.value].sort());
 
-const sourceFilterStyle = computed(() => {
-  if (!sourceFilterTriggerEl.value) return { top: "0", left: "0", display: "none" };
-  const rect = sourceFilterTriggerEl.value.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const ddWidth = 240; // approximate dropdown width
-  const ddHeight = 300; // approximate max dropdown height
-
-  let top = rect.bottom + 4;
-  let left = rect.left;
-
-  // Ensure dropdown doesn't go off the right edge
-  if (left + ddWidth > vw - 8) {
-    left = vw - ddWidth - 8;
-  }
-  // Ensure dropdown doesn't go off the left edge
-  if (left < 8) left = 8;
-  // If dropdown would go below viewport, open upward
-  if (top + ddHeight > vh - 8 && rect.top > ddHeight) {
-    top = rect.top - ddHeight - 4;
-  }
-  // Ensure top isn't off-screen
-  if (top < 8) top = 8;
-
-  return { top: `${top}px`, left: `${left}px` };
-});
-
-function toggleSourceFilter(e: MouseEvent) {
-  showSourceFilter.value = !showSourceFilter.value;
-  if (showSourceFilter.value) {
-    sourceFilterTriggerEl.value = e.currentTarget as HTMLElement;
-    // Initialize with all sources when first opening
-    if (activeSourceFilters.value === null) {
-      activeSourceFilters.value = new Set(allSources.value);
-    }
-  }
-}
-
 function toggleSource(src: string) {
-  if (activeSourceFilters.value === null) return;
+  if (activeSourceFilters.value === null) {
+    // Initialize with all sources selected when first toggling
+    activeSourceFilters.value = new Set(allSources.value);
+  }
   const s = new Set(activeSourceFilters.value);
   if (s.has(src)) s.delete(src);
   else s.add(src);
@@ -351,7 +249,7 @@ const sortDir = ref<"asc" | "desc">("asc");
 const columns = [
   { key: "cover", label: "", width: 50, align: "center" as const },
   { prop: "name", label: t("search.columns.name"), sortable: true },
-  { prop: "size_fmt", sortProp: "size", label: t("search.columns.size"), width: 70, sortable: true },
+  { prop: "size_fmt", sortProp: "size", label: t("search.columns.size"), width: 85, sortable: true },
   {
     key: "seeds",
     prop: "seedsOrSources",
@@ -368,7 +266,7 @@ const columns = [
     sortable: true,
     align: "right" as const,
   },
-  { key: "source", label: t("search.columns.source"), width: 90, sortable: true, align: "center" as const },
+  { key: "source", label: t("search.columns.source"), width: 110, sortable: true, align: "center" as const },
   { key: "actions", label: "", width: 78, align: "center" as const },
 ];
 
@@ -429,8 +327,6 @@ async function loadCover(tabId: string, row: any) {
   triggerCoverLoad(tabId, itemId, row.name, row.rawTitle);
 }
 
-// ── Download actions handled by DownloadButton ──────────────
-
 // ── Init ────────────────────────────────────────────────────
 
 onMounted(() => {
@@ -466,23 +362,6 @@ onMounted(() => {
 }
 .unified-search-btn {
   flex-shrink: 0;
-}
-:deep(.s-table td:first-child) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-/* Empty state must remain a table cell — flex breaks colspan width */
-:deep(.s-table td.s-table__empty) {
-  display: table-cell;
-  text-align: center;
-}
-/* Hide cover column on mobile */
-@media (max-width: 768px) {
-  :deep(.s-table th:first-child),
-  :deep(.s-table td:first-child) {
-    display: none;
-  }
 }
 
 /* ── Tab custom slot ────────────────────────────────────── */
@@ -571,73 +450,4 @@ onMounted(() => {
   }
 }
 
-/* ── Source filter dropdown ──────────────────────────── */
-.source-filter-trigger {
-  cursor: pointer;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-.source-filter-icon {
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-.source-filter-badge {
-  font-size: 0.6rem;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: var(--s-accent);
-  color: #fff;
-  line-height: 1.4;
-}
-.source-filter-dropdown {
-  position: fixed;
-  z-index: 9999;
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
-  background: var(--s-bg-surface);
-  border: 1px solid var(--s-border);
-  border-radius: var(--s-radius);
-  padding: 0.4rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-.source-filter-item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.4rem;
-  cursor: pointer;
-  border-radius: 3px;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-.source-filter-item:hover {
-  background: var(--s-bg-hover);
-}
-.source-filter-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.source-filter-actions {
-  display: flex;
-  gap: 0.3rem;
-  padding: 0.3rem 0.4rem 0.1rem;
-  border-top: 1px solid var(--s-border);
-  margin-top: 0.3rem;
-}
-
-/* Remove ellipsis from source column — no truncation needed */
-:deep(.s-table td:nth-child(6)) {
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* Force actions column width to match — prevents button overflow */
-:deep(.s-table th:nth-child(7)),
-:deep(.s-table td:nth-child(7)) {
-  max-width: 78px;
-  width: 78px;
-}
 </style>

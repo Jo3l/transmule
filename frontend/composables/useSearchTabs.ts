@@ -91,6 +91,7 @@ export type SearchTab = TorrentTab | AmuleTab | UnifiedTab;
 export interface UnifiedTab extends BaseTab {
   type: "unified";
   service: 'unified';
+  source: string;
   results: UnifiedItem[];
   sourcesCompleted: string[];
   totalResults: number;
@@ -288,6 +289,12 @@ export function useSearchTabs() {
         const seen = new Map(t.results.map((r: any) => [r.hash, r]));
         for (const f of incoming) {
           const enr = enrichWithNameTags(f);
+          // Add fields needed by SearchResultsTable
+          enr.source = "aMule";
+          enr.seedsOrSources = f.sources ?? 0;
+          enr.leechers = Math.max(0, (f.sources ?? 0) - (f.completeSources ?? 0));
+          enr.size_fmt = f.size_fmt ?? "";
+          enr.size = f.sizeFull ?? 0;
           const ex = seen.get(f.hash);
           ex ? Object.assign(ex, enr) : t.results.push(enr);
         }
@@ -317,7 +324,7 @@ export function useSearchTabs() {
 
     const id = genId();
     const tab: UnifiedTab = {
-      type: "unified", id, service: 'unified', searchHash: hash, query,
+      type: "unified", id, service: 'unified', source, searchHash: hash, query,
       status: "searching",
       results: [],
       sourcesCompleted: [],
@@ -331,14 +338,15 @@ export function useSearchTabs() {
   }
 
   function startUnifiedStream(tab: UnifiedTab, source = "all") {
-    // 1. Torrent SSE
-    const controller = new AbortController();
-    _unifiedAbort.set(tab.id, controller);
-    const params = new URLSearchParams({ q: tab.query, source, limit: "100" });
-    const base = config.public?.apiBase ?? "";
-    fetch(`${base}/api/torrent-search/stream?${params}`, {
-      credentials: "include", signal: controller.signal,
-    })
+    // 1. Torrent SSE (skip when searching only aMule)
+    if (source !== "amule") {
+      const controller = new AbortController();
+      _unifiedAbort.set(tab.id, controller);
+      const params = new URLSearchParams({ q: tab.query, source, limit: "100" });
+      const base = config.public?.apiBase ?? "";
+      fetch(`${base}/api/torrent-search/stream?${params}`, {
+        credentials: "include", signal: controller.signal,
+      })
       .then(async (res) => {
         if (!res.body) { maybeCompleteUnified(tab.id); return; }
         const reader = res.body.getReader();
@@ -371,9 +379,10 @@ export function useSearchTabs() {
       })
       .catch(() => { /* aborted or error */ })
       .finally(() => { _unifiedAbort.delete(tab.id); maybeCompleteUnified(tab.id); });
+    }
 
-    // 2. aMule search + polling (only when searching all sources)
-    if (source === "all") {
+    // 2. aMule search + polling (when searching all or amule-only)
+    if (source === "all" || source === "amule") {
       apiFetch("/api/amule/search", {
         method: "POST", body: { action: "search", query: tab.query, type: "Global" },
       }).then(() => {
@@ -410,6 +419,7 @@ export function useSearchTabs() {
             size: f.sizeFull ?? 0,
             size_fmt: f.size_fmt ?? fmtBytes(f.sizeFull),
             seedsOrSources: f.sources ?? 0,
+            leechers: Math.max(0, (f.sources ?? 0) - (f.completeSources ?? 0)),
             source: "aMule",
             hash: f.hash,
           });

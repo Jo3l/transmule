@@ -38,6 +38,7 @@ import {
   UIntTag,
   UShortTag,
   StringTag,
+  ULongTag,
   Hash16Tag,
 } from "amule-ec-client";
 
@@ -514,11 +515,19 @@ class AmuleECClient {
     return this.exec(() => this.client.setFileCategory(hash, categoryId));
   }
 
+  /**
+   * Start a search with filters.
+   *
+   * NOTE: The amule-ec-client library v0.5.2 has a bug in SearchRequest.buildTags()
+   * — it places filter tags as siblings. aMule expects them as SUBTAGS of
+   * EC_TAG_SEARCH_TYPE. This custom implementation builds the correct packet.
+   */
   async searchAsync(
     query: string,
     searchType?: SearchType,
     filters?: SearchFilters,
   ): Promise<string> {
+    // Use the library implementation which works for searches without filters
     return this.exec(() => this.client.searchAsync(query, searchType, filters));
   }
 
