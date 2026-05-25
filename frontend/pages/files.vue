@@ -155,7 +155,13 @@
               @click.stop="onMobileCardTap(item)"
             >
               <div class="fm-mc-header">
-                <span class="mdi fm-icon" :class="fileIcon(item)" />
+                <img
+                  v-if="isAudioFile(item)"
+                  :src="winampIcon"
+                  class="fm-icon fm-icon-winamp"
+                  alt=""
+                />
+                <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
                 <span class="fm-mc-name">
                   <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
                   {{ item.name }}
@@ -437,6 +443,7 @@
                 }"
                 class="fm-row"
                 @click.stop="onRowClick($event, item)"
+                @dblclick.stop="onRowDblClick($event, item)"
                 @contextmenu.prevent="onRowContextMenu($event, item)"
                 @dragstart="onRowDragStart($event, item)"
                 @dragover.prevent="item.type === 'directory' && onRowDragOver($event, item)"
@@ -445,7 +452,13 @@
               >
                 <td>
                   <span class="fm-name-cell">
-                    <span class="mdi fm-icon" :class="fileIcon(item)" />
+                    <img
+                      v-if="isAudioFile(item)"
+                      :src="winampIcon"
+                      class="fm-icon fm-icon-winamp"
+                      alt=""
+                    />
+                    <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
                     <template v-if="item.relpath">
                       <a class="fm-relpath" @click.prevent="navigate(item.relpath)">{{ item.relpath }}/</a>
                     </template>
@@ -1202,6 +1215,8 @@
 </template>
 
 <script setup lang="ts">
+import winampIcon from "~/assets/icons/Winamp-logo.svg";
+
 interface FileItem {
   name: string;
   type: "file" | "directory";
@@ -1777,7 +1792,7 @@ function hideTreeCtxMenu() {
 }
 
 // ── Webamp ────────────────────────────────────────────────────────────────
-const { webampTrack, isMp3Name, openTrack, openTracks } = useWebamp();
+const { webampTrack, isMp3Name, openTrack, openTracks, setPendingDragTracks } = useWebamp();
 
 /** MP3 files among the current selection. */
 const selectedMp3s = computed(() =>
@@ -1786,6 +1801,12 @@ const selectedMp3s = computed(() =>
 
 function isMp3(item: FileItem | null): boolean {
   return item?.type === "file" && isMp3Name(item.name);
+}
+
+function isWebampAudio(item: FileItem | null): boolean {
+  if (!item || item.type !== "file") return false;
+  const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
+  return WINAMP_EXTS.has(ext);
 }
 
 function openInWebamp(item: FileItem) {
@@ -1926,6 +1947,10 @@ function handleFolderClick(e: MouseEvent, item: FileItem) {
   }
 }
 
+function onRowDblClick(_e: MouseEvent, item: FileItem) {
+  if (isWebampAudio(item)) openInWebamp(item);
+}
+
 // ── Download URL (token in query param — browser anchor can't set headers) ──
 function downloadUrl(filename: string): string {
   const base = (config.public.apiBase as string) || "";
@@ -1978,8 +2003,28 @@ function onRowDragStart(e: DragEvent, item: FileItem) {
   const paths = selectedItems.has(item.name)
     ? Array.from(selectedItems).map(childPath)
     : [childPath(item.name)];
-  e.dataTransfer!.effectAllowed = "copyMove";
+  e.dataTransfer!.effectAllowed = "all";
   e.dataTransfer!.setData("application/x-fm-paths", JSON.stringify(paths));
+
+  // Support dragging audio files to Webamp
+  const audioExts = [".mp3", ".wav", ".flac", ".ogg", ".m4a", ".opus"];
+  const ext = "." + item.name.split(".").pop()?.toLowerCase();
+  if (audioExts.includes(ext)) {
+    const tracks = selectedItems.has(item.name)
+      ? Array.from(selectedItems)
+          .filter((n) => {
+            const e = "." + n.split(".").pop()?.toLowerCase();
+            return audioExts.includes(e);
+          })
+          .map((n) => ({ url: downloadUrl(n), name: n }))
+      : [{ url: downloadUrl(item.name), name: item.name }];
+    setPendingDragTracks(
+      tracks.map((t) => ({
+        url: t.url,
+        metaData: { artist: "", title: t.name },
+      })),
+    );
+  }
 }
 
 function onRowDragOver(e: DragEvent, item: FileItem) {
@@ -2326,6 +2371,14 @@ async function doDelete() {
 }
 
 // ── Icon mapping ───────────────────────────────────────────────────────────
+const WINAMP_EXTS = new Set(["mp3", "wav", "flac", "ogg", "m4a", "opus", "aac", "wma"]);
+
+function isAudioFile(item: FileItem): boolean {
+  if (item.type !== "file") return false;
+  const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
+  return WINAMP_EXTS.has(ext);
+}
+
 function fileIcon(item: FileItem): string {
   if (item.isRemoteMount) return "mdi-folder-network fm-icon-dir";
   if (item.type === "directory") return "mdi-folder fm-icon-dir";
@@ -2708,6 +2761,12 @@ watch(
 }
 .fm-icon-audio {
   color: #9b59b6;
+}
+
+.fm-icon-winamp {
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
 }
 .fm-icon-image {
   color: #3498db;
