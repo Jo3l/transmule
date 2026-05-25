@@ -83,7 +83,6 @@
             :key="item.id"
             :item="item"
             :cover-src="getCover(item)"
-            :cover-loading="coverLoading.has(item.id)"
             @open="openModal"
           />
         </div>
@@ -165,7 +164,6 @@ interface ArchiveTab {
   error?: string;
 }
 
-const route = useRoute();
 const { t } = useI18n();
 const { apiFetch } = useApi();
 const { loadProviders, fetchDetail } = useProviders();
@@ -202,11 +200,9 @@ const tabPanes = computed(() =>
   archiveTabs.value.map((t) => ({ name: t.id, label: t.query })),
 );
 
-// ── Detail / cover loading state ─────────────────────────
+// ── Detail loading state ────────────────────────────────
 
 const detailLoading = ref(new Set<string>());
-const coverLoading = ref(new Set<string>());
-const coverCache = ref<Record<string, string | null>>({});
 
 // ── Modal ────────────────────────────────────────────────
 
@@ -218,8 +214,7 @@ const modal = ref<ModalState | null>(null);
 // ── Helpers ──────────────────────────────────────────────
 
 function getCover(item: any): string | null {
-  if (item.cover) return item.cover;
-  return coverCache.value[item.id] ?? null;
+  return item.cover ?? null;
 }
 
 function formatDate(raw: string): string {
@@ -258,6 +253,9 @@ function createTab(searchQuery: string, filters: Record<string, string>) {
 
 function closeTab(id: string) {
   archiveTabs.value = archiveTabs.value.filter((t) => t.id !== id);
+  // Clean up page cache to avoid memory leak
+  const { [id]: _, ...rest } = pageCaches.value;
+  pageCaches.value = rest;
   if (activeTabId.value === id) {
     activeTabId.value = archiveTabs.value.length > 0
       ? archiveTabs.value[archiveTabs.value.length - 1].id
@@ -466,10 +464,6 @@ onMounted(async () => {
     }
   }
 
-  const qParam = route.query.q;
-  if (qParam && typeof qParam === "string" && qParam.trim()) {
-    createTab(qParam.trim(), { ...filterValues });
-  }
 });
 </script>
 

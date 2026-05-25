@@ -23,19 +23,19 @@
               />
             </SFormItem>
             <SFormItem :label="$t('search.minSources')" class="search-form__sources">
-              <SInput v-model="avail" type="number" placeholder="0" />
+              <SInputNumber v-model="avail" :min="0" />
             </SFormItem>
           </div>
           <div class="search-form__row search-form__row--size">
             <SFormItem :label="$t('search.minSize')" class="search-form__size">
               <div class="flex-row gap-sm">
-                <SInput v-model="minSize" type="number" placeholder="0" />
+                <SInputNumber v-model="minSize" :min="0" />
                 <SSelect v-model="minSizeUnit" :options="sizeUnits" />
               </div>
             </SFormItem>
             <SFormItem :label="$t('search.maxSize')" class="search-form__size">
               <div class="flex-row gap-sm">
-                <SInput v-model="maxSize" type="number" placeholder="0" />
+                <SInputNumber v-model="maxSize" :min="0" />
                 <SSelect v-model="maxSizeUnit" :options="sizeUnits" />
               </div>
             </SFormItem>
@@ -177,10 +177,10 @@ const columns = computed(() => [
 
 const query = ref("");
 const searchType = ref("Global");
-const avail = ref("");
-const minSize = ref("");
+const avail = ref(0);
+const minSize = ref(0);
 const minSizeUnit = ref("1048576");
-const maxSize = ref("");
+const maxSize = ref(0);
 const maxSizeUnit = ref("1048576");
 const nameFilter = ref("");
 
@@ -231,10 +231,10 @@ function onSearch() {
   createAmuleTab({
     query: query.value.trim(),
     searchType: searchType.value,
-    avail: avail.value,
-    minSize: minSize.value,
+    avail: String(avail.value),
+    minSize: String(minSize.value),
     minSizeUnit: minSizeUnit.value,
-    maxSize: maxSize.value,
+    maxSize: String(maxSize.value),
     maxSizeUnit: maxSizeUnit.value,
   });
 }
@@ -278,29 +278,27 @@ onMounted(() => {
 .search-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
 }
 .search-form__row {
   display: flex;
-  flex-wrap: wrap;
   gap: 0.75rem;
   align-items: flex-end;
+  @media (max-width: 480px) {
+    flex-wrap: wrap;
+  }
 }
 .search-form__query {
-  flex: 2 1 200px;
+  width: 100%;
   min-width: 0;
 }
 .search-form__type {
-  flex: 1 1 120px;
-  min-width: 100px;
+  min-width: 200px;
 }
 .search-form__sources {
-  flex: 1 1 100px;
-  min-width: 80px;
+  width: 200px;
 }
 .search-form__size {
-  flex: 1 1 180px;
-  min-width: 150px;
+  min-width: 200px;
 }
 
 @media (max-width: 480px) {
