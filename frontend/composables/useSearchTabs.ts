@@ -515,7 +515,7 @@ export function useSearchTabs() {
           id: itemId,
           type: "torrent" as const,
           name: item.title || "Unknown",
-          size: 0,
+          size: parseSizeToBytes(item.size),
           size_fmt: item.size || "",
           seedsOrSources: 0,
           leechers: 0,
@@ -603,6 +603,22 @@ function fmtBytes(bytes: number | null): string {
   const units = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
   return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/** Parse a human-readable size string (e.g. "1.5 GB", "800 MB") back to bytes. */
+function parseSizeToBytes(s: string | null | undefined): number {
+  if (!s) return 0;
+  const m = String(s).trim().match(/^([\d.,]+)\s*(B|KB|KiB|MB|MiB|GB|GiB|TB|TiB)$/i);
+  if (!m) return 0;
+  const n = parseFloat(m[1].replace(",", ""));
+  const units: Record<string, number> = {
+    b: 1,
+    kb: 1e3, kib: 1024,
+    mb: 1e6, mib: 1048576,
+    gb: 1e9, gib: 1073741824,
+    tb: 1e12, tib: 1099511627776,
+  };
+  return Math.round(n * (units[m[2].toLowerCase()] || 1));
 }
 
 // ── Lazy cover loader ──────────────────────────────────────────────────────
