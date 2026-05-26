@@ -82,6 +82,25 @@
 | **Statistics** | Live aMule stats tree + Transmission session statistics |
 | **API documentation** | Interactive Swagger docs at [`/_scalar`](http://localhost:3001/_scalar) |
 
+### 🎵 Webamp — Winamp in the Browser
+| Feature | Description |
+|---------|-------------|
+| **Built-in player** | Embedded [Webamp](https://webamp.org) (Winamp v2 reimplementation) with Milkdrop visualizations via Butterchurn |
+| **Audio playback** | Click any audio file in the file manager to play it, or drag & drop files onto the player |
+| **Custom skins** | Install `.wsz` skins from [Winamp Skin Museum](https://skins.webamp.org) or any direct URL — supports live skin switching via `setSkinFromUrl()` |
+| **Default / custom** | Switch between the built-in Base 2.4 skin or any installed custom skin; uses internal Redux action `LOAD_DEFAULT_SKIN` to reset |
+| **Window layout** | Toggle Equalizer, Playlist, and Milkdrop windows independently. Double-size mode supported |
+| **Persistence** | All preferences (skin, window state, size) are persisted to `localStorage` across sessions |
+
+### 📚 Comic Reader
+| Feature | Description |
+|---------|-------------|
+| **Supported formats** | CBZ, CBR, and PDF — extracted client-side via JSZip, libunrar, and pdf.js |
+| **File manager integration** | Double-click any comic file in the file manager to open the reader |
+| **View modes** | Single page, double page; swipe navigation (horizontal = page, vertical = toggle header) |
+| **State persistence** | Reading position is saved in the URL hash (`#comic={path}|{page}`) via `history.replaceState()`, surviving page refreshes |
+| **Header overlay** | Collapsible header with page counter, zoom controls, and page navigation dropdown |
+
 <br>
 
 ## 🚀 Quick Start

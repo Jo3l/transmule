@@ -20,7 +20,10 @@ let _instance: {
   play: () => void;
   setCurrentTrack: (index: number) => void;
   getPlaylistTracks: () => any[];
+  setSkinFromUrl: (url: string) => void;
+  skinIsLoaded: () => Promise<void>;
   dispose: () => void;
+  store: { dispatch: (action: any) => void };
 } | null = null;
 
 // Tracks queued while Webamp is still mounting (openTracks called before ready)
@@ -60,7 +63,146 @@ function consumePendingDragTracks(): Track[] | null {
 
 export { consumePendingDragTracks, isDraggingFile };
 
+/**
+ * Build an absolute URL for a skin by name.
+ */
+function skinUrl(name: string): string {
+  return `${window.location.origin}/api/webamp/skins/${encodeURIComponent(name)}`;
+}
+
+/**
+ * Change the active skin on a running Webamp instance using the official API.
+ * Calls setSkinFromUrl() and awaits skinIsLoaded() for confirmation.
+ */
+export async function changeWebampSkin(name: string) {
+  localStorage.setItem("webampSkin", name);
+  if (!_instance) {
+    console.log("[webamp] changeWebampSkin: no running instance, skin saved for next open:", name);
+    return;
+  }
+  const url = skinUrl(name);
+  console.log("[webamp] changeWebampSkin: applying skin", name, "from", url);
+  _instance.setSkinFromUrl(url);
+  try {
+    await _instance.skinIsLoaded();
+    console.log("[webamp] skin loaded successfully:", name);
+  } catch (e) {
+    console.warn("[webamp] skinIsLoaded error:", e);
+  }
+}
+
+/**
+ * Reset to the built-in default skin.
+ * Dispatches Webamp's internal LOAD_DEFAULT_SKIN action to reset to Base 2.4.
+ */
+export function resetToDefaultSkin() {
+  localStorage.removeItem("webampSkin");
+  if (!_instance) {
+    console.log("[webamp] resetToDefaultSkin: no running instance");
+    return;
+  }
+  console.log("[webamp] resetToDefaultSkin: dispatching LOAD_DEFAULT_SKIN");
+  _instance.store.dispatch({ type: "LOAD_DEFAULT_SKIN" });
+}
+
+/**
+ * Apply all Webamp window/size preferences from localStorage to a running instance.
+ * Uses Webamp's internal Redux store to set equalizer, playlist, milkdrop, and 2x.
+ */
+export function applyWebampSettings() {
+  if (!_instance) return;
+  const store = _instance.store;
+  const state = store.getState();
+
+  const showEq = localStorage.getItem("webampShowEq") !== "false";
+  const showPlaylist = localStorage.getItem("webampShowPlaylist") !== "false";
+  const showMilkdrop = localStorage.getItem("webampShowMilkdrop") === "true";
+  const doubleSize = localStorage.getItem("webampDoubleSize") === "true";
+
+  console.log("[webamp] applyWebampSettings:", { showEq, showPlaylist, showMilkdrop, doubleSize });
+
+  // Equalizer on/off
+  store.dispatch({ type: showEq ? "SET_EQ_ON" : "SET_EQ_OFF" });
+
+  // Toggle equalizer window visibility if needed
+  const eqOpen = state.windows?.genWindows?.["equalizer"]?.open;
+  if (eqOpen !== showEq) {
+    store.dispatch({ type: "TOGGLE_WINDOW", windowId: "equalizer" });
+  }
+
+  // Toggle playlist window visibility if needed
+  const plOpen = state.windows?.genWindows?.["playlist"]?.open;
+  if (plOpen !== showPlaylist) {
+    store.dispatch({ type: "TOGGLE_WINDOW", windowId: "playlist" });
+  }
+
+  // Milkdrop on/off
+  const mdEnabled = !!(state.windows as any)?.milkdropEnabled;
+  if (mdEnabled !== showMilkdrop) {
+    store.dispatch({ type: "ENABLE_MILKDROP", open: showMilkdrop });
+  }
+
+  // Double size mode (toggle-based — read the `size` of the main window to infer)
+  // The main window at 1x is 275x116; at 2x it's reported differently in state.
+  // We just toggle if the current state doesn't match.
+  // Infer from the main window's `size` array (first element > 275 means 2x)
+  const mainSize = state.windows?.genWindows?.["main"]?.size;
+  const isDouble = Array.isArray(mainSize) && mainSize[0] > 300;
+  if (isDouble !== doubleSize) {
+    store.dispatch({ type: "TOGGLE_DOUBLESIZE_MODE" });
+  }
+}
+
 export function useWebamp() {
+  /** Change skin on a running Webamp instance */
+  async function changeWebampSkin(name: string) {
+    localStorage.setItem("webampSkin", name);
+    if (!_instance) return;
+    const url = skinUrl(name);
+    console.log("[webamp] useWebamp.changeWebampSkin:", name, url);
+    _instance.setSkinFromUrl(url);
+    try {
+      await _instance.skinIsLoaded();
+      console.log("[webamp] skin loaded successfully:", name);
+    } catch (e) {
+      console.warn("[webamp] skinIsLoaded error:", e);
+    }
+  }
+
+  /** Reset to built-in default skin (Base 2.4). Uses internal Redux action. */
+  function resetToDefaultSkin() {
+    localStorage.removeItem("webampSkin");
+    if (!_instance) return;
+    _instance.store.dispatch({ type: "LOAD_DEFAULT_SKIN" });
+  }
+
+  /** Apply all window/size preferences from localStorage to the running instance. */
+  function applyWebampSettings() {
+    if (!_instance) return;
+    const store = _instance.store;
+    const state = store.getState();
+
+    const showEq = localStorage.getItem("webampShowEq") !== "false";
+    const showPlaylist = localStorage.getItem("webampShowPlaylist") !== "false";
+    const showMilkdrop = localStorage.getItem("webampShowMilkdrop") === "true";
+    const doubleSize = localStorage.getItem("webampDoubleSize") === "true";
+
+    store.dispatch({ type: showEq ? "SET_EQ_ON" : "SET_EQ_OFF" });
+
+    const eqOpen = state.windows?.genWindows?.["equalizer"]?.open;
+    if (eqOpen !== showEq) store.dispatch({ type: "TOGGLE_WINDOW", windowId: "equalizer" });
+
+    const plOpen = state.windows?.genWindows?.["playlist"]?.open;
+    if (plOpen !== showPlaylist) store.dispatch({ type: "TOGGLE_WINDOW", windowId: "playlist" });
+
+    const mdEnabled = !!(state.windows as any)?.milkdropEnabled;
+    if (mdEnabled !== showMilkdrop) store.dispatch({ type: "ENABLE_MILKDROP", open: showMilkdrop });
+
+    const mainSize = state.windows?.genWindows?.["main"]?.size;
+    const isDouble = Array.isArray(mainSize) && mainSize[0] > 300;
+    if (isDouble !== doubleSize) store.dispatch({ type: "TOGGLE_DOUBLESIZE_MODE" });
+  }
+
   /** Called by Webamp.vue once the instance is fully ready. */
   function registerInstance(inst: typeof _instance) {
     _instance = inst;
@@ -136,5 +278,8 @@ export function useWebamp() {
     registerInstance,
     unregisterInstance,
     setPendingDragTracks,
+    changeWebampSkin,
+    resetToDefaultSkin,
+    applyWebampSettings,
   };
 }

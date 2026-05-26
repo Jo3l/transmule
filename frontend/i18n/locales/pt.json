@@ -629,7 +629,24 @@
     "pluginDocTitle": "Como criar um plugin",
     "pluginDocIntro": "Crie um arquivo .js que exporte um objeto MediaProvider como padrão. Faça upload aqui e ele estará disponível após recarregar a página.",
     "pluginDocNote": "O formato ESM (export default) é recomendado. O campo icon aceita qualquer classe MDI (ex.: mdi-magnify).",
-    "pluginDocReadMore": "Referência completa da API de plugins (PROVIDER_PLUGIN.md)"
+    "pluginDocReadMore": "Referência completa da API de plugins (PROVIDER_PLUGIN.md)",
+      "webampDefaultSkin": "Default (Base 2.4)",
+      "webampBuiltin": "Built-in",
+      "webampInstall": "Install",
+      "webampDelete": "Delete",
+      "webampActive": "Active",
+      "webampUse": "Use",
+      "webampNoSkins": "No skins installed yet.",
+      "webampInstallPlaceholder": "https://example.com/skin.wsz",
+      "webampEqualizer": "Equalizer",
+      "webampPlaylist": "Playlist",
+      "webampMilkdrop": "Milkdrop",
+      "webampDoubleSize": "Double Size",
+      "webampDefaultWindows": "Default windows",
+      "webampSkinsGuideBefore": "Browse skins at",
+      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+      "webamp": "Webamp"
+  
   },
   "themes": {
     "tron": {
@@ -1081,6 +1098,7 @@
     "viewImage": "Ver imagem",
     "playVideo": "Reproduzir vídeo",
     "playInWebamp": "Reproduzir no Webamp",
+    "readComic": "Ler comic",
     "playAllWithWebamp": "Reproduzir {count} MP3 com Webamp",
     "move": "Mover",
     "copy": "Copiar",

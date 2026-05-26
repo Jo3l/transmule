@@ -788,6 +788,24 @@
       "portOpen": "¡El puerto está abierto!",
       "portClosed": "El puerto está cerrado / inaccesible"
     },
+    "webamp": {
+      "webampDefaultSkin": "Default (Base 2.4)",
+      "webampBuiltin": "Built-in",
+      "webampInstall": "Instalar",
+      "webampDelete": "Eliminar",
+      "webampActive": "Activo",
+      "webampUse": "Usar",
+      "webampNoSkins": "No hay skins instaladas aún.",
+      "webampInstallPlaceholder": "https://ejemplo.com/skin.wsz",
+      "webampEqualizer": "Ecualizador",
+      "webampPlaylist": "Lista de reproducción",
+      "webampMilkdrop": "Milkdrop",
+      "webampDoubleSize": "Tamaño doble",
+      "webampDefaultWindows": "Ventanas predeterminadas",
+      "webampSkinsGuideBefore": "Explora skins en",
+      "webampSkinsGuideAfter": "Busca una skin que te guste, copia la url y pégala a continuación para instalar.",
+      "webamp": "Webamp"
+    },
     "stats": {
       "title": "Estadísticas de Transmission",
       "sessionInfo": "Info de sesión",
@@ -1081,6 +1099,7 @@
     "viewImage": "Ver imagen",
     "playVideo": "Reproducir vídeo",
     "playInWebamp": "Reproducir en Webamp",
+    "readComic": "Leer cómic",
     "playAllWithWebamp": "Reproducir {count} MP3 con Webamp",
     "move": "Mover",
     "copy": "Copiar",
