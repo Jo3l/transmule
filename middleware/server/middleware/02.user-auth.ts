@@ -20,6 +20,9 @@ export default defineEventHandler((event) => {
   ];
   if (publicRoutes.some((r) => path === r)) return;
 
+  // Allow public access to skin files (Webamp loads them internally without auth)
+  if (path.startsWith("/api/webamp/skins/") && ["GET", "HEAD"].includes(getMethod(event) || "")) return;
+
   // Allow ?token= query parameter for file download endpoint
   // (browser anchor tags can't set Authorization headers)
   if (path === "/api/files/download") {

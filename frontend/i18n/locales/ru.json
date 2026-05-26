@@ -629,7 +629,24 @@
     "pluginDocTitle": "Как создать плагин",
     "pluginDocIntro": "Создайте .js-файл, который экспортирует объект MediaProvider по умолчанию. Загрузите его сюда, и он станет доступен после перезагрузки страницы.",
     "pluginDocNote": "Рекомендуется формат ESM (export default). Поле icon принимает любой класс MDI (например, mdi-magnify).",
-    "pluginDocReadMore": "Полная документация по API плагинов (PROVIDER_PLUGIN.md)"
+    "pluginDocReadMore": "Полная документация по API плагинов (PROVIDER_PLUGIN.md)",
+      "webampDefaultSkin": "Default (Base 2.4)",
+      "webampBuiltin": "Built-in",
+      "webampInstall": "Install",
+      "webampDelete": "Delete",
+      "webampActive": "Active",
+      "webampUse": "Use",
+      "webampNoSkins": "No skins installed yet.",
+      "webampInstallPlaceholder": "https://example.com/skin.wsz",
+      "webampEqualizer": "Equalizer",
+      "webampPlaylist": "Playlist",
+      "webampMilkdrop": "Milkdrop",
+      "webampDoubleSize": "Double Size",
+      "webampDefaultWindows": "Default windows",
+      "webampSkinsGuideBefore": "Browse skins at",
+      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+      "webamp": "Webamp"
+  
   },
   "themes": {
     "tron": {
@@ -1081,6 +1098,7 @@
     "viewImage": "Просмотреть изображение",
     "playVideo": "Воспроизвести видео",
     "playInWebamp": "Воспроизвести в Webamp",
+    "readComic": "Читать комикс",
     "playAllWithWebamp": "Воспроизвести {count} MP3 в Webamp",
     "move": "Переместить",
     "copy": "Копировать",

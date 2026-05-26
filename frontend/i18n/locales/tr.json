@@ -629,7 +629,24 @@
     "pluginDocTitle": "Eklenti nasıl oluşturulur",
     "pluginDocIntro": "Bir MediaProvider nesnesini dışa aktaran bir .js dosyası oluşturun. Buraya yükleyin, sayfa yenilendikten sonra kullanılabilir olacaktır.",
     "pluginDocNote": "ESM biçimi (export default) önerilir. Simge alanı herhangi bir MDI sınıfını kabul eder (ör. mdi-magnify).",
-    "pluginDocReadMore": "Tam eklenti API referansı (PROVIDER_PLUGIN.md)"
+    "pluginDocReadMore": "Tam eklenti API referansı (PROVIDER_PLUGIN.md)",
+      "webampDefaultSkin": "Default (Base 2.4)",
+      "webampBuiltin": "Built-in",
+      "webampInstall": "Install",
+      "webampDelete": "Delete",
+      "webampActive": "Active",
+      "webampUse": "Use",
+      "webampNoSkins": "No skins installed yet.",
+      "webampInstallPlaceholder": "https://example.com/skin.wsz",
+      "webampEqualizer": "Equalizer",
+      "webampPlaylist": "Playlist",
+      "webampMilkdrop": "Milkdrop",
+      "webampDoubleSize": "Double Size",
+      "webampDefaultWindows": "Default windows",
+      "webampSkinsGuideBefore": "Browse skins at",
+      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+      "webamp": "Webamp"
+  
   },
   "themes": {
     "tron": {
@@ -1081,6 +1098,7 @@
     "viewImage": "Görseli görüntüle",
     "playVideo": "Video oynat",
     "playInWebamp": "Webamp'te Oynat",
+    "readComic": "Çizgi roman oku",
     "playAllWithWebamp": "{count} MP3'ü Webamp ile Oynat",
     "move": "Taşı",
     "copy": "Kopyala",

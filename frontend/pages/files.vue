@@ -161,6 +161,12 @@
                   class="fm-icon fm-icon-winamp"
                   alt=""
                 />
+                <img
+                  v-else-if="isComicFile(item)"
+                  :src="boltIcon"
+                  class="fm-icon fm-icon-comic"
+                  alt=""
+                />
                 <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
                 <span class="fm-mc-name">
                   <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
@@ -458,6 +464,12 @@
                       class="fm-icon fm-icon-winamp"
                       alt=""
                     />
+                    <img
+                      v-else-if="isComicFile(item)"
+                      :src="boltIcon"
+                      class="fm-icon fm-icon-comic"
+                      alt=""
+                    />
                     <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
                     <template v-if="item.relpath">
                       <a class="fm-relpath" @click.prevent="navigate(item.relpath)">{{ item.relpath }}/</a>
@@ -705,6 +717,18 @@
         "
       >
         <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
+      </button>
+
+      <!-- Read comic (CBR/CBZ/PDF) -->
+      <button
+        v-if="!ctxIsMulti && isComicFile(ctxMenu.item)"
+        class="fm-ctx-item fm-ctx-item--accent"
+        @click="
+          openComic(ctxMenu.item!);
+          hideCtxMenu();
+        "
+      >
+        <span class="mdi mdi-book-open-variant mr-2" />{{ $t("fileManager.readComic") }}
       </button>
 
       <!-- Play in Webamp (mp3 only) -->
@@ -1212,10 +1236,21 @@
       </div>
     </template>
   </SDialog>
+
+  <ComicReader
+    :visible="!!comicFilePath"
+    :file-path="comicFilePath"
+    :file-name="comicFileName"
+    :initial-page="comicInitialPage || undefined"
+    @close="onComicClose"
+    @page-change="onComicPageChange"
+  />
 </template>
 
 <script setup lang="ts">
 import winampIcon from "~/assets/icons/Winamp-logo.svg";
+import boltIcon from "~/assets/icons/bolt.svg";
+import ComicReader from "~/components/ComicReader.vue";
 
 interface FileItem {
   name: string;
@@ -1766,6 +1801,7 @@ onMounted(() => window.addEventListener("keydown", onPreviewKeydown));
 onMounted(() => {
   void loadArchiveCapabilities();
   void loadRemoteMounts();
+  restoreComicFromHash();
 });
 onBeforeUnmount(() => window.removeEventListener("keydown", onPreviewKeydown));
 
@@ -1793,6 +1829,63 @@ function hideTreeCtxMenu() {
 
 // ── Webamp ────────────────────────────────────────────────────────────────
 const { webampTrack, isMp3Name, openTrack, openTracks, setPendingDragTracks } = useWebamp();
+
+/** Comic file extensions */
+const COMIC_EXTS = new Set(["cbr", "cbz", "pdf"]);
+
+/** Currently open comic path/name for ComicReader component */
+const comicFilePath = ref("");
+const comicFileName = ref("");
+const comicInitialPage = ref(0);
+
+function isComicFile(item: FileItem | null): boolean {
+  if (!item || item.type !== "file" || item.isRemoteMount) return false;
+  const ext = item.name.split(".").pop()?.toLowerCase() ?? "";
+  return COMIC_EXTS.has(ext);
+}
+
+function openComic(item: FileItem) {
+  comicFilePath.value = downloadUrl(item.name);
+  comicFileName.value = item.name;
+  comicInitialPage.value = 0;
+  // Persist to URL hash for refresh recovery
+  const relPath = currentPath.value ? `${currentPath.value}/${item.name}` : item.name;
+  history.replaceState(null, '', `#comic=${encodeURIComponent(relPath)}|1`);
+}
+
+function onComicClose() {
+  comicFilePath.value = "";
+  comicFileName.value = "";
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+
+function onComicPageChange(page: number) {
+  // Update page number in hash, keeping the path intact
+  const hash = window.location.hash;
+  if (hash.startsWith("#comic=")) {
+    const parts = hash.slice(7).split("|");
+    if (parts.length >= 2) {
+      // parts[0] is already URL-encoded — reuse as-is to avoid double encoding
+      history.replaceState(null, '', `#comic=${parts[0]}|${page}`);
+    }
+  }
+}
+
+/** Parse comic hash on mount and restore reader state. */
+function restoreComicFromHash() {
+  const hash = window.location.hash;
+  if (!hash.startsWith("#comic=")) return;
+  const parts = hash.slice(7).split("|");
+  if (parts.length < 2) return;
+  const relPath = decodeURIComponent(parts[0]);
+  const page = parseInt(parts[1], 10);
+  if (!relPath || isNaN(page)) return;
+  // Reconstruct download URL from the stored path
+  const base = (config.public.apiBase as string) || "";
+  comicFilePath.value = `${base}/api/files/download?path=${encodeURIComponent(relPath)}&token=${encodeURIComponent(auth.token.value || "")}`;
+  comicFileName.value = relPath.split("/").pop() || relPath;
+  comicInitialPage.value = page;
+}
 
 /** MP3 files among the current selection. */
 const selectedMp3s = computed(() =>
@@ -1948,7 +2041,27 @@ function handleFolderClick(e: MouseEvent, item: FileItem) {
 }
 
 function onRowDblClick(_e: MouseEvent, item: FileItem) {
-  if (isWebampAudio(item)) openInWebamp(item);
+  const handler = getFileHandler(item);
+  if (handler) handler.action(item);
+}
+
+// ── Centralized file-type → handler mapping ────────────────────────────
+interface FileHandler {
+  exts: RegExp;
+  action: (item: FileItem) => void;
+}
+
+const FILE_HANDLERS: FileHandler[] = [
+  { exts: IMAGE_RE, action: openImagePreview },
+  { exts: TEXT_EDIT_RE, action: openTextEditor },
+  { exts: VIDEO_RE, action: openVideoPreview },
+  { exts: /\.(mp3|wav|flac|ogg|m4a|opus|aac|wma)$/i, action: openInWebamp },
+  { exts: /\.(cbr|cbz|pdf)$/i, action: openComic },
+];
+
+function getFileHandler(item: FileItem): FileHandler | undefined {
+  if (item.type !== "file") return undefined;
+  return FILE_HANDLERS.find((h) => h.exts.test(item.name));
 }
 
 // ── Download URL (token in query param — browser anchor can't set headers) ──
@@ -2764,6 +2877,12 @@ watch(
 }
 
 .fm-icon-winamp {
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
+}
+
+.fm-icon-comic {
   width: 1.2rem;
   height: 1.2rem;
   object-fit: contain;

@@ -403,6 +403,7 @@ textarea.s-input {
   align-items: center;
   cursor: pointer;
   gap: 0.5rem;
+  .s-switch__label { font-size: 0.85rem; }
   .s-switch__track {
     width: 40px;
     height: 22px;

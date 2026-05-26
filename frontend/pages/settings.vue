@@ -3,14 +3,31 @@
     <h1 class="title is-4 mb-4">{{ $t("settings.title") }}</h1>
 
     <STabs v-model="activeTab" :panes="tabPanes">
-      <template #tab-theme><span class="mdi mdi-palette mr-1" /> {{ $t("settings.theme") }}</template>
-      <template #tab-language><span class="mdi mdi-translate mr-1" /> {{ $t("settings.language") }}</template>
-      <template #tab-account><span class="mdi mdi-account mr-1" /> {{ $t("settings.account") }}</template>
-      <template #tab-integrations><span class="mdi mdi-puzzle mr-1" /> {{ $t("settings.integrations") }}</template>
-      <template #tab-users><span class="mdi mdi-account-group mr-1" /> {{ $t("settings.users") }}</template>
-      <template #tab-downloadHistory><span class="mdi mdi-download mr-1" /> {{ $t("settings.downloadHistory") }}</template>
-      <template #tab-providers><span class="mdi mdi-application-cog mr-1" /> {{ $t("settings.providers") }}</template>
+      <template #tab-theme
+        ><span class="mdi mdi-palette mr-1" /> {{ $t("settings.theme") }}</template
+      >
+      <template #tab-language
+        ><span class="mdi mdi-translate mr-1" /> {{ $t("settings.language") }}</template
+      >
+      <template #tab-account
+        ><span class="mdi mdi-account mr-1" /> {{ $t("settings.account") }}</template
+      >
+      <template #tab-integrations
+        ><span class="mdi mdi-puzzle mr-1" /> {{ $t("settings.integrations") }}</template
+      >
+      <template #tab-users
+        ><span class="mdi mdi-account-group mr-1" /> {{ $t("settings.users") }}</template
+      >
+      <template #tab-downloadHistory
+        ><span class="mdi mdi-download mr-1" /> {{ $t("settings.downloadHistory") }}</template
+      >
+      <template #tab-providers
+        ><span class="mdi mdi-application-cog mr-1" /> {{ $t("settings.providers") }}</template
+      >
       <template #tab-ports><span class="mdi mdi-lan mr-1" /> {{ $t("ports.title") }}</template>
+      <template #tab-webamp
+        ><span class="mdi mdi-music mr-1" /> {{ $t("settings.webamp") }}</template
+      >
 
       <!-- Theme selector -->
       <STabPane name="theme" :active="activeTab === 'theme'">
@@ -440,6 +457,107 @@
             {{ $t("ports.poweredBy") }}
             <a href="https://portchecker.io" target="_blank" rel="noopener">portchecker.io</a>
           </p>
+        </div>
+      </STabPane>
+
+      <!-- Webamp -->
+      <STabPane name="webamp" :active="activeTab === 'webamp'">
+        <div class="box">
+          <h6 class="title is-6 mb-3 mt-3">Webamp</h6>
+
+          <!-- Default windows -->
+          <p class="has-text-grey is-size-7 mb-3">{{ $t("settings.webampDefaultWindows") }}</p>
+          <div class="field">
+            <SSwitch v-model="webampShowEq">{{ $t("settings.webampEqualizer") }}</SSwitch>
+          </div>
+          <div class="field">
+            <SSwitch v-model="webampShowPlaylist">{{ $t("settings.webampPlaylist") }}</SSwitch>
+          </div>
+          <div class="field">
+            <SSwitch v-model="webampShowMilkdrop">{{ $t("settings.webampMilkdrop") }}</SSwitch>
+          </div>
+
+          <div class="field">
+            <SSwitch v-model="webampDoubleSize">{{ $t("settings.webampDoubleSize") }}</SSwitch>
+          </div>
+
+          <p class="has-text-grey is-size-7 mb-3">
+            {{ $t("settings.webampSkinsGuideBefore") }}
+            <a href="https://skins.webamp.org" target="_blank" rel="noopener">skins.webamp.org</a>
+            {{ $t("settings.webampSkinsGuideAfter") }}
+          </p>
+
+          <div class="webamp-install-row">
+            <SInput
+              v-model="skinInstallUrl"
+              type="url"
+              :placeholder="$t('settings.webampInstallPlaceholder')"
+              class="webamp-install-input"
+            />
+            <SButton variant="primary" size="sm" :loading="installingSkin" @click="installSkin">
+              {{ $t("settings.webampInstall") }}
+            </SButton>
+          </div>
+
+          <div v-if="skins.length === 0 && !loadingSkins" class="has-text-grey is-size-7 mb-3">
+            {{ $t("settings.webampNoSkins") }}
+          </div>
+
+          <!-- Default skin (always present) -->
+          <div class="skin-row">
+            <div class="skin-info">
+              <strong class="skin-name">{{ $t("settings.webampDefaultSkin") }}</strong>
+              <span class="skin-size">{{ $t("settings.webampBuiltin") }}</span>
+            </div>
+            <div class="skin-actions">
+              <SButton
+                :variant="!activeWebampSkin || skins.length === 0 ? 'warning' : 'default'"
+                size="mini"
+                @click="selectDefaultSkin"
+              >
+                {{
+                  !activeWebampSkin || skins.length === 0
+                    ? $t("settings.webampActive")
+                    : $t("settings.webampUse")
+                }}
+              </SButton>
+            </div>
+          </div>
+
+          <!-- Installed skins -->
+          <div v-for="s in skins" :key="s.name" class="skin-row">
+            <div class="skin-info">
+              <strong class="skin-name">{{ s.name }}</strong>
+              <span class="skin-size">{{ formatSize(s.size) }}</span>
+            </div>
+            <div class="skin-actions">
+              <SButton
+                :variant="s.name === activeWebampSkin ? 'warning' : 'default'"
+                size="mini"
+                @click="selectSkin(s.name)"
+              >
+                {{
+                  s.name === activeWebampSkin
+                    ? $t("settings.webampActive")
+                    : $t("settings.webampUse")
+                }}
+              </SButton>
+              <SButton
+                variant="danger"
+                size="mini"
+                :loading="deletingSkin === s.name"
+                @click="deleteSkin(s.name)"
+              >
+                {{ $t("settings.webampDelete") }}
+              </SButton>
+            </div>
+          </div>
+
+          <div class="webamp-save-row">
+            <SButton variant="primary" :loading="savingWebamp" @click="saveWebamp">
+              {{ $t("settings.save") }}
+            </SButton>
+          </div>
         </div>
       </STabPane>
 
@@ -884,6 +1002,7 @@ const VALID_TABS = [
   "downloadHistory",
   "providers",
   "ports",
+  "webamp",
 ];
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "theme");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
@@ -933,7 +1052,18 @@ interface LocaleOption {
   name: string;
 }
 
-const SUPPORTED_PROVIDER_LOCALES = ["en", "es", "it", "pt", "fr", "de", "ru", "ja", "ko", "zh"] as const;
+const SUPPORTED_PROVIDER_LOCALES = [
+  "en",
+  "es",
+  "it",
+  "pt",
+  "fr",
+  "de",
+  "ru",
+  "ja",
+  "ko",
+  "zh",
+] as const;
 
 const SUPPORTED_PROVIDER_LOCALE_SET = new Set<string>(SUPPORTED_PROVIDER_LOCALES);
 
@@ -1003,6 +1133,7 @@ const tabPanes = computed<TabPaneDef[]>(() => {
   p.push({ name: "downloadHistory", label: t("settings.downloadHistory") });
   p.push({ name: "providers", label: t("settings.providers") });
   p.push({ name: "ports", label: t("ports.title") });
+  p.push({ name: "webamp", label: t("settings.webamp") });
   return p;
 });
 
@@ -1568,6 +1699,132 @@ watch(activeTab, (tab) => {
 
 // Port status
 const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
+
+// ── Webamp preferences ─────────────────────────────────────────────────────
+const webampShowEq = ref(localStorage.getItem("webampShowEq") !== "false");
+const webampShowPlaylist = ref(localStorage.getItem("webampShowPlaylist") !== "false");
+const webampShowMilkdrop = ref(localStorage.getItem("webampShowMilkdrop") === "true");
+const webampDoubleSize = ref(localStorage.getItem("webampDoubleSize") === "true");
+const activeWebampSkin = ref(localStorage.getItem("webampSkin") || "");
+
+watch(webampShowEq, (v) => localStorage.setItem("webampShowEq", String(v)));
+watch(webampShowPlaylist, (v) => localStorage.setItem("webampShowPlaylist", String(v)));
+watch(webampShowMilkdrop, (v) => localStorage.setItem("webampShowMilkdrop", String(v)));
+watch(webampDoubleSize, (v) => localStorage.setItem("webampDoubleSize", String(v)));
+watch(activeWebampSkin, (v) => {
+  if (v) localStorage.setItem("webampSkin", v);
+  else localStorage.removeItem("webampSkin");
+});
+
+// Skin management
+const skins = ref<{ name: string; file: string; size: number }[]>([]);
+const loadingSkins = ref(false);
+const skinInstallUrl = ref("");
+const installingSkin = ref(false);
+const deletingSkin = ref("");
+const savingWebamp = ref(false);
+
+async function loadSkins() {
+  loadingSkins.value = true;
+  try {
+    const res = await apiFetch("/api/webamp/skins");
+    skins.value = res.skins || [];
+  } catch {
+    /* ignore */
+  }
+  loadingSkins.value = false;
+}
+
+async function installSkin() {
+  if (!skinInstallUrl.value.trim()) return;
+  installingSkin.value = true;
+  try {
+    await apiFetch("/api/webamp/skins", {
+      method: "POST",
+      body: { url: skinInstallUrl.value.trim() },
+    });
+    skinInstallUrl.value = "";
+    await loadSkins();
+  } catch (e: any) {
+    const msg = e.data?.statusMessage || e.message || String(e);
+    console.error("Install skin failed:", msg);
+    alert("Install failed: " + msg);
+  }
+  installingSkin.value = false;
+}
+
+function selectDefaultSkin() {
+  activeWebampSkin.value = "";
+  import("../composables/useWebamp").then(({ resetToDefaultSkin }) => {
+    resetToDefaultSkin();
+  });
+}
+
+async function selectSkin(name: string) {
+  activeWebampSkin.value = name;
+  // Try to change skin live on a running Webamp instance
+  try {
+    const { changeWebampSkin } = await import("../composables/useWebamp");
+    console.log("Changing Webamp skin to:", name);
+    changeWebampSkin(name);
+  } catch (e: any) {
+    console.error("Live skin change failed:", e);
+    alert("Skin change failed: " + (e.message || e));
+  }
+}
+
+async function deleteSkin(name: string) {
+  deletingSkin.value = name;
+  try {
+    await apiFetch(`/api/webamp/skins/${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (activeWebampSkin.value === name) activeWebampSkin.value = "";
+    await loadSkins();
+  } catch (e: any) {
+    console.error("Delete skin failed:", e.message || e);
+  }
+  deletingSkin.value = "";
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+async function saveWebamp() {
+  savingWebamp.value = true;
+  // Apply window/size preferences to a running instance
+  try {
+    const { applyWebampSettings } = await import("../composables/useWebamp");
+    applyWebampSettings();
+  } catch (e: any) {
+    console.error("Apply Webamp settings failed:", e);
+  }
+  // Apply the selected skin to a running Webamp instance
+  if (activeWebampSkin.value) {
+    try {
+      const { changeWebampSkin } = await import("../composables/useWebamp");
+      console.log("Applying skin on save:", activeWebampSkin.value);
+      changeWebampSkin(activeWebampSkin.value);
+    } catch (e: any) {
+      console.error("Live skin change failed:", e);
+    }
+  } else {
+    // Default skin selected — reset to built-in
+    try {
+      const { resetToDefaultSkin } = await import("../composables/useWebamp");
+      resetToDefaultSkin();
+    } catch (e: any) {
+      console.error("Reset to default skin failed:", e);
+    }
+  }
+  await new Promise((r) => setTimeout(r, 300));
+  savingWebamp.value = false;
+}
+
+watch(activeTab, (tab) => {
+  if (tab === "webamp") loadSkins();
+});
 </script>
 
 <style scoped>
@@ -1941,8 +2198,60 @@ const { ports, privateIp, publicIp, checking, refresh } = usePortStatus();
   gap: 0.75rem;
   padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--s-border);
-  &:last-child {
+  &:last-of-type {
     border-bottom: none;
   }
+}
+
+.skin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  margin: 0.5rem 0;
+  gap: 0.75rem;
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+.skin-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+.skin-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.skin-size {
+  color: var(--s-text-muted);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.skin-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+.webamp-save-row {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+.webamp-install-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.webamp-install-input {
+  flex: 1;
+}
+.webamp-install-input .s-input-wrap {
+  width: 100%;
 }
 </style>
