@@ -659,7 +659,9 @@
     "loading": "Loading GitHub data...",
     "mute": "Mute music",
     "unmute": "Unmute music",
-    "about": "About"
+    "about": "About",
+    "splitToggle": "Toggle split",
+    "exportFiles": "Export files"
   },
   "themes": {
     "tron": {
