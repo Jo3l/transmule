@@ -66,7 +66,10 @@ const tree = ref<TreeNode[]>([]);
 const loading = ref(true);
 const rootDragOver = ref(false);
 
-async function loadTree() {
+// ── Debounced tree load (3s window) ─────────────────────────────────────
+let _treeTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function _doLoadTree() {
   loading.value = true;
   try {
     tree.value = await apiFetch<TreeNode[]>("/api/files/tree?depth=5");
@@ -77,9 +80,27 @@ async function loadTree() {
   }
 }
 
-defineExpose({ refresh: loadTree });
+async function loadTree() {
+  // Debounce: if called multiple times within 3s, only the last one fires
+  if (_treeTimer) clearTimeout(_treeTimer);
+  _treeTimer = setTimeout(() => {
+    _treeTimer = null;
+    _doLoadTree();
+  }, 3000);
+}
 
-onMounted(loadTree);
+/** Force an immediate tree load (skips debounce) */
+async function loadTreeNow() {
+  if (_treeTimer) {
+    clearTimeout(_treeTimer);
+    _treeTimer = null;
+  }
+  await _doLoadTree();
+}
+
+defineExpose({ refresh: loadTree, refreshNow: loadTreeNow });
+
+onMounted(loadTreeNow);
 
 function onRootContextMenu(e: MouseEvent) {
   emit("ctx-menu", {

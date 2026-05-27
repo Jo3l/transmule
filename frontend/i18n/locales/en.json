@@ -645,7 +645,21 @@
     "webampInstallPlaceholder": "https://example.com/skin.wsz",
     "webamp": "Webamp",
     "webampSkinsGuideBefore": "Browse skins at",
-    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install."
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "stars": "Stars",
+    "forks": "Forks",
+    "openIssues": "Open issues",
+    "viewOnGitHub": "View on GitHub",
+    "updatedTimeAgo": "Updated {time}",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "monthsAgo": "{count}mo ago",
+    "loading": "Loading GitHub data...",
+    "mute": "Mute music",
+    "unmute": "Unmute music",
+    "about": "About"
   },
   "themes": {
     "tron": {
@@ -1128,7 +1142,9 @@
     "compressTitle": "Create archive",
     "compressFormat": "Format",
     "compressName": "Archive name",
-    "password": "Password",
+    "password": "***",
+    "readOnly": "Read only",
+    "readOnlyHint": "Mounted folder is read-only",
     "compressUsePassword": "Protect with password",
     "passwordPlaceholder": "Leave blank if not protected",
     "extractDone": "Extraction completed",

@@ -54,6 +54,7 @@ export default defineEventHandler(async (event) => {
     domain,
     username,
     password,
+    readOnly,
   } = body || {};
 
   if (
@@ -161,6 +162,7 @@ export default defineEventHandler(async (event) => {
     domain: type === "smb" ? domain?.trim() || undefined : undefined,
     username: username.trim(),
     password,
+    readOnly: readOnly === true,
   };
 
   mounts.push(mount);
