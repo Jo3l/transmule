@@ -215,7 +215,8 @@ function langColor(lang: string): string {
 
 .about-scene-wrap {
   flex-shrink: 0;
-  width: 420px;
+  max-width: 640px;
+  width: 50%;
   position: relative;
 }
 
@@ -223,6 +224,7 @@ function langColor(lang: string): string {
   width: 100%;
   aspect-ratio: 4/3;
   border-radius: 6px;
+  image-rendering: pixelated;
 }
 
 .about-mute-btn {
@@ -277,8 +279,8 @@ function langColor(lang: string): string {
 }
 
 .gh-avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   flex-shrink: 0;
 }

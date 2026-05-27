@@ -70,31 +70,34 @@ export function init(canvas) {
 
     // A-Z at positions 0-25
     for (let i = 0; i < 26; i++) {
-      charMap[65 + i] = [(i % FONT_COLS) * CHAR_ORIG_SIZE, Math.floor(i / FONT_COLS) * CHAR_ORIG_SIZE];
+      charMap[65 + i] = [
+        (i % FONT_COLS) * CHAR_ORIG_SIZE,
+        Math.floor(i / FONT_COLS) * CHAR_ORIG_SIZE,
+      ];
     }
 
     // Manual mapping for non-letter chars (after Z)
     const extra = [
-      [32, 26],  // space
-      [46, 27],  // .
-      [48, 28],  // 0
-      [49, 29],  // 1
-      [50, 30],  // 2
-      [51, 31],  // 3
-      [52, 32],  // 4
-      [53, 33],  // 5
-      [54, 34],  // 6
-      [55, 35],  // 7
-      [56, 36],  // 8
-      [57, 37],  // 9
-      [33, 38],  // !
-      [40, 39],  // (
-      [41, 40],  // )
-      [44, 41],  // ,
-      [39, 42],  // '
-      [63, 43],  // ?
-      [58, 44],  // :
-      [45, 45],  // -
+      [32, 26], // space
+      [46, 27], // .
+      [48, 28], // 0
+      [49, 29], // 1
+      [50, 30], // 2
+      [51, 31], // 3
+      [52, 32], // 4
+      [53, 33], // 5
+      [54, 34], // 6
+      [55, 35], // 7
+      [56, 36], // 8
+      [57, 37], // 9
+      [33, 38], // !
+      [40, 39], // (
+      [41, 40], // )
+      [44, 41], // ,
+      [39, 42], // '
+      [63, 43], // ?
+      [58, 44], // :
+      [45, 45], // -
     ];
 
     for (const [code, pos] of extra) {
@@ -139,7 +142,7 @@ export function init(canvas) {
 
   const crtPromise = new Promise((resolve) => {
     const img = new Image();
-    img.src = "/images/crt.png";
+    img.src = "/images/crt_jo3l.png";
     img.onload = () => {
       crtImage = img;
       resolve();
@@ -247,7 +250,8 @@ export function init(canvas) {
       }
       this.orbs.forEach((orb, idx) => {
         orb.setMod = () => {
-          orb.offset = this.mod === 0 ? idx / this.NUM_ORBS : idx / Math.max(1, this.NUM_ORBS % this.mod);
+          orb.offset =
+            this.mod === 0 ? idx / this.NUM_ORBS : idx / Math.max(1, this.NUM_ORBS % this.mod);
         };
         orb.update = (t) => {
           orb.x = this.centerX + Math.floor(Math.sin((t + orb.offset) * this.speedx) * this.rangex);
