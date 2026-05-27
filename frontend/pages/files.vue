@@ -2,20 +2,6 @@
   <div id="page-files" class="fm-page" @click="hideCtxMenu" @keydown.esc.window="hideCtxMenu">
     <div class="fm-header-row mb-4">
       <h1 class="title is-4">{{ $t("fileManager.title") }}</h1>
-      <div class="fm-header-search">
-        <SInput
-          v-model="searchQuery"
-          :placeholder="$t('fileManager.searchPlaceholder')"
-          size="sm"
-          @keydown.enter="doSearch"
-        />
-        <SButton size="sm" variant="primary" :loading="searching" @click="doSearch">
-          <span class="mdi mdi-magnify" />
-        </SButton>
-        <SButton v-if="hasSearched" size="sm" @click="clearSearch">
-          <span class="mdi mdi-close" />
-        </SButton>
-      </div>
     </div>
 
     <!-- Not configured -->
@@ -35,10 +21,19 @@
         >
           <span class="mdi mdi-file-tree" />
         </button>
+        <!-- Split toggle -->
+        <button
+          class="fm-split-toggle"
+          :class="{ 'is-active': splitActive }"
+          :title="$t('fileManager.splitToggle')"
+          @click.stop="splitActive = !splitActive"
+        >
+          <span class="mdi mdi-view-column-outline" />
+        </button>
         <!-- Breadcrumbs -->
         <nav class="breadcrumb fm-breadcrumb" aria-label="breadcrumbs">
           <ul>
-            <li :class="{ 'is-active': !currentPath }">
+            <li :class="{ 'is-active': !activePath }">
               <a @click.prevent="navigate('')">
                 <span class="mdi mdi-folder-home mr-1" />
                 {{ $t("fileManager.root") }}
@@ -99,406 +94,109 @@
         <FolderTreeSidebar
           v-if="treeVisible"
           ref="folderTreeRef"
-          :current-path="currentPath"
+          :current-path="splitActive ? (activePanelIndex === 0 ? leftPanelPath : rightPanelPath) : currentPath"
           @navigate="navigate"
           @close="treeVisible = false"
           @transfer="onTreeTransfer"
           @ctx-menu="onTreeCtxMenu"
         />
 
-        <!-- File table with drag-and-drop -->
-        <div
-          class="fm-table-wrap"
-          :class="{ 'fm-drag-over': dragging }"
-          @click="
-            selectedItems.clear();
-            lastClickedItem = null;
-          "
-          @dragover.prevent="
-            (e: DragEvent) => {
-              if (isAdmin && !e.dataTransfer?.types.includes('application/x-fm-paths'))
-                dragging = true;
-            }
-          "
-          @dragleave="onDragLeave"
-          @drop.prevent="onDrop"
-        >
-          <!-- Drop overlay -->
-          <div v-if="dragging" class="fm-drop-overlay">
-            <span class="mdi mdi-cloud-upload icon-2xl" />
-            <div>{{ $t("fileManager.dropToUpload") }}</div>
-          </div>
-
-          <!-- Loading overlay: locks and dims the list while fetching -->
-          <div v-if="loading" class="fm-loading-overlay">
-            <span class="mdi mdi-loading mdi-spin s-loading-spinner" />
-          </div>
-
-          <!-- ── Mobile file cards (≤768px) ──────────────────────────── -->
-          <div class="is-hidden-tablet fm-mobile-list">
-            <div v-if="currentPath && !hasSearched" class="fm-mobile-up" @click.stop="navigateUp">
-              <span class="mdi mdi-arrow-up-bold-circle fm-icon has-text-grey" />
-              <span class="has-text-grey">{{ $t("fileManager.goUp") }}</span>
-            </div>
-            <div
-              v-if="!loading && displayItems.length === 0"
-              class="has-text-centered has-text-grey py-5"
-            >
-              <span class="mdi mdi-folder-open-outline fm-empty-icon" />
-              {{ hasSearched ? $t("fileManager.searchEmpty") : $t("fileManager.empty") }}
-            </div>
-            <div
-              v-for="item in displayItems"
-              :key="item.name"
-              class="fm-mobile-card"
-              :class="{ 'is-open': mobileOpenedItem === item.name }"
-              @click.stop="onMobileCardTap(item)"
-            >
-              <div class="fm-mc-header">
-                <img
-                  v-if="isAudioFile(item)"
-                  :src="winampIcon"
-                  class="fm-icon fm-icon-winamp"
-                  alt=""
-                />
-                <img
-                  v-else-if="isComicFile(item)"
-                  :src="boltIcon"
-                  class="fm-icon fm-icon-comic"
-                  alt=""
-                />
-                <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
-                <span class="fm-mc-name">
-                  <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
-                  {{ item.name }}
-                </span>
-                <span class="fm-mc-size">{{ item.type === "file" ? fmtSize(item.size) : "" }}</span>
-                <span
-                  class="mdi fm-mc-chevron"
-                  :class="mobileOpenedItem === item.name ? 'mdi-chevron-up' : 'mdi-chevron-down'"
-                />
-              </div>
-              <div v-if="mobileOpenedItem === item.name" class="fm-mc-panel" @click.stop>
-                <!-- Open (directory only) -->
-                <button
-                  v-if="item.type === 'directory'"
-                  class="fm-mc-action"
-                  @click="
-                    navigate(childPath(item.name));
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
-                </button>
-                <!-- View image -->
-                <button
-                  v-if="isImage(item) && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--accent"
-                  @click="
-                    openImagePreview(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
-                </button>
-                <!-- Edit text -->
-                <button
-                  v-if="isTextEditable(item) && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--accent"
-                  @click="
-                    openTextEditor(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
-                </button>
-                <!-- Play video -->
-                <button
-                  v-if="isVideo(item) && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--accent"
-                  @click="
-                    openVideoPreview(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
-                </button>
-                <!-- Play in Webamp -->
-                <button
-                  v-if="isMp3(item) && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--accent"
-                  @click="
-                    openInWebamp(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
-                </button>
-                <!-- Download (file only) -->
-                <button
-                  v-if="item.type === 'file'"
-                  class="fm-mc-action"
-                  @click="
-                    downloadFile(item.name);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
-                </button>
-                <!-- Smart rename (admin + file) -->
-                <button
-                  v-if="isAdmin && item.type === 'file' && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--accent"
-                  @click="
-                    startSmartRenameForPaths([childPath(item.name)]);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
-                </button>
-                <!-- Move (admin) — hidden for mount roots -->
-                <button
-                  v-if="isAdmin && !item.isRemoteMount"
-                  class="fm-mc-action"
-                  @click="
-                    openTransferDialog([childPath(item.name)], 'move');
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
-                </button>
-                <!-- Copy — always allowed -->
-                <button
-                  class="fm-mc-action"
-                  @click="
-                    openTransferDialog([childPath(item.name)], 'copy');
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
-                </button>
-                <!-- Compress -->
-                <button
-                  class="fm-mc-action"
-                  @click="
-                    openCompressDialogForSources([childPath(item.name)], item.name);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{
-                    $t("fileManager.compress")
-                  }}
-                </button>
-                <!-- Archive actions -->
-                <template v-if="item.type === 'file' && isArchive(item.name) && !item.isRemoteMount">
-                  <div class="fm-mc-sep" />
-                  <button
-                    class="fm-mc-action"
-                    @click="
-                      doExtractHere(childPath(item.name));
-                      mobileOpenedItem = null;
-                    "
-                  >
-                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
-                      $t("fileManager.extractHere")
-                    }}
-                  </button>
-                  <button
-                    class="fm-mc-action"
-                    @click="
-                      doExtractToFolder(childPath(item.name), archiveBasename(item.name));
-                      mobileOpenedItem = null;
-                    "
-                  >
-                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
-                      $t("fileManager.extractToFolder", { name: archiveBasename(item.name) })
-                    }}
-                  </button>
-                  <button
-                    class="fm-mc-action"
-                    @click="
-                      openExtractDialog(childPath(item.name));
-                      mobileOpenedItem = null;
-                    "
-                  >
-                    <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
-                      $t("fileManager.extractTo")
-                    }}
-                  </button>
-                </template>
-                <!-- Rename (admin) -->
-                <div v-if="isAdmin && !item.isRemoteMount" class="fm-mc-sep" />
-                <button
-                  v-if="isAdmin && !item.isRemoteMount"
-                  class="fm-mc-action"
-                  @click="
-                    startRename(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
-                </button>
-                <!-- Unmount (admin + remote mount) -->
-                <button
-                  v-if="isAdmin && item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--danger"
-                  @click="
-                    confirmUnmount(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
-                </button>
-                <!-- Delete (admin) -->
-                <button
-                  v-if="isAdmin && !item.isRemoteMount"
-                  class="fm-mc-action fm-mc-action--danger"
-                  @click="
-                    confirmDeleteOne(item);
-                    mobileOpenedItem = null;
-                  "
-                >
-                  <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <table v-if="!loading || items.length" class="fm-table is-hidden-mobile">
-            <thead>
-              <tr>
-                <th>
-                  <button
-                    class="fm-sort-btn"
-                    :class="{ 'is-active': sortCol === 'name' }"
-                    @click="toggleSort('name')"
-                  >
-                    {{ $t("fileManager.name") }}
-                    <span
-                      class="mdi"
-                      :class="
-                        sortCol === 'name'
-                          ? sortDir === 'asc'
-                            ? 'mdi-arrow-up'
-                            : 'mdi-arrow-down'
-                          : 'mdi-unfold-more-horizontal'
-                      "
-                    />
-                  </button>
-                </th>
-                <th class="has-text-right fm-th-size">
-                  <button
-                    class="fm-sort-btn"
-                    :class="{ 'is-active': sortCol === 'size' }"
-                    @click="toggleSort('size')"
-                  >
-                    {{ $t("fileManager.size") }}
-                    <span
-                      class="mdi"
-                      :class="
-                        sortCol === 'size'
-                          ? sortDir === 'asc'
-                            ? 'mdi-arrow-up'
-                            : 'mdi-arrow-down'
-                          : 'mdi-unfold-more-horizontal'
-                      "
-                    />
-                  </button>
-                </th>
-                <th class="is-hidden-mobile fm-th-date">
-                  <button
-                    class="fm-sort-btn"
-                    :class="{ 'is-active': sortCol === 'modified' }"
-                    @click="toggleSort('modified')"
-                  >
-                    {{ $t("fileManager.modified") }}
-                    <span
-                      class="mdi"
-                      :class="
-                        sortCol === 'modified'
-                          ? sortDir === 'asc'
-                            ? 'mdi-arrow-up'
-                            : 'mdi-arrow-down'
-                          : 'mdi-unfold-more-horizontal'
-                      "
-                    />
-                  </button>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Go up -->
-              <tr v-if="currentPath && !hasSearched" class="fm-up-row">
-                <td colspan="3">
-                  <a class="fm-name-cell" @click.prevent="navigateUp">
-                    <span class="mdi mdi-arrow-up-bold-circle fm-icon has-text-grey" />
-                    <span class="has-text-grey">{{ $t("fileManager.goUp") }}</span>
-                  </a>
-                </td>
-              </tr>
-
-              <!-- Directory / file rows -->
-              <tr
-                v-for="item in displayItems"
-                :key="item.name"
-                :draggable="isAdmin"
-                :class="{
-                  'is-selected': selectedItems.has(item.name),
-                  'is-drop-target':
-                    isAdmin && item.type === 'directory' && dropTargetRow === item.name,
-                }"
-                class="fm-row"
-                @click.stop="onRowClick($event, item)"
-                @dblclick.stop="onRowDblClick($event, item)"
-                @contextmenu.prevent="onRowContextMenu($event, item)"
-                @dragstart="onRowDragStart($event, item)"
-                @dragover.prevent="item.type === 'directory' && onRowDragOver($event, item)"
-                @dragleave="onRowDragLeave($event, item)"
-                @drop.prevent="item.type === 'directory' && onRowDrop($event, item)"
-              >
-                <td>
-                  <span class="fm-name-cell">
-                    <img
-                      v-if="isAudioFile(item)"
-                      :src="winampIcon"
-                      class="fm-icon fm-icon-winamp"
-                      alt=""
-                    />
-                    <img
-                      v-else-if="isComicFile(item)"
-                      :src="boltIcon"
-                      class="fm-icon fm-icon-comic"
-                      alt=""
-                    />
-                    <span v-else class="mdi fm-icon" :class="fileIcon(item)" />
-                    <template v-if="item.relpath">
-                      <a class="fm-relpath" @click.prevent="navigate(item.relpath)">{{ item.relpath }}/</a>
-                    </template>
-                    <a
-                      v-if="item.type === 'directory'"
-                      @click.prevent="handleFolderClick($event, item)"
-                      >{{ item.name }}</a
-                    >
-                    <span v-else class="fm-filename" :title="item.name">{{ item.name }}</span>
-                  </span>
-                </td>
-                <td class="has-text-right has-text-grey is-size-7">
-                  {{ item.type === "directory" ? "—" : fmtSize(item.size) }}
-                </td>
-                <td class="has-text-grey is-size-7 is-hidden-mobile">
-                  {{ fmtDate(item.modified) }}
-                </td>
-              </tr>
-
-              <!-- Empty state -->
-              <tr v-if="!loading && displayItems.length === 0">
-                <td colspan="3" class="has-text-centered has-text-grey py-5">
-                  <span class="mdi mdi-folder-open-outline fm-empty-icon" />
-                  {{ hasSearched ? $t("fileManager.searchEmpty") : $t("fileManager.empty") }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Panel(s) -->
+        <div v-if="!splitActive" class="fm-panel-wrap">
+          <FileManagerPanel
+            ref="leftPanelRef"
+            :current-path="currentPath"
+            :is-admin="isAdmin"
+            :extract-extensions="extractExtensions"
+            :compress-formats="compressFormats"
+            :remote-mounts="remoteMounts"
+            :active="false"
+            :winamp-icon="winampIcon"
+            :bolt-icon="boltIcon"
+            @update:current-path="onSinglePanelPathChange"
+            @activate="activePanelIndex = 0"
+            @transfer="onPanelTransfer"
+            @rename-item="onPanelRenameItem"
+            @delete-paths="onPanelDelete"
+            @open-transfer-dialog="onPanelOpenTransferDialog"
+            @compress-sources="onPanelCompressSources"
+            @extract-here="onPanelExtractHere"
+            @extract-to-folder="onPanelExtractToFolder"
+            @open-extract-dialog="onPanelOpenExtractDialog"
+            @open-image-preview="onPanelOpenImagePreview"
+            @open-text-editor="onPanelOpenTextEditor"
+            @open-video-preview="onPanelOpenVideoPreview"
+            @play-in-webamp="onPanelPlayInWebamp"
+            @open-comic="onPanelOpenComic"
+            @download-file="onPanelDownloadFile"
+            @smart-rename-paths="onPanelSmartRenamePaths"
+            @upload-files="onPanelUploadFiles"
+          />
+        </div>
+        <div v-else class="fm-split-layout">
+          <FileManagerPanel
+            ref="leftPanelRef"
+            v-model:current-path="leftPanelPath"
+            :is-admin="isAdmin"
+            :extract-extensions="extractExtensions"
+            :compress-formats="compressFormats"
+            :remote-mounts="remoteMounts"
+            :active="activePanelIndex === 0"
+            :winamp-icon="winampIcon"
+            :bolt-icon="boltIcon"
+            :style="{ flex: `${leftFlex} 1 0` }"
+            class="fm-split-panel"
+            @activate="activePanelIndex = 0"
+            @transfer="onPanelTransfer"
+            @rename-item="onPanelRenameItem"
+            @delete-paths="onPanelDelete"
+            @open-transfer-dialog="onPanelOpenTransferDialog"
+            @compress-sources="onPanelCompressSources"
+            @extract-here="onPanelExtractHere"
+            @extract-to-folder="onPanelExtractToFolder"
+            @open-extract-dialog="onPanelOpenExtractDialog"
+            @open-image-preview="onPanelOpenImagePreview"
+            @open-text-editor="onPanelOpenTextEditor"
+            @open-video-preview="onPanelOpenVideoPreview"
+            @play-in-webamp="onPanelPlayInWebamp"
+            @open-comic="onPanelOpenComic"
+            @download-file="onPanelDownloadFile"
+            @smart-rename-paths="onPanelSmartRenamePaths"
+            @upload-files="onPanelUploadFiles"
+          />
+          <div
+            class="fm-split-divider"
+            @mousedown.prevent="onDividerMouseDown"
+          />
+          <FileManagerPanel
+            ref="rightPanelRef"
+            v-model:current-path="rightPanelPath"
+            :is-admin="isAdmin"
+            :extract-extensions="extractExtensions"
+            :compress-formats="compressFormats"
+            :remote-mounts="remoteMounts"
+            :active="activePanelIndex === 1"
+            :winamp-icon="winampIcon"
+            :bolt-icon="boltIcon"
+            class="fm-split-panel"
+            @activate="activePanelIndex = 1"
+            @transfer="onPanelTransfer"
+            @rename-item="onPanelRenameItem"
+            @delete-paths="onPanelDelete"
+            @open-transfer-dialog="onPanelOpenTransferDialog"
+            @compress-sources="onPanelCompressSources"
+            @extract-here="onPanelExtractHere"
+            @extract-to-folder="onPanelExtractToFolder"
+            @open-extract-dialog="onPanelOpenExtractDialog"
+            @open-image-preview="onPanelOpenImagePreview"
+            @open-text-editor="onPanelOpenTextEditor"
+            @open-video-preview="onPanelOpenVideoPreview"
+            @play-in-webamp="onPanelPlayInWebamp"
+            @open-comic="onPanelOpenComic"
+            @download-file="onPanelDownloadFile"
+            @smart-rename-paths="onPanelSmartRenamePaths"
+            @upload-files="onPanelUploadFiles"
+          />
         </div>
       </div>
     </template>
@@ -658,302 +356,7 @@
     </template>
   </SDialog>
 
-  <!-- ── Context menu ──────────────────────────────────────────────────── -->
-  <Teleport to="body">
-    <div
-      v-if="ctxMenu.visible"
-      class="fm-ctx-menu"
-      :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }"
-      @click.stop
-    >
-      <!-- Multi-select mode header -->
-      <div v-if="ctxIsMulti" class="fm-ctx-header">
-        {{ $t("fileManager.ctxSelected", { count: selectedItems.size }) }}
-      </div>
-
-      <!-- Single item: directory -->
-      <button
-        v-if="!ctxIsMulti && ctxMenu.item?.type === 'directory'"
-        class="fm-ctx-item"
-        @click="
-          navigate(childPath(ctxMenu.item.name));
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
-      </button>
-
-      <!-- View image (browser-supported images only) -->
-      <button
-        v-if="!ctxIsMulti && isImage(ctxMenu.item)"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openImagePreview(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
-      </button>
-
-      <!-- Edit text -->
-      <button
-        v-if="!ctxIsMulti && isTextEditable(ctxMenu.item)"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openTextEditor(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
-      </button>
-
-      <!-- Play video -->
-      <button
-        v-if="!ctxIsMulti && isVideo(ctxMenu.item)"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openVideoPreview(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
-      </button>
-
-      <!-- Read comic (CBR/CBZ/PDF) -->
-      <button
-        v-if="!ctxIsMulti && isComicFile(ctxMenu.item)"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openComic(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-book-open-variant mr-2" />{{ $t("fileManager.readComic") }}
-      </button>
-
-      <!-- Play in Webamp (mp3 only) -->
-      <button
-        v-if="!ctxIsMulti && isMp3(ctxMenu.item)"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openInWebamp(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
-      </button>
-
-      <!-- Play all MP3s with Webamp — multi selection -->
-      <button
-        v-if="ctxIsMulti && selectedMp3s.length > 0"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          openMp3sInWebamp(selectedMp3s);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-playlist-play mr-2" />
-        {{ $t("fileManager.playAllWithWebamp", { count: selectedMp3s.length }) }}
-      </button>
-
-      <!-- Download (file only) -->
-      <button
-        v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
-        class="fm-ctx-item"
-        @click="
-          downloadFile(ctxMenu.item!.name);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
-      </button>
-
-      <!-- Smart Rename — single file -->
-      <button
-        v-if="isAdmin && !ctxIsMulti && ctxMenu.item?.type === 'file'"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          startSmartRenameForPaths([childPath(ctxMenu.item.name)]);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
-      </button>
-
-      <!-- Smart Rename — multi selection -->
-      <button
-        v-if="isAdmin && ctxIsMulti && selectedFiles.length > 0"
-        class="fm-ctx-item fm-ctx-item--accent"
-        @click="
-          startSmartRenameForPaths(selectedFiles);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-auto-fix mr-2" />
-        {{ $t("fileManager.smartRenameSelected", { count: selectedFiles.length }) }}
-      </button>
-
-      <!-- Move / Copy — single item -->
-      <!-- Move is hidden for mount roots (cannot move a mount root); copy is allowed -->
-      <button
-        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
-        class="fm-ctx-item"
-        @click="
-          openTransferDialog([childPath(ctxMenu.item!.name)], 'move');
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
-      </button>
-      <button
-        v-if="!ctxIsMulti"
-        class="fm-ctx-item"
-        @click="
-          openTransferDialog([childPath(ctxMenu.item!.name)], 'copy');
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
-      </button>
-
-      <!-- Compress — single item -->
-      <button
-        v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
-        class="fm-ctx-item"
-        @click="
-          openCompressDialogForSources([childPath(ctxMenu.item!.name)], ctxMenu.item!.name);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
-      </button>
-
-      <!-- Extract (archive files only) -->
-      <template v-if="!ctxIsMulti && ctxMenu.item?.type === 'file' && isArchive(ctxMenu.item.name) && !ctxMenu.item?.isRemoteMount">
-        <div class="fm-ctx-sep" />
-        <button
-          class="fm-ctx-item"
-          @click="
-            doExtractHere(childPath(ctxMenu.item!.name));
-            hideCtxMenu();
-          "
-        >
-          <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
-            $t("fileManager.extractHere")
-          }}
-        </button>
-        <button
-          class="fm-ctx-item"
-          @click="
-            doExtractToFolder(childPath(ctxMenu.item!.name), archiveBasename(ctxMenu.item!.name));
-            hideCtxMenu();
-          "
-        >
-          <span class="mdi mdi-archive-arrow-down-outline mr-2" />
-          {{ $t("fileManager.extractToFolder", { name: archiveBasename(ctxMenu.item!.name) }) }}
-        </button>
-        <button
-          class="fm-ctx-item"
-          @click="
-            openExtractDialog(childPath(ctxMenu.item!.name));
-            hideCtxMenu();
-          "
-        >
-          <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractTo") }}
-        </button>
-        <div class="fm-ctx-sep" />
-      </template>
-
-      <!-- Move / Copy — multi-selection -->
-      <button
-        v-if="isAdmin && ctxIsMulti"
-        class="fm-ctx-item"
-        @click="
-          openTransferDialog(Array.from(selectedItems).map(childPath), 'move');
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-folder-move mr-2" />{{
-          $t("fileManager.moveSelected", { count: selectedItems.size })
-        }}
-      </button>
-      <button
-        v-if="ctxIsMulti"
-        class="fm-ctx-item"
-        @click="
-          openTransferDialog(Array.from(selectedItems).map(childPath), 'copy');
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-content-copy mr-2" />{{
-          $t("fileManager.copySelected", { count: selectedItems.size })
-        }}
-      </button>
-      <button
-        v-if="ctxIsMulti"
-        class="fm-ctx-item"
-        @click="
-          openCompressDialog();
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{
-          $t("fileManager.compressSelected", { count: selectedItems.size })
-        }}
-      </button>
-
-      <!-- Rename — single item (hidden for remote mounts) -->
-      <button
-        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
-        class="fm-ctx-item"
-        @click="
-          startRename(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
-      </button>
-
-      <div v-if="isAdmin" class="fm-ctx-sep" />
-
-      <!-- Unmount single (remote mount) -->
-      <button
-        v-if="isAdmin && !ctxIsMulti && ctxMenu.item?.isRemoteMount"
-        class="fm-ctx-item fm-ctx-item--danger"
-        @click="
-          confirmUnmount(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
-      </button>
-
-      <!-- Delete single -->
-      <button
-        v-if="isAdmin && !ctxIsMulti && !ctxMenu.item?.isRemoteMount"
-        class="fm-ctx-item fm-ctx-item--danger"
-        @click="
-          confirmDeleteOne(ctxMenu.item!);
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
-      </button>
-
-      <!-- Delete selected -->
-      <button
-        v-if="isAdmin && ctxIsMulti"
-        class="fm-ctx-item fm-ctx-item--danger"
-        @click="
-          confirmDeleteSelected();
-          hideCtxMenu();
-        "
-      >
-        <span class="mdi mdi-delete mr-2" />
-        {{ $t("fileManager.deleteSelected", { count: selectedItems.size }) }}
-      </button>
-    </div>
-  </Teleport>
+  <!-- ── Tree folder context menu ────────────────────────────────────────── -->
 
   <!-- ── Tree folder context menu ────────────────────────────────────────── -->
   <Teleport to="body">
@@ -1174,9 +577,14 @@
 
   <!-- ── Add remote mount dialog ─────────────────────────────────────────────── -->
   <SDialog v-model="showRemoteDialog" :title="$t('fileManager.addRemoteFolder')" width="480px">
-    <SFormItem :label="$t('fileManager.protocol')">
-      <SSelect v-model="remoteForm.type" :options="protocolOptions" />
-    </SFormItem>
+    <div class="flex-row gap-md">
+      <SFormItem :label="$t('fileManager.protocol')" class="flex-1" style="margin-bottom:0">
+        <SSelect v-model="remoteForm.type" :options="protocolOptions" />
+      </SFormItem>
+      <SFormItem :label="$t('fileManager.readOnly')" style="margin-bottom:0">
+        <SSwitch v-model="remoteForm.readOnly" />
+      </SFormItem>
+    </div>
     
     <SFormItem :label="$t('fileManager.mountName')">
       <SInput v-model="remoteForm.name" :placeholder="$t('fileManager.mountName')" />
@@ -1184,15 +592,22 @@
     
     <!-- SMB fields -->
     <template v-if="remoteForm.type === 'smb'">
-      <SFormItem :label="$t('fileManager.host')">
-        <SInput v-model="remoteForm.host" placeholder="192.168.1.100" />
-      </SFormItem>
-      <SFormItem :label="$t('fileManager.share')">
-        <SInput v-model="remoteForm.share" placeholder="downloads" />
-      </SFormItem>
-      <SFormItem :label="$t('fileManager.domain')">
-        <SInput v-model="remoteForm.domain" :placeholder="$t('fileManager.domain')" />
-      </SFormItem>
+      <div class="flex-row gap-md">
+        <SFormItem :label="$t('fileManager.host')" class="flex-1" style="margin-bottom:0">
+          <SInput v-model="remoteForm.host" placeholder="192.168.1.100" />
+        </SFormItem>
+        <SFormItem :label="$t('fileManager.share')" class="flex-1" style="margin-bottom:0">
+          <SInput v-model="remoteForm.share" placeholder="downloads" />
+        </SFormItem>
+      </div>
+      <div class="flex-row gap-md">
+        <SFormItem :label="$t('fileManager.domain')" class="flex-1" style="margin-bottom:0">
+          <SInput v-model="remoteForm.domain" :placeholder="$t('fileManager.domain')" />
+        </SFormItem>
+        <SFormItem :label="$t('fileManager.remotePath')" class="flex-1" style="margin-bottom:0">
+          <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
+        </SFormItem>
+      </div>
     </template>
     
     <!-- WebDAV fields -->
@@ -1200,20 +615,21 @@
       <SFormItem :label="$t('fileManager.url')">
         <SInput v-model="remoteForm.url" placeholder="https://example.com/dav" />
       </SFormItem>
+      <SFormItem :label="$t('fileManager.remotePath')">
+        <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
+      </SFormItem>
     </template>
-    
-    <SFormItem :label="$t('fileManager.remotePath')">
-      <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
-    </SFormItem>
-    <SFormItem :label="$t('fileManager.username')">
-      <SInput v-model="remoteForm.username" :placeholder="$t('fileManager.username')" />
-    </SFormItem>
-    <SFormItem :label="$t('fileManager.password')">
-      <SInput v-model="remoteForm.password" type="password" :placeholder="$t('fileManager.password')" />
-    </SFormItem>
+    <div class="flex-row gap-md">
+      <SFormItem :label="$t('fileManager.username')" class="flex-1" style="margin-bottom:0">
+        <SInput v-model="remoteForm.username" :placeholder="$t('fileManager.username')" />
+      </SFormItem>
+      <SFormItem label="Password" class="flex-1" style="margin-bottom:0">
+        <SInput v-model="remoteForm.password" type="password" placeholder="Password" />
+      </SFormItem>
+    </div>
     <template #footer>
       <div class="flex-end gap-sm">
-        <SButton size="sm" variant="info" :loading="validating" @click="validateRemote">
+        <SButton variant="info" :loading="validating" @click="validateRemote">
           <span class="mdi mdi-connection mr-1" />{{ $t("fileManager.validate") }}
         </SButton>
         <SButton @click="showRemoteDialog = false">{{ $t("fileManager.cancel") }}</SButton>
@@ -1251,6 +667,7 @@
 import winampIcon from "~/assets/icons/Winamp-logo.svg";
 import boltIcon from "~/assets/icons/bolt.svg";
 import ComicReader from "~/components/ComicReader.vue";
+import FileManagerPanel from "~/components/FileManagerPanel.vue";
 
 interface FileItem {
   name: string;
@@ -1315,7 +732,108 @@ const loading = ref(false);
 const notConfigured = ref(false);
 const working = ref(false);
 const treeVisible = ref(false);
-const folderTreeRef = ref<{ refresh: () => void } | null>(null);
+const folderTreeRef = ref<{ refresh: () => void; refreshNow: () => void } | null>(null);
+const leftPanelRef = ref<any>(null);
+const rightPanelRef = ref<any>(null);
+
+// ── Split panel state ──────────────────────────────────────────────────
+const splitActive = ref(false);
+const leftPanelPath = ref("");
+const rightPanelPath = ref("");
+const activePanelIndex = ref(0);
+const splitRatio = ref(0.5);
+const leftFlex = computed(() => {
+  const r = splitRatio.value;
+  if (r >= 1) return 999;
+  if (r <= 0) return 0;
+  return r / (1 - r);
+});
+let _isDragging = false;
+
+function onDividerMouseDown(e: MouseEvent) {
+  _isDragging = true;
+  const layout = (e.currentTarget as HTMLElement).parentElement!;
+  const rect = layout.getBoundingClientRect();
+
+  function onMouseMove(ev: MouseEvent) {
+    if (!_isDragging) return;
+    const x = ev.clientX - rect.left;
+    splitRatio.value = Math.max(0.2, Math.min(0.8, x / rect.width));
+  }
+
+  function onMouseUp() {
+    _isDragging = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }
+
+  document.addEventListener("mousemove", onMouseMove);
+  document.addEventListener("mouseup", onMouseUp);
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+}
+
+// ── Split panel bridge functions ─────────────────────────────────────────────
+function onSinglePanelPathChange(path: string) {
+  navigate(path);
+}
+function onPanelTransfer(payload: { sources: string[]; dest: string; copy: boolean }) {
+  doQuickTransfer(payload.sources, payload.dest, payload.copy);
+}
+function onPanelRenameItem(payload: { item: FileItem; currentPath: string }) {
+  if (payload.item) startRename(payload.item);
+}
+function onPanelDelete(paths: string[]) {
+  if (paths.length === 1) {
+    const name = paths[0].split("/").pop() || paths[0];
+    const item = items.value.find((i) => i.name === name);
+    if (item) confirmDeleteOne(item);
+  } else {
+    deleteTargets.value = paths;
+    showDeleteDialog.value = true;
+  }
+}
+function onPanelOpenTransferDialog(payload: { sources: string[]; mode: "move" | "copy" }) {
+  openTransferDialog(payload.sources, payload.mode);
+}
+function onPanelCompressSources(payload: { sources: string[]; seedName: string }) {
+  openCompressDialogForSources(payload.sources, payload.seedName);
+}
+function onPanelExtractHere(path: string) {
+  doExtractHere(path);
+}
+function onPanelExtractToFolder(payload: { path: string; folder: string }) {
+  doExtractToFolder(payload.path, payload.folder);
+}
+function onPanelOpenExtractDialog(path: string) {
+  openExtractDialog(path);
+}
+function onPanelOpenImagePreview(item: FileItem) {
+  openImagePreview(item);
+}
+function onPanelOpenTextEditor(item: FileItem) {
+  openTextEditor(item);
+}
+function onPanelOpenVideoPreview(item: FileItem) {
+  openVideoPreview(item);
+}
+function onPanelPlayInWebamp(item: FileItem) {
+  openInWebamp(item);
+}
+function onPanelOpenComic(item: FileItem) {
+  openComic(item);
+}
+function onPanelDownloadFile(name: string) {
+  downloadFile(name);
+}
+function onPanelSmartRenamePaths(paths: string[]) {
+  startSmartRenameForPaths(paths);
+}
+function onPanelUploadFiles(files: File[]) {
+  uploadFiles(files);
+}
 
 // ── Search ──────────────────────────────────────────────────────────────────
 const searchQuery = ref("");
@@ -1352,8 +870,14 @@ function clearSearch() {
 // Refreshes both the file list and the folder-tree sidebar.
 // Use this as the post-action callback for any operation that may add,
 // remove, or rename a folder (delete, move, rename, mkdir).
-function loadDirAndTree() {
-  loadDir();
+async function loadDirAndTree() {
+  loadDirNow();
+  // Refresh split panels if they exist
+  (leftPanelRef as any)?.value?.refresh?.();
+  (rightPanelRef as any)?.value?.refresh?.();
+  try {
+    await apiFetch("/api/files/cache-invalidate", { method: "POST", query: { reason: "file-op" } });
+  } catch { /* ignore */ }
   folderTreeRef.value?.refresh();
 }
 
@@ -1453,6 +977,7 @@ const remoteForm = reactive({
   domain: "",
   username: "",
   password: "",
+  readOnly: false,
 });
 
 const protocolOptions = [
@@ -1538,7 +1063,7 @@ function doTransfer() {
       return;
     }
   }
-  enqueueTransfers(transferSources.value, transferDest.value, transferMode.value, loadDirAndTree);
+  enqueueTransfers(transferSources.value, transferDest.value, transferMode.value);
   showTransferDialog.value = false;
   selectedItems.clear();
   showToast(
@@ -1803,7 +1328,19 @@ onMounted(() => {
   void loadRemoteMounts();
   restoreComicFromHash();
 });
-onBeforeUnmount(() => window.removeEventListener("keydown", onPreviewKeydown));
+
+// ── Auto-refresh panels every 3s to pick up background task changes ────────
+let _refreshTimer: ReturnType<typeof setInterval> | null = null;
+onMounted(() => {
+  _refreshTimer = setInterval(() => {
+    (leftPanelRef as any)?.value?.silentRefresh?.();
+    (rightPanelRef as any)?.value?.silentRefresh?.();
+  }, 3000);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onPreviewKeydown);
+  if (_refreshTimer) clearInterval(_refreshTimer);
+});
 
 // ── Context menu ─────────────────────────────────────────────────────────────
 const mobileOpenedItem = ref<string | null>(null);
@@ -1955,8 +1492,13 @@ function onSmartRenameRenamed(payload?: { clearSelection?: boolean }) {
 }
 
 // ── Computed helpers ───────────────────────────────────────────────────────
+const activePath = computed(() =>
+  splitActive.value
+    ? (activePanelIndex.value === 0 ? leftPanelPath.value : rightPanelPath.value)
+    : currentPath.value,
+);
 const pathSegments = computed(() =>
-  currentPath.value ? currentPath.value.split("/").filter(Boolean) : [],
+  activePath.value ? activePath.value.split("/").filter(Boolean) : [],
 );
 
 function childPath(name: string) {
@@ -1975,8 +1517,10 @@ function navigateUp() {
   navigate(segs.join("/"));
 }
 
-// ── Load directory ─────────────────────────────────────────────────────────
-async function loadDir() {
+// ── Debounced loadDir (3s window) ─────────────────────────────────────────
+let _loadDirTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function _doLoadDir() {
   loading.value = true;
   notConfigured.value = false;
   try {
@@ -1990,7 +1534,6 @@ async function loadDir() {
       notConfigured.value = true;
       items.value = [];
     } else if ((status === 403 || status === 404) && currentPath.value) {
-      // Navigate back to parent and show a specific error
       const msg =
         status === 403 ? t("fileManager.errorPermission") : t("fileManager.errorNotFound");
       showToast(msg, "error");
@@ -2002,6 +1545,23 @@ async function loadDir() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadDir() {
+  if (_loadDirTimer) clearTimeout(_loadDirTimer);
+  _loadDirTimer = setTimeout(() => {
+    _loadDirTimer = null;
+    _doLoadDir();
+  }, 3000);
+}
+
+/** Force an immediate loadDir (skips debounce) */
+async function loadDirNow() {
+  if (_loadDirTimer) {
+    clearTimeout(_loadDirTimer);
+    _loadDirTimer = null;
+  }
+  await _doLoadDir();
 }
 
 // ── Selection ──────────────────────────────────────────────────────────────
@@ -2178,7 +1738,7 @@ function doQuickTransfer(sources: string[], dest: string, copy: boolean) {
     });
     if (allSame) return;
   }
-  enqueueTransfers(sources, dest, copy ? "copy" : "move", loadDirAndTree);
+  enqueueTransfers(sources, dest, copy ? "copy" : "move");
   selectedItems.clear();
   showToast(
     t("fileManager.transferStarted", { mode: t(`fileManager.${copy ? "copy" : "move"}`) }),
@@ -2298,6 +1858,7 @@ function openRemoteModal(type: "smb" | "webdav") {
   remoteForm.domain = "";
   remoteForm.username = "";
   remoteForm.password = "";
+  remoteForm.readOnly = false;
   showRemoteDialog.value = true;
 }
 
@@ -2381,7 +1942,8 @@ async function doCreateRemote() {
       body.url = remoteForm.url.trim();
       body.path = remoteForm.path.trim() || undefined;
     }
-    
+    body.readOnly = remoteForm.readOnly;
+
     await apiFetch("/api/files/remote-mounts", {
       method: "POST",
       body,
@@ -2570,7 +2132,8 @@ watch(
   () => loadDir(),
   { immediate: true },
 );
-</script>
+// Initial load bypasses debounce so the directory shows immediately
+loadDirNow();</script>
 
 <style scoped>
 .fm-page {
@@ -2632,6 +2195,56 @@ watch(
 .fm-body .fm-table-wrap {
   flex: 1;
   min-width: 0;
+}
+
+/* ── Split panel layout ────────────────────────────────────────── */
+.fm-panel-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.fm-split-layout {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+}
+.fm-split-panel {
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+}
+.fm-split-divider {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--s-border);
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+.fm-split-divider:hover {
+  background: var(--s-accent);
+}
+.fm-split-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--s-border);
+  border-radius: 6px;
+  background: var(--s-bg-surface);
+  color: var(--s-text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.fm-split-toggle:hover,
+.fm-split-toggle.is-active {
+  border-color: var(--s-accent);
+  color: var(--s-accent);
+  background: color-mix(in oklab, var(--s-accent) 10%, transparent);
 }
 
 .fm-tree-toggle {

@@ -629,7 +629,21 @@
     "pluginDocTitle": "Cómo crear un plugin",
     "pluginDocIntro": "Crea un archivo .js que exporte un objeto MediaProvider por defecto. Súbelo aquí y estará disponible tras recargar la página.",
     "pluginDocNote": "Se recomienda el formato ESM (export default). El campo icon acepta cualquier clase MDI (p.ej. mdi-magnify).",
-    "pluginDocReadMore": "Referencia completa de la API de plugins (PROVIDER_PLUGIN.md)"
+    "pluginDocReadMore": "Referencia completa de la API de plugins (PROVIDER_PLUGIN.md)",
+    "stars": "Estrellas",
+    "forks": "Bifurcaciones",
+    "openIssues": "Incidencias abiertas",
+    "viewOnGitHub": "Ver en GitHub",
+    "updatedTimeAgo": "Actualizado {time}",
+    "justNow": "justo ahora",
+    "minutesAgo": "hace {count}m",
+    "hoursAgo": "hace {count}h",
+    "daysAgo": "hace {count}d",
+    "monthsAgo": "hace {count}mes",
+    "loading": "Cargando datos de GitHub...",
+    "mute": "Silenciar música",
+    "unmute": "Activar música",
+    "about": "Acerca de"
   },
   "themes": {
     "tron": {
@@ -1130,7 +1144,9 @@
     "compressTitle": "Crear archivo",
     "compressFormat": "Formato",
     "compressName": "Nombre del archivo",
-    "password": "Contraseña",
+    "password": "***",
+    "readOnly": "Solo lectura",
+    "readOnlyHint": "La carpeta montada es de solo lectura",
     "compressUsePassword": "Proteger con contraseña",
     "passwordPlaceholder": "Dejar vacío si no está protegido",
     "extractDone": "Extracción completada",

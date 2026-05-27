@@ -12,11 +12,18 @@
           <span v-if="!loading" class="cr-page-indicator">{{ currentPage + 1 }} / {{ totalPages }}</span>
         </div>
         <div class="cr-header-right">
-          <div class="cr-dropdown" ref="viewMenuRef">
-            <button class="cr-btn cr-btn-icon" @click.stop="showViewMenu = !showViewMenu" title="View options">
+          <div class="cr-dropdown">
+            <button class="cr-btn cr-btn-icon" ref="viewMenuBtnRef" @click.stop="showViewMenu = !showViewMenu" title="View options">
               <span class="mdi mdi-cog-outline" />
             </button>
-            <div v-if="showViewMenu" class="cr-dropdown-menu" @click.stop>
+          </div>
+          <button class="cr-btn cr-btn-icon" @click="toggleFullscreen" title="Fullscreen (F)">
+            <span class="mdi mdi-fullscreen" />
+          </button>
+        </div>
+      </header>
+
+      <div v-if="showViewMenu" class="cr-dropdown-menu" :style="menuStyle" @click.stop>
               <button class="cr-menu-item" @click="rotateRight">
                 <span class="mdi mdi-rotate-right cr-menu-icon" />
                 <span class="cr-menu-text">Rotate Right</span>
@@ -86,13 +93,11 @@
                 <span class="cr-menu-text">Hide header</span>
                 <span class="cr-menu-key">P</span>
             </button>
-            </div>
-          </div>
-          <button class="cr-btn cr-btn-icon" @click="toggleFullscreen" title="Fullscreen (F)">
-            <span class="mdi mdi-fullscreen" />
-          </button>
-        </div>
-      </header>
+      </div>
+
+      <div v-if="extracting" class="cr-extracting-bar" :title="`Extracting ${loadingProgress.toFixed(0)}%`">
+        <div class="cr-extracting-fill" :style="{ width: loadingProgress + '%' }" />
+      </div>
 
       <div v-if="loading" class="cr-loading">
         <div class="cr-loading-spinner"><span class="mdi mdi-loading mdi-spin" /></div>
@@ -215,6 +220,7 @@ const emit = defineEmits<{
 const images = ref<string[]>([]);
 const currentPage = ref(0);
 const loading = ref(false);
+const extracting = ref(false);
 const loadingProgress = ref(0);
 const loadingText = ref("");
 const error = ref("");
@@ -227,9 +233,19 @@ const fitMode = ref<"best" | "height" | "width">("best");
 const rotation = ref(0);
 const showHeader = ref(true);
 const showViewMenu = ref(false);
-const viewMenuRef = ref<HTMLDivElement | null>(null);
+const viewMenuBtnRef = ref<HTMLButtonElement | null>(null);
 const stripWrapRef = ref<HTMLDivElement | null>(null);
 const stripPageRefs = ref<HTMLElement[]>([]);
+
+// ── Dropdown
+const menuStyle = computed(() => {
+  if (!viewMenuBtnRef.value) return {};
+  const rect = viewMenuBtnRef.value.getBoundingClientRect();
+  return {
+    top: rect.bottom + "px",
+    right: window.innerWidth - rect.right + "px",
+  };
+});
 
 // ── Dropdown
 function closeDropdown() { showViewMenu.value = false; }
@@ -330,14 +346,16 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 function close() {
-  for (const url of images.value) { if (url.startsWith("blob:")) URL.revokeObjectURL(url); }
-  images.value = []; currentPage.value = 0; error.value = ""; showViewMenu.value = false;
+  _cancelled = true;
+  for (const url of images.value) { if (url && url.startsWith("blob:")) URL.revokeObjectURL(url); }
+  images.value = []; currentPage.value = 0; error.value = ""; extracting.value = false; showViewMenu.value = false;
   emit("close");
 }
 
 // ── Library
 let _libsLoaded = false, _libsLoading = false;
 const _libsCallbacks: Array<() => void> = [];
+let _cancelled = false;
 
 function waitForLibs(): Promise<void> {
   if (_libsLoaded) return Promise.resolve();
@@ -364,13 +382,13 @@ function loadLibs() {
 // ── Open file
 async function openFile() {
   if (!props.filePath) return;
+  _cancelled = false;
   loading.value = true; loadingProgress.value = 0; error.value = "";
   images.value = []; currentPage.value = 0;
   viewMode.value = "single"; fitMode.value = "best"; rotation.value = 0; showHeader.value = true;
   const ext = props.fileName.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") await openPdf();
   else await openArchive();
-  if (props.initialPage && images.value.length > 0) currentPage.value = Math.min(props.initialPage - 1, images.value.length - 1);
 }
 
 async function openArchive() {
@@ -387,24 +405,34 @@ async function openArchive() {
         if (err) return reject(err);
         if (!archive) return reject(new Error("Failed to open archive"));
         loadingText.value = "Extracting pages...";
-        const entries = archive.entries.filter((e: any) => e.is_file);
-        let processed = 0;
+        let entries = archive.entries.filter((e: any) => e.is_file);
         if (entries.length === 0) return reject(new Error("No files found"));
-        const results: { name: string; url: string }[] = [];
-        entries.forEach((entry: any) => {
+        // Sort by filename so pages appear in correct order as they load
+        entries.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        // Pre-allocate so totalPages is accurate from the start
+        images.value = new Array(entries.length).fill(null);
+        if (props.initialPage) currentPage.value = Math.min(props.initialPage - 1, entries.length - 1);
+        let processed = 0;
+        let firstPageShown = false;
+        entries.forEach((entry: any, index: number) => {
           entry.readData((data: ArrayBuffer | null) => {
+            if (_cancelled) return;
             processed++;
             loadingProgress.value = 15 + (processed / entries.length) * 80;
             if (data) {
               const ext = entry.name.split(".").pop()?.toLowerCase() ?? "jpeg";
               const mime = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : "image/jpeg";
-              const blob = new Blob([data], { type: mime });
-              results.push({ name: entry.name, url: URL.createObjectURL(blob) });
+              const imgBlob = new Blob([data], { type: mime });
+              images.value[index] = URL.createObjectURL(imgBlob);
+              if (!firstPageShown) {
+                firstPageShown = true;
+                extracting.value = true;
+                loading.value = false; // Show viewer as soon as first page is ready
+              }
             }
             if (processed >= entries.length) {
-              results.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-              images.value = results.map((r) => r.url);
-              loading.value = false; loadingProgress.value = 100;
+              extracting.value = false;
+              loadingProgress.value = 100;
               resolve();
             }
           });
@@ -424,8 +452,12 @@ async function openPdf() {
     const pdfjs = await loadPdfJs();
     loadingText.value = "Rendering pages..."; loadingProgress.value = 40;
     const pdf = await pdfjs.getDocument({ data: buf }).promise;
-    const urls: string[] = [];
+    // Pre-allocate so totalPages is accurate immediately
+    images.value = new Array(pdf.numPages).fill(null);
+    if (props.initialPage) currentPage.value = Math.min(props.initialPage - 1, pdf.numPages - 1);
+    let firstPageShown = false;
     for (let i = 1; i <= pdf.numPages; i++) {
+      if (_cancelled) { pdf.destroy(); return; }
       loadingProgress.value = 40 + (i / pdf.numPages) * 55;
       loadingText.value = "Rendering page " + i + "/" + pdf.numPages + "...";
       const page = await pdf.getPage(i);
@@ -433,11 +465,16 @@ async function openPdf() {
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width; canvas.height = viewport.height;
       await page.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
-      urls.push(canvas.toDataURL("image/jpeg", 0.9));
+      images.value[i - 1] = canvas.toDataURL("image/jpeg", 0.9);
+      if (!firstPageShown) {
+        firstPageShown = true;
+        extracting.value = true;
+        loading.value = false; // Show viewer as soon as first page is ready
+      }
     }
-    images.value = urls; loading.value = false; loadingProgress.value = 100;
+    extracting.value = false; loadingProgress.value = 100;
     pdf.destroy();
-  } catch (e: any) { error.value = e?.message ?? "Failed to open PDF"; loading.value = false; }
+  } catch (e: any) { error.value = e?.message ?? "Failed to open PDF"; loading.value = false; extracting.value = false; }
 }
 
 let _pdfJsPromise: Promise<any> | null = null;
@@ -468,7 +505,7 @@ watch(currentPage, (p) => { if (images.value.length > 0) emit("pageChange", p + 
 .cr-page-indicator { font-size: 0.85rem; color: #999; }
 
 .cr-dropdown { position: relative; }
-.cr-dropdown-menu { position: absolute; top: 100%; right: 0; z-index: 100001; min-width: 220px; background: #222; border: 1px solid #444; border-radius: 6px; padding: 0.3rem 0; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+.cr-dropdown-menu { position: fixed; z-index: 100001; min-width: 220px; background: #222; border: 1px solid #444; border-radius: 6px; padding: 0.3rem 0; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
 .cr-menu-item { display: flex; align-items: center; width: 100%; gap: 0.5rem; padding: 0.35rem 0.75rem; border: none; background: transparent; color: #ccc; font-size: 0.82rem; text-align: left; cursor: pointer; white-space: nowrap; }
 .cr-menu-item:hover, .cr-menu-item.is-active:hover { background: #333; }
 .cr-menu-item.is-active { background: #2a2a2a; }
@@ -495,6 +532,9 @@ watch(currentPage, (p) => { if (images.value.length > 0) emit("pageChange", p + 
 .cr-loading-text { font-size: 0.95rem; color: #aaa; }
 .cr-progress-track { width: 280px; height: 4px; background: #333; border-radius: 2px; overflow: hidden; }
 .cr-progress-bar { height: 100%; background: linear-gradient(90deg, #4a90d9, #67b1f0); transition: width 0.3s; border-radius: 2px; }
+
+.cr-extracting-bar { height: 2px; background: #222; flex-shrink: 0; overflow: hidden; }
+.cr-extracting-fill { height: 100%; background: linear-gradient(90deg, #4a90d9, #67b1f0); transition: width 0.3s; }
 
 .cr-error { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; padding: 2rem; }
 .cr-error-icon { font-size: 3rem; color: #e74c3c; }

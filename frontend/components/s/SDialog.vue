@@ -2,9 +2,12 @@
   <Teleport to="body">
     <div
       v-if="modelValue"
+      ref="overlayRef"
+      tabindex="-1"
       class="s-dialog-overlay"
       @mousedown.self="overlayMousedown"
       @mouseup.self="overlayMouseup"
+      @keydown.escape="close"
     >
       <div class="s-dialog" :style="{ width }" @mousedown.stop="dialogMousedown">
         <div class="s-dialog__header">
@@ -25,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, watch } from "vue";
+
 const props = withDefaults(
   defineProps<{
     modelValue?: boolean;
@@ -39,6 +44,15 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ "update:modelValue": [val: boolean] }>();
+
+const overlayRef = ref<HTMLElement | null>(null);
+
+// Auto-focus the overlay when dialog opens so Escape key works immediately
+watch(() => props.modelValue, (val) => {
+  if (val) {
+    nextTick(() => overlayRef.value?.focus());
+  }
+});
 
 // Only close when both mousedown AND mouseup happen on the overlay itself,
 // not when the user starts a drag inside the dialog and releases outside.
