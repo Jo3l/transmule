@@ -630,23 +630,22 @@
     "pluginDocIntro": "Создайте .js-файл, который экспортирует объект MediaProvider по умолчанию. Загрузите его сюда, и он станет доступен после перезагрузки страницы.",
     "pluginDocNote": "Рекомендуется формат ESM (export default). Поле icon принимает любой класс MDI (например, mdi-magnify).",
     "pluginDocReadMore": "Полная документация по API плагинов (PROVIDER_PLUGIN.md)",
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Install",
-      "webampDelete": "Delete",
-      "webampActive": "Active",
-      "webampUse": "Use",
-      "webampNoSkins": "No skins installed yet.",
-      "webampInstallPlaceholder": "https://example.com/skin.wsz",
-      "webampEqualizer": "Equalizer",
-      "webampPlaylist": "Playlist",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Double Size",
-      "webampDefaultWindows": "Default windows",
-      "webampSkinsGuideBefore": "Browse skins at",
-      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-      "webamp": "Webamp"
-  
+    "webampDefaultSkin": "Default (Base 2.4)",
+    "webampBuiltin": "Built-in",
+    "webampInstall": "Install",
+    "webampDelete": "Delete",
+    "webampActive": "Active",
+    "webampUse": "Use",
+    "webampNoSkins": "No skins installed yet.",
+    "webampInstallPlaceholder": "https://example.com/skin.wsz",
+    "webampEqualizer": "Equalizer",
+    "webampPlaylist": "Playlist",
+    "webampMilkdrop": "Milkdrop",
+    "webampDoubleSize": "Double Size",
+    "webampDefaultWindows": "Default windows",
+    "webampSkinsGuideBefore": "Browse skins at",
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "webamp": "Webamp"
   },
   "themes": {
     "tron": {
@@ -1151,7 +1150,6 @@
     "remotePathOptional": "например, /folder/subfolder",
     "domain": "Домен",
     "username": "Имя пользователя",
-    "password": "Пароль",
     "validate": "Проверить соединение",
     "validationOk": "Соединение установлено успешно",
     "validationFailed": "Ошибка соединения: {error}",
@@ -1197,7 +1195,10 @@
       "apiUnavailable": "API журналов pyLoad недоступен"
     },
     "discardMessage": "У вас есть несохранённые изменения. Вы уверены, что хотите закрыть без сохранения?",
-    "discardConfirm": "Отменить"
+    "discardConfirm": "Отменить",
+    "overwriteTitle": "Перезаписать файлы?",
+    "overwriteMessage": "Следующие файлы уже существуют в месте назначения. Перезаписать их?",
+    "overwriteConfirm": "Перезаписать"
   },
   "movies": {
     "title": "Фильмы",

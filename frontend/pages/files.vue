@@ -253,6 +253,27 @@
         </div>
       </template>
     </SDialog>
+
+    <!-- ── Overwrite confirm dialog ─────────────────────────────────── -->
+    <SDialog v-model="showOverwriteDialog" :title="$t('fileManager.overwriteTitle')" width="520px">
+      <p class="mb-2">{{ $t("fileManager.overwriteMessage") }}</p>
+      <ul class="fm-overwrite-list">
+        <li v-for="path in overwriteConflicts" :key="path" class="fm-overwrite-item">
+          <span class="mdi mdi-file-outline mr-1" />{{ path }}
+        </li>
+      </ul>
+      <template #footer>
+        <div class="flex-end gap-sm">
+          <SButton @click="cancelOverwrite">
+            {{ $t("fileManager.cancel") }}
+          </SButton>
+          <SButton variant="warning" @click="confirmOverwrite">
+            <span class="mdi mdi-alert-outline mr-1" />{{ $t("fileManager.overwriteConfirm") }}
+          </SButton>
+        </div>
+      </template>
+    </SDialog>
+
   </div>
 
   <!-- ── Image preview dialog ──────────────────────────────────────────── -->
@@ -1009,6 +1030,14 @@ const transferMode = ref<"move" | "copy">("move");
 const transferSources = ref<string[]>([]);
 const transferDest = ref("");
 
+// ── Overwrite confirm dialog state ─────────────────────────────────
+const showOverwriteDialog = ref(false);
+const overwriteConflicts = ref<string[]>([]);
+/** Transfer params saved while the overwrite dialog is open */
+let pendingOverwriteSources: string[] = [];
+let pendingOverwriteDest = "";
+let pendingOverwriteMode: "move" | "copy" = "move";
+
 // ── Extract dialog state ──────────────────────────────────────────────
 const showExtractDialog = ref(false);
 const extractSource = ref("");
@@ -1051,7 +1080,7 @@ function openTransferDialog(sources: string[], mode: "move" | "copy") {
   showTransferDialog.value = true;
 }
 
-function doTransfer() {
+async function doTransfer() {
   if (transferMode.value === "move") {
     const dest = transferDest.value.replace(/\/+$/, "");
     const allSame = transferSources.value.every((src) => {
@@ -1063,11 +1092,59 @@ function doTransfer() {
       return;
     }
   }
+
+  // Check for conflicts before adding the job
+  try {
+    const { conflicts } = await apiFetch<{ conflicts: string[] }>(
+      "/api/files/check-conflicts",
+      {
+        query: {
+          sources: transferSources.value,
+          destination: transferDest.value,
+        },
+      },
+    );
+
+    if (conflicts.length > 0) {
+      // Save transfer params and show overwrite dialog
+      overwriteConflicts.value = conflicts;
+      pendingOverwriteSources = [...transferSources.value];
+      pendingOverwriteDest = transferDest.value;
+      pendingOverwriteMode = transferMode.value;
+      showTransferDialog.value = false;
+      showOverwriteDialog.value = true;
+      return;
+    }
+  } catch {
+    // If check fails (e.g. network error), proceed anyway
+  }
+
+  doEnqueueTransfer();
+}
+
+function doEnqueueTransfer() {
   enqueueTransfers(transferSources.value, transferDest.value, transferMode.value);
   showTransferDialog.value = false;
   selectedItems.clear();
   showToast(
     t("fileManager.transferStarted", { mode: t(`fileManager.${transferMode.value}`) }),
+    "success",
+  );
+}
+
+function cancelOverwrite() {
+  showOverwriteDialog.value = false;
+  overwriteConflicts.value = [];
+}
+
+function confirmOverwrite() {
+  showOverwriteDialog.value = false;
+  overwriteConflicts.value = [];
+  // Use the saved transfer params
+  enqueueTransfers(pendingOverwriteSources, pendingOverwriteDest, pendingOverwriteMode);
+  selectedItems.clear();
+  showToast(
+    t("fileManager.transferStarted", { mode: t(`fileManager.${pendingOverwriteMode}`) }),
     "success",
   );
 }
@@ -2869,5 +2946,32 @@ loadDirNow();</script>
 }
 .fm-dropdown-item:hover {
   background: var(--s-bg-hover);
+}
+
+/* ── Overwrite confirm dialog ─────────────────────────────────────── */
+.fm-overwrite-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--s-bg-surface);
+  border: 1px solid var(--s-border);
+  border-radius: 6px;
+}
+.fm-overwrite-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  color: var(--s-text-secondary);
+  border-bottom: 1px solid var(--s-border);
+}
+.fm-overwrite-item:last-child {
+  border-bottom: none;
+}
+.fm-overwrite-item .mdi {
+  color: var(--s-warning, #f59e0b);
+  flex-shrink: 0;
 }
 </style>

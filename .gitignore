@@ -17,3 +17,6 @@ data/
 # User-installed provider plugins (not tracked in source control)
 middleware/server/providers/plugins/*
 !middleware/server/providers/plugins/.gitkeep
+
+# Dev session PID file
+.dev.pid

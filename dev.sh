@@ -5,23 +5,72 @@
 
 set -euo pipefail
 
-nvm install 22 && nvm use 22
-
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+PIDFILE="$ROOT/.dev.pid"
+
+# ── Single-instance guard ────────────────────────────────────────────────────
+if [ -f "$PIDFILE" ]; then
+  OLD_PID=$(cat "$PIDFILE" 2>/dev/null || echo "")
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+    echo -e "\033[1;33m⚠ Another dev session is already running (PID $OLD_PID). Refusing to start.\033[0m"
+    echo -e "\033[1;33m  To force-start, run: rm -f $PIDFILE\033[0m"
+    exit 1
+  else
+    # Stale PID file — clean it up
+    rm -f "$PIDFILE"
+  fi
+fi
+echo $$ > "$PIDFILE"
+
+# ── Try nvm, but do not fail if unavailable ──────────────────────────────────
+if command -v nvm &>/dev/null || [ -s "$HOME/.nvm/nvm.sh" ]; then
+  [ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh" 2>/dev/null || true
+  nvm install 22 2>/dev/null && nvm use 22 2>/dev/null || true
+fi
+
+# ── Colors ────────────────────────────────────────────────────────────────────
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
 
 # ── Require Node.js 22+ (node:sqlite is built-in since 22.5) ─────────────────
 NODE_MAJOR=$(node --version | sed 's/v\([0-9]*\).*/\1/')
 if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo -e "\033[0;31mError: Node.js 22+ is required (found $(node --version)).\033[0m"
-  echo -e "Run: \033[1mnvm install 22 && nvm use 22\033[0m"
+  echo -e "${RED}Error: Node.js 22+ is required (found $(node --version)).${NC}"
   exit 1
 fi
 
-# Colors
-CYAN='\033[0;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No color
+# ── Free required ports ──────────────────────────────────────────────────────
+MW_PORT=3000
+FE_PORT=3001
+
+free_port() {
+  local port=$1
+  local pids
+  pids=$(lsof -ti :"$port" 2>/dev/null || true)
+  if [ -n "$pids" ]; then
+    echo -e "${YELLOW}▸ Port $port is in use by PID(s): $(echo $pids | tr '\n' ' ')${NC}"
+    echo -e "${YELLOW}  Stopping old process(es)…${NC}"
+    # Try graceful kill first, then force
+    echo "$pids" | tr ' ' '\n' | xargs -r kill 2>/dev/null || true
+    sleep 1
+    pids=$(lsof -ti :"$port" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+      echo "$pids" | tr ' ' '\n' | xargs -r kill -9 2>/dev/null || true
+      sleep 0.5
+    fi
+    if lsof -ti :"$port" &>/dev/null; then
+      echo -e "${RED}  Could not free port $port. Aborting.${NC}"
+      exit 1
+    fi
+    echo -e "${GREEN}  Port $port freed.${NC}"
+  fi
+}
+
+free_port $MW_PORT
+free_port $FE_PORT
 
 # ── Install deps if needed ────────────────────────────────────────────────────
 for dir in middleware frontend; do
@@ -31,7 +80,7 @@ for dir in middleware frontend; do
   fi
 done
 
-# ── Ensure unar + lsar are installed (required for extraction with progress) ─
+# ── Ensure unar + lsar are installed ──────────────────────────────────────────
 if ! command -v unar &>/dev/null || ! command -v lsar &>/dev/null; then
   echo -e "${CYAN}▸ Installing unar / lsar…${NC}"
   if command -v apt-get &>/dev/null; then
@@ -47,7 +96,7 @@ if ! command -v unar &>/dev/null || ! command -v lsar &>/dev/null; then
   fi
 fi
 
-# ── Ensure zip is installed (required for compression with password) ──────────
+# ── Ensure zip is installed ───────────────────────────────────────────────────
 if ! command -v zip &>/dev/null; then
   echo -e "${CYAN}▸ Installing zip…${NC}"
   if command -v apt-get &>/dev/null; then
@@ -144,18 +193,19 @@ cleanup() {
   wait $MW_PID $FE_PID 2>/dev/null || true
   echo -e "${YELLOW}Stopping Docker containers…${NC}"
   $COMPOSE stop amule transmission pyload
+  rm -f "$PIDFILE"
   echo -e "${GREEN}Done.${NC}"
 }
 trap cleanup EXIT INT TERM
 
 # ── Start middleware ──────────────────────────────────────────────────────────
-echo -e "${CYAN}▸ Starting middleware (Nitro) on :3000${NC}"
-(cd "$ROOT/middleware" && NITRO_HOST=0.0.0.0 NODE_OPTIONS="--experimental-sqlite --openssl-legacy-provider" npm run dev) &
+echo -e "${CYAN}▸ Starting middleware (Nitro) on :${MW_PORT}${NC}"
+(cd "$ROOT/middleware" && NITRO_PORT=$MW_PORT NITRO_HOST=0.0.0.0 NODE_OPTIONS="--experimental-sqlite --openssl-legacy-provider" npm run dev) &
 MW_PID=$!
 
 # ── Start frontend ───────────────────────────────────────────────────────────
-echo -e "${CYAN}▸ Starting frontend  (Nuxt)  on :3001${NC}"
-(cd "$ROOT/frontend" && NUXT_TELEMETRY_DISABLED=1 NITRO_HOST=0.0.0.0 npm run dev -- --host 0.0.0.0) &
+echo -e "${CYAN}▸ Starting frontend  (Nuxt)  on :${FE_PORT}${NC}"
+(cd "$ROOT/frontend" && NUXT_TELEMETRY_DISABLED=1 PORT=$FE_PORT NUXT_PORT=$FE_PORT npm run dev -- --host 0.0.0.0 --port "$FE_PORT") &
 FE_PID=$!
 
 echo -e "${GREEN}Both services running. Press Ctrl-C to stop.${NC}"

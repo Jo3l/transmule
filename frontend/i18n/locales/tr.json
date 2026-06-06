@@ -630,23 +630,22 @@
     "pluginDocIntro": "Bir MediaProvider nesnesini dışa aktaran bir .js dosyası oluşturun. Buraya yükleyin, sayfa yenilendikten sonra kullanılabilir olacaktır.",
     "pluginDocNote": "ESM biçimi (export default) önerilir. Simge alanı herhangi bir MDI sınıfını kabul eder (ör. mdi-magnify).",
     "pluginDocReadMore": "Tam eklenti API referansı (PROVIDER_PLUGIN.md)",
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Install",
-      "webampDelete": "Delete",
-      "webampActive": "Active",
-      "webampUse": "Use",
-      "webampNoSkins": "No skins installed yet.",
-      "webampInstallPlaceholder": "https://example.com/skin.wsz",
-      "webampEqualizer": "Equalizer",
-      "webampPlaylist": "Playlist",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Double Size",
-      "webampDefaultWindows": "Default windows",
-      "webampSkinsGuideBefore": "Browse skins at",
-      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-      "webamp": "Webamp"
-  
+    "webampDefaultSkin": "Default (Base 2.4)",
+    "webampBuiltin": "Built-in",
+    "webampInstall": "Install",
+    "webampDelete": "Delete",
+    "webampActive": "Active",
+    "webampUse": "Use",
+    "webampNoSkins": "No skins installed yet.",
+    "webampInstallPlaceholder": "https://example.com/skin.wsz",
+    "webampEqualizer": "Equalizer",
+    "webampPlaylist": "Playlist",
+    "webampMilkdrop": "Milkdrop",
+    "webampDoubleSize": "Double Size",
+    "webampDefaultWindows": "Default windows",
+    "webampSkinsGuideBefore": "Browse skins at",
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "webamp": "Webamp"
   },
   "themes": {
     "tron": {
@@ -1072,7 +1071,7 @@
     "folderNamePlaceholder": "Yeni klasör",
     "newName": "Yeni ad",
     "goUp": "Üst klasör",
-"empty": "Bu klasör boş",
+    "empty": "Bu klasör boş",
     "searchPlaceholder": "Dosya ara...",
     "searchEmpty": "Sonuç yok",
     "dropToUpload": "Yüklemek için dosyaları buraya bırakın",
@@ -1196,7 +1195,10 @@
       "apiUnavailable": "pyLoad günlükleri API'si kullanılamıyor"
     },
     "discardMessage": "Kaydedilmemiş değişiklikleriniz var. Kaydetmeden kapatmak istediğinizden emin misiniz?",
-    "discardConfirm": "At"
+    "discardConfirm": "At",
+    "overwriteTitle": "Dosyaların üzerine yazılsın mı?",
+    "overwriteMessage": "Aşağıdaki dosya(lar) hedef konumda zaten mevcut. Üzerine yazılsın mı?",
+    "overwriteConfirm": "Üzerine Yaz"
   },
   "movies": {
     "title": "Filmler",

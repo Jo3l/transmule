@@ -376,6 +376,13 @@
           <span class="mdi mdi-playlist-music mr-2" />{{ $t("fileManager.playInWebamp", 2) }}
         </button>
         <button
+          v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
+          class="fmp-ctx-item"
+          @click="$emit('download-file', ctxMenu.item.name); hideCtxMenu()"
+        >
+          <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
+        </button>
+        <button
           v-if="!ctxIsMulti && ctxMenu.item && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item"
           :disabled="readOnlyActive"
