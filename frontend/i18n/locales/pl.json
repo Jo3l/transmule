@@ -630,23 +630,22 @@
     "pluginDocIntro": "Utwórz plik .js, który eksportuje domyślnie obiekt MediaProvider. Prześlij go tutaj, a będzie dostępny po przeładowaniu strony.",
     "pluginDocNote": "Zalecany jest format ESM (export default). Pole ikony akceptuje dowolną klasę MDI (np. mdi-magnify).",
     "pluginDocReadMore": "Pełna dokumentacja API wtyczek (PROVIDER_PLUGIN.md)",
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Install",
-      "webampDelete": "Delete",
-      "webampActive": "Active",
-      "webampUse": "Use",
-      "webampNoSkins": "No skins installed yet.",
-      "webampInstallPlaceholder": "https://example.com/skin.wsz",
-      "webampEqualizer": "Equalizer",
-      "webampPlaylist": "Playlist",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Double Size",
-      "webampDefaultWindows": "Default windows",
-      "webampSkinsGuideBefore": "Browse skins at",
-      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-      "webamp": "Webamp"
-  
+    "webampDefaultSkin": "Default (Base 2.4)",
+    "webampBuiltin": "Built-in",
+    "webampInstall": "Install",
+    "webampDelete": "Delete",
+    "webampActive": "Active",
+    "webampUse": "Use",
+    "webampNoSkins": "No skins installed yet.",
+    "webampInstallPlaceholder": "https://example.com/skin.wsz",
+    "webampEqualizer": "Equalizer",
+    "webampPlaylist": "Playlist",
+    "webampMilkdrop": "Milkdrop",
+    "webampDoubleSize": "Double Size",
+    "webampDefaultWindows": "Default windows",
+    "webampSkinsGuideBefore": "Browse skins at",
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "webamp": "Webamp"
   },
   "themes": {
     "tron": {
@@ -1072,7 +1071,7 @@
     "folderNamePlaceholder": "Nowy katalog",
     "newName": "Nowa nazwa",
     "goUp": "Katalog nadrzędny",
-"empty": "Ten folder jest pusty",
+    "empty": "Ten folder jest pusty",
     "searchPlaceholder": "Szukaj plików...",
     "searchEmpty": "Brak wyników",
     "dropToUpload": "Upuść pliki tutaj, aby przesłać",
@@ -1151,7 +1150,6 @@
     "remotePathOptional": "np. /folder/subfolder",
     "domain": "Domena",
     "username": "Nazwa użytkownika",
-    "password": "Hasło",
     "validate": "Testuj połączenie",
     "validationOk": "Połączenie udane",
     "validationFailed": "Połączenie nie udane: {error}",
@@ -1197,7 +1195,10 @@
       "apiUnavailable": "API logów pyLoad jest niedostępne"
     },
     "discardMessage": "Masz niezapisane zmiany. Czy na pewno chcesz zamknąć bez zapisywania?",
-    "discardConfirm": "Odrzuć"
+    "discardConfirm": "Odrzuć",
+    "overwriteTitle": "Nadpisać pliki?",
+    "overwriteMessage": "Następujące pliki już istnieją w miejscu docelowym. Nadpisać je?",
+    "overwriteConfirm": "Nadpisz"
   },
   "movies": {
     "title": "Filmy",

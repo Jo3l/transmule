@@ -630,23 +630,22 @@
     "pluginDocIntro": "Crea un file .js che esporti un oggetto MediaProvider come default. Caricalo qui e sarà disponibile dopo il ricaricamento della pagina.",
     "pluginDocNote": "Il formato ESM (export default) è consigliato. Il campo icon accetta qualsiasi classe MDI (es. mdi-magnify).",
     "pluginDocReadMore": "Riferimento completo all'API dei plugin (PROVIDER_PLUGIN.md)",
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Install",
-      "webampDelete": "Delete",
-      "webampActive": "Active",
-      "webampUse": "Use",
-      "webampNoSkins": "No skins installed yet.",
-      "webampInstallPlaceholder": "https://example.com/skin.wsz",
-      "webampEqualizer": "Equalizer",
-      "webampPlaylist": "Playlist",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Double Size",
-      "webampDefaultWindows": "Default windows",
-      "webampSkinsGuideBefore": "Browse skins at",
-      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-      "webamp": "Webamp"
-  
+    "webampDefaultSkin": "Default (Base 2.4)",
+    "webampBuiltin": "Built-in",
+    "webampInstall": "Install",
+    "webampDelete": "Delete",
+    "webampActive": "Active",
+    "webampUse": "Use",
+    "webampNoSkins": "No skins installed yet.",
+    "webampInstallPlaceholder": "https://example.com/skin.wsz",
+    "webampEqualizer": "Equalizer",
+    "webampPlaylist": "Playlist",
+    "webampMilkdrop": "Milkdrop",
+    "webampDoubleSize": "Double Size",
+    "webampDefaultWindows": "Default windows",
+    "webampSkinsGuideBefore": "Browse skins at",
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "webamp": "Webamp"
   },
   "themes": {
     "tron": {
@@ -1099,12 +1098,15 @@
       "updated": "Aggiornato",
       "loadError": "Caricamento log pyLoad fallito",
       "apiUnavailable": "API log pyLoad non disponibile"
-    }
+    },
+    "overwriteTitle": "Sovrascrivere file?",
+    "overwriteMessage": "I seguenti file esistono già a destinazione. Sovrascriverli?",
+    "overwriteConfirm": "Sovrascrivi"
   },
   "movies": {
     "title": "Film",
     "refresh": "Aggiorna",
-"searchPlaceholder": "Cerca file...",
+    "searchPlaceholder": "Cerca file...",
     "searchEmpty": "Nessun risultato",
     "filterAll": "Tutti",
     "labelSearch": "Ricerca",

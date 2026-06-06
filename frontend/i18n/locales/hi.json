@@ -630,23 +630,22 @@
     "pluginDocIntro": "एक .js फ़ाइल बनाएँ जो एक डिफ़ॉल्ट MediaProvider ऑब्जेक्ट निर्यात करती है। इसे यहाँ अपलोड करें और पेज रीलोड होने के बाद यह उपलब्ध होगा।",
     "pluginDocNote": "ESM प्रारूप (export default) अनुशंसित है। आइकन फ़ील्ड किसी भी MDI क्लास को स्वीकार करता है (जैसे mdi-magnify)।",
     "pluginDocReadMore": "पूर्ण प्लगइन API संदर्भ (PROVIDER_PLUGIN.md)",
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Install",
-      "webampDelete": "Delete",
-      "webampActive": "Active",
-      "webampUse": "Use",
-      "webampNoSkins": "No skins installed yet.",
-      "webampInstallPlaceholder": "https://example.com/skin.wsz",
-      "webampEqualizer": "Equalizer",
-      "webampPlaylist": "Playlist",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Double Size",
-      "webampDefaultWindows": "Default windows",
-      "webampSkinsGuideBefore": "Browse skins at",
-      "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-      "webamp": "Webamp"
-  
+    "webampDefaultSkin": "Default (Base 2.4)",
+    "webampBuiltin": "Built-in",
+    "webampInstall": "Install",
+    "webampDelete": "Delete",
+    "webampActive": "Active",
+    "webampUse": "Use",
+    "webampNoSkins": "No skins installed yet.",
+    "webampInstallPlaceholder": "https://example.com/skin.wsz",
+    "webampEqualizer": "Equalizer",
+    "webampPlaylist": "Playlist",
+    "webampMilkdrop": "Milkdrop",
+    "webampDoubleSize": "Double Size",
+    "webampDefaultWindows": "Default windows",
+    "webampSkinsGuideBefore": "Browse skins at",
+    "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
+    "webamp": "Webamp"
   },
   "themes": {
     "tron": {
@@ -1151,7 +1150,6 @@
     "remotePathOptional": "जैसे /folder/subfolder",
     "domain": "डोमेन",
     "username": "उपयोगकर्ता नाम",
-    "password": "पासवर्ड",
     "validate": "कनेक्शन परीक्षण",
     "validationOk": "कनेक्शन सफल",
     "validationFailed": "कनेक्शन विफल: {error}",
@@ -1197,7 +1195,10 @@
       "apiUnavailable": "pyLoad लॉग API उपलब्ध नहीं है"
     },
     "discardMessage": "आपके पास सहेजे न गए परिवर्तन हैं। क्या आप बिना सहेजे बंद करना चाहते हैं?",
-    "discardConfirm": "छोड़ें"
+    "discardConfirm": "छोड़ें",
+    "overwriteTitle": "फ़ाइलों को ओवरराइट करें?",
+    "overwriteMessage": "निम्न फ़ाइल(एं) गंतव्य पर पहले से मौजूद हैं। उन्हें ओवरराइट करें?",
+    "overwriteConfirm": "ओवरराइट करें"
   },
   "movies": {
     "title": "फ़िल्में",

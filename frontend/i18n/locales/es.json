@@ -1233,7 +1233,10 @@
       "apiUnavailable": "La API de registros de pyLoad no esta disponible"
     },
     "discardMessage": "Tienes cambios sin guardar. ¿Seguro que quieres cerrar sin guardar?",
-    "discardConfirm": "Descartar"
+    "discardConfirm": "Descartar",
+    "overwriteTitle": "¿Sobrescribir archivos?",
+    "overwriteMessage": "Los siguientes archivos ya existen en el destino. ¿Sobrescribirlos?",
+    "overwriteConfirm": "Sobrescribir"
   },
   "movies": {
     "title": "Películas",

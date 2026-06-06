@@ -1213,7 +1213,10 @@
       "apiUnavailable": "pyLoad logs API is not available"
     },
     "discardMessage": "You have unsaved changes. Are you sure you want to close without saving?",
-    "discardConfirm": "Discard"
+    "discardConfirm": "Discard",
+    "overwriteTitle": "Overwrite files?",
+    "overwriteMessage": "The following file(s) already exist at the destination. Overwrite them?",
+    "overwriteConfirm": "Overwrite"
   },
   "movies": {
     "title": "Movies",
