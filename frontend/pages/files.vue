@@ -14,7 +14,7 @@
       <div class="fm-toolbar mb-3">
         <!-- Tree toggle -->
         <button
-          class="fm-tree-toggle"
+          class="fm-tree-toggle is-hidden-mobile"
           :class="{ 'is-active': treeVisible }"
           :title="$t('fileManager.folderTree')"
           @click.stop="treeVisible = !treeVisible"
@@ -23,7 +23,7 @@
         </button>
         <!-- Split toggle -->
         <button
-          class="fm-split-toggle"
+          class="fm-split-toggle is-hidden-mobile"
           :class="{ 'is-active': splitActive }"
           :title="$t('fileManager.splitToggle')"
           @click.stop="splitActive = !splitActive"
@@ -34,7 +34,14 @@
         <nav class="breadcrumb fm-breadcrumb" aria-label="breadcrumbs">
           <ul>
             <li :class="{ 'is-active': !activePath }">
-              <a @click.prevent="navigate('')">
+              <a @click.prevent="navigate('')"
+                 @dragover="onBcDragOver($event, '')"
+                 @dragleave="onBcDragLeave($event)"
+                 @drop.prevent="onBcDrop($event, '')"
+                 :class="{
+                   'is-drop-target': dropTargetBc === '',
+                   'is-drop-target-copy': dropTargetBc === '' && isCopyKey,
+                 }">
                 <span class="mdi mdi-folder-home mr-1" />
                 {{ $t("fileManager.root") }}
               </a>
@@ -44,7 +51,14 @@
               :key="i"
               :class="{ 'is-active': i === pathSegments.length - 1 }"
             >
-              <a @click.prevent="navigate(pathSegments.slice(0, i + 1).join('/'))">
+              <a @click.prevent="navigate(pathSegments.slice(0, i + 1).join('/'))"
+                 @dragover="onBcDragOver($event, pathSegments.slice(0, i + 1).join('/'))"
+                 @dragleave="onBcDragLeave($event)"
+                 @drop.prevent="onBcDrop($event, pathSegments.slice(0, i + 1).join('/'))"
+                 :class="{
+                   'is-drop-target': dropTargetBc === pathSegments.slice(0, i + 1).join('/'),
+                   'is-drop-target-copy': dropTargetBc === pathSegments.slice(0, i + 1).join('/') && isCopyKey,
+                 }">
                 {{ seg }}
               </a>
             </li>
@@ -681,6 +695,8 @@
     :initial-page="comicInitialPage || undefined"
     @close="onComicClose"
     @page-change="onComicPageChange"
+    @request-next-comic="onComicRequestNext"
+    @request-prev-comic="onComicRequestPrev"
   />
 </template>
 
@@ -757,7 +773,10 @@ const folderTreeRef = ref<{ refresh: () => void; refreshNow: () => void } | null
 const leftPanelRef = ref<any>(null);
 const rightPanelRef = ref<any>(null);
 
-// ── Split panel state ──────────────────────────────────────────────────
+// ── Drag-and-drop state ─────────────────────────────────────────────────
+const dropTargetBc = ref<string | null>(null);
+const currentBcDragEl = ref<HTMLElement | null>(null);
+const isCopyKey = ref(false);
 const splitActive = ref(false);
 const leftPanelPath = ref("");
 const rightPanelPath = ref("");
@@ -770,6 +789,17 @@ const leftFlex = computed(() => {
   return r / (1 - r);
 });
 let _isDragging = false;
+
+watch(splitActive, (isActive) => {
+  if (isActive) {
+    // Split activating: left panel keeps the current path, right panel gets root
+    leftPanelPath.value = currentPath.value;
+    rightPanelPath.value = "";
+  } else {
+    // Split deactivating: single panel resumes the left panel's path
+    navigate(leftPanelPath.value);
+  }
+});
 
 function onDividerMouseDown(e: MouseEvent) {
   _isDragging = true;
@@ -1405,6 +1435,31 @@ onMounted(() => {
   void loadRemoteMounts();
   restoreComicFromHash();
 });
+onMounted(() => {
+  // Track Ctrl/Shift for drag-and-drop copy mode
+  const onDndKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Control" || e.key === "Shift") {
+      isCopyKey.value = true;
+      if (currentBcDragEl.value) {
+        currentBcDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+      }
+    }
+  };
+  const onDndKeyUp = (e: KeyboardEvent) => {
+    if (e.key === "Control" || e.key === "Shift") {
+      isCopyKey.value = false;
+      if (currentBcDragEl.value) {
+        currentBcDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+      }
+    }
+  };
+  window.addEventListener("keydown", onDndKeyDown);
+  window.addEventListener("keyup", onDndKeyUp);
+  onBeforeUnmount(() => {
+    window.removeEventListener("keydown", onDndKeyDown);
+    window.removeEventListener("keyup", onDndKeyUp);
+  });
+});
 
 // ── Auto-refresh panels every 3s to pick up background task changes ────────
 let _refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -1458,13 +1513,14 @@ function isComicFile(item: FileItem | null): boolean {
   return COMIC_EXTS.has(ext);
 }
 
-function openComic(item: FileItem) {
+function openComic(item: FileItem, initialPage?: number) {
   comicFilePath.value = downloadUrl(item.name);
   comicFileName.value = item.name;
-  comicInitialPage.value = 0;
+  comicInitialPage.value = initialPage ?? 0;
   // Persist to URL hash for refresh recovery
   const relPath = currentPath.value ? `${currentPath.value}/${item.name}` : item.name;
-  history.replaceState(null, '', `#comic=${encodeURIComponent(relPath)}|1`);
+  const hashPage = initialPage && initialPage > 0 ? initialPage : 1;
+  history.replaceState(null, '', `#comic=${encodeURIComponent(relPath)}|${hashPage}`);
 }
 
 function onComicClose() {
@@ -1482,6 +1538,45 @@ function onComicPageChange(page: number) {
       // parts[0] is already URL-encoded — reuse as-is to avoid double encoding
       history.replaceState(null, '', `#comic=${parts[0]}|${page}`);
     }
+  }
+}
+
+async function onComicRequestNext() {
+  const current = comicFileName.value;
+  if (!current) return;
+  try {
+    const res = await apiFetch<{ items: FileItem[] }>(
+      `/api/files/list?path=${encodeURIComponent(currentPath.value)}`,
+    );
+    const comicFiles = (res.items ?? [])
+      .filter((item) => item.type === "file" && isComicFile(item))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const idx = comicFiles.findIndex((f) => f.name === current);
+    if (idx !== -1 && idx < comicFiles.length - 1) {
+      openComic(comicFiles[idx + 1]);
+    }
+  } catch {
+    // Silently ignore — if the listing fails, just stay on the current comic
+  }
+}
+
+async function onComicRequestPrev() {
+  const current = comicFileName.value;
+  if (!current) return;
+  try {
+    const res = await apiFetch<{ items: FileItem[] }>(
+      `/api/files/list?path=${encodeURIComponent(currentPath.value)}`,
+    );
+    const comicFiles = (res.items ?? [])
+      .filter((item) => item.type === "file" && isComicFile(item))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const idx = comicFiles.findIndex((f) => f.name === current);
+    if (idx !== -1 && idx > 0) {
+      // Open previous comic on its LAST page (-1 sentinel)
+      openComic(comicFiles[idx - 1], -1);
+    }
+  } catch {
+    // Silently ignore
   }
 }
 
@@ -1801,6 +1896,44 @@ function onRowDrop(e: DragEvent, item: FileItem) {
   try {
     const sources: string[] = JSON.parse(fmData);
     doQuickTransfer(sources, childPath(item.name), e.ctrlKey || e.shiftKey);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ── Breadcrumb drag-and-drop ─────────────────────────────────────────────
+
+function onBcDragOver(e: DragEvent, path: string) {
+  if (!isAdmin.value) return;
+  if (!e.dataTransfer) return;
+  e.preventDefault();
+  currentBcDragEl.value = e.currentTarget as HTMLElement;
+  if (!e.dataTransfer.types.includes("application/x-fm-paths")) return;
+  dropTargetBc.value = path;
+  const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+  e.dataTransfer.dropEffect = copy ? "copy" : "move";
+}
+
+function onBcDragLeave(e: DragEvent) {
+  if (
+    dropTargetBc.value !== null &&
+    !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)
+  ) {
+    dropTargetBc.value = null;
+    currentBcDragEl.value = null;
+  }
+}
+
+function onBcDrop(e: DragEvent, path: string) {
+  dropTargetBc.value = null;
+  currentBcDragEl.value = null;
+  if (!isAdmin.value) return;
+  const fmData = e.dataTransfer?.getData("application/x-fm-paths");
+  if (!fmData) return;
+  try {
+    const sources: string[] = JSON.parse(fmData);
+    const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+    doQuickTransfer(sources, path, copy);
   } catch {
     /* ignore */
   }
@@ -2426,6 +2559,17 @@ loadDirNow();</script>
 .fm-breadcrumb li a:hover {
   color: var(--s-accent) !important;
   background: color-mix(in oklab, var(--s-accent) 8%, transparent);
+}
+
+/* Drag-and-drop highlight on breadcrumb segments */
+.fm-breadcrumb li a.is-drop-target {
+  background: color-mix(in oklab, var(--s-accent) 18%, transparent) !important;
+  outline: 2px solid var(--s-accent);
+  outline-offset: -1px;
+}
+.fm-breadcrumb li a.is-drop-target-copy {
+  outline-color: var(--s-success, #22c55e);
+  background: color-mix(in oklab, var(--s-success, #22c55e) 14%, transparent) !important;
 }
 
 /* Active (current) segment — not clickable, bold */

@@ -1000,6 +1000,7 @@
     "viewImage": "Visualizza immagine",
     "playVideo": "Riproduci video",
     "playInWebamp": "Riproduci in Webamp",
+    "viewComic": "Leggi fumetto",
     "readComic": "Leggi fumetto",
     "playAllWithWebamp": "Riproduci {count} MP3 con Webamp",
     "move": "Sposta",
@@ -1101,6 +1102,7 @@
     },
     "overwriteTitle": "Sovrascrivere file?",
     "overwriteMessage": "I seguenti file esistono già a destinazione. Sovrascriverli?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Sovrascrivi"
   },
   "movies": {

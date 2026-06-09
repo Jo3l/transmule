@@ -1097,6 +1097,7 @@
     "viewImage": "Просмотреть изображение",
     "playVideo": "Воспроизвести видео",
     "playInWebamp": "Воспроизвести в Webamp",
+    "viewComic": "Просмотреть комикс",
     "readComic": "Читать комикс",
     "playAllWithWebamp": "Воспроизвести {count} MP3 в Webamp",
     "move": "Переместить",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "Отменить",
     "overwriteTitle": "Перезаписать файлы?",
     "overwriteMessage": "Следующие файлы уже существуют в месте назначения. Перезаписать их?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Перезаписать"
   },
   "movies": {

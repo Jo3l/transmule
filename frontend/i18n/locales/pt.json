@@ -1097,6 +1097,7 @@
     "viewImage": "Ver imagem",
     "playVideo": "Reproduzir vídeo",
     "playInWebamp": "Reproduzir no Webamp",
+    "viewComic": "Ver comic",
     "readComic": "Ler comic",
     "playAllWithWebamp": "Reproduzir {count} MP3 com Webamp",
     "move": "Mover",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "Descartar",
     "overwriteTitle": "Sobrescrever arquivos?",
     "overwriteMessage": "O(s) seguinte(s) arquivo(s) já existe(m) no destino. Sobrescrevê-los?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Sobrescrever"
   },
   "movies": {

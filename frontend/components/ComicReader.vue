@@ -141,7 +141,8 @@
             />
             <div v-else class="cr-empty-page">
               <span class="mdi mdi-file-image-outline" />
-              <p>Page could not be loaded</p>
+              <p v-if="extracting">Waiting for image to load...</p>
+              <p v-else>Page could not be loaded</p>
             </div>
           </div>
         </template>
@@ -214,6 +215,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: [];
   pageChange: [page: number];
+  requestNextComic: [];
+  requestPrevComic: [];
 }>();
 
 // ── State
@@ -298,13 +301,19 @@ function onSwipeEnd(e: TouchEvent | MouseEvent) {
 
 // ── Navigation
 function prevPage() {
-  if (currentPage.value <= 0) return;
+  if (currentPage.value <= 0) {
+    emit("requestPrevComic");
+    return;
+  }
   if (viewMode.value === "double") currentPage.value = Math.max(0, currentPage.value - 2);
   else currentPage.value--;
   if (viewMode.value === "strip-v" || viewMode.value === "strip-h") nextTick(() => scrollToCurrentPage());
 }
 function nextPage() {
-  if (currentPage.value >= totalPages.value - 1) return;
+  if (currentPage.value >= totalPages.value - 1) {
+    emit("requestNextComic");
+    return;
+  }
   if (viewMode.value === "double" && currentPage.value < totalPages.value - 1) currentPage.value++;
   else currentPage.value++;
   if (viewMode.value === "strip-v" || viewMode.value === "strip-h") nextTick(() => scrollToCurrentPage());
@@ -411,7 +420,10 @@ async function openArchive() {
         entries.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         // Pre-allocate so totalPages is accurate from the start
         images.value = new Array(entries.length).fill(null);
-        if (props.initialPage) currentPage.value = Math.min(props.initialPage - 1, entries.length - 1);
+        if (props.initialPage) {
+          if (props.initialPage === -1) currentPage.value = entries.length - 1;
+          else currentPage.value = Math.min(props.initialPage - 1, entries.length - 1);
+        }
         let processed = 0;
         let firstPageShown = false;
         entries.forEach((entry: any, index: number) => {
@@ -454,7 +466,10 @@ async function openPdf() {
     const pdf = await pdfjs.getDocument({ data: buf }).promise;
     // Pre-allocate so totalPages is accurate immediately
     images.value = new Array(pdf.numPages).fill(null);
-    if (props.initialPage) currentPage.value = Math.min(props.initialPage - 1, pdf.numPages - 1);
+    if (props.initialPage) {
+      if (props.initialPage === -1) currentPage.value = pdf.numPages - 1;
+      else currentPage.value = Math.min(props.initialPage - 1, pdf.numPages - 1);
+    }
     let firstPageShown = false;
     for (let i = 1; i <= pdf.numPages; i++) {
       if (_cancelled) { pdf.destroy(); return; }
@@ -492,6 +507,7 @@ function loadPdfJs(): Promise<any> {
 }
 
 watch(() => props.visible, (v) => { if (v) { nextTick(() => openFile()); nextTick(() => overlayRef.value?.focus()); } });
+watch(() => props.filePath, (newPath, oldPath) => { if (newPath && newPath !== oldPath) { openFile(); } });
 watch(currentPage, (p) => { if (images.value.length > 0) emit("pageChange", p + 1); });
 </script>
 
