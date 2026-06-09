@@ -1133,6 +1133,7 @@
     "viewImage": "Ver imagen",
     "playVideo": "Reproducir vídeo",
     "playInWebamp": "Reproducir en Webamp",
+    "viewComic": "Ver comic",
     "readComic": "Leer cómic",
     "playAllWithWebamp": "Reproducir {count} MP3 con Webamp",
     "move": "Mover",
@@ -1233,6 +1234,7 @@
       "apiUnavailable": "La API de registros de pyLoad no esta disponible"
     },
     "discardMessage": "Tienes cambios sin guardar. ¿Seguro que quieres cerrar sin guardar?",
+    "splitToggle": "Alternar división",
     "discardConfirm": "Descartar",
     "overwriteTitle": "¿Sobrescribir archivos?",
     "overwriteMessage": "Los siguientes archivos ya existen en el destino. ¿Sobrescribirlos?",

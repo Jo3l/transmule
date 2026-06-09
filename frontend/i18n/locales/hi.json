@@ -1097,6 +1097,7 @@
     "viewImage": "छवि देखें",
     "playVideo": "वीडियो चलाएँ",
     "playInWebamp": "Webamp में चलाएँ",
+    "viewComic": "कॉमिक देखें",
     "readComic": "कॉमिक पढ़ें",
     "playAllWithWebamp": "Webamp के साथ {count} MP3 चलाएँ",
     "move": "स्थानांतरित करें",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "छोड़ें",
     "overwriteTitle": "फ़ाइलों को ओवरराइट करें?",
     "overwriteMessage": "निम्न फ़ाइल(एं) गंतव्य पर पहले से मौजूद हैं। उन्हें ओवरराइट करें?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "ओवरराइट करें"
   },
   "movies": {

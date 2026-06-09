@@ -1097,6 +1097,7 @@
     "viewImage": "Bild anzeigen",
     "playVideo": "Video abspielen",
     "playInWebamp": "In Webamp abspielen",
+    "viewComic": "Comic anzeigen",
     "readComic": "Comic lesen",
     "playAllWithWebamp": "{count} MP3 mit Webamp abspielen",
     "move": "Verschieben",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "Verwerfen",
     "overwriteTitle": "Dateien überschreiben?",
     "overwriteMessage": "Die folgenden Dateien existieren bereits am Ziel. Überschreiben?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Überschreiben"
   },
   "movies": {

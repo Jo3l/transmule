@@ -1113,6 +1113,7 @@
     "viewImage": "View image",
     "playVideo": "Play video",
     "playInWebamp": "Play in Webamp",
+    "viewComic": "View comic",
     "readComic": "Read comic",
     "playAllWithWebamp": "Play {count} MP3 with Webamp",
     "move": "Move",
@@ -1213,6 +1214,7 @@
       "apiUnavailable": "pyLoad logs API is not available"
     },
     "discardMessage": "You have unsaved changes. Are you sure you want to close without saving?",
+    "splitToggle": "Toggle split",
     "discardConfirm": "Discard",
     "overwriteTitle": "Overwrite files?",
     "overwriteMessage": "The following file(s) already exist at the destination. Overwrite them?",

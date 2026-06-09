@@ -1097,6 +1097,7 @@
     "viewImage": "Podgląd obrazu",
     "playVideo": "Odtwórz wideo",
     "playInWebamp": "Odtwórz w Webamp",
+    "viewComic": "Zobacz komiks",
     "readComic": "Czytaj komiks",
     "playAllWithWebamp": "Odtwórz {count} MP3 przez Webamp",
     "move": "Przenieś",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "Odrzuć",
     "overwriteTitle": "Nadpisać pliki?",
     "overwriteMessage": "Następujące pliki już istnieją w miejscu docelowym. Nadpisać je?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Nadpisz"
   },
   "movies": {

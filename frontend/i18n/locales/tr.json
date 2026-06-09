@@ -1097,6 +1097,7 @@
     "viewImage": "Görseli görüntüle",
     "playVideo": "Video oynat",
     "playInWebamp": "Webamp'te Oynat",
+    "viewComic": "Çizgi roman görüntüle",
     "readComic": "Çizgi roman oku",
     "playAllWithWebamp": "{count} MP3'ü Webamp ile Oynat",
     "move": "Taşı",
@@ -1198,6 +1199,7 @@
     "discardConfirm": "At",
     "overwriteTitle": "Dosyaların üzerine yazılsın mı?",
     "overwriteMessage": "Aşağıdaki dosya(lar) hedef konumda zaten mevcut. Üzerine yazılsın mı?",
+    "splitToggle": "Toggle split",
     "overwriteConfirm": "Üzerine Yaz"
   },
   "movies": {

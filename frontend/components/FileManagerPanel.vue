@@ -109,6 +109,13 @@
             <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
           </button>
           <button
+            v-if="isComicFile(item) && !item.isRemoteMount"
+            class="fmp-mc-action fmp-mc-action--accent"
+            @click="emitOpenComic(item); mobileOpenedItem = null"
+          >
+            <span class="mdi mdi-book-open-variant-outline mr-2" />{{ $t("fileManager.viewComic") }}
+          </button>
+          <button
             v-if="item.type === 'file'"
             class="fmp-mc-action"
             @click="$emit('download-file', item.name); mobileOpenedItem = null"
@@ -215,7 +222,7 @@
               />
             </button>
           </th>
-          <th class="has-text-right fmp-th-size">
+          <th class="has-text-right fmp-th-size fmp-col-size">
             <button
               class="fmp-sort-btn"
               :class="{ 'is-active': sortCol === 'size' }"
@@ -230,7 +237,7 @@
               />
             </button>
           </th>
-          <th class="is-hidden-mobile fmp-th-date">
+          <th class="fmp-th-date fmp-col-date">
             <button
               class="fmp-sort-btn"
               :class="{ 'is-active': sortCol === 'modified' }"
@@ -249,16 +256,23 @@
       </thead>
       <tbody>
         <tr v-if="currentPath && !hasSearched" class="fmp-row"
-          :class="{ 'is-keyboard-focused': focusedIndex === -1 && displayItems.length > 0 }"
-          @click.prevent="navigateUp" @dblclick.prevent="navigateUp">
+          :class="{
+            'is-keyboard-focused': focusedIndex === -1 && displayItems.length > 0,
+            'is-drop-target': dropTargetRow === '..',
+            'is-drop-target-copy': dropTargetRow === '..' && isCopyKey,
+          }"
+          @click.prevent="navigateUp" @dblclick.prevent="navigateUp"
+          @dragover="onParentDragOver($event)"
+          @dragleave="onParentDragLeave($event)"
+          @drop.prevent="onParentDrop($event)">
           <td>
             <span class="fmp-name-cell">
               <span class="mdi mdi-folder-upload-outline fmp-icon fm-icon-dir" />
               <span class="fmp-filename">...</span>
             </span>
           </td>
-          <td class="has-text-right has-text-grey is-size-7">&mdash;</td>
-          <td class="has-text-grey is-size-7 is-hidden-mobile"></td>
+          <td class="has-text-right has-text-grey is-size-7 fmp-col-size">&mdash;</td>
+          <td class="has-text-grey is-size-7 fmp-col-date"></td>
         </tr>
         <tr
           v-for="(item, idx) in displayItems"
@@ -267,6 +281,7 @@
           :class="{
             'is-selected': selectedItems.has(item.name),
             'is-drop-target': isAdmin && item.type === 'directory' && dropTargetRow === item.name,
+            'is-drop-target-copy': isAdmin && item.type === 'directory' && dropTargetRow === item.name && isCopyKey,
             'is-keyboard-focused': focusedIndex === idx,
           }"
           class="fmp-row"
@@ -300,10 +315,10 @@
               <span v-else class="fmp-filename" :title="item.name">{{ item.name }}</span>
             </span>
           </td>
-          <td class="has-text-right has-text-grey is-size-7">
+          <td class="has-text-right has-text-grey is-size-7 fmp-col-size">
             {{ item.type === "directory" ? "—" : fmtSize(item.size) }}
           </td>
-          <td class="has-text-grey is-size-7 is-hidden-mobile">
+          <td class="has-text-grey is-size-7 fmp-col-date">
             {{ fmtDate(item.modified) }}
           </td>
         </tr>
@@ -367,6 +382,13 @@
           @click="emitPlayInWebamp(ctxMenu.item); hideCtxMenu()"
         >
           <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
+        </button>
+        <button
+          v-if="isComicFile(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
+          class="fmp-ctx-item fmp-ctx-item--accent"
+          @click="emitOpenComic(ctxMenu.item); hideCtxMenu()"
+        >
+          <span class="mdi mdi-book-open-variant-outline mr-2" />{{ $t("fileManager.viewComic") }}
         </button>
         <button
           v-if="ctxIsMulti && selectedMp3s.length > 0"
@@ -613,6 +635,8 @@ function clearSearch() {
 // Drag state
 const dragging = ref(false);
 const dropTargetRow = ref<string | null>(null);
+const currentDragEl = ref<HTMLElement | null>(null);
+const isCopyKey = ref(false);
 const fileInputEl = ref<HTMLInputElement | null>(null);
 
 // Context menu
@@ -690,8 +714,8 @@ function emitOpenVideoPreview(item: FileItem | null) {
 function emitPlayInWebamp(item: FileItem | null) {
   if (item) emit("play-in-webamp", item);
 }
-function emitOpenComic(item: FileItem) {
-  emit("open-comic", item);
+function emitOpenComic(item: FileItem | null) {
+  if (item) emit("open-comic", item);
 }
 function emitRenameItem(item: FileItem | null) {
   if (item) emit("rename-item", { item, currentPath: props.currentPath });
@@ -1006,9 +1030,12 @@ function onRowDragStart(e: DragEvent, item: FileItem) {
 
 function onRowDragOver(e: DragEvent, item: FileItem) {
   if (!props.isAdmin || item.type !== "directory") return;
-  if (!e.dataTransfer?.types.includes("application/x-fm-paths")) return;
+  if (!e.dataTransfer) return;
+  currentDragEl.value = e.currentTarget as HTMLElement;
+  if (!e.dataTransfer.types.includes("application/x-fm-paths")) return;
   dropTargetRow.value = item.name;
-  e.dataTransfer.dropEffect = e.ctrlKey || e.shiftKey ? "copy" : "move";
+  const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+  e.dataTransfer.dropEffect = copy ? "copy" : "move";
 }
 
 function onRowDragLeave(e: DragEvent, item: FileItem) {
@@ -1017,17 +1044,58 @@ function onRowDragLeave(e: DragEvent, item: FileItem) {
     !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)
   ) {
     dropTargetRow.value = null;
+    currentDragEl.value = null;
   }
 }
 
 function onRowDrop(e: DragEvent, item: FileItem) {
   dropTargetRow.value = null;
+  currentDragEl.value = null;
   if (!props.isAdmin || item.type !== "directory") return;
   const fmData = e.dataTransfer?.getData("application/x-fm-paths");
   if (!fmData) return;
   try {
     const sources: string[] = JSON.parse(fmData);
-    emit("transfer", { sources, dest: childPath(item.name), copy: e.ctrlKey || e.shiftKey });
+    const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+    emit("transfer", { sources, dest: childPath(item.name), copy });
+  } catch {
+    /* ignore */
+  }
+}
+
+function onParentDragOver(e: DragEvent) {
+  if (!props.isAdmin) return;
+  if (!e.dataTransfer) return;
+  e.preventDefault();
+  currentDragEl.value = e.currentTarget as HTMLElement;
+  if (!e.dataTransfer.types.includes("application/x-fm-paths")) return;
+  dropTargetRow.value = "..";
+  const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+  e.dataTransfer.dropEffect = copy ? "copy" : "move";
+}
+
+function onParentDragLeave(e: DragEvent) {
+  if (
+    dropTargetRow.value === ".." &&
+    !(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)
+  ) {
+    dropTargetRow.value = null;
+    currentDragEl.value = null;
+  }
+}
+
+function onParentDrop(e: DragEvent) {
+  dropTargetRow.value = null;
+  currentDragEl.value = null;
+  if (!props.isAdmin) return;
+  const fmData = e.dataTransfer?.getData("application/x-fm-paths");
+  if (!fmData) return;
+  try {
+    const sources: string[] = JSON.parse(fmData);
+    const segs = (props.currentPath || "").split("/").filter(Boolean).slice(0, -1);
+    const dest = segs.join("/");
+    const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+    emit("transfer", { sources, dest, copy });
   } catch {
     /* ignore */
   }
@@ -1036,17 +1104,20 @@ function onRowDrop(e: DragEvent, item: FileItem) {
 function onDragLeave(e: DragEvent) {
   if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) {
     dragging.value = false;
+    currentDragEl.value = null;
   }
 }
 
 function onDrop(e: DragEvent) {
   dragging.value = false;
+  currentDragEl.value = null;
   if (!props.isAdmin || readOnlyActive.value) return;
   const fmData = e.dataTransfer?.getData("application/x-fm-paths");
   if (fmData) {
     try {
       const sources: string[] = JSON.parse(fmData);
-      emit("transfer", { sources, dest: props.currentPath, copy: e.ctrlKey || e.shiftKey });
+      const copy = e.ctrlKey || e.shiftKey || isCopyKey.value;
+      emit("transfer", { sources, dest: props.currentPath, copy });
     } catch {
       /* ignore */
     }
@@ -1215,16 +1286,38 @@ onMounted(() => {
   const handler = (e: KeyboardEvent) => {
     if (e.key === "Escape") hideCtxMenu();
   };
+
+  // Track Ctrl/Shift for drag-and-drop copy mode
+  const onDndKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Control" || e.key === "Shift") {
+      isCopyKey.value = true;
+      if (currentDragEl.value) {
+        currentDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+      }
+    }
+  };
+  const onDndKeyUp = (e: KeyboardEvent) => {
+    if (e.key === "Control" || e.key === "Shift") {
+      isCopyKey.value = false;
+      if (currentDragEl.value) {
+        currentDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+      }
+    }
+  };
   const clickOutside = (e: MouseEvent) => {
     if (ctxMenu.value.visible && ctxMenuRef.value && !ctxMenuRef.value.contains(e.target as Node)) {
       hideCtxMenu();
     }
   };
   window.addEventListener("keydown", handler);
+  window.addEventListener("keydown", onDndKeyDown);
+  window.addEventListener("keyup", onDndKeyUp);
   document.addEventListener("mousedown", clickOutside);
   // Cleanup
   onUnmounted(() => {
     window.removeEventListener("keydown", handler);
+    window.removeEventListener("keydown", onDndKeyDown);
+    window.removeEventListener("keyup", onDndKeyUp);
     document.removeEventListener("mousedown", clickOutside);
   });
 });
@@ -1240,6 +1333,7 @@ onMounted(() => {
   overflow: auto;
   flex: 1;
   min-height: 120px;
+  container-type: inline-size;
   outline: 1px solid var(--s-table-border);
   outline-offset: -1px;
 }
@@ -1335,10 +1429,14 @@ onMounted(() => {
 .fmp-th-size { width: 90px; }
 .fmp-th-date { width: 160px; }
 .fmp-row { cursor: pointer; user-select: none; }
-.fmp-row.is-drop-target td {
+.fmp-row.is-drop-target {
   background: color-mix(in oklab, var(--s-accent) 14%, transparent) !important;
   outline: 2px solid var(--s-accent);
   outline-offset: -2px;
+}
+.fmp-row.is-drop-target-copy {
+  background: color-mix(in oklab, var(--s-success, #22c55e) 12%, transparent);
+  outline-color: var(--s-success, #22c55e);
 }
 .fmp-row.is-selected td {
   background: var(--s-accent-subtle) !important;
@@ -1480,4 +1578,12 @@ onMounted(() => {
 }
 .fmp-ctx-item--accent { color: var(--s-accent); }
 .fmp-ctx-item--danger { color: var(--s-danger); }
+
+/* ── Responsive columns — hide size/date when panel < 650px ─────── */
+@container (max-width: 649px) {
+  .fmp-col-size,
+  .fmp-col-date {
+    display: none;
+  }
+}
 </style>
