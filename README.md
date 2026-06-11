@@ -52,9 +52,9 @@
 
 <br>
 
-## ✨ Features
+## Features
 
-### 📥 Unified Download Management
+### Unified Download Management
 | Feature | Description |
 |---------|-------------|
 | **Unified dashboard** | All downloads — aMule files, BitTorrent transfers and pyLoad packages — in one sortable, filterable table with mobile card layout |
@@ -63,7 +63,7 @@
 | **pyLoad NG integration** | Add direct-download (DDL) packages, monitor link extraction status, stop/restart/delete packages with full queue management |
 | **Torrent search** | Search multiple torrent indexes directly from the UI with live streaming results — extensible via plugins |
 
-### 🗂️ File Management & Storage
+### File Management & Storage
 | Feature | Description |
 |---------|-------------|
 | **Full file manager** | Browse, upload, download, rename, delete, move and copy files through a clean web interface |
@@ -72,7 +72,7 @@
 | **Archive utilities** | Compress files into zip/tar/tar.gz/tar.bz2/tar.xz (with optional password for zip), extract uploaded archives, smart rename media files |
 | **Media preview** | In-browser image viewer, video player with streaming, and text editor for quick inspection |
 
-### 🔌 Plugin System
+### Plugin System
 | Feature | Description |
 |---------|-------------|
 | **Runtime plugins** | Upload `.js` plugins without restarting the server — they're active immediately after refresh |
@@ -80,17 +80,17 @@
 | **Torrent search sources** | Add custom torrent indexers (PirateBay, YTS Search, Nyaa.si, TorrentClaw, etc.) |
 | **Official plugins** | Maintained in [transmule-plugins](https://github.com/Jo3l/transmule-plugins) with a public manifest |
 
-### 👥 User Experience
+### User Experience
 | Feature | Description |
 |---------|-------------|
 | **Multi-user auth** | JWT-based login with per-user preferences stored in SQLite |
 | **Light / Dark themes** | Full theme support that respects system preference |
-| **🌐 i18n** | English, Español, Português, Italiano, Deutsch, Polski, Türkçe, Русский, हिन्दी — 9 languages |
-| **📱 Mobile-friendly** | Responsive layout with card-based view on small screens |
+| **i18n** | English, Español, Português, Italiano, Deutsch, Polski, Türkçe, Русский, हिन्दी — 9 languages |
+| **Mobile-friendly** | Responsive layout with card-based view on small screens |
 | **Statistics** | Live aMule stats tree + Transmission session statistics |
 | **API documentation** | Interactive Swagger docs at [`/_scalar`](http://localhost:3001/_scalar) |
 
-### 🎵 Webamp — Winamp in the Browser
+### Webamp — Winamp in the Browser
 | Feature | Description |
 |---------|-------------|
 | **Built-in player** | Embedded [Webamp](https://webamp.org) (Winamp v2 reimplementation) with Milkdrop visualizations via Butterchurn |
@@ -100,7 +100,7 @@
 | **Window layout** | Toggle Equalizer, Playlist, and Milkdrop windows independently. Double-size mode supported |
 | **Persistence** | All preferences (skin, window state, size) are persisted to `localStorage` across sessions |
 
-### 📚 Comic Reader
+### Comic Reader
 | Feature | Description |
 |---------|-------------|
 | **Supported formats** | CBZ, CBR, and PDF — extracted client-side via JSZip, libunrar, and pdf.js |
@@ -111,7 +111,7 @@
 
 <br>
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Docker** and **Docker Compose** (v2 or later) installed
@@ -155,7 +155,7 @@ This starts four containers:
 
 On first run you will be prompted to create an admin account.
 
-### 🍓 ARM64 / Raspberry Pi
+### ARM64 / Raspberry Pi
 
 The `docker-compose.yml` is fully ARM64-compatible. The TransMule image is published as a **multi-arch manifest** supporting both `linux/amd64` and `linux/arm64`. All service images are also multi-arch — no special configuration needed.
 
@@ -170,20 +170,7 @@ PYLOAD_IMAGE=lscr.io/linuxserver/pyload-ng:latest
 
 <br>
 
-## 📸 Screenshots
-
-| View | Desktop | Mobile |
-|------|---------|--------|
-| **Downloads** | ![Downloads](transmuleDownloads.jpg) | _Responsive card layout_ |
-| **Torrent Search** | _Streaming search results with provider tabs_ | _Search on the go_ |
-| **File Manager** | _Browse, upload, manage files_ | _Touch-friendly_ |
-| **Settings** | _Providers, integrations, preferences_ | _Full mobile support_ |
-
-> Screenshots will be added in a dedicated [`docs/screenshots/`](docs/screenshots/) directory. Contributions welcome!
-
-<br>
-
-## 🏗️ Architecture
+## Architecture
 
 ```
 Browser
@@ -201,31 +188,11 @@ Browser
 ```
 
 The frontend (Nuxt 3 SPA) and the Nitro API share a single container managed by supervisord. nginx handles static file serving and proxies API traffic to Nitro on the loopback interface — no IP address is ever baked into the image.
-
-### Container topology
-
-```
-┌──────────────┐     ┌──────────────────┐     ┌───────────────┐
-│  transmule-  │     │  transmule-      │     │  transmule-   │
-│  app         │────▶│  transmission    │     │  pyload       │
-│  (nginx+Nitro)│     │  (BitTorrent)    │     │  (direct DL)  │
-│  :3001       │     │  :9091 (internal)│     │  :8000 (int.) │
-└──────┬───────┘     └──────────────────┘     └───────────────┘
-       │
-       ▼
-┌──────────────┐
-│  transmule-  │
-│  amule       │
-│  (ED2K/KAD)  │
-│  :4712 (int.)│
-└──────────────┘
-```
-
 **All inter-service communication** happens on an internal Docker network. aMule EC, Transmission RPC and pyLoad API are never exposed to the host. The Nitro API listens on `127.0.0.1:3000` inside the app container exclusively.
 
 <br>
 
-## 🧩 Plugin System
+## Plugin System
 
 TransMule has a **runtime plugin system** in JavaScript. Upload a `.js` file via **Settings → Providers** and it's active immediately after page reload — no server restart needed.
 
@@ -252,97 +219,9 @@ TransMule has a **runtime plugin system** in JavaScript. Upload a `.js` file via
 
 > Download from [github.com/Jo3l/transmule-plugins](https://github.com/Jo3l/transmule-plugins)
 
-### Smart tags
-
-Search results include color-coded badges for quick scanning:
-
-| Tag | Color | Examples |
-|-----|-------|----------|
-| Quality score | 🟢 success | `83`, `95` |
-| Resolution | 🟡 warning | `2160P`, `1080P`, `720P` |
-| HDR type | 🟡 warning | `DV+HDR10`, `HDR10`, `HLG` |
-| Source | 🔵 info | `BLURAY`, `WEB-DL`, `HDTV` |
-| Codec | 🔵 info | `hevc`, `x265`, `AV1` |
-| Audio | 🟣 accent | `TRUEHD 7.1`, `DTS-HD MA` |
-| Language | ⚪ default | `🇬🇧 EN`, `🇪🇸 ES`, `🇯🇵 JP` |
-| Flags | 🔴 danger | `PROPER`, `REPACK`, `INTERNAL` |
-
-Tags come from two sources: **native** (returned by the plugin with structured metadata) and **parsed** (extracted from the torrent name via regex in `parse-name.ts` — applied to all plugins).
-
 <br>
 
-## 📊 Comparison
-
-| Feature | TransMule | aMuTorrent |
-|---------|-----------|------------|
-| **aMule (ED2K/KAD)** | ✅ Full EC protocol — downloads, search, servers, KAD, stats | ✅ aMule EC |
-| **Transmission** | ✅ Full RPC — torrents, peers, trackers, settings | ✅ Transmission RPC |
-| **qBittorrent** | ❌ | ✅ WebUI API |
-| **rTorrent** | ❌ | ✅ XML-RPC |
-| **Deluge** | ❌ | ✅ JSON-RPC |
-| **pyLoad (direct downloads)** | ✅ Full integration | ❌ |
-| **Multi-instance clients** | ❌ | ✅ |
-| **File manager** | ✅ Built-in with browse, upload, download, rename, delete, move, copy | ❌ |
-| **Remote storage mounts** | ✅ SMB/CIFS + WebDAV (extensible) | ❌ |
-| **Archive utilities** | ✅ Compress (zip/tar.gz/tar.xz) + extract + smart rename | ❌ |
-| **Media preview** | ✅ Image viewer, video player, text editor | ❌ |
-| **Plugin system** | ✅ Runtime JS plugins (media + torrent-search) | ❌ |
-| **Torrent search** | ✅ Streaming SSE with provider tabs | ✅ Prowlarr search |
-| **Prowlarr integration** | ❌ (custom plugin system instead) | ✅ |
-| **Torznab / *arr API** | ❌ | ✅ Sonarr/Radarr-compatible for aMule |
-| **Push notifications** | ❌ (planned) | ✅ Apprise (80+ services) |
-| **GeoIP peers** | ❌ | ✅ |
-| **Multi-user auth** | ✅ JWT-based, per-user prefs | ✅ Users, capabilities, SSO |
-| **i18n** | ✅ English, Español, Português, Italiano, Deutsch, Polski, Türkçe, Русский, हिन्दी | ❌ (English only) |
-| **Theming** | ✅ Light / Dark (system-aware) | ✅ Dark mode |
-| **Mobile support** | ✅ Responsive design + card layout | ✅ Responsive |
-| **Docker deployment** | ✅ Single docker-compose.yml, all-in-one | ✅ Docker image |
-| **Multi-arch images** | ✅ amd64 + ARM64 | ✅ amd64 + ARM64 |
-| **API docs** | ✅ Interactive Swagger at `/_scalar` | ✅ REST API + WebSocket docs |
-| **WebSocket / real-time** | ❌ (polling + SSE) | ✅ WebSocket |
-
-> TransMule focuses on **depth over breadth**: fewer supported clients, but richer built-in file management, storage mounts, media preview, archive tools, and an extensible plugin system that doesn't require external services.
-
-<br>
-
-## 📁 Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | [Nuxt 3](https://nuxt.com/) + Vue 3, custom SCSS, i18n via `@nuxtjs/i18n` |
-| **Middleware** | [Nitro](https://nitro.unjs.io/) (Node.js HTTP server) |
-| **Database** | SQLite via `better-sqlite3` |
-| **Auth** | JWT (`jose` on frontend, `jsonwebtoken` on middleware) — cookie transport |
-| **aMule client** | EC binary protocol (custom implementation via `amule-ec-client`) |
-| **Transmission** | Transmission RPC JSON API |
-| **pyLoad** | pyLoad NG HTTP API |
-| **SMB client** | [`@marsaud/smb2`](https://www.npmjs.com/package/@marsaud/smb2) |
-| **WebDAV client** | [`webdav`](https://www.npmjs.com/package/webdav) |
-| **Background jobs** | In-process job queue (transfers, extracts, compressions via `/api/files/transfer-status`) |
-| **Containers** | Docker Compose — multi-arch (amd64 + arm64), multi-stage Dockerfile |
-| **CI/CD** | GitHub Actions → GHCR (`ghcr.io/jo3l/transmule`) |
-
-<br>
-
-## 🔌 Ports
-
-| Port | Service | Note |
-|------|---------|------|
-| `3001` | App (nginx + Nitro) | UI + proxied API + Swagger (`/_scalar`) |
-| `16881` (TCP) | aMule ED2K | Configurable via `AMULE_ED2K_TCP_PORT` |
-| `16882` (UDP) | aMule ED2K | Configurable via `AMULE_ED2K_UDP_PORT` |
-| `16883` (UDP) | aMule Kademlia | Configurable via `AMULE_KAD_UDP_PORT` |
-| `16884` (TCP/UDP) | Transmission peers | Configurable via `TRANSMISSION_PEER_PORT` |
-
-**Internal only** (Docker network, not exposed to host):
-- `4712` — aMule EC protocol
-- `9091` — Transmission RPC
-- `8000` — pyLoad web UI + API
-- `3000` — Nitro API (loopback inside app container)
-
-<br>
-
-## ⚙️ Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -364,7 +243,7 @@ Tags come from two sources: **native** (returned by the plugin with structured m
 
 <br>
 
-## 🛠️ Development
+## Development
 
 ### Requirements
 - Node.js 20+
@@ -394,35 +273,9 @@ Or use the convenience script at the root:
 ```bash
 docker build -t transmule:dev .
 ```
-
-### Project structure
-
-```
-transmule/
-├── frontend/          # Nuxt 3 SPA (Vue 3)
-│   ├── components/    # Vue components
-│   ├── composables/   # Shared composables (useSearchTabs, etc.)
-│   ├── pages/         # Route pages
-│   └── assets/        # Styles, logos, static assets
-├── middleware/        # Nitro API server
-│   ├── server/
-│   │   ├── api/       # REST endpoints
-│   │   ├── providers/ # Plugin loader + types
-│   │   ├── torrent-search/ # Torrent search engine
-│   │   └── utils/     # Auth, SMB, WebDAV helpers
-│   └── ...
-├── data/              # SQLite DB + runtime plugins
-├── docker/            # Init scripts for Docker services
-├── .github/workflows/ # CI/CD — builds to GHCR
-├── Dockerfile         # Multi-stage build
-├── docker-compose.yml # Production
-├── docker-compose.dev.yml # Development
-└── .env.example       # Configuration template
-```
-
 <br>
 
-## ❓ FAQ & Troubleshooting
+## FAQ & Troubleshooting
 
 ### "Can't connect to aMule"
 - Verify EC is enabled in aMule: Preferences → Remote Controls → External Connections
@@ -464,7 +317,7 @@ Yes! The Nitro API is proxied through nginx at `http://localhost:3001/api/...`. 
 
 <br>
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how you can help:
 
@@ -478,7 +331,7 @@ Contributions are welcome! Here's how you can help:
 
 <br>
 
-## 📜 License
+## License
 
 [GNU General Public License v3.0](LICENSE) — see the [LICENSE](LICENSE) file for details.
 
