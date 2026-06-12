@@ -414,8 +414,13 @@ async function openArchive() {
         if (err) return reject(err);
         if (!archive) return reject(new Error("Failed to open archive"));
         loadingText.value = "Extracting pages...";
-        let entries = archive.entries.filter((e: any) => e.is_file);
-        if (entries.length === 0) return reject(new Error("No files found"));
+        const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp"]);
+        let entries = archive.entries.filter((e: any) => {
+          if (!e.is_file) return false;
+          const ext = e.name.split(".").pop()?.toLowerCase() ?? "";
+          return IMAGE_EXTS.has(ext);
+        });
+        if (entries.length === 0) return reject(new Error("No images found in archive"));
         // Sort by filename so pages appear in correct order as they load
         entries.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
         // Pre-allocate so totalPages is accurate from the start
