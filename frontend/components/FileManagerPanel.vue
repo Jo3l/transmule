@@ -49,12 +49,7 @@
         @click.stop="onMobileCardTap(item)"
       >
         <div class="fmp-mc-header">
-          <img
-            v-if="isAudioFile(item)"
-            :src="winampIcon"
-            class="fmp-icon fmp-icon-winamp"
-            alt=""
-          />
+          <img v-if="isAudioFile(item)" :src="winampIcon" class="fmp-icon fmp-icon-winamp" alt="" />
           <img
             v-else-if="isComicFile(item)"
             :src="boltIcon"
@@ -76,49 +71,70 @@
           <button
             v-if="item.type === 'directory'"
             class="fmp-mc-action"
-            @click="navigate(childPath(item.name)); mobileOpenedItem = null"
+            @click="
+              navigate(childPath(item.name));
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
           </button>
           <button
             v-if="isImage(item) && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
-            @click="emitOpenImagePreview(item); mobileOpenedItem = null"
+            @click="
+              emitOpenImagePreview(item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
           </button>
           <button
             v-if="isTextEditable(item) && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
-            @click="emitOpenTextEditor(item); mobileOpenedItem = null"
+            @click="
+              emitOpenTextEditor(item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
           </button>
           <button
             v-if="isVideo(item) && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
-            @click="$emit('open-video-preview', item); mobileOpenedItem = null"
+            @click="
+              $emit('open-video-preview', item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
           </button>
           <button
             v-if="isMp3(item) && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
-            @click="$emit('play-in-webamp', item); mobileOpenedItem = null"
+            @click="
+              $emit('play-in-webamp', item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
           </button>
           <button
             v-if="isComicFile(item) && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
-            @click="emitOpenComic(item); mobileOpenedItem = null"
+            @click="
+              emitOpenComic(item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-book-open-variant-outline mr-2" />{{ $t("fileManager.viewComic") }}
           </button>
           <button
             v-if="item.type === 'file'"
             class="fmp-mc-action"
-            @click="$emit('download-file', item.name); mobileOpenedItem = null"
+            @click="
+              $emit('download-file', item.name);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
           </button>
@@ -126,7 +142,10 @@
             v-if="isAdmin && item.type === 'file' && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--accent"
             :disabled="readOnlyActive"
-            @click="$emit('smart-rename-paths', [childPath(item.name)]); mobileOpenedItem = null"
+            @click="
+              $emit('smart-rename-paths', [childPath(item.name)]);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
           </button>
@@ -134,20 +153,29 @@
             v-if="isAdmin && !item.isRemoteMount"
             class="fmp-mc-action"
             :disabled="readOnlyActive"
-            @click="$emit('open-transfer-dialog', { sources: [childPath(item.name)], mode: 'move' }); mobileOpenedItem = null"
+            @click="
+              $emit('open-transfer-dialog', { sources: [childPath(item.name)], mode: 'move' });
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
           </button>
           <button
             class="fmp-mc-action"
-            @click="$emit('open-transfer-dialog', { sources: [childPath(item.name)], mode: 'copy' }); mobileOpenedItem = null"
+            @click="
+              $emit('open-transfer-dialog', { sources: [childPath(item.name)], mode: 'copy' });
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
           </button>
           <button
             :disabled="readOnlyActive"
             class="fmp-mc-action"
-            @click="$emit('compress-sources', { sources: [childPath(item.name)], seedName: item.name }); mobileOpenedItem = null"
+            @click="
+              $emit('compress-sources', { sources: [childPath(item.name)], seedName: item.name });
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
           </button>
@@ -156,23 +184,41 @@
             <button
               :disabled="readOnlyActive"
               class="fmp-mc-action"
-              @click="$emit('extract-here', childPath(item.name)); mobileOpenedItem = null"
+              @click="
+                $emit('extract-here', childPath(item.name));
+                mobileOpenedItem = null;
+              "
             >
-              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractHere") }}
+              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                $t("fileManager.extractHere")
+              }}
             </button>
             <button
               :disabled="readOnlyActive"
               class="fmp-mc-action"
-              @click="$emit('extract-to-folder', { path: childPath(item.name), folder: archiveBasename(item.name) }); mobileOpenedItem = null"
+              @click="
+                $emit('extract-to-folder', {
+                  path: childPath(item.name),
+                  folder: archiveBasename(item.name),
+                });
+                mobileOpenedItem = null;
+              "
             >
-              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractToFolder", { name: archiveBasename(item.name) }) }}
+              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                $t("fileManager.extractToFolder", { name: archiveBasename(item.name) })
+              }}
             </button>
             <button
               :disabled="readOnlyActive"
               class="fmp-mc-action"
-              @click="$emit('open-extract-dialog', childPath(item.name)); mobileOpenedItem = null"
+              @click="
+                $emit('open-extract-dialog', childPath(item.name));
+                mobileOpenedItem = null;
+              "
             >
-              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractTo") }}
+              <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+                $t("fileManager.extractTo")
+              }}
             </button>
           </template>
           <div v-if="isAdmin && !item.isRemoteMount" class="fmp-mc-sep" />
@@ -180,14 +226,20 @@
             v-if="isAdmin && !item.isRemoteMount"
             class="fmp-mc-action"
             :disabled="readOnlyActive"
-            @click="$emit('rename-item', { item, currentPath }); mobileOpenedItem = null"
+            @click="
+              $emit('rename-item', { item, currentPath });
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
           </button>
           <button
             v-if="isAdmin && item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--danger"
-            @click="$emit('unmount-item', item); mobileOpenedItem = null"
+            @click="
+              $emit('unmount-item', item);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
           </button>
@@ -195,7 +247,10 @@
             v-if="isAdmin && !item.isRemoteMount"
             class="fmp-mc-action fmp-mc-action--danger"
             :disabled="readOnlyActive"
-            @click="$emit('delete-paths', [childPath(item.name)]); mobileOpenedItem = null"
+            @click="
+              $emit('delete-paths', [childPath(item.name)]);
+              mobileOpenedItem = null;
+            "
           >
             <span class="mdi mdi-delete mr-2" />{{ $t("fileManager.delete") }}
           </button>
@@ -216,9 +271,13 @@
               {{ $t("fileManager.name") }}
               <span
                 class="mdi"
-                :class="sortCol === 'name'
-                  ? sortDir === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
-                  : 'mdi-unfold-more-horizontal'"
+                :class="
+                  sortCol === 'name'
+                    ? sortDir === 'asc'
+                      ? 'mdi-arrow-up'
+                      : 'mdi-arrow-down'
+                    : 'mdi-unfold-more-horizontal'
+                "
               />
             </button>
           </th>
@@ -231,9 +290,13 @@
               {{ $t("fileManager.size") }}
               <span
                 class="mdi"
-                :class="sortCol === 'size'
-                  ? sortDir === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
-                  : 'mdi-unfold-more-horizontal'"
+                :class="
+                  sortCol === 'size'
+                    ? sortDir === 'asc'
+                      ? 'mdi-arrow-up'
+                      : 'mdi-arrow-down'
+                    : 'mdi-unfold-more-horizontal'
+                "
               />
             </button>
           </th>
@@ -246,25 +309,33 @@
               {{ $t("fileManager.modified") }}
               <span
                 class="mdi"
-                :class="sortCol === 'modified'
-                  ? sortDir === 'asc' ? 'mdi-arrow-up' : 'mdi-arrow-down'
-                  : 'mdi-unfold-more-horizontal'"
+                :class="
+                  sortCol === 'modified'
+                    ? sortDir === 'asc'
+                      ? 'mdi-arrow-up'
+                      : 'mdi-arrow-down'
+                    : 'mdi-unfold-more-horizontal'
+                "
               />
             </button>
           </th>
         </tr>
       </thead>
       <tbody>
-        <tr v-if="currentPath && !hasSearched" class="fmp-row"
+        <tr
+          v-if="currentPath && !hasSearched"
+          class="fmp-row"
           :class="{
             'is-keyboard-focused': focusedIndex === -1 && displayItems.length > 0,
             'is-drop-target': dropTargetRow === '..',
             'is-drop-target-copy': dropTargetRow === '..' && isCopyKey,
           }"
-          @click.prevent="navigateUp" @dblclick.prevent="navigateUp"
+          @click.prevent="navigateUp"
+          @dblclick.prevent="navigateUp"
           @dragover="onParentDragOver($event)"
           @dragleave="onParentDragLeave($event)"
-          @drop.prevent="onParentDrop($event)">
+          @drop.prevent="onParentDrop($event)"
+        >
           <td>
             <span class="fmp-name-cell">
               <span class="mdi mdi-folder-upload-outline fmp-icon fm-icon-dir" />
@@ -281,7 +352,8 @@
           :class="{
             'is-selected': selectedItems.has(item.name),
             'is-drop-target': isAdmin && item.type === 'directory' && dropTargetRow === item.name,
-            'is-drop-target-copy': isAdmin && item.type === 'directory' && dropTargetRow === item.name && isCopyKey,
+            'is-drop-target-copy':
+              isAdmin && item.type === 'directory' && dropTargetRow === item.name && isCopyKey,
             'is-keyboard-focused': focusedIndex === idx,
           }"
           class="fmp-row"
@@ -309,7 +381,9 @@
               />
               <span v-else class="mdi fmp-icon" :class="fileIcon(item)" />
               <template v-if="item.relpath">
-                <a class="fm-relpath" @click.prevent="navigate(item.relpath)">{{ item.relpath }}/</a>
+                <a class="fm-relpath" @click.prevent="navigate(item.relpath)"
+                  >{{ item.relpath }}/</a
+                >
               </template>
               <span v-if="item.type === 'directory'" class="fmp-filename">{{ item.name }}</span>
               <span v-else class="fmp-filename" :title="item.name">{{ item.name }}</span>
@@ -351,56 +425,80 @@
         <button
           v-if="!ctxIsMulti && ctxMenu.item?.type === 'directory'"
           class="fmp-ctx-item"
-          @click="navigate(childPath(ctxMenu.item.name)); hideCtxMenu()"
+          @click="
+            navigate(childPath(ctxMenu.item.name));
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-folder-open mr-2" />{{ $t("fileManager.ctxOpen") }}
         </button>
         <button
           v-if="isImage(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="emitOpenImagePreview(ctxMenu.item); hideCtxMenu()"
+          @click="
+            emitOpenImagePreview(ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-image-outline mr-2" />{{ $t("fileManager.viewImage") }}
         </button>
         <button
           v-if="isTextEditable(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="emitOpenTextEditor(ctxMenu.item); hideCtxMenu()"
+          @click="
+            emitOpenTextEditor(ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-file-edit-outline mr-2" />{{ $t("fileManager.editText") }}
         </button>
         <button
           v-if="isVideo(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="emitOpenVideoPreview(ctxMenu.item); hideCtxMenu()"
+          @click="
+            emitOpenVideoPreview(ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-play-circle-outline mr-2" />{{ $t("fileManager.playVideo") }}
         </button>
         <button
           v-if="isMp3(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="emitPlayInWebamp(ctxMenu.item); hideCtxMenu()"
+          @click="
+            emitPlayInWebamp(ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-play mr-2" />{{ $t("fileManager.playInWebamp") }}
         </button>
         <button
           v-if="isComicFile(ctxMenu.item) && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="emitOpenComic(ctxMenu.item); hideCtxMenu()"
+          @click="
+            emitOpenComic(ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-book-open-variant-outline mr-2" />{{ $t("fileManager.viewComic") }}
         </button>
         <button
           v-if="ctxIsMulti && selectedMp3s.length > 0"
           class="fmp-ctx-item fmp-ctx-item--accent"
-          @click="$emit('webamp-tracks', getSelectedMp3Tracks()); hideCtxMenu()"
+          @click="
+            $emit('webamp-tracks', getSelectedMp3Tracks());
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-playlist-music mr-2" />{{ $t("fileManager.playInWebamp", 2) }}
         </button>
         <button
           v-if="!ctxIsMulti && ctxMenu.item?.type === 'file'"
           class="fmp-ctx-item"
-          @click="$emit('download-file', ctxMenu.item.name); hideCtxMenu()"
+          @click="
+            $emit('download-file', ctxMenu.item.name);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
         </button>
@@ -408,14 +506,20 @@
           v-if="!ctxIsMulti && ctxMenu.item && !ctxMenu.item?.isRemoteMount"
           class="fmp-ctx-item"
           :disabled="readOnlyActive"
-          @click="$emit('rename-item', { item: ctxMenu.item, currentPath: currentPath }); hideCtxMenu()"
+          @click="
+            $emit('rename-item', { item: ctxMenu.item, currentPath: currentPath });
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-pencil mr-2" />{{ $t("fileManager.rename") }}
         </button>
         <button
           v-if="!ctxIsMulti && ctxMenu.item && ctxMenu.item.isRemoteMount"
           class="fmp-ctx-item fmp-ctx-item--danger"
-          @click="$emit('unmount-item', ctxMenu.item); hideCtxMenu()"
+          @click="
+            $emit('unmount-item', ctxMenu.item);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
         </button>
@@ -426,7 +530,10 @@
           @click="
             ctxIsMulti
               ? $emit('open-transfer-dialog', { sources: getSelectedPaths(), mode: 'move' })
-              : $emit('open-transfer-dialog', { sources: [childPath(ctxMenu.item!.name)], mode: 'move' });
+              : $emit('open-transfer-dialog', {
+                  sources: [childPath(ctxMenu.item!.name)],
+                  mode: 'move',
+                });
             hideCtxMenu();
           "
         >
@@ -437,7 +544,10 @@
           @click="
             ctxIsMulti
               ? $emit('open-transfer-dialog', { sources: getSelectedPaths(), mode: 'copy' })
-              : $emit('open-transfer-dialog', { sources: [childPath(ctxMenu.item!.name)], mode: 'copy' });
+              : $emit('open-transfer-dialog', {
+                  sources: [childPath(ctxMenu.item!.name)],
+                  mode: 'copy',
+                });
             hideCtxMenu();
           "
         >
@@ -448,38 +558,95 @@
           class="fmp-ctx-item"
           @click="
             ctxIsMulti
-              ? $emit('compress-sources', { sources: getSelectedPaths(), seedName: ctxMenu.item?.name ?? 'archive' })
-              : $emit('compress-sources', { sources: [childPath(ctxMenu.item!.name)], seedName: ctxMenu.item!.name });
+              ? $emit('compress-sources', {
+                  sources: getSelectedPaths(),
+                  seedName: ctxMenu.item?.name ?? 'archive',
+                })
+              : $emit('compress-sources', {
+                  sources: [childPath(ctxMenu.item!.name)],
+                  seedName: ctxMenu.item!.name,
+                });
             hideCtxMenu();
           "
         >
           <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
         </button>
         <div class="fmp-ctx-sep" />
-        <template v-if="!ctxIsMulti && ctxMenu.item && isArchive(ctxMenu.item.name) && !ctxMenu.item.isRemoteMount">
-          <button class="fmp-ctx-item" :disabled="readOnlyActive" @click="emit('extract-here', childPath(ctxMenu.item.name)); hideCtxMenu()">
-            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractHere") }}
+        <template
+          v-if="
+            !ctxIsMulti &&
+            ctxMenu.item &&
+            isArchive(ctxMenu.item.name) &&
+            !ctxMenu.item.isRemoteMount
+          "
+        >
+          <button
+            class="fmp-ctx-item"
+            :disabled="readOnlyActive"
+            @click="
+              emit('extract-here', childPath(ctxMenu.item.name));
+              hideCtxMenu();
+            "
+          >
+            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+              $t("fileManager.extractHere")
+            }}
           </button>
-          <button class="fmp-ctx-item" :disabled="readOnlyActive" @click="emit('extract-to-folder', { path: childPath(ctxMenu.item.name), folder: archiveBasename(ctxMenu.item.name) }); hideCtxMenu()">
-            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractToFolder", { name: archiveBasename(ctxMenu.item.name) }) }}
+          <button
+            class="fmp-ctx-item"
+            :disabled="readOnlyActive"
+            @click="
+              emit('extract-to-folder', {
+                path: childPath(ctxMenu.item.name),
+                folder: archiveBasename(ctxMenu.item.name),
+              });
+              hideCtxMenu();
+            "
+          >
+            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+              $t("fileManager.extractToFolder", { name: archiveBasename(ctxMenu.item.name) })
+            }}
           </button>
-          <button class="fmp-ctx-item" :disabled="readOnlyActive" @click="emit('open-extract-dialog', childPath(ctxMenu.item.name)); hideCtxMenu()">
-            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{ $t("fileManager.extractTo") }}
+          <button
+            class="fmp-ctx-item"
+            :disabled="readOnlyActive"
+            @click="
+              emit('open-extract-dialog', childPath(ctxMenu.item.name));
+              hideCtxMenu();
+            "
+          >
+            <span class="mdi mdi-archive-arrow-down-outline mr-2" />{{
+              $t("fileManager.extractTo")
+            }}
           </button>
           <div class="fmp-ctx-sep" />
         </template>
         <button
-          v-if="!ctxIsMulti && ctxMenu.item && ctxMenu.item.type === 'file' && !ctxMenu.item.isRemoteMount"
+          v-if="
+            !ctxIsMulti &&
+            ctxMenu.item &&
+            ctxMenu.item.type === 'file' &&
+            !ctxMenu.item.isRemoteMount
+          "
           class="fmp-ctx-item fmp-ctx-item--accent"
           :disabled="readOnlyActive"
-          @click="$emit('smart-rename-paths', [childPath(ctxMenu.item.name)]); hideCtxMenu()"
+          @click="
+            $emit('smart-rename-paths', [childPath(ctxMenu.item.name)]);
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
         </button>
         <button
           v-if="!ctxIsMulti && ctxMenu.item && ctxMenu.item.isRemoteMount"
           class="fmp-ctx-item"
-          @click="$emit('open-transfer-dialog', { sources: [childPath(ctxMenu.item.name)], mode: 'copy' }); hideCtxMenu()"
+          @click="
+            $emit('open-transfer-dialog', {
+              sources: [childPath(ctxMenu.item.name)],
+              mode: 'copy',
+            });
+            hideCtxMenu();
+          "
         >
           <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.exportFiles") }}
         </button>
@@ -555,8 +722,8 @@ const { setPendingDragTracks } = useWebamp();
 // ── Read-only detection — check if current path is inside a read-only mount ──
 const readOnlyActive = computed(() => {
   if (!props.currentPath) return false;
-  const firstSeg = props.currentPath.split('/')[0];
-  const mount = props.remoteMounts.find(m => m.name === firstSeg);
+  const firstSeg = props.currentPath.split("/")[0];
+  const mount = props.remoteMounts.find((m) => m.name === firstSeg);
   return mount?.readOnly === true;
 });
 
@@ -605,9 +772,7 @@ const hasSearched = computed(
   () => searchResults.value.length > 0 || (searching.value && searchQuery.value.trim().length > 0),
 );
 
-const displayItems = computed(() =>
-  hasSearched.value ? searchResults.value : sortedItems.value,
-);
+const displayItems = computed(() => (hasSearched.value ? searchResults.value : sortedItems.value));
 
 async function doSearch(query?: string) {
   const q = (query ?? searchQuery.value).trim();
@@ -696,7 +861,10 @@ function onCtxKeyDown(e: KeyboardEvent) {
       e.preventDefault();
       hideCtxMenu();
       // Return focus to the panel
-      (e.currentTarget as HTMLElement)?.closest?.("#page-files")?.querySelector<HTMLElement>(".fmp-wrap[tabindex]")?.focus();
+      (e.currentTarget as HTMLElement)
+        ?.closest?.("#page-files")
+        ?.querySelector<HTMLElement>(".fmp-wrap[tabindex]")
+        ?.focus();
       break;
   }
 }
@@ -781,7 +949,13 @@ async function loadDir() {
   } catch (err: any) {
     const status = err?.response?.status ?? err?.status ?? 0;
     const msg = err?.data?.statusMessage ?? err?.response?._data?.statusMessage ?? "";
-    if ((status === 403 || status === 404 || status === 0 || /not.?found|not.?exist|denied/i.test(msg)) && props.currentPath) {
+    if (
+      (status === 403 ||
+        status === 404 ||
+        status === 0 ||
+        /not.?found|not.?exist|denied/i.test(msg)) &&
+      props.currentPath
+    ) {
       // Path doesn't exist — silently navigate up to parent;
       // the watch on currentPath will trigger loadDir again
       const segs = props.currentPath.split("/").filter(Boolean).slice(0, -1);
@@ -795,20 +969,60 @@ async function loadDir() {
   }
 }
 
-/** Same as loadDir but without showing the loading overlay — no flicker. */
+/**
+ * Same as loadDir but without showing the loading overlay — no flicker.
+ * Instead of replacing the entire items array (which would lose the selected file
+ * and keyboard focus), compares old vs new lists and applies only incremental
+ * changes: removes items that no longer exist, adds new items, preserving
+ * existing item references so Vue's :key="item.name" maintains DOM continuity.
+ */
 async function silentRefresh() {
   try {
     const res = await apiFetch<{ path: string; items: FileItem[] }>(
       `/api/files/list?path=${encodeURIComponent(props.currentPath)}`,
     );
-    items.value = res.items;
+
+    const newItems = res.items;
+    const current = items.value;
+
+    // Quick identity check — if both lists have the same set of names, skip entirely
+    if (current.length === newItems.length) {
+      const curNames = new Set(current.map((i) => i.name));
+      if (newItems.every((i) => curNames.has(i.name))) return;
+    }
+
+    const newNames = new Set(newItems.map((i) => i.name));
+
+    // Remove items that no longer exist on the backend
+    for (let i = current.length - 1; i >= 0; i--) {
+      if (!newNames.has(current[i].name)) {
+        current.splice(i, 1);
+      }
+    }
+
+    // Add new items (preserving existing references)
+    const existingNames = new Set(current.map((i) => i.name));
+    for (const newItem of newItems) {
+      if (!existingNames.has(newItem.name)) {
+        current.push(newItem);
+      }
+    }
   } catch (err: any) {
     // fall back to regular loadDir for error handling (nav up, toast)
     loadDir();
   }
 }
 
-defineExpose({ refresh: loadDir, silentRefresh, selectedItems, triggerFileInput: () => fileInputEl.value?.click(), doSearch, clearSearch, searchQuery, searchResults });
+defineExpose({
+  refresh: loadDir,
+  silentRefresh,
+  selectedItems,
+  triggerFileInput: () => fileInputEl.value?.click(),
+  doSearch,
+  clearSearch,
+  searchQuery,
+  searchResults,
+});
 
 watch(
   () => props.currentPath,
@@ -886,7 +1100,7 @@ function onKeyDown(e: KeyboardEvent) {
         }
         // Position context menu near the focused row
         const rowEl = document.querySelector<HTMLElement>(
-          `.fmp-wrap[tabindex] .fmp-row:nth-child(${focusedIndex.value + 2})` // +2 for header + go-up
+          `.fmp-wrap[tabindex] .fmp-row:nth-child(${focusedIndex.value + 2})`, // +2 for header + go-up
         );
         if (rowEl) {
           const rect = rowEl.getBoundingClientRect();
@@ -951,7 +1165,7 @@ function onRowClick(e: MouseEvent, item: FileItem) {
   // Sync keyboard focus with mouse click
   const idx = displayItems.value.findIndex((i) => i.name === item.name);
   if (idx >= 0) focusedIndex.value = idx;
-  
+
   if (e.shiftKey && lastClickedItem.value) {
     const names = sortedItems.value.map((i) => i.name);
     const a = names.indexOf(lastClickedItem.value);
@@ -1248,7 +1462,11 @@ function fmtDate(iso: string): string {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return (
+      d.toLocaleDateString() +
+      " " +
+      d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    );
   } catch {
     return "—";
   }
@@ -1272,7 +1490,10 @@ const FILE_HANDLERS: FileHandler[] = [
   { exts: IMAGE_RE, action: (item) => emit("open-image-preview", item) },
   { exts: TEXT_EDIT_RE, action: (item) => emit("open-text-editor", item) },
   { exts: VIDEO_RE, action: (item) => emit("open-video-preview", item) },
-  { exts: /\.(mp3|wav|flac|ogg|m4a|opus|aac|wma)$/i, action: (item) => emit("play-in-webamp", item) },
+  {
+    exts: /\.(mp3|wav|flac|ogg|m4a|opus|aac|wma)$/i,
+    action: (item) => emit("play-in-webamp", item),
+  },
   { exts: /\.(cbr|cbz|pdf)$/i, action: (item) => emit("open-comic", item) },
 ];
 
@@ -1292,7 +1513,9 @@ onMounted(() => {
     if (e.key === "Control" || e.key === "Shift") {
       isCopyKey.value = true;
       if (currentDragEl.value) {
-        currentDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+        currentDragEl.value.dispatchEvent(
+          new DragEvent("dragover", { bubbles: true, cancelable: true }),
+        );
       }
     }
   };
@@ -1300,7 +1523,9 @@ onMounted(() => {
     if (e.key === "Control" || e.key === "Shift") {
       isCopyKey.value = false;
       if (currentDragEl.value) {
-        currentDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+        currentDragEl.value.dispatchEvent(
+          new DragEvent("dragover", { bubbles: true, cancelable: true }),
+        );
       }
     }
   };
@@ -1323,7 +1548,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 /* ── Panel wrapper ────────────────────────────────────────────────── */
 .fmp-wrap {
   position: relative;
@@ -1414,10 +1639,23 @@ onMounted(() => {
   align-items: center;
   gap: 0.4rem;
 }
-.fmp-icon { font-size: 1.15rem; flex-shrink: 0; }
-.fm-icon-dir { color: var(--s-warning, #f0a329); }
-.fmp-icon-winamp { width: 1.2rem; height: 1.2rem; object-fit: contain; }
-.fmp-icon-comic { width: 1.2rem; height: 1.2rem; object-fit: contain; }
+.fmp-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.fm-icon-dir {
+  color: var(--s-warning, #f0a329);
+}
+.fmp-icon-winamp {
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
+}
+.fmp-icon-comic {
+  width: 1.2rem;
+  height: 1.2rem;
+  object-fit: contain;
+}
 .fmp-filename {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1426,9 +1664,16 @@ onMounted(() => {
   display: inline-block;
   vertical-align: bottom;
 }
-.fmp-th-size { width: 90px; }
-.fmp-th-date { width: 160px; }
-.fmp-row { cursor: pointer; user-select: none; }
+.fmp-th-size {
+  width: 90px;
+}
+.fmp-th-date {
+  width: 160px;
+}
+.fmp-row {
+  cursor: pointer;
+  user-select: none;
+}
 .fmp-row.is-drop-target {
   background: color-mix(in oklab, var(--s-accent) 14%, transparent) !important;
   outline: 2px solid var(--s-accent);
@@ -1460,10 +1705,20 @@ onMounted(() => {
   white-space: nowrap;
   user-select: none;
 }
-.fmp-sort-btn:hover { color: var(--s-text); }
-.fmp-sort-btn.is-active { color: var(--s-accent); font-weight: 600; }
-.fmp-sort-btn .mdi { font-size: 0.85rem; opacity: 0.6; }
-.fmp-sort-btn.is-active .mdi { opacity: 1; }
+.fmp-sort-btn:hover {
+  color: var(--s-text);
+}
+.fmp-sort-btn.is-active {
+  color: var(--s-accent);
+  font-weight: 600;
+}
+.fmp-sort-btn .mdi {
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.fmp-sort-btn.is-active .mdi {
+  opacity: 1;
+}
 
 /* Mobile cards */
 .fmp-mobile-list {
@@ -1483,7 +1738,10 @@ onMounted(() => {
   opacity: 0.65;
   transition: background 0.1s;
 }
-.fmp-mobile-up:hover { background: var(--s-bg-hover); opacity: 1; }
+.fmp-mobile-up:hover {
+  background: var(--s-bg-hover);
+  opacity: 1;
+}
 .fmp-mobile-card {
   background: var(--s-bg-surface);
   border: 1px solid var(--s-border);
@@ -1492,17 +1750,36 @@ onMounted(() => {
   cursor: pointer;
   transition: border-color 0.15s;
 }
-.fmp-mobile-card.is-open { border-color: color-mix(in oklab, var(--s-accent) 40%, var(--s-border)); }
+.fmp-mobile-card.is-open {
+  border-color: color-mix(in oklab, var(--s-accent) 40%, var(--s-border));
+}
 .fmp-mc-header {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
 }
-.fmp-mc-name { flex: 1; font-size: 0.875rem; word-break: break-word; line-height: 1.35; }
-.fmp-mc-size { font-size: 0.75rem; color: var(--s-text-muted); flex-shrink: 0; }
-.fmp-mc-chevron { font-size: 1rem; color: var(--s-text-muted); flex-shrink: 0; }
-.fmp-mc-panel { border-top: 1px solid var(--s-border); display: flex; flex-direction: column; }
+.fmp-mc-name {
+  flex: 1;
+  font-size: 0.875rem;
+  word-break: break-word;
+  line-height: 1.35;
+}
+.fmp-mc-size {
+  font-size: 0.75rem;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+}
+.fmp-mc-chevron {
+  font-size: 1rem;
+  color: var(--s-text-muted);
+  flex-shrink: 0;
+}
+.fmp-mc-panel {
+  border-top: 1px solid var(--s-border);
+  display: flex;
+  flex-direction: column;
+}
 .fmp-mc-action {
   display: flex;
   align-items: center;
@@ -1517,16 +1794,30 @@ onMounted(() => {
   transition: background 0.1s;
   width: 100%;
 }
-.fmp-mc-action:hover { background: var(--s-bg-hover); }
+.fmp-mc-action:hover {
+  background: var(--s-bg-hover);
+}
 .fmp-mc-action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
 }
-.fmp-mc-action--accent { color: var(--s-accent); }
-.fmp-mc-action--danger { color: var(--s-danger); }
-.fmp-mc-sep { height: 1px; background: var(--s-border); margin: 2px 0; }
-.fmp-empty-icon { font-size: 2.5rem; display: block; margin-bottom: 0.5rem; }
+.fmp-mc-action--accent {
+  color: var(--s-accent);
+}
+.fmp-mc-action--danger {
+  color: var(--s-danger);
+}
+.fmp-mc-sep {
+  height: 1px;
+  background: var(--s-border);
+  margin: 2px 0;
+}
+.fmp-empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
 
 /* Context menu */
 .fmp-ctx-menu {
@@ -1549,7 +1840,14 @@ onMounted(() => {
   color: var(--s-text-muted);
   padding: 6px 14px 4px;
 }
-.fmp-ctx-sep { height: 1px; background: var(--s-border); margin: 4px 0; }
+.fmp-ctx-sep {
+  height: 1px;
+  background: var(--s-border);
+  margin: 4px 0;
+  & + .fmp-ctx-sep {
+    display: none;
+  }
+}
 .fmp-ctx-item {
   display: flex;
   align-items: center;
@@ -1565,7 +1863,9 @@ onMounted(() => {
   white-space: nowrap;
   transition: background 0.1s;
 }
-.fmp-ctx-item:hover { background: var(--s-bg-hover); }
+.fmp-ctx-item:hover {
+  background: var(--s-bg-hover);
+}
 .fmp-ctx-item:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -1576,8 +1876,12 @@ onMounted(() => {
   outline-offset: -2px;
   background: var(--s-bg-hover);
 }
-.fmp-ctx-item--accent { color: var(--s-accent); }
-.fmp-ctx-item--danger { color: var(--s-danger); }
+.fmp-ctx-item--accent {
+  color: var(--s-accent);
+}
+.fmp-ctx-item--danger {
+  color: var(--s-danger);
+}
 
 /* ── Responsive columns — hide size/date when panel < 650px ─────── */
 @container (max-width: 649px) {
