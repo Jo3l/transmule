@@ -1173,7 +1173,7 @@
     "share": "शेयर",
     "url": "URL",
     "remotePath": "रिमोट पथ (वैकल्पिक)",
-    "remotePathOptional": "जैसे /folder/subfolder",
+    "remotePathOptional": "शेयर के अंदर उपफ़ोल्डर, जैसे media",
     "domain": "डोमेन",
     "username": "उपयोगकर्ता नाम",
     "validate": "कनेक्शन परीक्षण",

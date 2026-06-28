@@ -1173,7 +1173,7 @@
     "share": "Compartilhamento",
     "url": "URL",
     "remotePath": "Caminho remoto (opcional)",
-    "remotePathOptional": "ex.: /pasta/subpasta",
+    "remotePathOptional": "subpasta dentro do compartilhamento, ex. media",
     "domain": "Domínio",
     "username": "Usuário",
     "validate": "Testar conexão",

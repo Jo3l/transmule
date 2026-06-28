@@ -1088,7 +1088,7 @@
     "share": "Condivisione",
     "url": "URL",
     "remotePath": "Percorso remoto (opzionale)",
-    "remotePathOptional": "es. /cartella/sottocartella",
+    "remotePathOptional": "sottocartella nella condivisione, es. media",
     "domain": "Dominio",
     "username": "Nome utente",
     "validate": "Test connessione",

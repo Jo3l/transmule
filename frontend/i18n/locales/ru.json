@@ -1173,7 +1173,7 @@
     "share": "Общая папка",
     "url": "URL",
     "remotePath": "Удалённый путь (необязательно)",
-    "remotePathOptional": "например, /folder/subfolder",
+    "remotePathOptional": "папка внутри шары, напр. media",
     "domain": "Домен",
     "username": "Имя пользователя",
     "validate": "Проверить соединение",

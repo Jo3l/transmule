@@ -106,6 +106,8 @@ async function load() {
       `/api/files/list?path=${encodeURIComponent(currentPath.value)}`,
     );
     dirs.value = res.items.filter((i) => i.type === "directory").map((i) => ({ name: i.name }));
+  } catch {
+    dirs.value = [];
   } finally {
     loading.value = false;
   }

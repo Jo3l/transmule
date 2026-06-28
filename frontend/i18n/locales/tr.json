@@ -1173,7 +1173,7 @@
     "share": "Paylaşım",
     "url": "URL",
     "remotePath": "Uzak yol (isteğe bağlı)",
-    "remotePathOptional": "ör. /folder/subfolder",
+    "remotePathOptional": "paylaşım içindeki alt klasör, örn. media",
     "domain": "Alan Adı",
     "username": "Kullanıcı Adı",
     "validate": "Bağlantıyı test et",

@@ -1175,7 +1175,7 @@
     "share": "Share",
     "url": "URL",
     "remotePath": "Remote path (optional)",
-    "remotePathOptional": "e.g. /folder/subfolder",
+    "remotePathOptional": "subfolder within share, e.g. media",
     "domain": "Domain",
     "username": "Username",
     "validate": "Test connection",
