@@ -112,7 +112,6 @@ services:
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/data:/app/data
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads:rw
-      - ${MEDIA_DIR:-/mnt/user/data/media}:/downloads/media
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       NITRO_AMULE_HOST: amule
