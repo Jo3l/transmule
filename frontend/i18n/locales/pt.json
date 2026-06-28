@@ -670,8 +670,7 @@
     "mute": "Mute music",
     "unmute": "Unmute music",
     "about": "About",
-    "splitToggle": "Toggle split",
-    "exportFiles": "Export files"
+    "splitToggle": "Toggle split"
   },
   "themes": {
     "tron": {
