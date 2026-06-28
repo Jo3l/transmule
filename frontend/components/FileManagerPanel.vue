@@ -638,20 +638,6 @@
           <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
         </button>
         <button
-          v-if="!ctxIsMulti && ctxMenu.item && ctxMenu.item.isRemoteMount"
-          class="fmp-ctx-item"
-          @click="
-            $emit('open-transfer-dialog', {
-              sources: [childPath(ctxMenu.item.name)],
-              mode: 'copy',
-            });
-            hideCtxMenu();
-          "
-        >
-          <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.exportFiles") }}
-        </button>
-        <div class="fmp-ctx-sep" />
-        <button
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="

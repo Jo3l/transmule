@@ -145,6 +145,7 @@
             @download-file="onPanelDownloadFile"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
+            @unmount-item="onPanelUnmountItem"
           />
         </div>
         <div v-else class="fm-split-layout">
@@ -177,6 +178,7 @@
             @download-file="onPanelDownloadFile"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
+            @unmount-item="onPanelUnmountItem"
           />
           <div
             class="fm-split-divider"
@@ -210,6 +212,7 @@
             @download-file="onPanelDownloadFile"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
+            @unmount-item="onPanelUnmountItem"
           />
         </div>
       </div>
@@ -884,6 +887,9 @@ function onPanelSmartRenamePaths(paths: string[]) {
 }
 function onPanelUploadFiles(files: File[]) {
   uploadFiles(files);
+}
+function onPanelUnmountItem(item: FileItem) {
+  confirmUnmount(item);
 }
 
 // ── Search ──────────────────────────────────────────────────────────────────

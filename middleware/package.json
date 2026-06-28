@@ -21,7 +21,6 @@
     "@types/bcryptjs": "^2",
     "@types/jsonwebtoken": "^9",
     "nitropack": "latest",
-    "patch-package": "^8.0.1",
     "typescript": "^5"
   }
 }
