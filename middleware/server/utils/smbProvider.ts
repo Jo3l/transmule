@@ -29,7 +29,6 @@ export class SmbProvider implements IRemoteProvider {
       domain: this.config.domain || "",
       username: this.config.username,
       password: this.config.password,
-      autoCloseTimeout: 5000,
     });
 
     // Test connection

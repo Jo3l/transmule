@@ -1175,7 +1175,7 @@
     "share": "Recurso compartido",
     "url": "URL",
     "remotePath": "Ruta remota (opcional)",
-    "remotePathOptional": "ej. /carpeta/subcarpeta",
+    "remotePathOptional": "subcarpeta dentro del recurso, ej. media",
     "domain": "Dominio",
     "username": "Usuario",
     "validate": "Probar conexión",

@@ -1173,7 +1173,7 @@
     "share": "Freigabe",
     "url": "URL",
     "remotePath": "Remote-Pfad (optional)",
-    "remotePathOptional": "z. B. /ordner/unterordner",
+    "remotePathOptional": "Unterordner in der Freigabe, z. B. media",
     "domain": "Domäne",
     "username": "Benutzername",
     "validate": "Verbindung testen",

@@ -1173,7 +1173,7 @@
     "share": "Udział",
     "url": "URL",
     "remotePath": "Ścieżka zdalna (opcjonalnie)",
-    "remotePathOptional": "np. /folder/subfolder",
+    "remotePathOptional": "podfolder w udziale, np. media",
     "domain": "Domena",
     "username": "Nazwa użytkownika",
     "validate": "Testuj połączenie",
