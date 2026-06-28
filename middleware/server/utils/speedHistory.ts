@@ -17,13 +17,14 @@ export interface SpeedPoint {
   amule: number;
   torrent: number;
   pyload: number;
+  slskd: number;
   up: number;
 }
 
 interface SpeedState {
   history: SpeedPoint[];
-  latest: { amule: number; torrent: number; pyload: number };
-  latestUp: { amule: number; torrent: number };
+  latest: { amule: number; torrent: number; pyload: number; slskd: number };
+  latestUp: { amule: number; torrent: number; slskd: number };
   lastPushed: number;
 }
 
@@ -32,14 +33,16 @@ function getState(): SpeedState {
   if (!(globalThis as any)[KEY]) {
     (globalThis as any)[KEY] = {
       history: [],
-      latest: { amule: 0, torrent: 0, pyload: 0 },
-      latestUp: { amule: 0, torrent: 0 },
+      latest: { amule: 0, torrent: 0, pyload: 0, slskd: 0 },
+      latestUp: { amule: 0, torrent: 0, slskd: 0 },
       lastPushed: 0,
     } satisfies SpeedState;
   }
   const s = (globalThis as any)[KEY] as SpeedState;
-  // Migrate old state that lacks latestUp
-  if (!s.latestUp) s.latestUp = { amule: 0, torrent: 0 };
+  // Migrate old state that lacks latestUp or slskd
+  if (!s.latestUp) s.latestUp = { amule: 0, torrent: 0, slskd: 0 };
+  if (s.latest.slskd === undefined) (s.latest as any).slskd = 0;
+  if (s.latestUp.slskd === undefined) (s.latestUp as any).slskd = 0;
   return s;
 }
 
@@ -48,7 +51,7 @@ function getState(): SpeedState {
  * Pushes a combined point once the cooldown has elapsed.
  */
 export function updateServiceSpeed(
-  service: "amule" | "torrent" | "pyload",
+  service: "amule" | "torrent" | "pyload" | "slskd",
   speed: number,
 ): void {
   const state = getState();
@@ -71,7 +74,7 @@ export function updateServiceSpeed(
 
 /** Called by upload-capable endpoints to record their current upload speed. */
 export function updateServiceUploadSpeed(
-  service: "amule" | "torrent",
+  service: "amule" | "torrent" | "slskd",
   speed: number,
 ): void {
   getState().latestUp[service] = speed;

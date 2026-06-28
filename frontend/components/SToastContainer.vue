@@ -5,7 +5,7 @@
         v-for="t in toasts"
         :key="t.id"
         :class="['s-toast', `s-toast--${t.type}`, { 's-toast--persistent': t.persistent }]"
-        @click="!t.persistent && removeToast(t.id)"
+        @click="onToastClick(t)"
       >
         <span class="mdi" :class="iconFor(t.type)" />
         <span class="s-toast__body">{{ t.message }}</span>
@@ -18,6 +18,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Toast } from "~/composables/useToast";
 const { toasts, removeToast } = useToast();
 
 function iconFor(type: string) {
@@ -29,5 +30,14 @@ function iconFor(type: string) {
       info: "mdi-information",
     }[type] || "mdi-information"
   );
+}
+
+function onToastClick(t: Toast) {
+  if (t.onClick) {
+    t.onClick(t.id);
+  }
+  if (!t.persistent) {
+    removeToast(t.id);
+  }
 }
 </script>

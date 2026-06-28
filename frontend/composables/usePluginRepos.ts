@@ -44,13 +44,18 @@ export function usePluginRepos() {
     }
   }
 
-  async function addRepo(url: string): Promise<PluginRepo> {
-    const repo = await apiFetch<PluginRepo>("/api/plugin-repos", {
-      method: "POST",
-      body: { url },
-    });
-    repos.value = [...repos.value, repo];
-    return repo;
+  async function addRepo(
+    url: string,
+  ): Promise<PluginRepo & { installed?: number }> {
+    const result = await apiFetch<PluginRepo & { installed?: number }>(
+      "/api/plugin-repos",
+      {
+        method: "POST",
+        body: { url },
+      },
+    );
+    repos.value = [...repos.value, result];
+    return result;
   }
 
   async function removeRepo(id: number): Promise<void> {

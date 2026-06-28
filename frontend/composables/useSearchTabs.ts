@@ -96,6 +96,7 @@ export interface UnifiedTab extends BaseTab {
   sourcesCompleted: string[];
   totalResults: number;
   amuleProgress: number;
+  slskdProgress: number;
 }
 
 /** Poll timers tracked at module level so public API functions can access them. */
@@ -330,6 +331,7 @@ export function useSearchTabs() {
       sourcesCompleted: [],
       totalResults: 0,
       amuleProgress: 0,
+      slskdProgress: 0,
       createdAt: Date.now(),
     };
     pushTab(tab);
@@ -338,9 +340,9 @@ export function useSearchTabs() {
   }
 
   function startUnifiedStream(tab: UnifiedTab, source = "all") {
-    // 1. Torrent SSE (skip when searching only aMule or a media provider)
+    // 1. Torrent SSE (skip when searching only aMule, slskd or a media provider)
     const isMediaSource = source === "archive-org";
-    if (source !== "amule" && !isMediaSource) {
+    if (source !== "amule" && source !== "slskd" && !isMediaSource) {
       const controller = new AbortController();
       _unifiedAbort.set(tab.id, controller);
       const params = new URLSearchParams({ q: tab.query, source, limit: "100" });
@@ -391,7 +393,17 @@ export function useSearchTabs() {
       }).catch(() => { /* silent */ });
     }
 
-    // 3. Media provider search (when searching all or a specific media source)
+    // 3. slskd search + polling (when searching all or slskd-only)
+    if (source === "all" || source === "slskd") {
+      apiFetch("/api/slskd/searches", {
+        method: "POST", body: { searchText: tab.query },
+      }).then((res: any) => {
+        const searchId = res?.id ?? crypto.randomUUID();
+        startSlskdPolling(tab.id, searchId);
+      }).catch(() => { /* silent */ });
+    }
+
+    // 4. Media provider search (when searching all or a specific media source)
     if (source === "all" || source === "archive-org") {
       const qs = new URLSearchParams();
       qs.set("id", "archive-org");
@@ -412,7 +424,7 @@ export function useSearchTabs() {
     }
 
     // When no external searches started, mark ready
-    if (source !== "all" && source !== "amule" && source !== "archive-org") {
+    if (source !== "all" && source !== "amule" && source !== "archive-org" && source !== "slskd") {
       // No aMule results when filtering by a specific plugin
       maybeCompleteUnified(tab.id);
     }
@@ -459,6 +471,72 @@ export function useSearchTabs() {
         return { ...t, ...partial } as UnifiedTab;
       });
       maybeCompleteUnified(tabId);
+    } catch { /* silent */ }
+  }
+
+  // ── slskd unified search ──────────────────────────────────────────────
+
+  function startSlskdPolling(tabId: string, searchId: string) {
+    stopPollTimer(tabId);
+    const poll = async () => {
+      const tab = tabs.value.find((t) => t.id === tabId && t.type === "unified") as UnifiedTab | undefined;
+      if (!tab || tab.status === "complete" || tab.status === "error") { stopPollTimer(tabId); return; }
+      try {
+        const res = await apiFetch<any>(`/api/slskd/searches/${searchId}/responses`);
+        const incoming: any[] = Array.isArray(res) ? res : [];
+        tabs.value = tabs.value.map((t) => {
+          if (t.id !== tabId || t.type !== "unified") return t;
+          const seen = new Set(t.results.map((r) => r.id));
+          for (const f of incoming) {
+            const itemId = `slskd_${f.id}`;
+            if (seen.has(itemId)) continue;
+            seen.add(itemId);
+            const fn = f.filename || "";
+            t.results.push({
+              id: itemId,
+              type: "slskd" as const,
+              name: fn,
+              slskdFolder: f.folder || "",
+              size: f.size ?? 0,
+              size_fmt: fmtBytes(f.size),
+              seedsOrSources: 0,
+              leechers: 0,
+              source: "Soulseek",
+              // Extra fields for download
+              slskdUsername: f.username ?? "",
+              slskdFullFilename: f.fullFilename ?? "",
+              slskdSize: f.size ?? 0,
+            });
+          }
+          return { ...t, results: [...t.results] } as UnifiedTab;
+        });
+      } catch { /* silent */ }
+    };
+    setTimeout(poll, 1500);
+    _pollTimers.set(tabId, setInterval(poll, 3000));
+    // Store searchId for completion tracking
+    _slskdSearchIds.set(tabId, searchId);
+  }
+
+  // Tracks slskd search state per unified tab
+  const _slskdSearchIds = new Map<string, string>();
+  const _slskdPollCheck = new Set<string>();
+
+  async function checkSlskdComplete(tabId: string) {
+    const searchId = _slskdSearchIds.get(tabId);
+    if (!searchId) return;
+    try {
+      const searches = await apiFetch<any[]>("/api/slskd/searches");
+      const mySearch = searches?.find((s: any) => s.id === searchId);
+      if (mySearch && (mySearch.state === "Completed" || mySearch.state === "NoResults" || mySearch.state === "Error")) {
+        const tab = tabs.value.find((t) => t.id === tabId) as UnifiedTab | undefined;
+        if (tab && tab.slskdProgress < 1) {
+          _slskdPollCheck.delete(tabId);
+          updateTab(tabId, { slskdProgress: 1 } as any);
+          maybeCompleteUnified(tabId);
+          stopPollTimer(tabId);
+        }
+      }
     } catch { /* silent */ }
   }
 
@@ -544,7 +622,8 @@ export function useSearchTabs() {
     if (!tab || tab.status !== "searching") return;
     const torrentDone = !_unifiedAbort.has(tabId);
     const amuleDone = tab.amuleProgress >= 1;
-    if (torrentDone && amuleDone) {
+    const slskdDone = tab.slskdProgress >= 1;
+    if (torrentDone && amuleDone && slskdDone) {
       updateTab(tabId, { status: "complete" } as any);
     }
   }

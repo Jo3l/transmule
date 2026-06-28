@@ -7,23 +7,20 @@
       :loading="loading"
       @sort="onSort"
     >
-      <!-- Name header with filter -->
+      <!-- ── Header: Name filter ──────────────────────────── -->
       <template #header-name="{ column }">
         <SearchFilterHeader v-model="localNameFilter" :label="column.label" :placeholder="$t('search.filter')" />
       </template>
 
-      <!-- Source header filter (only for mixed/global search) -->
+      <!-- ── Header: Source filter ────────────────────────── -->
       <template v-if="hasSourceFilter" #header-source="{ column }">
         <div class="source-header-wrap">
           <span class="source-header-label">{{ column.label }}</span>
-          <SButton
-            size="mini"
-            @click.stop="showFilter = !showFilter"
-          >
+          <SButton size="mini" @click.stop="showFilter = !showFilter">
             <span class="mdi mdi-filter-variant" />
           </SButton>
           <div v-if="showFilter" class="src-filter-dropdown" @click.stop>
-            <label v-for="src in sortedSources" :key="src" class="src-filter-item" @click="$emit('toggleSource', src)">
+            <label v-for="src in sortedSources" :key="src" class="src-filter-item" @click.stop>
               <SCheckbox
                 :model-value="activeSourceFilters === null || !!(activeSourceFilters?.has(src))"
                 @update:model-value="$emit('toggleSource', src)"
@@ -38,100 +35,164 @@
         </div>
       </template>
 
-      <!-- Cover -->
+      <!-- ── Cell: Cover ──────────────────────────────────── -->
       <template #cell-cover="{ row }">
-        <ResultCover
-          v-if="isVideoExt(row.name)"
-          :cover="row.cover"
-          :name="row.name"
-          :size="row.size_fmt"
-          :seeders="seedersValue(row) ?? undefined"
-          :leechers="leechersValue(row) ?? undefined"
-          :category="row.category"
-          :movie-details="row.movieDetails"
-          @load-cover="$emit('loadCover', row)"
-        />
-        <span v-else class="result-cover-placeholder" :title="row.name">
-          <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
-        </span>
+        <slot name="cell-cover" :row="row">
+          <ResultCover
+            v-if="isVideoExt(row.name)"
+            :cover="row.cover"
+            :name="row.name"
+            :size="row.size_fmt"
+            :seeders="seedersValue(row) ?? undefined"
+            :leechers="leechersValue(row) ?? undefined"
+            :category="row.category"
+            :movie-details="row.movieDetails"
+            @load-cover="$emit('loadCover', row)"
+          />
+          <span v-else class="result-cover-placeholder" :title="row.name">
+            <span :class="['mdi result-cover-icon', detectFileIcon(row.name)]" />
+          </span>
+        </slot>
       </template>
 
-      <!-- Name -->
+      <!-- ── Cell: Name ───────────────────────────────────── -->
       <template #cell-name="{ row }">
-        <SearchResultName :name="row.name" :tags="row.tags" />
+        <slot name="cell-name" :row="row">
+          <SearchResultName :name="row.name" :tags="row.tags" />
+        </slot>
       </template>
 
-      <!-- Seeds / Sources -->
+      <!-- ── Cell: Seeds / Sources ────────────────────────── -->
       <template #cell-seeds="{ row }">
-        <span
-          v-if="seedersValue(row) != null"
-          :class="seedersValue(row) > 0 ? 'has-text-success' : 'has-text-grey'"
-        >{{ seedersValue(row) }}</span>
+        <slot name="cell-seeds" :row="row">
+          <span
+            v-if="row.slskdUsername"
+            class="is-size-7"
+          >{{ row.slskdUsername }}</span>
+          <span
+            v-else-if="seedersValue(row) != null"
+            :class="seedersValue(row) > 0 ? 'has-text-success' : 'has-text-grey'"
+          >{{ seedersValue(row) }}</span>
+        </slot>
       </template>
 
-      <!-- Leechers (torrent leechers / amule sources) -->
+      <!-- ── Cell: Leechers ───────────────────────────────── -->
       <template #cell-leechers="{ row }">
-        <span
-          v-if="leechersValue(row) != null"
-          :class="leechersValue(row) > 0 ? 'has-text-danger' : 'has-text-grey'"
-        >{{ leechersValue(row) }}</span>
+        <slot name="cell-leechers" :row="row">
+          <span
+            v-if="row.slskdUsername"
+            class="has-text-grey"
+          >&mdash;</span>
+          <span
+            v-else-if="leechersValue(row) != null"
+            :class="leechersValue(row) > 0 ? 'has-text-danger' : 'has-text-grey'"
+          >{{ leechersValue(row) }}</span>
+        </slot>
       </template>
 
-      <!-- Category (torrent-specific) -->
+      <!-- ── Cell: seedsOrSources (STable uses prop for slot name) ── -->
+      <template #cell-seedsOrSources="{ row }">
+        <slot name="cell-seedsOrSources" :row="row">
+          <span
+            v-if="row.slskdUsername"
+            class="is-size-7"
+          >{{ row.slskdUsername }}</span>
+          <span
+            v-else-if="seedersValue(row) != null"
+            :class="seedersValue(row) > 0 ? 'has-text-success' : 'has-text-grey'"
+          >{{ seedersValue(row) }}</span>
+        </slot>
+      </template>
+
+      <!-- ── Cell: Category ───────────────────────────────── -->
       <template #cell-category="{ row }">
-        {{ row.category }}
+        <slot name="cell-category" :row="row">
+          {{ row.category }}
+        </slot>
       </template>
 
-      <!-- Source -->
+      <!-- ── Cell: Source ─────────────────────────────────── -->
       <template #cell-source="{ row }">
-        <template v-if="providerIconMap && providerLabelMap">
-          <STag :variant="sourceVariant?.(row.source)" size="sm">
-            <span
-              v-if="providerIconMap[row.source]"
-              class="mdi"
-              :class="[providerIconMap[row.source], 'mr-3px']"
-            />{{ providerLabelMap[row.source] ?? row.source }}
-          </STag>
-        </template>
-        <template v-else>
-          <STag :variant="row.type === 'amule' ? 'accent' : 'info'" size="sm">
-            <span v-if="row.type === 'amule'" class="mdi mdi-server-network mr-1" />
-            <span v-else class="mdi mdi-magnet mr-1" />
-            {{ row.source }}
-          </STag>
-        </template>
+        <slot name="cell-source" :row="row">
+          <template v-if="providerIconMap && providerLabelMap">
+            <STag :variant="sourceVariant?.(row.source)" size="sm">
+              <span
+                v-if="providerIconMap[row.source]"
+                class="mdi"
+                :class="[providerIconMap[row.source], 'mr-3px']"
+              />{{ providerLabelMap[row.source] ?? row.source }}
+            </STag>
+          </template>
+          <template v-else>
+            <STag :variant="row.type === 'amule' ? 'accent' : 'info'" size="sm">
+              <span v-if="row.type === 'amule'" class="mdi mdi-server-network mr-1" />
+              <span v-else class="mdi mdi-magnet mr-1" />
+              {{ row.source }}
+            </STag>
+          </template>
+        </slot>
       </template>
 
-      <!-- Actions -->
+      <!-- ── Cell: Actions ────────────────────────────────── -->
       <template #cell-actions="{ row }">
-        <DownloadButton
-          v-if="row.downloadUrl"
-          service="pyload"
-          :url="row.downloadUrl"
-          :title="row.name"
-          @download-end="$emit('downloadEnd', row)"
-          @download-error="(err: any) => $emit('downloadError', err, row)"
-        />
-        <DownloadButton
-          v-else-if="row.type === 'torrent' || row.magnet"
-          service="transmission"
-          :url="row.magnet"
-          :hash="row.infoHash"
-          :title="row.name"
-          @download-end="$emit('downloadEnd', row)"
-          @download-error="(err: any) => $emit('downloadError', err, row)"
-        />
-        <DownloadButton
-          v-else
-          service="amule"
-          :hash="row.hash"
-          :title="row.name"
-          @download-end="$emit('downloadEnd', row)"
-          @download-error="(err: any) => $emit('downloadError', err, row)"
-        />
+        <slot name="cell-actions" :row="row">
+          <DownloadButton
+            v-if="row.downloadUrl"
+            service="pyload"
+            :url="row.downloadUrl"
+            :title="row.name"
+            @download-end="$emit('downloadEnd', row)"
+            @download-error="(err) => $emit('downloadError', err, row)"
+          />
+          <DownloadButton
+            v-else-if="row.type === 'torrent' || row.magnet"
+            service="transmission"
+            :url="row.magnet"
+            :hash="row.infoHash"
+            :title="row.name"
+            @download-end="$emit('downloadEnd', row)"
+            @download-error="(err) => $emit('downloadError', err, row)"
+          />
+          <DownloadButton
+            v-else
+            service="amule"
+            :hash="row.hash"
+            :title="row.name"
+            @download-end="$emit('downloadEnd', row)"
+            @download-error="(err) => $emit('downloadError', err, row)"
+          />
+        </slot>
       </template>
 
-      <!-- Empty state -->
+      <!-- ── Cell: Free slot (slskd) ─────────────────────── -->
+      <template #cell-free="{ row }">
+        <slot name="cell-free" :row="row">
+          {{ row.free ?? "" }}
+        </slot>
+      </template>
+
+      <!-- ── Cell: Speed / k-s (slskd) ───────────────────── -->
+      <template #cell-speed="{ row }">
+        <slot name="cell-speed" :row="row">
+          {{ row.speed ?? "" }}
+        </slot>
+      </template>
+
+      <!-- ── Cell: Folder (slskd) ────────────────────────── -->
+      <template #cell-folder="{ row }">
+        <slot name="cell-folder" :row="row">
+          {{ row.folder ?? "" }}
+        </slot>
+      </template>
+
+      <!-- ── Generic cell fallback (for any column without template) ── -->
+      <template v-for="col in extraSlotColumns" :key="col" #[`cell-${col}`]="{ row }">
+        <slot :name="`cell-${col}`" :row="row" :value="row[col]">
+          {{ row[col] }}
+        </slot>
+      </template>
+
+      <!-- ── Empty state ──────────────────────────────── -->
       <template #empty>
         <div class="has-text-centered py-5 has-text-grey">
           <span class="mdi mdi-file-search-outline icon-lg" />
@@ -151,9 +212,10 @@
 </template>
 
 <script setup lang="ts">
-const { t } = useI18n();
-
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import { isVideoExt, detectFileIcon } from "../composables/useSearchTabs";
+
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -167,17 +229,15 @@ const props = withDefaults(
     nameFilter?: string;
     emptyText?: string;
     hasSourceFilter?: boolean;
-    /** Show source filter dropdown */
     showSourceFilter?: boolean;
     sortedSources?: string[];
-    /** Currently active source filters (set of source IDs) */
     activeSourceFilters?: Set<string> | null;
-    /** Maps source names to provider icons (transmission search) */
     providerIconMap?: Record<string, string>;
-    /** Maps source names to provider labels (transmission search) */
     providerLabelMap?: Record<string, string>;
-    /** Source variant function (transmission search) */
     sourceVariant?: (source: string) => string;
+    /** Column keys for which the parent provides custom templates.
+     *  Used when columns include keys not handled by the built-in templates. */
+    extraSlots?: string[];
   }>(),
   {
     loading: false,
@@ -193,20 +253,11 @@ const props = withDefaults(
     providerIconMap: undefined,
     providerLabelMap: undefined,
     sourceVariant: undefined,
+    extraSlots: () => [],
   },
 );
 
 const showFilter = ref(false);
-
-function onDocumentClick(e: MouseEvent) {
-  if (showFilter.value) {
-    const el = (e.target as HTMLElement).closest(".src-filter-dropdown, .source-header-wrap");
-    if (!el) showFilter.value = false;
-  }
-}
-
-onMounted(() => document.addEventListener("click", onDocumentClick));
-onUnmounted(() => document.removeEventListener("click", onDocumentClick));
 
 const emit = defineEmits<{
   "update:page": [value: number];
@@ -219,6 +270,16 @@ const emit = defineEmits<{
   selectAllSources: [];
   clearAllSources: [];
 }>();
+
+function onDocumentClick(e: MouseEvent) {
+  if (showFilter.value) {
+    const el = (e.target as HTMLElement).closest(".src-filter-dropdown, .source-header-wrap");
+    if (!el) showFilter.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener("click", onDocumentClick));
+onUnmounted(() => document.removeEventListener("click", onDocumentClick));
 
 const currentPageModel = computed({
   get: () => props.page ?? 1,
@@ -234,18 +295,27 @@ function onSort(field: string, dir: "asc" | "desc") {
   emit("sort", field, dir);
 }
 
-/** Extract the seeders/sources number regardless of field name. */
 function seedersValue(row: any): number | null {
   if (row.seedsOrSources != null) return row.seedsOrSources;
   if (row.seeders != null) return row.seeders;
   return null;
 }
 
-/** Extract the leechers number. */
 function leechersValue(row: any): number | null {
   if (row.leechers != null) return row.leechers;
   return null;
 }
+
+/** Column keys that are NOT handled by built-in templates, so they need
+ *  a dynamic fallback slot that can be overridden by the parent.
+ *  Built-in templates: cover, name, seeds, leechers, category, source, actions, free, speed, folder */
+const BUILT_IN = new Set(["cover", "name", "seeds", "leechers", "category", "source", "actions", "free", "speed", "folder"]);
+
+const extraSlotColumns = computed(() => {
+  const allKeys = props.columns.map((c: any) => c.key || c.prop).filter(Boolean);
+  const userExtra = props.extraSlots ?? [];
+  return [...new Set([...allKeys, ...userExtra])].filter((k) => !BUILT_IN.has(k));
+});
 </script>
 
 <style scoped>
@@ -261,27 +331,22 @@ function leechersValue(row: any): number | null {
   font-weight: 600;
   white-space: nowrap;
 }
-/* Allow dropdown to overflow the header cell (source = 2nd from last) */
 :deep(.s-table th:nth-last-child(2)) {
   overflow: visible !important;
 }
-/* Cover cell: center the cover/icon */
 :deep(.s-table td:first-child) {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-/* Empty state must remain table-cell — flex breaks colspan width */
 :deep(.s-table td.s-table__empty) {
   display: table-cell;
   text-align: center;
 }
-/* Source cell: prevent ellipsis truncation */
 :deep(.s-table td:nth-last-child(2)) {
   overflow: visible;
   text-overflow: clip;
 }
-/* Actions column: fixed width for the button */
 :deep(.s-table th:last-child),
 :deep(.s-table td:last-child) {
   max-width: 78px;
@@ -326,7 +391,6 @@ function leechersValue(row: any): number | null {
   margin-top: 0.3rem;
 }
 
-/* ── Mobile: hide cover, fixed name width ─────────────── */
 @media (max-width: 768px) {
   :deep(.s-table th:first-child),
   :deep(.s-table td:first-child) {

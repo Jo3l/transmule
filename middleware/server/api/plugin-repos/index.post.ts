@@ -6,7 +6,10 @@
  *
  * Body: { url: string }
  */
-import { addPluginRepository } from "../../utils/database";
+import {
+  addPluginRepository,
+  getPluginRepositoryByUrl,
+} from "../../utils/database";
 import { fetchTextSafe, assertSafeUrl } from "../../utils/plugin-url";
 import { installPluginFromUrl } from "../../utils/plugin-install";
 
@@ -26,6 +29,15 @@ export default defineEventHandler(async (event) => {
 
   const resolvedUrl = _resolveManifestUrl(body.url.trim());
   assertSafeUrl(resolvedUrl);
+
+  // Check if repo already exists before fetching manifest
+  const existing = getPluginRepositoryByUrl(resolvedUrl);
+  if (existing) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: "Repository is already installed",
+    });
+  }
 
   // Fetch and parse the manifest to get the repo name + plugin list
   let repoName: string | undefined;

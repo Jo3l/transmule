@@ -84,7 +84,9 @@ export function useServices() {
           ? "aMule"
           : service === "transmission"
             ? "Transmission"
-            : "pyLoad";
+            : service === "slskd"
+              ? "Slskd"
+              : "pyLoad";
 
       // Signal to watchers (e.g. downloads page) that a service was stopped
       if (action === "stop" && !res.running) {

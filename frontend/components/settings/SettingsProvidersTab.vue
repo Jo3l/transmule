@@ -223,6 +223,16 @@ export default {
           <span class="mdi mdi-plus mr-1" />
           {{ $t("settings.reposAdd") }}
         </SButton>
+        <SButton
+          v-if="!hasOfficialRepo"
+          variant="info"
+          size="sm"
+          :loading="officialRepoAdding"
+          @click="onAddOfficialRepo"
+        >
+          <span class="mdi mdi-star mr-1" />
+          {{ $t("settings.reposAddOfficial") }}
+        </SButton>
       </div>
 
       <SLoading v-if="reposLoading" />
@@ -398,6 +408,9 @@ const repoInstalledProviderList = computed(() =>
 const repoNameById = computed(() =>
   Object.fromEntries(repos.value.map((r) => [r.id, r.name || r.url])),
 );
+const hasOfficialRepo = computed(() =>
+  repos.value.some((r) => r.url === OFFICIAL_REPO_URL),
+);
 
 async function loadProviderList() {
   providersLoading.value = true;
@@ -473,8 +486,10 @@ async function onUpdatePlugin(id: string, url: string) {
 
 // ── Plugin Repositories ────────────────────────────────────────────────────
 
+const OFFICIAL_REPO_URL = "https://github.com/Jo3l/transmule-plugins";
 const newRepoUrl = ref("");
 const repoAdding = ref(false);
+const officialRepoAdding = ref(false);
 const repoRefreshing = ref<number | null>(null);
 const repoInstalling = ref<string | null>(null);
 const expandedRepos = ref<Record<number, boolean>>({});
@@ -512,6 +527,12 @@ async function onAddRepo() {
   try {
     const repo = await addRepo(url);
     newRepoUrl.value = "";
+    if ((repo as any).installed > 0) {
+      addToast(
+        t("settings.reposInstallSuccess", undefined, { count: (repo as any).installed }),
+        "success",
+      );
+    }
     await loadProviderList();
     expandedRepos.value[repo.id] = true;
     loadRepoPlugins(repo.id);
@@ -519,6 +540,24 @@ async function onAddRepo() {
     addToast(err?.data?.statusMessage || err?.message || t("settings.saveFailed"), "error");
   } finally {
     repoAdding.value = false;
+  }
+}
+
+async function onAddOfficialRepo() {
+  if (hasOfficialRepo.value) return;
+  officialRepoAdding.value = true;
+  try {
+    const repo = await addRepo(OFFICIAL_REPO_URL);
+    if ((repo as any).installed > 0) {
+      addToast(t("settings.reposOfficialAdded"), "success");
+    }
+    await loadProviderList();
+    expandedRepos.value[repo.id] = true;
+    loadRepoPlugins(repo.id);
+  } catch (err: any) {
+    addToast(err?.data?.statusMessage || err?.message || t("settings.saveFailed"), "error");
+  } finally {
+    officialRepoAdding.value = false;
   }
 }
 

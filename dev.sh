@@ -129,6 +129,7 @@ export NITRO_TRANSMISSION_URL="http://127.0.0.1:9091/transmission/rpc"
 export NITRO_PYLOAD_URL="http://127.0.0.1:8000"
 export NITRO_PYLOAD_USERNAME="${PYLOAD_USER:-pyload}"
 export NITRO_PYLOAD_PASSWORD="${PYLOAD_PASSWORD:-pyload}"
+export NITRO_SLSKD_URL="http://127.0.0.1:5030"
 # Let local middleware and docker CLI share the same Docker socket in dev mode.
 # Priority: explicit NITRO_DOCKER_SOCKET > DOCKER_HOST unix socket > standard sockets.
 detect_docker_socket() {
@@ -182,9 +183,9 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# ── Start Docker containers (aMule + Transmission) ───────────────────────────
-echo -e "${CYAN}▸ Starting aMule, Transmission & pyLoad containers (dev ports exposed)…${NC}"
-$COMPOSE up -d amule transmission pyload
+# ── Start Docker containers (aMule + Transmission + slskd + pyLoad) ─────────
+echo -e "${CYAN}▸ Starting aMule, Transmission, slskd & pyLoad containers (dev ports exposed)…${NC}"
+$COMPOSE up -d amule transmission slskd pyload
 
 # ── Cleanup on exit ──────────────────────────────────────────────────────────
 cleanup() {
@@ -192,7 +193,7 @@ cleanup() {
   kill $MW_PID $FE_PID 2>/dev/null || true
   wait $MW_PID $FE_PID 2>/dev/null || true
   echo -e "${YELLOW}Stopping Docker containers…${NC}"
-  $COMPOSE stop amule transmission pyload
+  $COMPOSE stop amule transmission slskd pyload
   rm -f "$PIDFILE"
   echo -e "${GREEN}Done.${NC}"
 }

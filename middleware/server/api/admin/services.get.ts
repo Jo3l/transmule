@@ -3,7 +3,7 @@ defineRouteMeta({
     tags: ["Admin"],
     summary: "Get Docker services status",
     description:
-      "Returns the running status of the aMule and Transmission containers (admin only).",
+      "Returns the running status of the aMule, Transmission, slskd and pyLoad containers (admin only).",
     responses: {
       200: { description: "Services status" },
       403: { description: "Admin access required" },

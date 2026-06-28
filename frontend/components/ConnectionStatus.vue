@@ -25,6 +25,14 @@
           <span :class="transmissionStateIcon" />
         </span>
       </STag>
+      <!-- slskd middleware connection -->
+      <STag :variant="slskdVariant" size="sm">
+        <span class="mdi mdi-bird mr-1" />
+        {{ $t("connection.slskd") }}
+        <span class="ml-1" :title="slskdStateLabel">
+          <span :class="slskdStateIcon" />
+        </span>
+      </STag>
       <!-- pyLoad middleware connection -->
       <STag :variant="pyloadVariant" size="sm">
         <span class="mdi mdi-cloud-download mr-1" />
@@ -56,6 +64,7 @@ const loaded = ref(false);
 const status = ref<any>(null);
 const amuleOk = ref(false);
 const transmissionOk = ref(false);
+const slskdOk = ref(false);
 const pyloadOk = ref(false);
 const pyloadStatus = ref<Record<string, any> | null>(null);
 
@@ -70,7 +79,7 @@ function stateIcon(state: ConnectionState): string {
 }
 
 function stateLabel(state: ConnectionState): string {
-  if (state === "firewalled") return t("connection.firewalled");
+  if (state === "firewalled") return t(`connection.${state}`);
   return t(`connection.${state}`);
 }
 
@@ -84,6 +93,13 @@ const transmissionState = computed<ConnectionState>(() =>
 );
 const transmissionStateIcon = computed(() => stateIcon(transmissionState.value));
 const transmissionStateLabel = computed(() => stateLabel(transmissionState.value));
+
+const slskdVariant = computed(() => (slskdOk.value ? "success" : "danger"));
+const slskdState = computed<ConnectionState>(() =>
+  slskdOk.value ? "connected" : "disconnected",
+);
+const slskdStateIcon = computed(() => stateIcon(slskdState.value));
+const slskdStateLabel = computed(() => stateLabel(slskdState.value));
 
 const pyloadVariant = computed(() => (pyloadOk.value ? "success" : "danger"));
 const pyloadState = computed<ConnectionState>(() =>
@@ -144,9 +160,10 @@ const amuleStackVariant = computed(() => {
 let interval: ReturnType<typeof setInterval> | null = null;
 
 async function refresh() {
-  const [amuleRes, trRes, pyRes] = await Promise.allSettled([
+  const [amuleRes, trRes, slRes, pyRes] = await Promise.allSettled([
     apiFetch<any>("/api/amule/stats"),
     apiFetch<any>("/api/transmission/session"),
+    apiFetch<any>("/api/slskd/server"),
     apiFetch<any>("/api/pyload/status"),
   ]);
 
@@ -159,6 +176,7 @@ async function refresh() {
   }
 
   transmissionOk.value = trRes.status === "fulfilled" && !!trRes.value?.session;
+  slskdOk.value = slRes.status === "fulfilled" && slRes.value?.state?.isLoggedIn === true;
   pyloadOk.value = pyRes.status === "fulfilled" && pyRes.value?.connected === true;
   pyloadStatus.value = pyRes.status === "fulfilled" ? (pyRes.value?.status ?? null) : null;
 

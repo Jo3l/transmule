@@ -12,10 +12,11 @@ export default defineNitroConfig({
     meta: {
       title: "TransMule API Middleware",
       description:
-        "REST API middleware for aMule (EC protocol), Transmission (JSON-RPC) and pyLoad.\n\n" +
+        "REST API middleware for aMule (EC protocol), Transmission (JSON-RPC), slskd (Soulseek) and pyLoad.\n\n" +
         "**Services:**\n" +
         "- `/api/amule/*`         — aMule daemon (ED2K / Kademlia)\n" +
         "- `/api/transmission/*`  — Transmission torrent client\n" +
+        "- `/api/slskd/*`         — slskd Soulseek client\n" +
         "- `/api/pyload/*`        — pyLoad NG download manager\n" +
         "- `/api/torrent-search`  — Public torrent index search\n" +
         "- `/api/admin/*`         — Admin management\n\n" +
@@ -34,6 +35,7 @@ export default defineNitroConfig({
     pyloadUrl: "http://pyload:8000",
     pyloadUsername: "pyload",
     pyloadPassword: "pyload",
+    slskdUrl: "http://slskd:5030",
     jwtSecret: "amule-middleware-change-this-secret",
     downloadsDir: "",
     amuleConfigDir: "",

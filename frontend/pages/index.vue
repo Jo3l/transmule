@@ -53,6 +53,11 @@
             >({{ pyloadCount }} {{ $t("downloads.packages") }})</span
           >
         </div>
+        <div class="total-item" v-if="slskdTotals">
+          <span class="mdi mdi-account-music" />
+          <strong>{{ slskdSpeedFmt }}</strong>
+          <span class="has-text-grey is-size-7 ml-1">({{ slskdCount }} Soulseek)</span>
+        </div>
         <div class="total-item">
           <span class="mdi mdi-file-multiple" />
           {{ allFiles.length }} {{ $t("downloads.total") }}
@@ -159,7 +164,8 @@
               v-else-if="row._type === 'torrent'"
               class="mdi mdi-magnet card-type-icon text-accent"
             />
-            <span v-else class="mdi mdi-cloud-download card-type-icon text-info" />
+            <span v-else-if="row._type === 'pyload'" class="mdi mdi-cloud-download card-type-icon text-info" />
+            <span v-else-if="row._type === 'slskd'" class="mdi mdi-bird card-type-icon text-primary" />
             <span class="card-name">{{ row.name }}</span>
             <STag v-if="row._type === 'amule'" :variant="amuleStatusType(row.status)" size="sm">{{
               row.status
@@ -171,7 +177,7 @@
               >{{ row.statusLabel }}</STag
             >
             <STag
-              v-else
+              v-else-if="row._type === 'pyload'"
               :variant="
                 row.activeLinks > 0
                   ? 'info'
@@ -194,6 +200,9 @@
                         : $t("pyload.destCollector")
               }}</STag
             >
+            <STag v-else-if="row._type === 'slskd'" variant="default" size="sm">{{
+              row.status
+            }}</STag>
             <span
               class="mdi card-chevron"
               :class="isOpen(row._uid) ? 'mdi-chevron-up' : 'mdi-chevron-down'"
@@ -222,7 +231,7 @@
               :height="10"
             />
             <SProgress
-              v-else
+              v-else-if="row._type === 'pyload'"
               :percentage="row.progress || 0"
               :color="
                 row.activeLinks > 0
@@ -233,6 +242,12 @@
               "
               :height="10"
             />
+            <SProgress
+              v-else-if="row._type === 'slskd'"
+              :percentage="row.progress || 0"
+              :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : 'var(--s-text-muted)'"
+              :height="10"
+            />
             <div class="card-progress-label">
               <template v-if="row._type === 'amule'"
                 >{{ row.size_done_fmt }} / {{ row.size_fmt }} ({{ row.progress || 0 }}%)</template
@@ -240,7 +255,12 @@
               <template v-else-if="row._type === 'torrent'"
                 >{{ Math.round(row.percentDone * 100) }}% &mdash; {{ row.totalSize_fmt }}</template
               >
-              <template v-else
+              <template v-else-if="row._type === 'pyload'"
+                >{{ row.doneSize_fmt }} / {{ row.totalSize_fmt }} ({{
+                  (row.progress || 0).toFixed(1)
+                }}%)</template
+              >
+              <template v-else-if="row._type === 'slskd'"
                 >{{ row.doneSize_fmt }} / {{ row.totalSize_fmt }} ({{
                   (row.progress || 0).toFixed(1)
                 }}%)</template
@@ -463,9 +483,14 @@
             :title="$t('downloads.tooltip.torrent')"
           />
           <span
-            v-else
+            v-else-if="row._type === 'pyload'"
             class="mdi mdi-cloud-download type-icon text-info"
             :title="$t('downloads.tooltip.pyload')"
+          />
+          <span
+            v-else-if="row._type === 'slskd'"
+            class="mdi mdi-bird type-icon text-primary"
+            title="Soulseek"
           />
         </template>
 
@@ -508,7 +533,7 @@
             :height="12"
           />
           <SProgress
-            v-else
+            v-else-if="row._type === 'pyload'"
             :percentage="row.progress || 0"
             :color="
               row.activeLinks > 0
@@ -519,13 +544,20 @@
             "
             :height="12"
           />
+          <SProgress
+            v-else-if="row._type === 'slskd'"
+            :percentage="row.progress || 0"
+            :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : 'var(--s-text-muted)'"
+            :height="12"
+          />
         </template>
 
         <!-- Speed cell -->
         <template #cell-speed="{ row }">
           <template v-if="row._type === 'amule'">{{ row.speed_fmt }}</template>
           <template v-else-if="row._type === 'torrent'">{{ row.rateDownload_fmt }}</template>
-          <template v-else>{{ row.speed_fmt }}</template>
+          <template v-else-if="row._type === 'pyload'">{{ row.speed_fmt }}</template>
+          <template v-else-if="row._type === 'slskd'">{{ row.speed_fmt }}</template>
         </template>
 
         <!-- Peers cell -->
@@ -533,6 +565,7 @@
           <template v-if="row._type === 'amule'"
             >{{ row.sourceCountXfer || 0 }}/{{ row.sourceCount || 0 }}</template
           >
+          <template v-else-if="row._type === 'slskd'">&mdash;&nbsp;/&nbsp;&mdash;</template>
           <template v-else>{{ row.peersSendingToUs || 0 }}/{{ row.peersConnected || 0 }}</template>
         </template>
 
@@ -548,7 +581,7 @@
             >{{ row.statusLabel }}</STag
           >
           <STag
-            v-else
+            v-else-if="row._type === 'pyload'"
             :variant="
               row.activeLinks > 0
                 ? 'info'
@@ -571,6 +604,7 @@
                       : $t("pyload.destCollector")
             }}</STag
           >
+          <STag v-else-if="row._type === 'slskd'" size="sm" :variant="row.status === 'Downloading' ? 'info' : row.status === 'Complete' ? 'success' : row.status === 'Waiting' ? 'default' : 'default'">{{ row.status }}</STag>
         </template>
 
         <!-- ═══ EXPAND SLOT ═══ -->
@@ -584,7 +618,9 @@
                   ? amulePanes
                   : row._type === 'pyload'
                     ? pyloadPanes
-                    : torrentPanes
+                    : row._type === 'slskd'
+                      ? slskdPanes
+                      : torrentPanes
               "
             >
               <!-- ── Info tab (both types) ── -->
@@ -606,7 +642,9 @@
                             ? row.hash
                             : row._type === "pyload"
                               ? "pkg-" + row.pid
-                              : row.hashString
+                              : row._type === "slskd"
+                                ? row.id
+                                : row.hashString
                         }}</span>
                       </div>
                       <div class="kv-row">
@@ -649,6 +687,17 @@
                               ? $t("pyload.destQueue")
                               : $t("pyload.destCollector")
                           }}</span>
+                        </div>
+                      </template>
+                      <!-- slskd-specific fields -->
+                      <template v-if="row._type === 'slskd'">
+                        <div class="kv-row">
+                          <span class="kv-label">User</span>
+                          <span class="kv-value">{{ row.username }}</span>
+                        </div>
+                        <div class="kv-row">
+                          <span class="kv-label">Folder</span>
+                          <span class="kv-value is-size-7">{{ row.folder || row.remoteFilename || "" }}</span>
                         </div>
                       </template>
                       <!-- Torrent-specific fields -->
@@ -696,14 +745,16 @@
                               ? row.dest === "queue"
                                 ? $t("pyload.destQueue")
                                 : $t("pyload.destCollector")
-                              : row.statusLabel
+                              : row._type === "slskd"
+                                ? row.status
+                                : row.statusLabel
                         }}</span>
                       </div>
                       <div class="kv-row">
                         <span class="kv-label">{{ $t("downloads.info.progress") }}</span>
                         <span class="kv-value"
                           >{{
-                            row._type === "amule" || row._type === "pyload"
+                            row._type === "amule" || row._type === "pyload" || row._type === "slskd"
                               ? row.progress
                               : Math.round(row.percentDone * 100)
                           }}%</span
@@ -794,6 +845,29 @@
                               {{ label }}
                             </STag>
                           </span>
+                        </div>
+                      </template>
+                      <!-- slskd-specific transfer -->
+                      <template v-if="row._type === 'slskd'">
+                        <div class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.speed") }}</span>
+                          <span class="kv-value">{{ row.speed_fmt }}</span>
+                        </div>
+                        <div class="kv-row">
+                          <span class="kv-label">File</span>
+                          <span class="kv-value is-size-7">{{ row.fullFilename || row.filename }}</span>
+                        </div>
+                        <div class="kv-row">
+                          <span class="kv-label">ETA</span>
+                          <span class="kv-value">{{ row.eta_fmt || "\u2014" }}</span>
+                        </div>
+                        <div v-if="row.startTime" class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.added") }}</span>
+                          <span class="kv-value">{{ formatTimestamp(row.startTime) }}</span>
+                        </div>
+                        <div v-if="row.endTime" class="kv-row">
+                          <span class="kv-label">{{ $t("downloads.info.completed") }}</span>
+                          <span class="kv-value">{{ formatTimestamp(row.endTime) }}</span>
                         </div>
                       </template>
                     </div>
@@ -1547,6 +1621,29 @@
           <span class="mdi mdi-delete" /> {{ $t("downloads.actions.cancel") }}
         </div>
       </template>
+
+      <!-- slskd actions -->
+      <template v-else-if="dlCtxMenu.row?._type === 'slskd'">
+        <div
+          class="context-menu-item"
+          @click="
+            doSlskdAction('retry');
+            dlCtxMenu.visible = false;
+          "
+        >
+          <span class="mdi mdi-refresh" /> {{ $t("downloads.actions.retry", "Reintentar") }}
+        </div>
+        <div class="context-menu-sep" />
+        <div
+          class="context-menu-item context-menu-item--danger"
+          @click="
+            doSlskdAction('cancel');
+            dlCtxMenu.visible = false;
+          "
+        >
+          <span class="mdi mdi-close-circle" /> {{ $t("downloads.actions.cancel") }}
+        </div>
+      </template>
     </div>
   </Teleport>
 </template>
@@ -1570,6 +1667,9 @@ const transmissionStopped = computed(
 const pyloadStopped = computed(
   () => loaded.value && services.value !== null && !services.value.pyload.running,
 );
+const slskdStopped = computed(
+  () => loaded.value && services.value !== null && !services.value.slskd.running,
+);
 
 // Clear the relevant list immediately when a service is stopped
 watch(lastStopped, (ev) => {
@@ -1583,6 +1683,9 @@ watch(lastStopped, (ev) => {
   } else if (ev.service === "pyload") {
     pyloadFiles.value = [];
     pyloadTotals.value = null;
+  } else if (ev.service === "slskd") {
+    slskdFiles.value = [];
+    slskdTotals.value = null;
   }
   applySortAndFilter();
 });
@@ -1654,6 +1757,9 @@ const pyloadPanes = computed<TabPaneDef[]>(() => [
   { name: "info", label: t("downloads.info.title") },
   { name: "links", label: t("downloads.pyload.links") },
 ]);
+const slskdPanes = computed<TabPaneDef[]>(() => [
+  { name: "info", label: t("downloads.info.title") },
+]);
 const pyloadLinkCols = computed<STableColumn[]>(() => [
   { prop: "name", label: t("pyload.columns.name") },
   { prop: "plugin", label: t("pyload.columns.plugin"), width: 120 },
@@ -1685,6 +1791,7 @@ const sourceOptions = computed(() => [
   { label: t("downloads.sources.amule"), value: "amule" },
   { label: t("downloads.sources.torrent"), value: "torrent" },
   { label: t("downloads.sources.pyload"), value: "pyload" },
+  { label: "Soulseek", value: "slskd" },
 ]);
 const statusOptions = computed(() => [
   { label: t("downloads.statusFilter.downloading"), value: "Downloading" },
@@ -1707,18 +1814,24 @@ const torrentData = ref<any>(null);
 const amuleFiles = ref<any[]>([]);
 const torrentFiles = ref<any[]>([]);
 const pyloadFiles = ref<any[]>([]);
-const allFiles = computed(() => [...amuleFiles.value, ...torrentFiles.value, ...pyloadFiles.value]);
+const allFiles = computed(() => [...amuleFiles.value, ...torrentFiles.value, ...pyloadFiles.value, ...slskdFiles.value]);
 const filteredFiles = ref<any[]>([]);
 const amuleTotals = ref<any>(null);
 const torrentTotals = ref<any>(null);
 const pyloadTotals = ref<any>(null);
 const speedGraphRef = ref<{ draw: () => void } | null>(null);
 const speedHistory = ref<
-  { t: number; amule: number; torrent: number; pyload: number; up: number }[]
+  { t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]
 >([]);
 const amuleCount = computed(() => amuleFiles.value.length);
 const torrentCount = computed(() => torrentFiles.value.length);
 const pyloadCount = computed(() => pyloadFiles.value.length);
+const slskdFiles = ref<any[]>([]);
+const slskdTotals = ref<any>(null);
+const slskdCount = computed(() => slskdFiles.value.length);
+const slskdSpeedFmt = computed(() =>
+  formatSpeed(slskdFiles.value.reduce((s: number, f: any) => s + (f.averageSpeed || 0), 0)),
+);
 const selectedItems = reactive(new Set<string>());
 const lastClickedRow = ref<string | null>(null);
 const loading = ref(false);
@@ -1810,6 +1923,30 @@ const selectedPyloadHasFailed = computed(() =>
 const totalSelected = computed(() =>
   selectedAmule.value.length + selectedTorrents.value.length + selectedPyload.value.length,
 );
+
+async function doSlskdAction(action: 'retry' | 'cancel') {
+  for (const uid of selectedItems) {
+    const row = allFiles.value.find((r: any) => r._uid === uid);
+    if (!row || row._type !== 'slskd') continue;
+    try {
+      if (action === 'cancel') {
+        await apiFetch(`/api/slskd/transfers/${encodeURIComponent(row.username)}/${encodeURIComponent(row.id)}?remove=true`, {
+          method: 'DELETE',
+        });
+      } else if (action === 'retry') {
+        // Remove and re-queue via the transfer endpoint
+        await apiFetch(`/api/slskd/transfers/${encodeURIComponent(row.username)}/${encodeURIComponent(row.id)}?remove=true`, {
+          method: 'DELETE',
+        });
+        await apiFetch('/api/slskd/transfers', {
+          method: 'POST',
+          body: { username: row.username, files: [{ filename: row.filename || row.name, size: row.size }] },
+        });
+      }
+    } catch { /* silent */ }
+  }
+  refreshSlskd();
+}
 
 function doUnifiedAction(action: 'start' | 'stop' | 'cancel') {
   if (selectedAmule.value.length) {
@@ -2185,14 +2322,62 @@ async function refreshPyload() {
   }
 }
 
-function pushSpeedHistory() {
+async function refreshSlskd() {
+  if (slskdStopped.value) return;
+  try {
+    const res = await apiFetch<any>("/api/slskd/transfers?direction=download");
+    const raw = Array.isArray(res) ? res : [];
+    slskdTotals.value = raw.length > 0 ? { count: raw.length } : null;
+    slskdFiles.value = raw.map((t: any) => {
+      const bytesTotal = t.size || 0;
+      const bytesDone = t.bytesTransferred || 0;
+      const isComplete = t.state?.includes("Completed");
+      return {
+        ...t,
+        _type: "slskd",
+        _uid: "slskd-" + t.id,
+        name: (() => {
+          const fn = t.filename || t.name || "";
+          const parts = fn.replace(/\\/g, "/").split("/");
+          return parts[parts.length - 1] || fn;
+        })(),
+        size: bytesTotal,
+        progress: isComplete ? 100 : (bytesTotal > 0 ? Math.min(100, (bytesDone / bytesTotal) * 100) : 0),
+        speed_fmt: formatSpeed(t.averageSpeed || 0),
+        totalSize_fmt: formatBytes(bytesTotal),
+        doneSize_fmt: formatBytes(bytesDone),
+        status: isComplete ? "Complete" : (t.state?.includes("InProgress") || t.state?.includes("Transferring")) ? "Downloading" : t.state?.includes("Queued") ? "Waiting" : t.state || "Unknown",
+        activeLinks: 0,
+        failedLinks: 0,
+        finishedLinks: isComplete ? 1 : 0,
+        linkCount: 1,
+        dest: "queue",
+        username: t.username || "",
+        folder: (() => {
+          const fn = t.filename || "";
+          const lastSep = Math.max(fn.lastIndexOf("\\"), fn.lastIndexOf("/"));
+          return lastSep >= 0 ? fn.substring(0, lastSep) : "";
+        })(),
+        fullFilename: t.filename || "",
+        startTime: t.startedAt ? new Date(t.startedAt).getTime() : null,
+        endTime: t.endedAt ? new Date(t.endedAt).getTime() : null,
+        averageSpeed: t.averageSpeed || 0,
+        percentComplete: t.percentComplete ?? (bytesTotal > 0 ? Math.round((bytesDone / bytesTotal) * 10000) / 100 : 0),
+      };
+    });
+  } catch {
+    /* silent */
+  }
+}
+
+async function pushSpeedHistory() {
   // history is now accumulated server-side; fetch it from the API
 }
 
 async function fetchSpeedHistory() {
   try {
     const data =
-      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; up: number }[]>(
+      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]>(
         "/api/speed-history",
       );
     speedHistory.value = data ?? [];
@@ -2203,7 +2388,7 @@ async function fetchSpeedHistory() {
 }
 
 async function refresh() {
-  await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload(), fetchSpeedHistory()]);
+  await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload(), refreshSlskd(), fetchSpeedHistory()]);
   applySortAndFilter();
 }
 
@@ -2255,6 +2440,20 @@ async function clearDownloaded() {
           body: { action: "delete", pids: pyloadDone },
         }).catch(() => {}),
       );
+    }
+
+    // slskd completed
+    const slskdDone = done
+      .filter((r) => r._type === "slskd" && r.status === "Complete")
+      .map((r) => ({ username: r.username, id: r.id }));
+    for (const item of slskdDone) {
+      if (item.username && item.id) {
+        ops.push(
+          apiFetch(`/api/slskd/transfers/${encodeURIComponent(item.username)}/${encodeURIComponent(item.id)}?remove=true`, {
+            method: "DELETE",
+          }).catch(() => {}),
+        );
+      }
     }
 
     await Promise.all(ops);

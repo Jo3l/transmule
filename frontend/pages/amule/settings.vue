@@ -26,6 +26,10 @@
         <span class="mdi mdi-shield mr-1" />
         {{ $t('amuleSettings.security') }}
       </template>
+      <template #tab-sharing>
+        <span class="mdi mdi-folder-network mr-1" />
+        {{ $t('amuleSettings.sharing', 'Compartir') }}
+      </template>
       <!-- Stats -->
       <STabPane
         name="stats"
@@ -427,6 +431,41 @@
           </div>
         </div>
       </STabPane>
+
+      <!-- Sharing -->
+      <STabPane
+        name="sharing"
+        :active="activeTab === 'sharing'"
+      >
+        <div class="box">
+          <p class="has-text-grey is-size-7 mb-3">{{ $t("amuleSettings.sharingDescription", "Configura c\u00f3mo aMule comparte archivos.") }}</p>
+
+          <div class="kv-list mb-3">
+            <div class="kv-row">
+              <span class="kv-label">{{ $t("amuleSettings.sharedFileCount", "Archivos compartidos") }}</span>
+              <span class="kv-value">{{ amuleStats?.sharedFileCount ?? "\u2014" }}</span>
+            </div>
+          </div>
+
+          <SDivider />
+
+          <SCheckbox v-model="sharingPrefs.includeSubdirs">
+            {{ $t("amuleSettings.includeSubdirs", "Buscar archivos en subcarpetas") }}
+          </SCheckbox>
+          <p class="has-text-grey is-size-7 mt-1">{{ $t("amuleSettings.includeSubdirsHelp", "Al escanear archivos compartidos, incluye tambi\u00e9n los de subdirectorios.") }}</p>
+
+          <div class="mt-4">
+            <SButton variant="default" size="sm" :loading="reloadingShared" @click="reloadShared">
+              <span class="mdi mdi-refresh mr-1" />
+              {{ $t("amuleSettings.reloadShared", "Recargar archivos compartidos") }}
+            </SButton>
+            <SButton variant="primary" class="ml-2" :loading="saving" @click="saveSharing">
+              <span class="mdi mdi-content-save mr-1" />
+              {{ $t("amuleSettings.save") }}
+            </SButton>
+          </div>
+        </div>
+      </STabPane>
     </STabs>
   </SLoading>
 </template>
@@ -480,17 +519,52 @@ interface AmulePreferences {
 
 const { t } = useI18n();
 const { apiFetch } = useApi();
+const { addToast } = useToast();
 const { amuleRunning } = useServiceGuard();
 const route = useRoute();
 const router = useRouter();
 
-const VALID_TABS = ["stats", "general", "connection", "servers", "security"];
+const VALID_TABS = ["stats", "general", "connection", "servers", "security", "sharing"];
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "stats");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
 const loading = ref(true);
 const saving = ref(false);
 const saved = ref(false);
 const errorMsg = ref("");
+const sharingPrefs = reactive({ includeSubdirs: true });
+const reloadingShared = ref(false);
+
+async function loadSharingPrefs() {
+  try {
+    const data = await apiFetch<any>("/api/amule/sharing");
+    if (data) sharingPrefs.includeSubdirs = data.includeSubdirs !== false;
+  } catch { /* silent */ }
+}
+
+async function reloadShared() {
+  reloadingShared.value = true;
+  try {
+    await apiFetch("/api/amule/shared", {
+      method: "POST",
+      body: { action: "reload" },
+    });
+    addToast("Archivos compartidos recargados", "success");
+  } catch { /* silent */ }
+  reloadingShared.value = false;
+}
+
+async function saveSharing() {
+  saving.value = true;
+  try {
+    await apiFetch("/api/amule/sharing", {
+      method: "POST",
+      body: { includeSubdirs: sharingPrefs.includeSubdirs },
+    });
+    saved.value = true;
+    setTimeout(() => { saved.value = false; }, 3000);
+  } catch { /* silent */ }
+  saving.value = false;
+}
 
 const form = reactive<AmulePreferences>({
   general: {
@@ -538,6 +612,7 @@ const tabPanes = computed<TabPaneDef[]>(() => [
   { name: "connection", label: t("amuleSettings.connection") },
   { name: "servers", label: t("amuleSettings.servers") },
   { name: "security", label: t("amuleSettings.security") },
+  { name: "sharing", label: t("amuleSettings.sharing", "Compartir") },
 ]);
 
 async function loadPrefs() {
@@ -586,7 +661,10 @@ async function save(section: keyof AmulePreferences) {
   }
 }
 
-onMounted(() => loadPrefs());
+onMounted(() => {
+  loadPrefs();
+  loadSharingPrefs();
+});
 
 // ── Stats ──────────────────────────────────────────────
 const amuleStats = ref<any>(null);

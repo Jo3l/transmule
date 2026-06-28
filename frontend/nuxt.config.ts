@@ -46,6 +46,7 @@ export default defineNuxtConfig({
   // in production. No NUXT_PUBLIC_API_BASE override needed for local dev.
   vite: {
     server: {
+      allowedHosts: true,
       proxy: {
         "/api": {
           target: "http://localhost:3000",
