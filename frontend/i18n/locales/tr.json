@@ -52,13 +52,18 @@
     "movies": "Filmler",
     "shows": "Diziler",
     "files": "Dosyalar",
-    "portStatus": "Genel Bağlantı Noktası Durumu"
+    "portStatus": "Genel Bağlantı Noktası Durumu",
+    "slskd": "Soulseek",
+    "slskdDashboard": "Dashboard",
+    "slskdTransfers": "Downloads",
+    "slskdSettings": "Soulseek Settings"
   },
   "connection": {
     "amule": "aMule",
     "ed2k": "ED2K",
     "kad": "KAD",
     "transmission": "Transmission",
+    "slskd": "Slskd",
     "pyload": "pyLoad",
     "proxy": "Vekil Sunucu",
     "proxyShort": "PX",
@@ -89,7 +94,8 @@
     "username": "Kullanıcı Adı",
     "password": "Şifre",
     "signIn": "Giriş Yap",
-    "failed": "Giriş başarısız"
+    "failed": "Giriş başarısız",
+    "suggestProviders": "To improve search results, install more providers from Plugin Repositories. Click here to open settings."
   },
   "setup": {
     "title": "İlk Kurulum",
@@ -395,8 +401,10 @@
       "transferred": "Aktarılan",
       "allTime": "Tüm Zamanlar",
       "requests": "İstekler",
-      "priority": "Öncelik"
-    }
+      "priority": "Öncelik",
+      "source": "Source"
+    },
+    "noServicesRunning": "No compatible services running"
   },
   "uploads": {
     "title": "Yükleme Kuyruğu",
@@ -645,7 +653,25 @@
     "webampDefaultWindows": "Default windows",
     "webampSkinsGuideBefore": "Browse skins at",
     "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-    "webamp": "Webamp"
+    "webamp": "Webamp",
+    "reposAddOfficial": "Add Official",
+    "reposOfficialAdded": "Official repository added",
+    "stars": "Stars",
+    "forks": "Forks",
+    "openIssues": "Open issues",
+    "viewOnGitHub": "View on GitHub",
+    "updatedTimeAgo": "Updated {time}",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "monthsAgo": "{count}mo ago",
+    "loading": "Loading GitHub data...",
+    "mute": "Mute music",
+    "unmute": "Unmute music",
+    "about": "About",
+    "splitToggle": "Toggle split",
+    "exportFiles": "Export files"
   },
   "themes": {
     "tron": {
@@ -1200,7 +1226,9 @@
     "overwriteTitle": "Dosyaların üzerine yazılsın mı?",
     "overwriteMessage": "Aşağıdaki dosya(lar) hedef konumda zaten mevcut. Üzerine yazılsın mı?",
     "splitToggle": "Toggle split",
-    "overwriteConfirm": "Üzerine Yaz"
+    "overwriteConfirm": "Üzerine Yaz",
+    "readOnly": "Read only",
+    "readOnlyHint": "Mounted folder is read-only"
   },
   "movies": {
     "title": "Filmler",
@@ -1256,6 +1284,123 @@
     "episodes": "bölüm",
     "prevPage": "Önceki",
     "nextPage": "Sonraki",
-    "page": "Sayfa {n}"
+    "page": "Sayfa {n}",
+    "addAllTorrents": "Add all torrents",
+    "addAllSuccess": "All torrents added successfully",
+    "addAllPartial": "Added {ok} torrents ({err} failed)",
+    "addAllError": "Failed to add torrents"
+  },
+  "slskd": {
+    "description": "slskd is a modern web-based Soulseek client. Access its web UI to search and download files from the Soulseek network.",
+    "serverStatus": "Server Status",
+    "connectionState": "Connection State",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "username": "Soulseek Username",
+    "server": "Server",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "searches": "Searches",
+    "activeDownloads": "Active Downloads",
+    "noSearches": "No searches yet",
+    "noTransfers": "No transfers yet",
+    "transfers": {
+      "title": "Downloads",
+      "downloads": "Downloads",
+      "uploads": "Uploads",
+      "noTransfers": "No transfers yet",
+      "size": "Size",
+      "speed": "Speed",
+      "placeholder": "—",
+      "state": "Transfer state"
+    },
+    "actionError": "Action failed",
+    "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
+    "credentials": "Credentials",
+    "log": "Log",
+    "usernamePlaceholder": "your Soulseek username",
+    "passwordPlaceholder": "leave empty to keep current",
+    "settingsSaved": "Credentials saved",
+    "search": {
+      "title": "Soulseek Search",
+      "noSearches": "No searches yet",
+      "noResults": "No results",
+      "results": "results",
+      "searchStarted": "Search started for '{query}'",
+      "searchError": "Search failed",
+      "searchStopped": "Search stopped",
+      "toggleResults": "Toggle results",
+      "freeSlot": "Free upload slot",
+      "fileLocked": "File locked (user requires slot)",
+      "queueLength": "Queue: {n} users",
+      "download": "Download",
+      "downloadStarted": "Downloading '{file}'",
+      "downloadError": "Download failed",
+      "columns": {
+        "free": "Free",
+        "username": "User",
+        "speed": "k/s",
+        "folder": "Folder",
+        "filename": "File",
+        "size": "Size",
+        "attributes": "Attributes",
+        "bitrate": "Bitrate",
+        "action": ""
+      },
+      "states": {
+        "InProgress": "Searching",
+        "Started": "Started",
+        "Completed": "Completed",
+        "NoResults": "No Results",
+        "Cancelled": "Cancelled",
+        "Error": "Error",
+        "Completed, ResponseLimitReached": "Completed (response limit)"
+      },
+      "filesFound": "files found"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "retry": "Retry"
+    },
+    "states": {
+      "Completed": "Completed",
+      "Transferring": "Transferring",
+      "Queued": "Queued",
+      "TimedOut": "Timed Out",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled"
+    },
+    "userInfo": "Info",
+    "uploadSlots": "Slots",
+    "queueLength": "Queue",
+    "loading": "Loading...",
+    "sendMessage": "Send message",
+    "browseFiles": "Browse files",
+    "blockUser": "Block my files",
+    "ignoreUser": "Ignore user",
+    "downloadFile": "Download file",
+    "downloadDirectory": "Download folder",
+    "browsingUser": "Browsing: {user}",
+    "directories": "folders",
+    "files": "files",
+    "noFiles": "No files",
+    "closeTab": "Close tab",
+    "status": "Status",
+    "userDescription": "Description",
+    "browse": "Browse",
+    "chat": "Chat",
+    "chatPlaceholder": "Chat with users — coming soon",
+    "freeSlot": "Free slot",
+    "messagePlaceholder": "Type a message...",
+    "noMessages": "No messages",
+    "noRooms": "No rooms available",
+    "noUsers": "No users",
+    "private": "Private",
+    "public": "Public",
+    "roomName": "Room",
+    "rooms": "Rooms",
+    "roomUsers": "Users",
+    "roomsPlaceholder": "Chat rooms — coming soon",
+    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically."
   }
 }

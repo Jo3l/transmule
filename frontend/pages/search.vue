@@ -74,6 +74,10 @@
             <span class="mdi mdi-server-network" />
             {{ tab.results.filter((r: any) => r.type === "amule").length }}
           </span>
+          <span v-if="tab.results.filter((r: any) => r.type === 'slskd').length" class="ml-2">
+            <span class="mdi mdi-bird" />
+            {{ tab.results.filter((r: any) => r.type === "slskd").length }}
+          </span>
         </div>
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
@@ -101,7 +105,48 @@
           @toggle-source="toggleSource"
           @select-all-sources="selectAllSources"
           @clear-all-sources="clearAllSources"
-        />
+        >
+          <template #cell-name="{ row }">
+            <template v-if="row.type === 'slskd' && row.slskdFolder">
+              <span class="is-size-7 has-text-grey">{{ row.slskdFolder }}/</span><br/>
+              <span>{{ row.name }}</span>
+            </template>
+            <span v-else>{{ row.name }}</span>
+          </template>
+          <template #cell-actions="{ row }">
+            <template v-if="row.type === 'slskd'">
+              <SButton
+                variant="success"
+                size="sm"
+                @click="startSlskdDownload(row)"
+                :title="$t('slskd.search.download')"
+              >
+                <span class="mdi mdi-download" />
+              </SButton>
+            </template>
+            <template v-else>
+              <DownloadButton
+                v-if="row.downloadUrl"
+                service="pyload"
+                :url="row.downloadUrl"
+                :title="row.name"
+              />
+              <DownloadButton
+                v-else-if="row.type === 'torrent' || row.magnet"
+                service="transmission"
+                :url="row.magnet"
+                :hash="row.infoHash"
+                :title="row.name"
+              />
+              <DownloadButton
+                v-else
+                service="amule"
+                :hash="row.hash"
+                :title="row.name"
+              />
+            </template>
+          </template>
+        </SearchResultsTable>
       </STabPane>
     </STabs>
 
@@ -110,23 +155,43 @@
       <span class="mdi mdi-file-search-outline icon-lg" />
       <p>{{ $t("search.enterTermBoth") }}</p>
     </div>
+    <!-- ── Context menu (soulseek rows) ──────────────────── -->
+    <SContextMenu
+      :visible="ctxMenu.visible"
+      :x="ctxMenu.x"
+      :y="ctxMenu.y"
+      @close="closeCtx"
+    >
+      <div v-if="ctxMenu.type === 'user'" class="s-context-menu-item" @click="ctxOpenChat()">
+        <span class="mdi mdi-message-text" /> {{ $t("slskd.sendMessage", "Enviar mensaje") }}
+      </div>
+      <div v-if="ctxMenu.type === 'user'" class="s-context-menu-item" @click="ctxBrowseFiles()">
+        <span class="mdi mdi-folder-open" /> {{ $t("slskd.browseFiles", "Explorar archivos") }}
+      </div>
+      <div v-if="ctxMenu.type === 'folder'" class="s-context-menu-item" @click="ctxDownloadFolder()">
+        <span class="mdi mdi-folder-download" /> {{ $t("slskd.downloadFolder", "Descargar carpeta") }}
+      </div>
+    </SContextMenu>
   </div>
 </template>
 
 <script setup lang="ts">
 const route = useRoute();
+const router = useRouter();
 const { t } = useI18n();
+const { addToast } = useToast();
 const { torrentSearchProviders, mediaProviders, loadProviders } = useProviders();
+const { apiFetch } = useApi();
 
 const providerLabelMap = computed(() => {
-  const map: Record<string, string> = { amule: "aMule" };
+  const map: Record<string, string> = { amule: "aMule", slskd: "Soulseek" };
   for (const p of torrentSearchProviders.value) {
     map[p.id] = p.name;
   }
   return map;
 });
 const providerIconMap = computed(() => {
-  const map: Record<string, string> = { amule: "mdi-server-network" };
+  const map: Record<string, string> = { amule: "mdi-server-network", slskd: "mdi-bird" };
   for (const p of torrentSearchProviders.value) {
     map[p.id] = p.icon;
   }
@@ -134,7 +199,7 @@ const providerIconMap = computed(() => {
 });
 const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
 const providerVariantMap = computed(() => {
-  const map: Record<string, string> = { amule: "accent" };
+  const map: Record<string, string> = { amule: "accent", slskd: "primary" };
   torrentSearchProviders.value.forEach((p, i) => {
     map[p.id] = VARIANT_PALETTE[i % VARIANT_PALETTE.length];
   });
@@ -159,6 +224,7 @@ const sourceOptions = computed(() => {
   const opts: { label: string; value: string }[] = [
     { label: t("search.allPlugins"), value: "all" },
     { label: t("downloads.sources.amule"), value: "amule" },
+    { label: "Soulseek", value: "slskd" },
   ];
   for (const p of torrentSearchProviders.value) {
     opts.push({ label: p.name, value: p.id });
@@ -314,6 +380,111 @@ function onSort(field: string, dir: "asc" | "desc") {
   sortDir.value = dir;
 }
 
+// ── slskd download ─────────────────────────────────────────
+
+async function startSlskdDownload(row: any) {
+  const username = row.slskdUsername;
+  const filename = row.slskdFullFilename || row.name;
+  const size = row.slskdSize || row.size || 0;
+  if (!username || !filename) return;
+  try {
+    await apiFetch("/api/slskd/transfers", {
+      method: "POST",
+      body: { username, files: [{ filename, size }] },
+    });
+    addToast(`Downloading ${row.name}...`, "success");
+  } catch (err: any) {
+    addToast(err?.message ?? "Download failed", "error");
+  }
+}
+
+// ── Context menu (soulseek rows) ──────────────────────────
+
+const ctxMenu = reactive({
+  visible: false,
+  x: 0,
+  y: 0,
+  type: "" as "user" | "folder",
+  username: "",
+  folder: "",
+  row: null as any,
+});
+
+function closeCtx() {
+  ctxMenu.visible = false;
+}
+
+function ctxOpenChat() {
+  closeCtx();
+  const username = ctxMenu.username;
+  if (!username) return;
+  router.push(`/slskd/chat#user:${encodeURIComponent(username)}`);
+}
+
+function ctxBrowseFiles() {
+  closeCtx();
+  const username = ctxMenu.username;
+  if (!username) return;
+  router.push(`/slskd/chat#files:${encodeURIComponent(username)}`);
+}
+
+async function ctxDownloadFolder() {
+  closeCtx();
+  const username = ctxMenu.username;
+  const folder = ctxMenu.folder;
+  if (!username || !folder) return;
+  const tab = activeUnifiedTab.value;
+  if (!tab) return;
+  const files = (tab as any).results
+    .filter(
+      (r: any) =>
+        r.type === "slskd" &&
+        r.slskdUsername === username &&
+        r.slskdFolder === folder,
+    )
+    .map((r: any) => ({
+      filename: r.slskdFullFilename || r.name,
+      size: r.slskdSize || r.size || 0,
+    }));
+  if (!files.length) {
+    addToast(t("slskd.search.noFilesInFolder", "No se encontraron archivos en la carpeta"), "error");
+    return;
+  }
+  try {
+    await apiFetch("/api/slskd/transfers", {
+      method: "POST",
+      body: { username, files },
+    });
+    apiFetch("/api/download-history", {
+      method: "POST",
+      body: { url: folder, title: folder, service: "slskd" },
+    }).catch(() => {});
+    addToast(t("slskd.search.downloadStarted", { file: folder }), "success");
+  } catch (err: any) {
+    addToast(err?.message ?? t("slskd.search.downloadError"), "error");
+  }
+}
+
+function onUserCtx(event: MouseEvent, row: any) {
+  ctxMenu.visible = true;
+  ctxMenu.x = event.clientX;
+  ctxMenu.y = event.clientY;
+  ctxMenu.type = "user";
+  ctxMenu.username = row.slskdUsername;
+  ctxMenu.folder = "";
+  ctxMenu.row = null;
+}
+
+function onFolderCtx(event: MouseEvent, row: any) {
+  ctxMenu.visible = true;
+  ctxMenu.x = event.clientX;
+  ctxMenu.y = event.clientY;
+  ctxMenu.type = "folder";
+  ctxMenu.username = row.slskdUsername;
+  ctxMenu.folder = row.slskdFolder;
+  ctxMenu.row = row;
+}
+
 // ── Search ──────────────────────────────────────────────────
 
 function onSearch() {
@@ -339,9 +510,7 @@ onMounted(() => {
   loadProviders();
 
   // Close source filter on outside click
-  document.addEventListener("click", () => {
-    showSourceFilter.value = false;
-  });
+  document.addEventListener("click", closeSourceFilter);
 
   const qParam = route.query.q;
   if (qParam && typeof qParam === "string" && qParam.trim()) {
@@ -353,7 +522,62 @@ onMounted(() => {
   ) {
     switchTab(unifiedTabs.value[unifiedTabs.value.length - 1].id);
   }
+
+  // Context menu: right-click on slskd rows
+  document.addEventListener("contextmenu", ctxHandler);
 });
+
+onUnmounted(() => {
+  document.removeEventListener("click", closeSourceFilter);
+  document.removeEventListener("contextmenu", ctxHandler);
+});
+
+function closeSourceFilter() {
+  showSourceFilter.value = false;
+}
+
+// Document-level context menu delegation for slskd rows
+const ctxHandler = (e: Event) => {
+  const target = e.target as HTMLElement;
+
+  // Only handle clicks inside the global search table
+  const table = target.closest("#page-unified-search .search-results-table .s-table");
+  if (!table) return;
+
+  // Find the row
+  const tr = target.closest("tbody tr");
+  if (!tr) return;
+  const tbody = tr.parentElement;
+  if (!tbody) return;
+  const rowIdx = Array.from(tbody.children).indexOf(tr);
+  if (rowIdx < 0 || rowIdx >= pagedResults.value.length) return;
+
+  const row = pagedResults.value[rowIdx];
+  if (!row || row.type !== "slskd") return;
+
+  // Find which cell was clicked
+  const cell = target.closest("td");
+  if (!cell) return;
+  const cellIdx = Array.from(cell.parentElement!.children).indexOf(cell);
+
+  const colKeys = columns.map((c: any) => c.key || c.prop);
+  const colKey = colKeys[cellIdx];
+
+  if (colKey === "seeds" || colKey === "seedsOrSources") {
+    // Username column → user menu
+    if (!row.slskdUsername) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onUserCtx(e as MouseEvent, row);
+  } else if (colKey === "name") {
+    // Name column (shows folder/filename) → folder menu
+    if (!row.slskdFolder) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onFolderCtx(e as MouseEvent, row);
+  }
+};
+
 </script>
 
 <style scoped>
@@ -455,5 +679,4 @@ onMounted(() => {
     flex: 1;
   }
 }
-
 </style>

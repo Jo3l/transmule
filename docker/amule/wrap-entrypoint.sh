@@ -18,6 +18,12 @@ sed -i 's|UDPPort=4672|UDPPort=16882|g' "$ENTRY"
 if [ -f "$CONF" ]; then
   sed -i 's|^IncomingDir=.*|IncomingDir=/downloads|' "$CONF"
   sed -i 's|^TempDir=.*|TempDir=/incomplete|'        "$CONF"
+  # Ensure SharedDir is set so aMule recurses into subdirectories
+  if grep -q '^SharedDir=' "$CONF"; then
+    sed -i 's|^SharedDir=.*|SharedDir=/downloads|' "$CONF"
+  else
+    sed -i '/^TempDir=.*/a SharedDir=/downloads' "$CONF"
+  fi
   sed -i '/^\[eMule\]/,/^\[/{s|^Port=.*|Port=16881|}' "$CONF"
   sed -i '/^\[eMule\]/,/^\[/{s|^UDPPort=.*|UDPPort=16882|}' "$CONF"
 fi

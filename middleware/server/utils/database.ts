@@ -90,11 +90,31 @@ export function getPluginRepositories(): PluginRepository[] {
     .all() as PluginRepository[];
 }
 
+export function getPluginRepositoryByUrl(
+  url: string,
+): PluginRepository | undefined {
+  const db = useDatabase();
+  return db
+    .prepare(
+      "SELECT id, url, name, added_at FROM plugin_repositories WHERE url = ?",
+    )
+    .get(url) as PluginRepository | undefined;
+}
+
 export function addPluginRepository(
   url: string,
   name?: string,
 ): PluginRepository {
   const db = useDatabase();
+  // Check if already exists — return existing record instead of failing
+  const existing = db
+    .prepare(
+      "SELECT id, url, name, added_at FROM plugin_repositories WHERE url = ?",
+    )
+    .get(url) as PluginRepository | undefined;
+  if (existing) {
+    return existing;
+  }
   db.prepare("INSERT INTO plugin_repositories (url, name) VALUES (?, ?)").run(
     url,
     name ?? null,

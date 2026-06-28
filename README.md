@@ -12,7 +12,7 @@
   # TransMule — Unified Self-Hosted Download Manager
 
   <p align="center">
-    <strong>One dashboard to manage aMule (ED2K/Kademlia), Transmission (BitTorrent) and pyLoad NG (direct downloads)</strong>
+    <strong>One dashboard to manage aMule (ED2K/Kademlia), Transmission (BitTorrent), Slskd (Soulseek) and pyLoad NG (direct downloads)</strong>
   </p>
 
   <p align="center">
@@ -48,7 +48,7 @@
 
 ---
 
-> **TransMule** is a modern, self-hosted web interface that unifies three download ecosystems — **aMule** (ED2K/Kademlia), **Transmission** (BitTorrent) and **pyLoad NG** (direct/one-click hosting) — into a single dashboard. Deployed via Docker Compose, it works on any architecture (x86_64 and ARM64) and includes a built-in file manager with remote storage mounts, media preview, archive utilities, extensible plugin system, multi-user auth, and full i18n support. All in one container with a single `docker compose up -d`.
+> **TransMule** is a modern, self-hosted web interface that unifies four download ecosystems — **aMule** (ED2K/Kademlia), **Transmission** (BitTorrent), **Slskd** (Soulseek) and **pyLoad NG** (direct/one-click hosting) — into a single dashboard. Deployed via Docker Compose, it works on any architecture (x86_64 and ARM64) and includes a built-in file manager with remote storage mounts, media preview, archive utilities, extensible plugin system, multi-user auth, and full i18n support. All in one container with a single `docker compose up -d`.
 
 <br>
 
@@ -57,9 +57,10 @@
 ### Unified Download Management
 | Feature | Description |
 |---------|-------------|
-| **Unified dashboard** | All downloads — aMule files, BitTorrent transfers and pyLoad packages — in one sortable, filterable table with mobile card layout |
+| **Unified dashboard** | All downloads — aMule files, BitTorrent transfers, Soulseek downloads and pyLoad packages — in one sortable, filterable table with mobile card layout |
 | **aMule integration** | Browse and search the ED2K/Kademlia network, manage downloads, view chunk availability, sources, friends, connected servers, KAD status and full preferences |
 | **Transmission integration** | Add torrents via magnet link or URL, control downloads, inspect peers/trackers/files, configure network and speed limits |
+| **Slskd integration** | Search the Soulseek network, download files, browse user shares, chat in rooms and private messages, manage transfers |
 | **pyLoad NG integration** | Add direct-download (DDL) packages, monitor link extraction status, stop/restart/delete packages with full queue management |
 | **Torrent search** | Search multiple torrent indexes directly from the UI with live streaming results — extensible via plugins |
 
@@ -115,7 +116,7 @@
 
 ### Prerequisites
 - **Docker** and **Docker Compose** (v2 or later) installed
-- At least one of: aMule with EC enabled, Transmission with RPC enabled, pyLoad NG running
+- At least one of: aMule with EC enabled, Transmission with RPC enabled, Slskd running, pyLoad NG running
 
 ### 1. Clone and configure
 
@@ -140,10 +141,11 @@ PYLOAD_PASSWORD=pyload
 docker compose up -d
 ```
 
-This starts four containers:
+This starts five containers:
 - **app** — TransMule UI + API (nginx + Nitro, single container via supervisord)
 - **amule** — aMule daemon (ED2K/Kademlia)
 - **transmission** — BitTorrent client
+- **slskd** — Soulseek client
 - **pyload** — Direct download manager
 
 ### 3. Open the dashboard
@@ -165,6 +167,7 @@ If you need to pin specific tags:
 TRANSMULE_APP_IMAGE=ghcr.io/jo3l/transmule:latest
 AMULE_IMAGE=ngosang/amule:latest
 TRANSMISSION_IMAGE=lscr.io/linuxserver/transmission:latest
+SLSKD_IMAGE=slskd/slskd:latest
 PYLOAD_IMAGE=lscr.io/linuxserver/pyload-ng:latest
 ```
 
@@ -184,11 +187,12 @@ Browser
               ├─ CORS handling
               ├─► aMule EC protocol      (internal :4712)
               ├─► Transmission RPC       (internal :9091)
+              ├─► Slskd Web UI + API     (internal :5030)
               └─► pyLoad NG API          (internal :8000)
 ```
 
 The frontend (Nuxt 3 SPA) and the Nitro API share a single container managed by supervisord. nginx handles static file serving and proxies API traffic to Nitro on the loopback interface — no IP address is ever baked into the image.
-**All inter-service communication** happens on an internal Docker network. aMule EC, Transmission RPC and pyLoad API are never exposed to the host. The Nitro API listens on `127.0.0.1:3000` inside the app container exclusively.
+**All inter-service communication** happens on an internal Docker network. aMule EC, Transmission RPC, Slskd API and pyLoad API are never exposed to the host. The Nitro API listens on `127.0.0.1:3000` inside the app container exclusively.
 
 <br>
 
@@ -233,10 +237,12 @@ TransMule has a **runtime plugin system** in JavaScript. Upload a `.js` file via
 | `AMULE_GUI_PASSWORD` | — | aMule EC protocol password (port 4712) |
 | `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_ | Transmission RPC credentials |
 | `JWT_SECRET` | `change-me` | Secret for signing JWT tokens (auto-generated if empty) |
+| `SLSKD_USERNAME` / `SLSKD_PASSWORD` | — | Soulseek credentials (configured via UI — optional in .env) |
 | `PYLOAD_USER` / `PYLOAD_PASSWORD` | `pyload` | pyLoad NG credentials |
 | `TRANSMULE_APP_IMAGE` | `ghcr.io/jo3l/transmule:latest` | Optional app image override |
 | `AMULE_IMAGE` | `ngosang/amule:latest` | Optional aMule image override |
 | `TRANSMISSION_IMAGE` | `lscr.io/linuxserver/transmission:latest` | Optional Transmission image override |
+| `SLSKD_IMAGE` | `slskd/slskd:latest` | Optional Slskd image override |
 | `PYLOAD_IMAGE` | `lscr.io/linuxserver/pyload-ng:latest` | Optional pyLoad image override |
 | `TMDB_API_KEY` | — | TMDB API key for cover artwork |
 | `TVDB_API_KEY` | — | TVDB API key for cover artwork (fallback) |

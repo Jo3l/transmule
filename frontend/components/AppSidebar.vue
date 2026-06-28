@@ -30,6 +30,11 @@
               <span class="mdi mdi-upload"></span> {{ $t("nav.uploads") }}
             </NuxtLink>
           </li>
+          <li>
+            <NuxtLink to="/shared" @click="$emit('close')">
+              <span class="mdi mdi-folder-network"></span> {{ $t("nav.sharedFiles") }}
+            </NuxtLink>
+          </li>
           <li v-if="hasTorrentSearchProviders">
             <NuxtLink to="/search" @click="$emit('close')">
               <span class="mdi mdi-magnify"></span> {{ $t("search.globalSearch") }}
@@ -98,12 +103,6 @@
               </NuxtLink>
             </li>
             <li>
-              <NuxtLink to="/amule/shared" @click="$emit('close')">
-                <span class="mdi mdi-folder-network"></span>
-                {{ $t("nav.sharedFiles") }}
-              </NuxtLink>
-            </li>
-            <li>
               <NuxtLink to="/amule/settings" @click="$emit('close')">
                 <span class="mdi mdi-cog-outline"></span>
                 {{ $t("nav.amuleSettings") }}
@@ -146,6 +145,44 @@
               <NuxtLink to="/transmission/settings" @click="$emit('close')">
                 <span class="mdi mdi-cog-outline"></span>
                 {{ $t("nav.transmissionSettings") }}
+              </NuxtLink>
+            </li>
+          </ul>
+        </div>
+        <!-- slskd (Soulseek) collapsible section -->
+        <div
+          class="sidebar-section"
+          :class="{ 'is-expanded': slskdOpen, 'is-disabled': slskdDisabled }"
+        >
+          <a class="sidebar-section-header" @click="!slskdDisabled && (slskdOpen = !slskdOpen)">
+            <span class="mdi mdi-account-music"></span>
+            {{ $t("nav.slskd") }}
+            <span v-if="slskdDisabled" class="sidebar-section-badge">{{
+              $t("nav.disabled")
+            }}</span>
+            <span
+              v-else
+              class="mdi sidebar-section-chevron"
+              :class="slskdOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+            />
+          </a>
+          <ul v-show="slskdOpen && !slskdDisabled" class="menu-list sidebar-section-list">
+            <li>
+              <NuxtLink to="/slskd/search" @click="$emit('close')">
+                <span class="mdi mdi-magnify"></span>
+                {{ $t("nav.search") }}
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/slskd/chat" @click="$emit('close')">
+                <span class="mdi mdi-message-text-outline"></span>
+                {{ $t("slskd.chat", "Chat") }}
+              </NuxtLink>
+            </li>
+            <li>
+              <NuxtLink to="/slskd/settings" @click="$emit('close')">
+                <span class="mdi mdi-cog-outline"></span>
+                {{ $t("nav.slskdSettings") }}
               </NuxtLink>
             </li>
           </ul>
@@ -248,9 +285,10 @@ onUnmounted(() => {
 // ── Sections state ──────────────────────────────────────
 
 const sectionsOpen = ref<Record<string, boolean>>({});
-const amuleOpen = ref(true);
-const transmissionOpen = ref(true);
-const pyloadOpen = ref(true);
+const amuleOpen = ref(false);
+const transmissionOpen = ref(false);
+const slskdOpen = ref(false);
+const pyloadOpen = ref(false);
 
 const { services, loaded } = useServices();
 
@@ -283,11 +321,25 @@ function mediaLabel(type: string): string {
 }
 
 function isSectionOpen(type: string): boolean {
-  return sectionsOpen.value[type] !== false;
+  return sectionsOpen.value[type] ?? false;
 }
 
 function toggleSection(type: string) {
   sectionsOpen.value = { ...sectionsOpen.value, [type]: !isSectionOpen(type) };
+}
+
+function expandSectionForRoute(path: string) {
+  // Media providers
+  const mediaMatch = path.match(/^\/media\/([^/]+)/);
+  if (mediaMatch) {
+    sectionsOpen.value = { ...sectionsOpen.value, [mediaMatch[1]]: true };
+    return;
+  }
+  // Named service sections
+  if (path.startsWith('/amule')) amuleOpen.value = true;
+  if (path.startsWith('/transmission')) transmissionOpen.value = true;
+  if (path.startsWith('/slskd')) slskdOpen.value = true;
+  if (path.startsWith('/pyload')) pyloadOpen.value = true;
 }
 
 onMounted(async () => {
@@ -305,7 +357,16 @@ onMounted(async () => {
   } catch {
     // Fallback: show nothing, user hasn't logged in yet
   }
+
+  // Expand the section matching the current route
+  expandSectionForRoute(useRoute().path);
 });
+
+// Keep the matching section expanded on navigation
+watch(
+  () => useRoute().path,
+  (path) => expandSectionForRoute(path),
+);
 
 // A section is disabled only once we have data and the service is not running.
 // While loading (loaded=false) or for non-admin users (services=null), show all.
@@ -317,5 +378,8 @@ const transmissionDisabled = computed(
 );
 const pyloadDisabled = computed(
   () => loaded.value && services.value !== null && !services.value.pyload.running,
+);
+const slskdDisabled = computed(
+  () => loaded.value && services.value !== null && !services.value.slskd.running,
 );
 </script>

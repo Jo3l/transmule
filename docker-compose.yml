@@ -1,5 +1,6 @@
 # ─── TransMule — Docker Compose ────────────────────────────────────────────────
-# Brings up aMule, Transmission, pyLoad, the API middleware and the frontend.
+# Brings up aMule, Transmission, slskd (Soulseek), pyLoad, the API middleware
+# and the frontend.
 #
 # Usage:
 #   cp .env.example .env        # edit passwords / paths
@@ -12,11 +13,13 @@
 #   16882 → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
 #   16883 → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
 #   16884 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
+#   50300 → slskd Soulseek P2P     — configurable via SLSKD_P2P_PORT
 #
 # Internal only (Docker network, not exposed to host):
 #   4712  → aMule EC protocol (accessible by app container)
 #   9091  → Transmission RPC (accessible by app container)
 #   8000  → pyLoad web UI + API (accessible by app container)
+#   5030  → slskd web UI + API (accessible by app container)
 #   3000  → Nitro API — loopback inside app container, never on Docker network
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -43,6 +46,8 @@ services:
       WEBUI_PWD: ${AMULE_GUI_PASSWORD:-hLETKciXJlnMAN0Z}
       INCOMING_DIR: /downloads
       TEMP_DIR: /incomplete
+      MOD_AUTO_SHARE_ENABLED: "true"
+      MOD_AUTO_SHARE_DIRECTORIES: "/downloads"
     networks:
       - transmule
 
@@ -67,6 +72,26 @@ services:
       TZ: ${TZ:-Europe/Madrid}
       USER: ${TRANSMISSION_USER:-}
       PASS: ${TRANSMISSION_PASS:-}
+    networks:
+      - transmule
+
+  # ── slskd Soulseek client ─────────────────────────────────────────────────
+  slskd:
+    image: ${SLSKD_IMAGE:-slskd/slskd:latest}
+    container_name: transmule-slskd
+    restart: unless-stopped
+    ports:
+      - "${SLSKD_P2P_PORT:-50300}:50300" # Soulseek P2P
+    expose:
+      - "5030" # Web UI — internal only (middleware)
+    volumes:
+      - slskd-config:/app
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      SLSKD_REMOTE_CONFIGURATION: "true"
+      SLSKD_DOWNLOADS_DIR: /downloads
     networks:
       - transmule
 
@@ -111,6 +136,7 @@ services:
       NITRO_PYLOAD_URL: http://pyload:8000
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
+      NITRO_SLSKD_URL: http://slskd:5030
       NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
       NITRO_DOWNLOADS_DIR: /downloads
       NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-16881}
@@ -120,6 +146,7 @@ services:
     depends_on:
       - amule
       - transmission
+      - slskd
       - pyload
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -129,6 +156,7 @@ services:
 volumes:
   amule-config:
   transmission-config:
+  slskd-config:
   pyload-config:
 
 networks:

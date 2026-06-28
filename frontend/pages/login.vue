@@ -41,6 +41,8 @@ import { init as initSceneMatrix } from "~/assets/scenes/scene-matrix.js";
 const { t } = useI18n();
 const { apiFetch } = useApi();
 const auth = useAuth();
+const { addToast } = useToast();
+const router = useRouter();
 
 const username = ref("");
 const password = ref("");
@@ -85,6 +87,26 @@ async function doLogin() {
       body: { username: username.value, password: password.value },
     });
     auth.setAuth(data.token, data.user);
+    // Check if official plugin repo is configured
+    if (data.user.isAdmin) {
+      try {
+        const repos: any[] = await apiFetch("/api/plugin-repos");
+        const providers: any[] = await apiFetch("/api/providers");
+        const hasPluginProviders = (repos?.length ?? 0) > 0 ||
+          providers?.some((p: any) => p.sourceRepoId != null || p.filename != null);
+        if (!hasPluginProviders) {
+          addToast(
+            t("login.suggestProviders"),
+            "info",
+            15000,
+            true,
+            () => router.push("/settings#providers"),
+          );
+        }
+      } catch {
+        /* silent */
+      }
+    }
     navigateTo("/");
   } catch (err: any) {
     error.value =

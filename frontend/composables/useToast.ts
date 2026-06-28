@@ -5,6 +5,8 @@ export interface Toast {
   message: string;
   type: "success" | "error" | "warning" | "info";
   persistent?: boolean;
+  /** Optional callback invoked when the toast is clicked */
+  onClick?: (id: number) => void;
 }
 
 const toasts = ref<Toast[]>([]);
@@ -16,9 +18,10 @@ export function useToast() {
     type: Toast["type"] = "info",
     duration = 3000,
     persistent = false,
+    onClick?: (id: number) => void,
   ) {
     const id = nextId++;
-    toasts.value.push({ id, message, type, persistent });
+    toasts.value.push({ id, message, type, persistent, onClick });
     if (!persistent && duration > 0) {
       setTimeout(() => {
         toasts.value = toasts.value.filter((t) => t.id !== id);

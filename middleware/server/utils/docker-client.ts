@@ -51,6 +51,7 @@ function apiPath(path: string): string {
 const CONTAINER_NAMES: Record<string, string> = {
   amule: "transmule-amule",
   transmission: "transmule-transmission",
+  slskd: "transmule-slskd",
   pyload: "transmule-pyload",
 };
 
@@ -192,12 +193,13 @@ export async function getAllServicesStatus(): Promise<
     { running: boolean; status: string; startedAt: string | null }
   >
 > {
-  const [amule, transmission, pyload] = await Promise.all([
+  const [amule, transmission, slskd, pyload] = await Promise.all([
     getContainerStatus("amule"),
     getContainerStatus("transmission"),
+    getContainerStatus("slskd"),
     getContainerStatus("pyload"),
   ]);
-  return { amule, transmission, pyload };
+  return { amule, transmission, slskd, pyload };
 }
 
 /**

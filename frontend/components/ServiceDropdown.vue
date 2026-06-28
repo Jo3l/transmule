@@ -76,6 +76,36 @@
         </div>
         <SDivider />
 
+        <!-- slskd -->
+        <div class="service-dropdown__item">
+          <div class="service-dropdown__row">
+            <span class="mdi mdi-bird service-dropdown__icon" />
+            <span class="service-dropdown__name">Slskd</span>
+            <STag :variant="services?.slskd?.running ? 'success' : 'danger'" size="sm">
+              {{ services?.slskd?.running ? $t("services.running") : $t("services.stopped") }}
+            </STag>
+          </div>
+          <div
+            v-if="services?.slskd?.running && services.slskd.startedAt"
+            class="service-dropdown__uptime"
+          >
+            <span class="mdi mdi-clock-outline" />
+            {{ $t("services.uptime") }}:
+            {{ formatUptime(services.slskd.startedAt) }}
+          </div>
+          <SButton
+            :variant="services?.slskd?.running ? 'danger' : 'success'"
+            size="sm"
+            block
+            :loading="loading.slskd"
+            @click="toggle('slskd')"
+          >
+            <span class="mdi" :class="services?.slskd?.running ? 'mdi-stop' : 'mdi-play'" />
+            {{ services?.slskd?.running ? $t("services.stop") : $t("services.start") }}
+          </SButton>
+        </div>
+        <SDivider />
+
         <!-- pyLoad -->
         <div class="service-dropdown__item">
           <div class="service-dropdown__row">

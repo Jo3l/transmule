@@ -80,6 +80,26 @@ services:
     networks:
       - transmule
 
+  # ── slskd Soulseek client ────────────────────────────────────────────────
+  slskd:
+    image: ${SLSKD_IMAGE:-slskd/slskd:latest}
+    container_name: transmule-slskd
+    restart: unless-stopped
+    ports:
+      - "${SLSKD_P2P_PORT:-50300}:50300"
+    expose:
+      - "5030"
+    volumes:
+      - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/slskd:/app
+      - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
+    environment:
+      PUID: ${PUID:-99}
+      PGID: ${PGID:-100}
+      SLSKD_REMOTE_CONFIGURATION: "true"
+      SLSKD_DOWNLOADS_DIR: /downloads
+    networks:
+      - transmule
+
   # ── App (Nitro API + Nuxt SPA via nginx) ─────────────────────────────────
   # Single container: supervisord runs nginx (port 3001) and Nitro (loopback).
   # nginx reverse-proxies /api/* and /_scalar to Nitro internally.
@@ -104,6 +124,7 @@ services:
       NITRO_PYLOAD_URL: http://pyload:8000
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
+      NITRO_SLSKD_URL: http://slskd:5030
       NITRO_JWT_SECRET: ${JWT_SECRET:-}
       NITRO_DOWNLOADS_DIR: /downloads
       NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-16881}
@@ -113,6 +134,7 @@ services:
     depends_on:
       - amule
       - transmission
+      - slskd
       - pyload
     extra_hosts:
       - "host.docker.internal:host-gateway"

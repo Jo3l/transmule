@@ -48,6 +48,10 @@
     "pyloadDownloads": "Descargas",
     "pyloadLogs": "Registros",
     "pyloadSettings": "Ajustes pyLoad",
+    "slskd": "Soulseek",
+    "slskdDashboard": "Dashboard",
+    "slskdTransfers": "Descargas",
+    "slskdSettings": "Ajustes Soulseek",
     "disabled": "Detenido",
     "movies": "Películas",
     "shows": "Series",
@@ -59,6 +63,7 @@
     "ed2k": "ED2K",
     "kad": "KAD",
     "transmission": "Transmission",
+    "slskd": "Slskd",
     "pyload": "pyLoad",
     "proxy": "Proxy",
     "proxyShort": "PX",
@@ -89,7 +94,8 @@
     "username": "Usuario",
     "password": "Contraseña",
     "signIn": "Iniciar sesión",
-    "failed": "Error de inicio de sesión"
+    "failed": "Error de inicio de sesión",
+    "suggestProviders": "Para mejorar la búsqueda, instala más providers desde Repositorios de Plugins. Haz clic para abrir configuración."
   },
   "setup": {
     "title": "Configuración inicial",
@@ -395,8 +401,10 @@
       "transferred": "Transferido",
       "allTime": "Total",
       "requests": "Solicitudes",
-      "priority": "Prioridad"
-    }
+      "priority": "Prioridad",
+      "source": "Fuente"
+    },
+    "noServicesRunning": "Ningún servicio compatible activo"
   },
   "uploads": {
     "title": "Cola de subida",
@@ -614,6 +622,8 @@
     "reposDescription": "Añade URLs de repositorios para navegar e instalar plugins directamente desde una fuente.",
     "reposAdd": "Añadir",
     "reposAddPlaceholder": "https://ejemplo.com/plugins/manifest.json",
+    "reposAddOfficial": "Añadir oficial",
+    "reposOfficialAdded": "Repositorio oficial añadido",
     "reposRefresh": "Actualizar",
     "reposRemove": "Eliminar repositorio",
     "reposRemoveConfirm": "¿Eliminar el repositorio '{name}'?",
@@ -661,9 +671,7 @@
     "webampSkinsGuideAfter": "Busca una skin que te guste, copia la url y pégala a continuación para instalar.",
     "webamp": "Webamp",
     "splitToggle": "Alternar división",
-    "exportFiles": "Exportar archivos",
-    "ports": "Puertos",
-    "fileManager": "Administrador de archivos"
+    "exportFiles": "Exportar archivos"
   },
   "themes": {
     "tron": {
@@ -821,24 +829,6 @@
       "perTorrentPeerLimit": "Límite de pares por torrent",
       "portOpen": "¡El puerto está abierto!",
       "portClosed": "El puerto está cerrado / inaccesible"
-    },
-    "webamp": {
-      "webampDefaultSkin": "Default (Base 2.4)",
-      "webampBuiltin": "Built-in",
-      "webampInstall": "Instalar",
-      "webampDelete": "Eliminar",
-      "webampActive": "Activo",
-      "webampUse": "Usar",
-      "webampNoSkins": "No hay skins instaladas aún.",
-      "webampInstallPlaceholder": "https://ejemplo.com/skin.wsz",
-      "webampEqualizer": "Ecualizador",
-      "webampPlaylist": "Lista de reproducción",
-      "webampMilkdrop": "Milkdrop",
-      "webampDoubleSize": "Tamaño doble",
-      "webampDefaultWindows": "Ventanas predeterminadas",
-      "webampSkinsGuideBefore": "Explora skins en",
-      "webampSkinsGuideAfter": "Busca una skin que te guste, copia la url y pégala a continuación para instalar.",
-      "webamp": "Webamp"
     },
     "stats": {
       "title": "Estadísticas de Transmission",
@@ -1299,5 +1289,118 @@
     "prevPage": "Anterior",
     "nextPage": "Siguiente",
     "page": "Página {n}"
+  },
+  "slskd": {
+    "description": "slskd es un cliente Soulseek moderno basado en web. Accede a su interfaz web para buscar y descargar archivos de la red Soulseek.",
+    "serverStatus": "Estado del servidor",
+    "connectionState": "Conexión",
+    "connected": "Conectado",
+    "disconnected": "Desconectado",
+    "username": "Usuario",
+    "server": "Servidor",
+    "connect": "Conectar",
+    "disconnect": "Desconectar",
+    "searches": "Búsquedas",
+    "activeDownloads": "Descargas activas",
+    "noSearches": "Aún sin búsquedas",
+    "noTransfers": "Sin transferencias activas",
+    "transfers": {
+      "title": "Descargas",
+      "downloads": "Descargas",
+      "uploads": "Subidas",
+      "noTransfers": "Sin transferencias",
+      "size": "Tamaño",
+      "speed": "Velocidad",
+      "placeholder": "—",
+      "state": "Estado"
+    },
+    "actionError": "Error al cambiar la conexión",
+    "rooms": "Canales",
+    "browse": "Explorar",
+    "chat": "Chat",
+    "roomsPlaceholder": "Canales de chat — próximamente",
+    "chatPlaceholder": "Chat privado — próximamente",
+    "roomName": "Canal",
+    "roomUsers": "Usuarios",
+    "noRooms": "No hay canales disponibles",
+    "noUsers": "Sin usuarios",
+    "noMessages": "Sin mensajes",
+    "closeTab": "Cerrar pestaña",
+    "messagePlaceholder": "Escribe un mensaje...",
+    "freeSlot": "Slot libre",
+    "private": "Privado",
+    "public": "Público",
+    "search": {
+      "title": "Búsqueda Soulseek",
+      "noSearches": "Aún sin búsquedas",
+      "noResults": "Sin resultados",
+      "results": "resultados",
+      "searchStarted": "Búsqueda iniciada para \"{query}\"",
+      "searchError": "Error al buscar",
+      "searchStopped": "Búsqueda detenida",
+      "toggleResults": "Ver resultados",
+      "freeSlot": "Espacio libre",
+      "fileLocked": "Archivo bloqueado (el usuario requiere slot)",
+      "queueLength": "Cola: {n} usuarios",
+      "download": "Descargar",
+      "downloadStarted": "Descargando \"{file}\"",
+      "downloadError": "Error al descargar",
+      "columns": {
+        "free": "Libre",
+        "username": "Usuario",
+        "speed": "k/s",
+        "folder": "Carpeta",
+        "filename": "Archivo",
+        "size": "Tamaño",
+        "attributes": "Atributos",
+        "bitrate": "Bitrate",
+        "action": ""
+      },
+      "states": {
+        "InProgress": "Buscando",
+        "Started": "Iniciada",
+        "Completed": "Completada",
+        "NoResults": "Sin Resultados",
+        "Cancelled": "Cancelada",
+        "Error": "Error",
+        "Completed, ResponseLimitReached": "Completada (límite de respuestas)"
+      },
+      "filesFound": "archivos encontrados"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "retry": "Reintentar"
+    },
+    "states": {
+      "Completed": "Completada",
+      "Transferring": "Transferiendo",
+      "Queued": "En cola",
+      "TimedOut": "Tiempo agotado",
+      "Rejected": "Rechazada",
+      "Cancelled": "Cancelada"
+    },
+    "settingsDescription": "Introduce tus credenciales de Soulseek para buscar y descargar.",
+    "credentials": "Credenciales",
+    "log": "Registro",
+    "usernamePlaceholder": "tu usuario de Soulseek",
+    "passwordPlaceholder": "déjalo vacío para mantener la actual",
+    "settingsSaved": "Credenciales guardadas",
+    "userInfo": "Info",
+    "uploadSlots": "Slots",
+    "queueLength": "Cola",
+    "loading": "Cargando...",
+    "sendMessage": "Enviar mensaje",
+    "browseFiles": "Explorar archivos",
+    "blockUser": "Bloquear mis archivos",
+    "ignoreUser": "Ignorar usuario",
+    "downloadFile": "Descargar archivo",
+    "downloadDirectory": "Descargar carpeta",
+    "browsingUser": "Explorando: {user}",
+    "directories": "carpetas",
+    "files": "archivos",
+    "noFiles": "Sin archivos",
+    "status": "Estado",
+    "userDescription": "Descripción",
+    "credentialsGuide": "No hay formulario de registro online. Simplemente introduce cualquier usuario y contraseña no usados — la red Soulseek te registrará automáticamente."
   }
 }

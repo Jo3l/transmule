@@ -46,19 +46,24 @@
     "transmissionSettings": "Impostazioni Transmission",
     "pyload": "pyLoad",
     "pyloadDownloads": "Download",
+    "pyloadLogs": "Log",
+    "pyloadSettings": "Impostazioni pyLoad",
+    "slskd": "Soulseek",
+    "slskdDashboard": "Dashboard",
+    "slskdTransfers": "Download",
+    "slskdSettings": "Impostazioni Soulseek",
     "disabled": "Fermo",
     "movies": "Film",
     "shows": "Serie TV",
     "files": "File",
-    "portStatus": "Stato Porte Pubbliche",
-    "pyloadLogs": "Log",
-    "pyloadSettings": "Impostazioni pyLoad"
+    "portStatus": "Stato Porte Pubbliche"
   },
   "connection": {
     "amule": "aMule",
     "ed2k": "ED2K",
     "kad": "KAD",
     "transmission": "Transmission",
+    "slskd": "Slskd",
     "pyload": "pyLoad",
     "unknown": "Sconosciuto",
     "connecting": "Connessione...",
@@ -89,7 +94,8 @@
     "username": "Nome utente",
     "password": "Password",
     "signIn": "Accedi",
-    "failed": "Accesso fallito"
+    "failed": "Accesso fallito",
+    "suggestProviders": "To improve search results, install more providers from Plugin Repositories. Click here to open settings."
   },
   "setup": {
     "title": "Configurazione iniziale",
@@ -395,8 +401,10 @@
       "transferred": "Trasferito",
       "allTime": "Totale",
       "requests": "Richieste",
-      "priority": "Priorità"
-    }
+      "priority": "Priorità",
+      "source": "Source"
+    },
+    "noServicesRunning": "No compatible services running"
   },
   "uploads": {
     "title": "Coda upload",
@@ -645,7 +653,25 @@
     "webampDefaultWindows": "Default windows",
     "webampSkinsGuideBefore": "Browse skins at",
     "webampSkinsGuideAfter": "Find a skin you like, copy the URL and paste it below to install.",
-    "webamp": "Webamp"
+    "webamp": "Webamp",
+    "reposAddOfficial": "Add Official",
+    "reposOfficialAdded": "Official repository added",
+    "stars": "Stars",
+    "forks": "Forks",
+    "openIssues": "Open issues",
+    "viewOnGitHub": "View on GitHub",
+    "updatedTimeAgo": "Updated {time}",
+    "justNow": "just now",
+    "minutesAgo": "{count}m ago",
+    "hoursAgo": "{count}h ago",
+    "daysAgo": "{count}d ago",
+    "monthsAgo": "{count}mo ago",
+    "loading": "Loading GitHub data...",
+    "mute": "Mute music",
+    "unmute": "Unmute music",
+    "about": "About",
+    "splitToggle": "Toggle split",
+    "exportFiles": "Export files"
   },
   "themes": {
     "tron": {
@@ -1103,13 +1129,14 @@
     "overwriteTitle": "Sovrascrivere file?",
     "overwriteMessage": "I seguenti file esistono già a destinazione. Sovrascriverli?",
     "splitToggle": "Toggle split",
-    "overwriteConfirm": "Sovrascrivi"
+    "overwriteConfirm": "Sovrascrivi",
+    "readOnly": "Read only",
+    "readOnlyHint": "Mounted folder is read-only"
   },
   "movies": {
     "title": "Film",
     "refresh": "Aggiorna",
     "searchPlaceholder": "Cerca file...",
-    "searchEmpty": "Nessun risultato",
     "filterAll": "Tutti",
     "labelSearch": "Ricerca",
     "labelGenre": "Genere",
@@ -1160,7 +1187,11 @@
     "episodes": "episodi",
     "nextPage": "Successiva",
     "page": "Pagina {n}",
-    "prevPage": "Precedente"
+    "prevPage": "Precedente",
+    "addAllTorrents": "Add all torrents",
+    "addAllSuccess": "All torrents added successfully",
+    "addAllPartial": "Added {ok} torrents ({err} failed)",
+    "addAllError": "Failed to add torrents"
   },
   "commonSelect": {
     "on": "on",
@@ -1258,5 +1289,118 @@
       "startTime": "Orario inizio",
       "endTime": "Orario fine"
     }
+  },
+  "slskd": {
+    "description": "slskd è un client Soulseek moderno basato sul web. Accedi alla sua interfaccia web per cercare e scaricare file dalla rete Soulseek.",
+    "serverStatus": "Stato server",
+    "connectionState": "Connessione",
+    "connected": "Connesso",
+    "disconnected": "Disconnesso",
+    "username": "Nome utente",
+    "server": "Server",
+    "connect": "Connetti",
+    "disconnect": "Disconnetti",
+    "searches": "Ricerche",
+    "activeDownloads": "Download attivi",
+    "noSearches": "Ancora nessuna ricerca",
+    "noTransfers": "Nessun trasferimento attivo",
+    "transfers": {
+      "title": "Downloads",
+      "downloads": "Downloads",
+      "uploads": "Uploads",
+      "noTransfers": "No transfers yet",
+      "size": "Size",
+      "speed": "Speed",
+      "placeholder": "—",
+      "state": "Transfer state"
+    },
+    "actionError": "Impossibile cambiare connessione",
+    "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
+    "credentials": "Credentials",
+    "log": "Log",
+    "usernamePlaceholder": "your Soulseek username",
+    "passwordPlaceholder": "leave empty to keep current",
+    "settingsSaved": "Credentials saved",
+    "search": {
+      "title": "Soulseek Search",
+      "noSearches": "No searches yet",
+      "noResults": "No results",
+      "results": "results",
+      "searchStarted": "Search started for '{query}'",
+      "searchError": "Search failed",
+      "searchStopped": "Search stopped",
+      "toggleResults": "Toggle results",
+      "freeSlot": "Free upload slot",
+      "fileLocked": "File locked (user requires slot)",
+      "queueLength": "Queue: {n} users",
+      "download": "Download",
+      "downloadStarted": "Downloading '{file}'",
+      "downloadError": "Download failed",
+      "columns": {
+        "free": "Free",
+        "username": "User",
+        "speed": "k/s",
+        "folder": "Folder",
+        "filename": "File",
+        "size": "Size",
+        "attributes": "Attributes",
+        "bitrate": "Bitrate",
+        "action": ""
+      },
+      "states": {
+        "InProgress": "Searching",
+        "Started": "Started",
+        "Completed": "Completed",
+        "NoResults": "No Results",
+        "Cancelled": "Cancelled",
+        "Error": "Error",
+        "Completed, ResponseLimitReached": "Completed (response limit)"
+      },
+      "filesFound": "files found"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "retry": "Retry"
+    },
+    "states": {
+      "Completed": "Completed",
+      "Transferring": "Transferring",
+      "Queued": "Queued",
+      "TimedOut": "Timed Out",
+      "Rejected": "Rejected",
+      "Cancelled": "Cancelled"
+    },
+    "userInfo": "Info",
+    "uploadSlots": "Slots",
+    "queueLength": "Queue",
+    "loading": "Loading...",
+    "sendMessage": "Send message",
+    "browseFiles": "Browse files",
+    "blockUser": "Block my files",
+    "ignoreUser": "Ignore user",
+    "downloadFile": "Download file",
+    "downloadDirectory": "Download folder",
+    "browsingUser": "Browsing: {user}",
+    "directories": "folders",
+    "files": "files",
+    "noFiles": "No files",
+    "closeTab": "Close tab",
+    "status": "Status",
+    "userDescription": "Description",
+    "browse": "Browse",
+    "chat": "Chat",
+    "chatPlaceholder": "Chat with users — coming soon",
+    "freeSlot": "Free slot",
+    "messagePlaceholder": "Type a message...",
+    "noMessages": "No messages",
+    "noRooms": "No rooms available",
+    "noUsers": "No users",
+    "private": "Private",
+    "public": "Public",
+    "roomName": "Room",
+    "rooms": "Rooms",
+    "roomUsers": "Users",
+    "roomsPlaceholder": "Chat rooms — coming soon",
+    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically."
   }
 }

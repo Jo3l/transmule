@@ -10,8 +10,8 @@ defineRouteMeta({
     tags: ["Admin"],
     summary: "Start or stop a Docker service",
     description:
-      "Start or stop the aMule or Transmission container (admin only).\n\n" +
-      "Body: `{ service: 'amule' | 'transmission', action: 'start' | 'stop' }`",
+      "Start or stop a Docker container (admin only).\\n\\n" +
+      "Body: `{ service: 'amule' | 'transmission' | 'slskd' | 'pyload', action: 'start' | 'stop' }`",
     responses: {
       200: { description: "Action result with updated status" },
       400: { description: "Invalid service or action" },
@@ -28,11 +28,11 @@ export default defineEventHandler(async (event) => {
   const service = body?.service as string;
   const action = body?.action as string;
 
-  if (!service || !["amule", "transmission", "pyload"].includes(service)) {
+  if (!service || !["amule", "transmission", "slskd", "pyload"].includes(service)) {
     throw createError({
       statusCode: 400,
       statusMessage:
-        "Invalid service — must be 'amule', 'transmission' or 'pyload'",
+        "Invalid service — must be 'amule', 'transmission', 'slskd' or 'pyload'",
     });
   }
 
