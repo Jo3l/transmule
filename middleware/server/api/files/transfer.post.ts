@@ -310,11 +310,18 @@ async function copyAnyPath(
         ? createReadStream(src.absPath)
         : await withTimeout(src.client.createReadStream(src.remotePath), 8000);
 
+    // For SMB destinations, use chunked write with progress to avoid
+    // stream stalling on large files (>100MB).
+    if (dest.kind === "smb") {
+      await copyToSmbChunked(readable, dest, job, signal);
+      return;
+    }
+
     const writable =
       dest.kind === "local"
         ? createWriteStream(dest.absPath)
         : await withTimeout(
-            dest.client.createWriteStream(dest.remotePath, { flags: "w" }),
+            dest.client.createWriteStream(dest.remotePath),
             8000,
           );
 
@@ -345,6 +352,39 @@ async function copyAnyPath(
   }
 }
 
+/**
+ * Copy a file to SMB by reading all data into memory and writing via
+ * SMB2 writeFile (open → write → close). This avoids @marsaud/smb2
+ * stream backpressure issues that stall pipeline on large files.
+ *
+ * Memory usage peaks at the file size + 1 buffer. For files >2 GB this
+ * may be problematic; future work could implement segmented SMB writes.
+ */
+async function copyToSmbChunked(
+  readable: NodeJS.ReadableStream,
+  dest: SmbPathInfo,
+  job: JobRef,
+  signal?: AbortSignal,
+): Promise<void> {
+  const chunks: Buffer[] = [];
+  let totalLen = 0;
+
+  for await (const chunk of readable) {
+    if (signal?.aborted) {
+      throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
+    }
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    chunks.push(buf);
+    totalLen += buf.length;
+    job.bytesDone += buf.length;
+  }
+
+  if (totalLen === 0) return;
+
+  const data = totalLen === chunks[0]?.length ? chunks[0] : Buffer.concat(chunks);
+  await withTimeout(dest.client.writeFile(dest.remotePath, data), 180000);
+}
+
 async function isDirectory(info: PathInfo): Promise<boolean> {
   if (info.kind === "local") {
     try {
@@ -356,7 +396,8 @@ async function isDirectory(info: PathInfo): Promise<boolean> {
   } else {
     try {
       const st = await withTimeout(info.client.stat(info.remotePath), 8000);
-      return st.isDirectory();
+      const isDir = typeof st.isDirectory === "function" ? st.isDirectory() : st.isDirectory === true;
+      return isDir;
     } catch {
       return false;
     }
@@ -426,6 +467,27 @@ async function runTransfer(
             await rename(srcInfo.absPath, destInfo.absPath);
             if (job.bytesDone !== undefined) job.bytesDone += srcSize;
           } catch {
+            await copyAnyPath(srcRel, targetRel, job as JobRef, signal);
+            await rmAnyPath(srcRel);
+          }
+        } else if (
+          // Fast path: same SMB mount → server-side rename (instant, no streaming)
+          srcInfo.kind === "smb" &&
+          destInfo.kind === "smb" &&
+          srcInfo.mount.id === destInfo.mount.id
+        ) {
+          const srcSize = await measurePathBytes(srcRel).catch(() => 0);
+          // Ensure parent directory exists on the destination
+          const lastSep = destInfo.remotePath.lastIndexOf("\\");
+          if (lastSep > 0) {
+            const parentRemote = destInfo.remotePath.slice(0, lastSep);
+            await smbEnsureDir(destInfo.client, parentRemote);
+          }
+          try {
+            await srcInfo.client.rename(srcInfo.remotePath, destInfo.remotePath);
+            if (job.bytesDone !== undefined) job.bytesDone += srcSize;
+          } catch {
+            // Fall back to streaming copy + delete
             await copyAnyPath(srcRel, targetRel, job as JobRef, signal);
             await rmAnyPath(srcRel);
           }

@@ -167,6 +167,8 @@ export class SmbProvider implements IRemoteProvider {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
+    // Remove existing file first to avoid STATUS_OBJECT_NAME_COLLISION
+    await (this.client! as any).unlink(remotePath).catch(() => {});
     await withTimeout((this.client! as any).writeFile(remotePath, content), 30000);
   }
 
