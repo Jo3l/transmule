@@ -454,12 +454,10 @@ async function copyToSmbChunked(
     // Close the file handle
     await withTimeout(dest.client.closeSmb(fileHandle), SMB2_OPEN_CLOSE_TIMEOUT);
   } catch (err) {
-    // Cleanup on error: close handle, destroy readable
-    try {
-      await dest.client.closeSmb(fileHandle);
-    } catch {
-      /* ignore close errors during cleanup */
-    }
+    // Cleanup on error: fire-and-forget close (don't await — it can
+    // hang if the SMB connection is stuck, which blocks the error
+    // propagation and leaves the job stuck at "running" forever).
+    dest.client.closeSmb(fileHandle).catch(() => {});
     readable.destroy?.();
     throw err;
   }
