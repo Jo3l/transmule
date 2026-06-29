@@ -114,11 +114,14 @@ async function load() {
 }
 
 onMounted(() => {
-  // Start browsing from the parent of the initial selected path
+  initFromModel();
+});
+
+function initFromModel() {
   const initial = props.modelValue ? props.modelValue.split("/").slice(0, -1).join("/") : "";
   currentPath.value = initial;
   load();
-});
+}
 </script>
 
 <style scoped>
