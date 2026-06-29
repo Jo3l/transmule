@@ -31,9 +31,8 @@ export default defineEventHandler(async (event) => {
     const client = createSmbClient(mount);
 
     try {
-      const remoteDir = buildRemotePath(mount, subPath);
-
-      await withTimeout(client.mkdir(remoteDir), 8000);
+      // Pass raw subPath — the provider's getRemotePath() builds the full remote path
+      await withTimeout(client.mkdir(subPath), 8000);
       return { ok: true };
     } catch (err: any) {
       throw createError({

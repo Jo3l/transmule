@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Reject slash / backslash in the new name to prevent directory traversal
-  if (/[/\\]/.test(String(name))) {
+  if (/[/\\\\]/.test(String(name))) {
     throw createError({ statusCode: 400, statusMessage: "name must not contain path separators" });
   }
 
@@ -38,24 +38,29 @@ export default defineEventHandler(async (event) => {
     const client = createSmbClient(mount);
 
     try {
-      const remoteBase = mount.path ? sanitizeSmbPath(mount.path) : "";
-      const cleanSub = sanitizeSmbPath(subPath);
-      const fromRemote = buildRemotePath(mount, subPath);
-      const segs = cleanSub.split("\\");
-      segs[segs.length - 1] = String(name);
-      const toRemote = buildRemotePath(mount, segs.join("\\"));
+      // Build the sibling path (same parent, new name) using raw subPath segments
+      const segs = subPath.split(/[\\\\/]/);
+      const parent = segs.slice(0, -1);
+      const toSubPath = [...parent, String(name)].join("\\");
 
-      // Check existence
-      const fromExists = await withTimeout(client.exists(fromRemote), 8000);
-      if (!fromExists) {
+      // Check source exists via stat (catch ENOENT)
+      try {
+        await withTimeout(client.stat(subPath), 8000);
+      } catch {
         throw createError({ statusCode: 404, statusMessage: "Source not found" });
       }
-      const toExists = await withTimeout(client.exists(toRemote), 8000);
-      if (toExists) {
+
+      // Check destination does not exist via stat
+      try {
+        await withTimeout(client.stat(toSubPath), 8000);
         throw createError({ statusCode: 409, statusMessage: "Destination already exists" });
+      } catch (err: any) {
+        if (err?.statusCode) throw err;
+        // stat threw because path doesn't exist — that's what we want
       }
 
-      await withTimeout(client.rename(fromRemote, toRemote), 8000);
+      // Pass raw subPaths — the provider's rename() builds the full remote path via getRemotePath()
+      await withTimeout(client.rename(subPath, toSubPath), 8000);
       return { ok: true, name: String(name) };
     } catch (err: any) {
       if (err?.statusCode) throw err;
@@ -77,7 +82,7 @@ export default defineEventHandler(async (event) => {
   const toPathLocal = join(dirname(fromPathLocal), String(name));
 
   // Validate destination is also within root
-  resolveSafe(root, toPathLocal.slice(root.length).replace(/^[/\\]/, ""));
+  resolveSafe(root, toPathLocal.slice(root.length).replace(/^[/\\\\]/, ""));
 
   if (!existsSync(fromPathLocal)) {
     throw createError({ statusCode: 404, statusMessage: "Source not found" });
