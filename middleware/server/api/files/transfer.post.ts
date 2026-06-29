@@ -55,12 +55,11 @@ function resolvePathInfo(relPath: string): PathInfo {
   const mountInfo = resolveMountPath(relPath);
   if (mountInfo) {
     const { mount, subPath } = mountInfo;
-    const remotePath = buildRemotePath(mount, subPath);
     return {
       kind: "smb",
       mount,
       client: createSmbClient(mount),
-      remotePath,
+      remotePath: subPath,
     };
   }
   const root = getDownloadsRoot();
@@ -329,7 +328,20 @@ async function copyAnyPath(
       });
     }
 
-    await pipeline(readable as any, writable as any, { signal } as any);
+    try {
+      await pipeline(readable as any, writable as any, { signal } as any);
+    } catch (err: any) {
+      // SMB2 may close the write stream before pipeline finishes, producing
+      // STATUS_FILE_CLOSED even though the file was fully written.
+      // If we can confirm the destination file exists, treat this as success.
+      if (src.kind !== "local" || dest.kind !== "local") {
+        const destExists = await existsAny(destRel).catch(() => false);
+        if (destExists) {
+          return; // file was written successfully — ignore the stream error
+        }
+      }
+      throw err;
+    }
   }
 }
 

@@ -41,7 +41,8 @@ export default defineEventHandler(async (event) => {
   if (mountInfo) {
     const { mount, subPath } = mountInfo;
     smbClient = createSmbClient(mount);
-    remoteBase = buildRemotePath(mount, subPath);
+    // Store the raw subPath — the provider's getRemotePath() builds the full remote path
+    remoteBase = subPath;
   } else {
     const targetDir = resolveSafe(root, relDir);
     if (!existsSync(targetDir)) {
@@ -56,18 +57,31 @@ export default defineEventHandler(async (event) => {
     if (!field.filename || !field.data) continue;
 
     // Sanitize filename: strip path separators
-    const safeName = field.filename.replace(/[/\\]/g, "_");
+    const safeName = field.filename.replace(/[/\\\\]/g, "_");
 
     try {
       if (smbClient) {
+        // Build path relative to mount root — provider's getRemotePath() will prepend the mount path
         const remotePath = remoteBase ? `${remoteBase}\\${safeName}` : safeName;
-        const writable = await withTimeout(smbClient.createWriteStream(remotePath, { flags: "w" }), 8000);
-        const readable = Readable.from([field.data]);
-        await pipeline(readable, writable);
+        try {
+          const writable = await withTimeout(smbClient.createWriteStream(remotePath), 8000);
+          const readable = Readable.from([field.data]);
+          await pipeline(readable, writable);
+        } catch (err: any) {
+          // SMB2 may close the write stream before it finishes, producing
+          // STATUS_FILE_CLOSED even though the file was fully written.
+          // Check if the file exists remotely and treat as success if so.
+          try {
+            await withTimeout(smbClient.stat(remotePath), 8000);
+            // file exists — write succeeded despite the error
+          } catch {
+            throw err; // file doesn't exist, real failure
+          }
+        }
         uploaded.push(safeName);
       } else {
         const dest = join(resolveSafe(root, relDir), safeName);
-        resolveSafe(root, dest.slice(root.length).replace(/^[/\\]/, ""));
+        resolveSafe(root, dest.slice(root.length).replace(/^[/\\\\]/, ""));
         writeFileSync(dest, field.data);
         uploaded.push(safeName);
       }

@@ -199,8 +199,10 @@ export function sanitizeSmbPath(raw: string): string {
 export async function smbRmRecursive(client: any, remotePath: string): Promise<void> {
   const stats = await client.stat(remotePath).catch(() => null);
   if (!stats) return;
-  
-  if (stats.isDirectory()) {
+
+  const isDir = typeof stats.isDirectory === "function" ? stats.isDirectory() : stats.isDirectory === true;
+
+  if (isDir) {
     const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
     for (const child of children) {
       const childPath = remotePath + "\\" + child.name;
@@ -215,8 +217,10 @@ export async function smbRmRecursive(client: any, remotePath: string): Promise<v
 export async function smbMeasureBytes(client: any, remotePath: string): Promise<number> {
   const st = await client.stat(remotePath).catch(() => null);
   if (!st) return 0;
-  
-  if (st.isDirectory()) {
+
+  const isDir = typeof st.isDirectory === "function" ? st.isDirectory() : st.isDirectory === true;
+
+  if (isDir) {
     const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
     let total = 0;
     for (const child of children) {
