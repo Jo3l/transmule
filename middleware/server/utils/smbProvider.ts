@@ -169,12 +169,33 @@ export class SmbProvider implements IRemoteProvider {
     const remotePath = this.getRemotePath(path);
     // Remove existing file first to avoid STATUS_OBJECT_NAME_COLLISION
     await (this.client! as any).unlink(remotePath).catch(() => {});
-    await withTimeout((this.client! as any).writeFile(remotePath, content), 30000);
+    await withTimeout((this.client! as any).writeFile(remotePath, content), 300000);
   }
 
   async getQuota(): Promise<{ used: number; available: number } | null> {
     // SMB2 protocol does not support disk space queries via @marsaud/smb2
     return null;
+  }
+
+  /**
+   * Low-level SMB2 operations exposed for reliable chunked writing.
+   * These bypass the broken createWriteStream and use SMB2 WRITE commands
+   * directly via @marsaud/smb2's open/write/close APIs.
+   */
+  async openSmb(path: string, flags: string): Promise<any> {
+    if (!this.client) await this.connect();
+    const remotePath = this.getRemotePath(path);
+    return (this.client! as any).open(remotePath, flags);
+  }
+
+  async writeSmb(fileHandle: any, buffer: Buffer, offset: number, length: number, start: number): Promise<{ bytesWritten: number; buffer: Buffer }> {
+    if (!this.client) await this.connect();
+    return (this.client! as any).write(fileHandle, buffer, offset, length, start);
+  }
+
+  async closeSmb(fileHandle: any): Promise<void> {
+    if (!this.client) await this.connect();
+    return (this.client! as any).close(fileHandle);
   }
 }
 
