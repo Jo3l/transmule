@@ -507,7 +507,7 @@
         })
       }}
     </p>
-    <FolderPicker v-model="transferDest" />
+    <FolderPicker v-model="transferDest" :key="'fp-transfer-' + showTransferDialog" />
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showTransferDialog = false">{{ $t("fileManager.cancel") }}</SButton>
@@ -535,7 +535,7 @@
     <p class="is-size-7 has-text-grey mb-3">
       {{ $t("fileManager.extractHint", { name: extractSource.split("/").pop() }) }}
     </p>
-    <FolderPicker v-model="extractDest" />
+    <FolderPicker v-model="extractDest" :key="'fp-extract-' + showExtractDialog" />
     <SFormItem :label="$t('fileManager.password')" class="mt-3">
       <SInput
         v-model="extractPassword"
@@ -586,7 +586,7 @@
       <SSelect v-model="compressFormat" :options="compressFormatOptions" />
     </SFormItem>
     <SFormItem :label="$t('fileManager.destination')">
-      <FolderPicker v-model="compressDest" />
+      <FolderPicker v-model="compressDest" :key="'fp-compress-' + showCompressDialog" />
     </SFormItem>
     <template v-if="compressFormat === 'zip'">
       <SFormItem>

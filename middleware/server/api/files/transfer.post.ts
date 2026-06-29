@@ -130,65 +130,84 @@ export default defineEventHandler(async (event) => {
 
 let _queueRunning = false;
 
+// Expose queue state/control globally so other modules can recover a stuck queue.
+declare global {
+  var __transferQueueRunning: boolean | undefined;
+}
+
 function scheduleQueue() {
-  if (_queueRunning) return;
-  void runNextTransfer();
+  if (_queueRunning || globalThis.__transferQueueRunning) return;
+  runNextTransfer().catch(() => {
+    _queueRunning = false;
+    globalThis.__transferQueueRunning = false;
+  });
 }
 
 async function runNextTransfer(): Promise<void> {
-  const nextId = globalThis.__transferQueue?.shift();
-  if (!nextId) {
-    _queueRunning = false;
-    return;
-  }
-
-  const job = globalThis.__transferJobs?.get(nextId);
-  if (!job) {
-    void runNextTransfer();
-    return;
-  }
-
-  _queueRunning = true;
-  job.status = "running";
-  job.startedAt = new Date().toISOString();
-
-  const abortCtrl = new AbortController();
-  globalThis.__transferAbortControllers.set(nextId, abortCtrl);
-
-  const clients: SMB2[] = [];
-
   try {
-    job.bytesTotal = await measureBytes(job.sources).catch(() => 0);
-    await runTransfer(
-      nextId,
-      job.sources,
-      job.destination,
-      job.mode as "move" | "copy",
-      abortCtrl.signal,
-      clients,
-    );
-  } catch (err) {
-    const isCancelled =
-      (err as any)?.name === "AbortError" ||
-      (err as any)?.message === "Cancelled";
-    job.status = "error";
-    job.error = isCancelled
-      ? "Cancelled"
-      : String((err as any)?.message ?? err);
-    job.finishedAt = new Date().toISOString();
-  } finally {
-    globalThis.__transferAbortControllers.delete(nextId);
-    for (const c of clients) {
-      try {
-        c.disconnect();
-      } catch {
-        /* ignore */
+    const nextId = globalThis.__transferQueue?.shift();
+    if (!nextId) {
+      _queueRunning = false;
+      globalThis.__transferQueueRunning = false;
+      return;
+    }
+
+    const job = globalThis.__transferJobs?.get(nextId);
+    if (!job) {
+      void runNextTransfer();
+      return;
+    }
+
+    _queueRunning = true;
+    globalThis.__transferQueueRunning = true;
+    job.status = "running";
+    job.startedAt = new Date().toISOString();
+
+    const abortCtrl = new AbortController();
+    globalThis.__transferAbortControllers.set(nextId, abortCtrl);
+
+    const clients: SMB2[] = [];
+
+    try {
+      job.bytesTotal = await measureBytes(job.sources).catch(() => 0);
+      await runTransfer(
+        nextId,
+        job.sources,
+        job.destination,
+        job.mode as "move" | "copy",
+        abortCtrl.signal,
+        clients,
+      );
+    } catch (err) {
+      const isCancelled =
+        (err as any)?.name === "AbortError" ||
+        (err as any)?.message === "Cancelled";
+      job.status = "error";
+      job.error = isCancelled
+        ? "Cancelled"
+        : String((err as any)?.message ?? err);
+      job.finishedAt = new Date().toISOString();
+    } finally {
+      globalThis.__transferAbortControllers.delete(nextId);
+      for (const c of clients) {
+        try {
+          c.disconnect();
+        } catch {
+          /* ignore */
+        }
       }
     }
-  }
 
-  _queueRunning = false;
-  void runNextTransfer();
+    _queueRunning = false;
+    globalThis.__transferQueueRunning = false;
+    void runNextTransfer();
+  } catch (err) {
+    // Top-level safety net: if anything unexpected crashes, reset the flag so the
+    // queue can continue with the next job instead of being stuck forever.
+    _queueRunning = false;
+    globalThis.__transferQueueRunning = false;
+    void runNextTransfer();
+  }
 }
 
 /* ── Byte measurement ────────────────────────────────────────────────────── */

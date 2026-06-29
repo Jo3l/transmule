@@ -53,5 +53,16 @@ export default defineEventHandler((event) => {
   job.error = "Cancelled";
   job.finishedAt = new Date().toISOString();
 
+  // Recovery: if the queue is stuck (flag set but no jobs running), force-reset it
+  // so new transfers can start.
+  if (globalThis.__transferQueueRunning) {
+    const hasRunning = Array.from(globalThis.__transferJobs?.values() ?? []).some(
+      (j) => j.status === "running",
+    );
+    if (!hasRunning) {
+      globalThis.__transferQueueRunning = false;
+    }
+  }
+
   return { ok: true };
 });
