@@ -141,7 +141,7 @@ export async function smbListDir(
   config: SmbMountConfig, subPath: string,
 ): Promise<SmbFileEntry[]> {
   const remoteDir = smbPath(config, subPath);
-  const cmd = remoteDir ? `ls "${remoteDir}"` : "ls";
+  const cmd = remoteDir ? `ls "${remoteDir}\\*"` : "ls";
   const out = await smbExec(config, cmd);
   return parseSmbLs(out);
 }
