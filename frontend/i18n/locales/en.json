@@ -1226,7 +1226,7 @@
     "overwriteTitle": "Overwrite files?",
     "overwriteMessage": "The following file(s) already exist at the destination. Overwrite them?",
     "overwriteConfirm": "Overwrite",
-    "homeFolder": "home"
+    "homeFolder": "downloads"
   },
   "movies": {
     "title": "Movies",

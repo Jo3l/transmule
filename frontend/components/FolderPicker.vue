@@ -7,7 +7,7 @@
       </span>
       <template v-for="(seg, i) in segments" :key="i">
         <span class="fp-sep">/</span>
-        <span class="fp-crumb" @click="goto(segments.slice(0, i + 1).join('/'))">{{ seg }}</span>
+        <span class="fp-crumb" @click="goto(segments.slice(0, i + 1).join('/'))">{{ displaySeg(seg) }}</span>
       </template>
     </div>
 
@@ -33,7 +33,7 @@
           @dblclick="goto(fullPath(dir.name))"
         >
           <span class="mdi mdi-folder fp-icon fp-icon--dir" />
-          <span class="fp-name">{{ dir.name }}</span>
+          <span class="fp-name">{{ displaySeg(dir.name) }}</span>
           <span class="mdi mdi-chevron-right fp-chevron" @click.stop="goto(fullPath(dir.name))" />
         </div>
 
@@ -66,6 +66,12 @@ const emit = defineEmits<{
 }>();
 
 const { apiFetch } = useApi();
+const { t } = useI18n();
+
+function displaySeg(seg: string): string {
+  if (seg === "home") return t("fileManager.homeFolder");
+  return seg;
+}
 
 const currentPath = ref("");
 const dirs = ref<DirItem[]>([]);

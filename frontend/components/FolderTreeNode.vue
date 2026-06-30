@@ -16,7 +16,7 @@
       </button>
       <span v-else class="ftn-chevron-placeholder" />
       <span class="mdi mdi-folder ftn-icon" />
-      <span class="ftn-name" :title="node.name">{{ node.name }}</span>
+      <span class="ftn-name" :title="displayName(node.name)">{{ displayName(node.name) }}</span>
     </div>
     <ul v-if="expanded && node.children.length" class="ftn-children">
       <FolderTreeNode
@@ -43,6 +43,13 @@ const props = defineProps<{
   node: TreeNode;
   currentPath: string;
 }>();
+
+const { t } = useI18n();
+
+function displayName(name: string): string {
+  if (name === "home") return t("fileManager.homeFolder");
+  return name;
+}
 
 const emit = defineEmits<{
   navigate: [path: string];

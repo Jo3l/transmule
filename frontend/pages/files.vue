@@ -59,7 +59,7 @@
                    'is-drop-target': dropTargetBc === pathSegments.slice(0, i + 1).join('/'),
                    'is-drop-target-copy': dropTargetBc === pathSegments.slice(0, i + 1).join('/') && isCopyKey,
                  }">
-                {{ seg }}
+                {{ displaySeg(seg) }}
               </a>
             </li>
           </ul>
@@ -1667,6 +1667,11 @@ const activePath = computed(() =>
 const pathSegments = computed(() =>
   activePath.value ? activePath.value.split("/").filter(Boolean) : [],
 );
+/** Translate path segments for display (e.g. "home" → "descargas" in es) */
+function displaySeg(seg: string): string {
+  if (seg === "home") return t("fileManager.homeFolder");
+  return seg;
+}
 
 function childPath(name: string) {
   return currentPath.value ? `${currentPath.value}/${name}` : name;

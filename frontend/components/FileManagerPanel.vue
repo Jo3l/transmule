@@ -385,8 +385,8 @@
                   >{{ item.relpath }}/</a
                 >
               </template>
-              <span v-if="item.type === 'directory'" class="fmp-filename">{{ item.name }}</span>
-              <span v-else class="fmp-filename" :title="item.name">{{ item.name }}</span>
+              <span v-if="item.type === 'directory'" class="fmp-filename">{{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}</span>
+              <span v-else class="fmp-filename" :title="item.name">{{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}</span>
             </span>
           </td>
           <td class="has-text-right has-text-grey is-size-7 fmp-col-size">
@@ -1841,6 +1841,9 @@ onMounted(() => {
   & + .fmp-ctx-sep {
     display: none;
   }
+}
+.fmp-ctx-menu:has(:not(.fmp-ctx-sep:last-of-type + button)) .fmp-ctx-sep {
+  display: none;
 }
 .fmp-ctx-item {
   display: flex;
