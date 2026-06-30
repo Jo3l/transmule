@@ -59,7 +59,7 @@
           <span v-else class="mdi fmp-icon" :class="fileIcon(item)" />
           <span class="fmp-mc-name">
             <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
-            {{ item.name }}
+            {{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}
           </span>
           <span class="fmp-mc-size">{{ item.type === "file" ? fmtSize(item.size) : "" }}</span>
           <span
@@ -503,7 +503,7 @@
           <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
         </button>
         <button
-          v-if="!ctxIsMulti && ctxMenu.item && !ctxMenu.item?.isRemoteMount"
+          v-if="!ctxIsMulti && ctxMenu.item && !isRootItem"
           class="fmp-ctx-item"
           :disabled="readOnlyActive"
           @click="
@@ -525,6 +525,7 @@
         </button>
         <div class="fmp-ctx-sep" />
         <button
+          v-if="!isRootItem"
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="
@@ -540,6 +541,7 @@
           <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
         </button>
         <button
+          v-if="!isRootItem"
           class="fmp-ctx-item"
           @click="
             ctxIsMulti
@@ -554,6 +556,7 @@
           <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
         </button>
         <button
+          v-if="!isRootItem"
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="
@@ -638,6 +641,7 @@
           <span class="mdi mdi-auto-fix mr-2" />{{ $t("fileManager.smartRename") }}
         </button>
         <button
+          v-if="!isRootItem"
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="
@@ -663,6 +667,7 @@ interface FileItem {
   size: number;
   modified: string;
   isRemoteMount?: boolean;
+  homeFolder?: boolean;
   /** Relative path from the search root (only present in search results) */
   relpath?: string;
 }
@@ -798,6 +803,9 @@ const ctxMenu = ref<{ visible: boolean; x: number; y: number; item: FileItem | n
   item: null,
 });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
+const isRootItem = computed(() =>
+  ctxMenu.value.item?.homeFolder || ctxMenu.value.item?.isRemoteMount
+);
 
 function hideCtxMenu() {
   ctxMenu.value.visible = false;

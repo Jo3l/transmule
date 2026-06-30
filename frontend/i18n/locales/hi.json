@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "फ़ाइलें",
-    "root": "डाउनलोड",
+    "root": "होम",
     "name": "नाम",
     "size": "आकार",
     "modified": "संशोधित",
@@ -1225,7 +1225,8 @@
     "splitToggle": "Toggle split",
     "overwriteConfirm": "ओवरराइट करें",
     "readOnly": "Read only",
-    "readOnlyHint": "Mounted folder is read-only"
+    "readOnlyHint": "Mounted folder is read-only",
+    "homeFolder": "होम"
   },
   "movies": {
     "title": "फ़िल्में",

@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "Файлы",
-    "root": "Загрузки",
+    "root": "начало",
     "name": "Имя",
     "size": "Размер",
     "modified": "Изменён",
@@ -1225,7 +1225,8 @@
     "splitToggle": "Toggle split",
     "overwriteConfirm": "Перезаписать",
     "readOnly": "Read only",
-    "readOnlyHint": "Mounted folder is read-only"
+    "readOnlyHint": "Mounted folder is read-only",
+    "homeFolder": "начало"
   },
   "movies": {
     "title": "Фильмы",
