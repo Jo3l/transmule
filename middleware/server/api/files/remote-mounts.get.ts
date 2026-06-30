@@ -1,36 +1,20 @@
-/**
- * GET /api/files/remote-mounts
- *
- * Returns the list of configured remote mounts.
- */
-
-import { loadMounts } from "~/utils/remoteMounts";
+import { loadSmbConfigs } from "~/utils/remoteMounts";
 
 defineRouteMeta({
   openAPI: {
     tags: ["File Manager"],
-    summary: "List remote mounts",
-    responses: {
-      200: { description: "Array of remote mounts" },
-    },
+    summary: "List SMB mounts",
+    responses: { 200: { description: "Array of SMB mounts" } },
   },
 });
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
-
-  const mounts = loadMounts().map((m) => ({
-    id: m.id,
-    name: m.name,
-    type: m.type,
-    host: m.host,
-    share: m.share,
-    url: m.url,
-    path: m.path,
-    domain: m.domain,
-    username: m.username,
+  const configs = loadSmbConfigs().map((c) => ({
+    id: c.id, name: c.name, host: c.host, share: c.share,
+    path: c.path, domain: c.domain, username: c.username,
+    readOnly: c.readOnly,
     // never expose password
   }));
-
-  return mounts;
+  return configs;
 });

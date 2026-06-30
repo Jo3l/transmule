@@ -2,20 +2,17 @@
   "name": "amule-api-middleware",
   "version": "1.0.0",
   "private": true,
-  "description": "REST API middleware for aMule web interface — handles session management, request queuing, CORS, and provides a clean REST API with Swagger/Scalar documentation",
+  "description": "REST API middleware for aMule web interface \u2014 handles session management, request queuing, CORS, and provides a clean REST API with Swagger/Scalar documentation",
   "scripts": {
     "dev": "nitropack dev",
     "build": "nitropack build",
     "preview": "node .output/server/index.mjs",
-    "prepare": "nitropack prepare",
-    "postinstall": "node apply-patches.mjs"
+    "prepare": "nitropack prepare"
   },
   "dependencies": {
     "amule-ec-client": "^0.5.2",
     "bcryptjs": "^2",
-    "jsonwebtoken": "^9",
-    "smb3-client": "^0.2.0",
-    "webdav": "^5.9.0"
+    "jsonwebtoken": "^9"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2",

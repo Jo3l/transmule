@@ -1,10 +1,10 @@
 import { mkdirSync, existsSync } from "node:fs";
+import { resolveVirtualPath, ensureSmbMounted, getSmbConfigByName } from "../../utils/remoteMounts";
 
 defineRouteMeta({
   openAPI: {
     tags: ["File Manager"],
     summary: "Create folder",
-    description: "Create a new folder inside the downloads directory or a remote mount.",
     responses: {
       200: { description: "Folder created" },
       400: { description: "Missing path" },
@@ -24,39 +24,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "path is required" });
   }
 
-  // Check if we are inside a remote mount
-  const mountInfo = resolveMountPath(path);
-  if (mountInfo) {
-    const { mount, subPath } = mountInfo;
-    const client = createSmbClient(mount);
+  const realPath = resolveVirtualPath(path);
+  if (!realPath) {
+    throw createError({ statusCode: 400, statusMessage: "Invalid path" });
+  }
 
-    try {
-      // Pass raw subPath — the provider's getRemotePath() builds the full remote path
-      await withTimeout(client.mkdir(subPath), 8000);
-      return { ok: true };
-    } catch (err: any) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Cannot create remote directory: ${err.message}`,
-      });
-    } finally {
-      try {
-        client.disconnect();
-      } catch {
-        /* ignore */
+  const clean = String(path).replace(/\\/g, "/").replace(/^\/+/, "");
+  const firstSeg = clean.split("/")[0];
+  if (firstSeg !== "downloads") {
+    const cfg = getSmbConfigByName(firstSeg);
+    if (cfg) {
+      try { await ensureSmbMounted(cfg); } catch (err: any) {
+        throw createError({ statusCode: 500, statusMessage: `Cannot mount: ${err.message}` });
       }
     }
   }
 
-  const root = getDownloadsRoot();
-  const dir = resolveSafe(root, path);
-
-  if (existsSync(dir)) {
+  if (existsSync(realPath)) {
     throw createError({ statusCode: 409, statusMessage: "Already exists" });
   }
 
   try {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(realPath, { recursive: true });
     return { ok: true };
   } catch (err: any) {
     throw createError({ statusCode: 500, statusMessage: err.message });

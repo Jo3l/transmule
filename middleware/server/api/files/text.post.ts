@@ -1,13 +1,13 @@
 import { existsSync, writeFileSync, statSync } from "node:fs";
+import { resolveVirtualPath, ensureSmbMounted, getSmbConfigByName } from "../../utils/remoteMounts";
 
-const MAX_SIZE = 1024 * 1024; // 1 MB safety cap
+const MAX_SIZE = 1024 * 1024;
 
 defineRouteMeta({
   openAPI: {
     tags: ["File Manager"],
     summary: "Write text file",
-    description:
-      "Overwrites a text file in the downloads directory or a remote mount with UTF-8 content.",
+    description: "Overwrites a text file with UTF-8 content.",
     responses: {
       200: { description: "{ ok: true }" },
       400: { description: "Validation error" },
@@ -22,68 +22,32 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ path: string; content: string }>(event);
   const { path = "", content = "" } = body ?? {};
 
-  if (!path)
-    throw createError({ statusCode: 400, statusMessage: "path is required" });
-  if (typeof content !== "string")
-    throw createError({
-      statusCode: 400,
-      statusMessage: "content must be a string",
-    });
+  if (!path) throw createError({ statusCode: 400, statusMessage: "path is required" });
+  if (typeof content !== "string") throw createError({ statusCode: 400, statusMessage: "content must be a string" });
 
   const byteLen = Buffer.byteLength(content, "utf8");
-  if (byteLen > MAX_SIZE)
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Content too large (>1 MB)",
-    });
+  if (byteLen > MAX_SIZE) throw createError({ statusCode: 400, statusMessage: "Content too large (>1 MB)" });
 
-  // Check if inside a remote mount
-  const mountInfo = resolveMountPath(path);
-  if (mountInfo) {
-    const { mount, subPath } = mountInfo;
-    const client = createSmbClient(mount);
+  const relPath = String(path);
+  const realPath = resolveVirtualPath(relPath);
+  if (!realPath) throw createError({ statusCode: 400, statusMessage: "Invalid path" });
 
-    try {
-      const remoteFilePath = buildRemotePath(mount, subPath);
-
-      const st = await withTimeout(client.stat(remoteFilePath), 8000).catch(() => null);
-      if (!st) {
-        throw createError({ statusCode: 404, statusMessage: "File not found" });
-      }
-      if (st.isDirectory()) {
-        throw createError({ statusCode: 400, statusMessage: "Path is a directory" });
-      }
-
-      await withTimeout(client.writeFile(remoteFilePath, content, { encoding: "utf8" }), 8000);
-      return { ok: true };
-    } catch (err: any) {
-      if (err?.statusCode) throw err;
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Cannot write remote file: ${err.message}`,
-      });
-    } finally {
-      try {
-        client.disconnect();
-      } catch {
-        /* ignore */
+  const clean = relPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const firstSeg = clean.split("/")[0];
+  if (firstSeg !== "downloads") {
+    const cfg = getSmbConfigByName(firstSeg);
+    if (cfg) {
+      try { await ensureSmbMounted(cfg); } catch (err: any) {
+        throw createError({ statusCode: 500, statusMessage: `Cannot mount: ${err.message}` });
       }
     }
   }
 
-  const root = getDownloadsRoot();
-  const filePath = resolveSafe(root, path);
+  if (!existsSync(realPath)) throw createError({ statusCode: 404, statusMessage: "File not found" });
 
-  if (!existsSync(filePath))
-    throw createError({ statusCode: 404, statusMessage: "File not found" });
+  const st = statSync(realPath);
+  if (st.isDirectory()) throw createError({ statusCode: 400, statusMessage: "Path is a directory" });
 
-  const stat = statSync(filePath);
-  if (stat.isDirectory())
-    throw createError({
-      statusCode: 400,
-      statusMessage: "Path is a directory",
-    });
-
-  writeFileSync(filePath, content, "utf8");
+  writeFileSync(realPath, content, "utf8");
   return { ok: true };
 });

@@ -1,7 +1,6 @@
 import { rmSync, existsSync } from "node:fs";
-import { getProvider, resolveMountPath, isMountRoot } from "../../utils/remoteMounts";
-import { getDownloadsRoot, resolveSafe } from "../../utils/files";
-
+import { resolveVirtualPath, ensureSmbMounted, getSmbConfigByName } from "../../utils/remoteMounts";
+import { getDownloadsRoot } from "../../utils/files";
 defineRouteMeta({
   openAPI: {
     tags: ["File Manager"],
@@ -19,59 +18,47 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const body = await readBody(event);
-  // Accept single path or array of paths
   const rawPaths: string[] = Array.isArray(body?.paths)
     ? body.paths
-    : body?.path
-      ? [body.path]
-      : [];
+    : body?.path ? [body.path] : [];
 
   if (!rawPaths.length) {
     throw createError({ statusCode: 400, statusMessage: "paths is required" });
   }
 
   const root = getDownloadsRoot();
-
   const errors: string[] = [];
+
   for (const rel of rawPaths) {
     try {
-      // Prevent deleting remote mounts directly
-      if (isMountRoot(rel)) {
-        errors.push(`${rel}: cannot delete a remote mount directly — use unmount instead`);
+      const realPath = resolveVirtualPath(rel);
+      if (!realPath) {
+        errors.push(`${rel}: invalid path`);
         continue;
       }
 
-      // If path is inside a remote mount, use provider delete
-      const mountInfo = resolveMountPath(rel);
-      if (mountInfo) {
-        const { mount, subPath } = mountInfo;
-        const provider = getProvider(mount);
-        try {
-          await provider.connect();
-          await deleteRecursive(provider, subPath);
-        } catch (err: any) {
-          errors.push(`${rel}: ${err.message}`);
-        } finally {
-          try {
-            await provider.disconnect();
-          } catch {
-            /* ignore */
+      // Ensure mount if needed
+      const clean = String(rel).replace(/\\/g, "/").replace(/^\/+/, "");
+      const firstSeg = clean.split("/")[0];
+      if (firstSeg !== "downloads") {
+        const cfg = getSmbConfigByName(firstSeg);
+        if (cfg) {
+          try { await ensureSmbMounted(cfg); } catch (err: any) {
+            errors.push(`${rel}: mount failed - ${err.message}`);
+            continue;
           }
         }
-        continue;
       }
 
-      const target = resolveSafe(root, rel);
-      // Prevent deleting the root itself
-      if (target === root) {
+      if (realPath === root) {
         errors.push(`${rel}: cannot delete root`);
         continue;
       }
-      if (!existsSync(target)) {
+      if (!existsSync(realPath)) {
         errors.push(`${rel}: not found`);
         continue;
       }
-      rmSync(target, { recursive: true, force: true });
+      rmSync(realPath, { recursive: true, force: true });
     } catch (err: any) {
       errors.push(`${rel}: ${err.message}`);
     }
@@ -83,22 +70,3 @@ export default defineEventHandler(async (event) => {
 
   return { ok: true, errors };
 });
-
-/**
- * Recursively delete a path using the provider
- */
-async function deleteRecursive(provider: any, path: string): Promise<void> {
-  const stats = await provider.stat(path).catch(() => null);
-  if (!stats) return;
-  
-  if (stats.isDirectory === true) {
-    const children = await provider.readdir(path).catch(() => []);
-    for (const child of children) {
-      const childPath = path ? `${path}/${child.name}` : child.name;
-      await deleteRecursive(provider, childPath);
-    }
-    await provider.rmdir(path);
-  } else {
-    await provider.unlink(path);
-  }
-}
