@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
         name: e.name, type: "directory" as const,
         size: 0, modified: new Date().toISOString(),
         isRemoteMount: e.isRemoteMount || false,
+        homeFolder: (e as any).homeFolder || false,
       })),
     };
   }

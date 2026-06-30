@@ -705,6 +705,7 @@ interface FileItem {
   size: number;
   modified: string;
   isRemoteMount?: boolean;
+  homeFolder?: boolean;
   /** Relative path from the search root (only present in search results) */
   relpath?: string;
 }
@@ -1099,8 +1100,8 @@ watch(compressFormat, (newFormat) => {
 function openTransferDialog(sources: string[], mode: "move" | "copy") {
   transferSources.value = sources;
   transferMode.value = mode;
-  // Default destination to current directory
-  transferDest.value = currentPath.value;
+  // Default destination to root so user can pick from the top
+  transferDest.value = "";
   showTransferDialog.value = true;
 }
 
@@ -2069,34 +2070,23 @@ async function validateRemote() {
   validating.value = true;
   try {
     const body: any = {
-      name: remoteForm.name.trim(),
-      type: remoteForm.type,
+      host: remoteForm.host.trim(),
+      share: remoteForm.share.trim(),
+      path: remoteForm.path.trim() || undefined,
+      domain: remoteForm.domain.trim() || undefined,
       username: remoteForm.username.trim(),
       password: remoteForm.password,
     };
-    
-    body.host = remoteForm.host.trim();
-    body.share = remoteForm.share.trim();
-    body.path = remoteForm.path.trim() || undefined;
-    body.domain = remoteForm.domain.trim() || undefined;
-    
-    // Create temporarily to validate
-    const res = await apiFetch<{ id: string; name: string }>("/api/files/remote-mounts", {
-      method: "POST",
-      body,
-    });
-    // Validate connection
-    const validateRes = await apiFetch<{ ok: boolean; error?: string }>(
-      `/api/files/remote-mounts/${res.id}/validate`,
-      { method: "POST" },
+
+    // Test connection without creating a mount
+    const res = await apiFetch<{ ok: boolean; error?: string }>(
+      "/api/files/remote-mounts/validate",
+      { method: "POST", body },
     );
-    if (validateRes.ok) {
+    if (res.ok) {
       showToast(t("fileManager.validationOk"), "success");
-      // Delete the temporary mount so user can recreate with the same form if they want
-      await apiFetch(`/api/files/remote-mounts/${res.id}`, { method: "DELETE" });
     } else {
-      showToast(t("fileManager.validationFailed", { error: validateRes.error || "" }), "error");
-      await apiFetch(`/api/files/remote-mounts/${res.id}`, { method: "DELETE" });
+      showToast(t("fileManager.validationFailed", { error: res.error || "" }), "error");
     }
   } catch (err: any) {
     showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");

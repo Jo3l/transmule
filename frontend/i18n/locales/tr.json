@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "Dosyalar",
-    "root": "İndirmeler",
+    "root": "başlangıç",
     "name": "Ad",
     "size": "Boyut",
     "modified": "Değiştirilme",
@@ -1225,7 +1225,8 @@
     "splitToggle": "Toggle split",
     "overwriteConfirm": "Üzerine Yaz",
     "readOnly": "Read only",
-    "readOnlyHint": "Mounted folder is read-only"
+    "readOnlyHint": "Mounted folder is read-only",
+    "homeFolder": "başlangıç"
   },
   "movies": {
     "title": "Filmler",

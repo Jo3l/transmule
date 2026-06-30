@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
 
   const trimmedName = sanitizeSegment(name);
   if (!trimmedName) throw createError({ statusCode: 400, statusMessage: "Invalid mount name" });
-  if (trimmedName === "downloads") throw createError({ statusCode: 400, statusMessage: "'downloads' is reserved" });
+  if (trimmedName === "downloads") throw createError({ statusCode: 400, statusMessage: "'home' is reserved" });
 
   const root = getDownloadsRoot();
   try {

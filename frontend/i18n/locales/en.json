@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "Files",
-    "root": "Downloads",
+    "root": "home",
     "name": "Name",
     "size": "Size",
     "modified": "Modified",
@@ -1225,7 +1225,8 @@
     "discardConfirm": "Discard",
     "overwriteTitle": "Overwrite files?",
     "overwriteMessage": "The following file(s) already exist at the destination. Overwrite them?",
-    "overwriteConfirm": "Overwrite"
+    "overwriteConfirm": "Overwrite",
+    "homeFolder": "home"
   },
   "movies": {
     "title": "Movies",

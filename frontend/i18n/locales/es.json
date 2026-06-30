@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "Archivos",
-    "root": "Descargas",
+    "root": "inicio",
     "name": "Nombre",
     "size": "Tamaño",
     "modified": "Modificado",
@@ -1225,7 +1225,8 @@
     "discardConfirm": "Descartar",
     "overwriteTitle": "¿Sobrescribir archivos?",
     "overwriteMessage": "Los siguientes archivos ya existen en el destino. ¿Sobrescribirlos?",
-    "overwriteConfirm": "Sobrescribir"
+    "overwriteConfirm": "Sobrescribir",
+    "homeFolder": "inicio"
   },
   "movies": {
     "title": "Películas",

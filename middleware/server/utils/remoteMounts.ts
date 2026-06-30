@@ -209,9 +209,26 @@ export async function smbRename(
   await smbExec(config, `rename "${oldR}" "${newR}"`);
 }
 
+/** Idle timeout: kill transfer if no data for 30 seconds */
+const IDLE_TIMEOUT = 30 * 1000;
+
+function idleKiller(kill: () => void, onActivity: (cb: () => void) => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  function reset() {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      kill();
+    }, IDLE_TIMEOUT);
+  }
+  reset();
+  onActivity(reset);
+  return () => { if (timer) clearTimeout(timer); };
+}
+
 /**
  * Download file as a readable stream.
  * Uses smbclient `get <remote> -` (stdout) with `-E` (progress → stderr).
+ * Idle timeout: 30s without data kills the transfer.
  */
 export function smbDownloadStream(
   config: SmbMountConfig, subPath: string,
@@ -220,15 +237,23 @@ export function smbDownloadStream(
   const args = [...smbArgs(config), "-E", "-c", `get "${remote}" -`];
   const child = spawn("smbclient", args, {
     stdio: ["ignore", "pipe", "pipe"],
-    timeout: SMB_TIMEOUT,
   });
 
   let fileSize: number | undefined;
   let stderr = "";
 
+  // Idle watchdog: if no data for 5 min, kill the transfer
+  const cleanup = idleKiller(
+    () => child.kill(),
+    (onActivity) => {
+      child.stdout.on("data", onActivity);
+      child.stderr.on("data", onActivity);
+    },
+  );
+  child.on("close", cleanup);
+
   child.stderr.on("data", (d: Buffer) => {
     stderr += d.toString();
-    // Parse size from: "getting file \path of size 12345 as -"
     const m = stderr.match(/size\s+(\d+)/);
     if (m && !fileSize) fileSize = parseInt(m[1], 10);
   });
@@ -239,7 +264,7 @@ export function smbDownloadStream(
   return {
     stream,
     fileSize,
-    destroy: () => { child.kill(); },
+    destroy: () => { cleanup(); child.kill(); },
   };
 }
 
@@ -255,10 +280,19 @@ export function smbUploadStream(
     const args = [...smbArgs(config), "-E", "-c", `put - "${remote}"`];
     const child = spawn("smbclient", args, {
       stdio: ["pipe", "pipe", "pipe"],
-      timeout: SMB_TIMEOUT,
     });
 
     source.pipe(child.stdin!);
+
+    // Idle watchdog: if no data for 5 min, kill the transfer
+    const cleanup = idleKiller(
+      () => child.kill(),
+      (onActivity) => {
+        source.on("data", onActivity);
+        child.stderr.on("data", onActivity);
+      },
+    );
+    child.on("close", cleanup);
 
     let stderr = "";
     child.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
@@ -267,7 +301,7 @@ export function smbUploadStream(
       else reject(new Error(stderr.trim() || `Upload failed (exit ${code})`));
     });
     child.on("error", reject);
-    source.on("error", (err) => { child.kill(); reject(err); });
+    source.on("error", (err) => { cleanup(); child.kill(); reject(err); });
   });
 }
 
@@ -290,19 +324,20 @@ export interface VirtualRootEntry {
   name: string;
   type: "directory";
   isRemoteMount?: boolean;
+  homeFolder?: boolean;
   mountConfig?: SmbMountConfig;
 }
 
 export function getVirtualRootEntries(): VirtualRootEntry[] {
   const entries: VirtualRootEntry[] = [
-    { name: "downloads", type: "directory", isRemoteMount: false },
+    { name: "home", type: "directory", isRemoteMount: false, homeFolder: true },
   ];
   for (const cfg of loadSmbConfigs()) {
     entries.push({ name: cfg.name, type: "directory", isRemoteMount: true, mountConfig: cfg });
   }
   entries.sort((a, b) => {
-    if (a.name === "downloads") return -1;
-    if (b.name === "downloads") return 1;
+    if (a.name === "home") return -1;
+    if (b.name === "home") return 1;
     return a.name.localeCompare(b.name);
   });
   return entries;
@@ -327,7 +362,7 @@ export function resolveVirtualPath(relPath: string): ResolvedPath | null {
   const first = slashIdx === -1 ? clean : clean.slice(0, slashIdx);
   const rest = slashIdx === -1 ? "" : clean.slice(slashIdx + 1);
 
-  if (first === "downloads") {
+  if (first === "home") {
     const root = getDownloadsRoot();
     return { type: "local", absPath: rest ? join(root, rest) : root };
   }

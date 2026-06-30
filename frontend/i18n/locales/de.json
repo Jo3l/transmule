@@ -1082,7 +1082,7 @@
   },
   "fileManager": {
     "title": "Dateien",
-    "root": "Downloads",
+    "root": "Start",
     "name": "Name",
     "size": "Größe",
     "modified": "Geändert",
@@ -1225,7 +1225,8 @@
     "splitToggle": "Toggle split",
     "overwriteConfirm": "Überschreiben",
     "readOnly": "Read only",
-    "readOnlyHint": "Mounted folder is read-only"
+    "readOnlyHint": "Mounted folder is read-only",
+    "homeFolder": "Start"
   },
   "movies": {
     "title": "Filme",
