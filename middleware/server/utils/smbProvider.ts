@@ -1,8 +1,11 @@
 /**
  * SMB Remote Provider Implementation
+ *
+ * Uses smb3-client (pure TypeScript SMB 3.x client for Node.js 20+).
+ * Path format: "share/path/to/file" (forward slashes, share as first segment).
  */
 
-import SMB2 from "@marsaud/smb2";
+import { Client } from "smb3-client";
 import { Readable, Writable } from "node:stream";
 import {
   IRemoteProvider,
@@ -10,10 +13,10 @@ import {
   RemoteMountConfig,
   ProviderRegistry,
 } from "./remoteProvider";
-import { withTimeout, sanitizeSmbPath, buildRemotePath } from "./remoteMounts";
+import { withTimeout } from "./remoteMounts";
 
 export class SmbProvider implements IRemoteProvider {
-  private client: SMB2 | null = null;
+  private client: Client | null = null;
   private config: RemoteMountConfig;
   private connected = false;
 
@@ -24,27 +27,23 @@ export class SmbProvider implements IRemoteProvider {
   async connect(): Promise<void> {
     if (this.connected) return;
 
-    this.client = new SMB2({
-      share: `\\\\${this.config.host}\\${this.config.share}`,
+    const smb3 = new Client({
+      host: this.config.host!,
+      port: 445,
       domain: this.config.domain || "",
       username: this.config.username,
       password: this.config.password,
     });
 
-    // Test connection
-    try {
-      await withTimeout(this.client.readdir("", { stats: false }), 8000);
-      this.connected = true;
-    } catch (err) {
-      this.client = null;
-      throw err;
-    }
+    await withTimeout(smb3.connect(), 15000);
+    this.client = smb3;
+    this.connected = true;
   }
 
   async disconnect(): Promise<void> {
     if (this.client) {
       try {
-        this.client.disconnect();
+        await this.client.close();
       } catch {
         /* ignore */
       }
@@ -57,24 +56,53 @@ export class SmbProvider implements IRemoteProvider {
     return this.connected && this.client !== null;
   }
 
+  /**
+   * Build the absolute remote path for smb3-client.
+   * smb3-client expects paths like "share/path/to/file" with forward slashes
+   * where the first segment is the share name.
+   */
   private getRemotePath(path: string): string {
-    return buildRemotePath(this.config, path);
+    // Build path with "/" separator and prepend share name.
+    // smb3-client expects paths like "share/path/to/file" (forward slashes,
+    // first segment is the share name). NEVER produce a trailing slash.
+    const sanitize = (s: string) =>
+      s
+        .replace(/\\/g, "/")
+        .split("/")
+        .map((seg) => seg.trim())
+        .filter((seg) => seg && seg !== "." && seg !== "..")
+        .join("/");
+
+    const base = this.config.path ? sanitize(this.config.path) : "";
+    const cleanSub = sanitize(path);
+
+    const parts: string[] = [];
+    if (base) parts.push(base);
+    if (cleanSub) parts.push(cleanSub);
+
+    const relativePath = parts.join("/");
+    if (!relativePath) return this.config.share;
+    return `${this.config.share}/${relativePath}`;
   }
 
   async readdir(path: string): Promise<RemoteFileStats[]> {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    const files = await withTimeout(
-      (this.client! as any).readdir(remotePath, { stats: true }),
+    console.error("[smb3] readdir path=%j remotePath=%j share=%s base=%s", path, remotePath, this.config.share, this.config.path);
+    const dirents = await withTimeout(
+      (this.client! as any).readdir(remotePath, { withFileTypes: true }),
       8000,
     );
 
-    return files.map((f: any) => ({
-      name: f.name,
-      isDirectory: f.isDirectory(),
-      size: f.isDirectory() ? 0 : (f.size ?? f.length ?? 0),
-      modified: f.mtime || new Date(),
+    return (dirents as any[]).map((d: any) => ({
+      name: d.name,
+      isDirectory:
+        typeof d.isDirectory === "function"
+          ? d.isDirectory()
+          : d.isDirectory === true,
+      size: 0,
+      modified: new Date(),
     }));
   }
 
@@ -82,13 +110,15 @@ export class SmbProvider implements IRemoteProvider {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    const stats = await withTimeout((this.client! as any).stat(remotePath), 8000);
+    const stats = await withTimeout(
+      (this.client! as any).stat(remotePath),
+      8000,
+    );
 
     return {
       name: path.split(/[\\/]/).pop() || path,
-      isDirectory: stats.isDirectory(),
-      // @ts-ignore - size exists on SMB2 stat response
-      size: stats.size || stats.length || 0,
+      isDirectory: stats.isDirectory === true,
+      size: stats.size || 0,
       modified: stats.mtime || new Date(),
     };
   }
@@ -105,14 +135,17 @@ export class SmbProvider implements IRemoteProvider {
 
     const oldRemote = this.getRemotePath(oldPath);
     const newRemote = this.getRemotePath(newPath);
-    await withTimeout((this.client! as any).rename(oldRemote, newRemote), 8000);
+    await withTimeout(
+      (this.client! as any).rename(oldRemote, newRemote),
+      8000,
+    );
   }
 
   async unlink(path: string): Promise<void> {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    await withTimeout((this.client! as any).unlink(remotePath), 8000);
+    await withTimeout((this.client! as any).rm(remotePath), 8000);
   }
 
   async rmdir(path: string): Promise<void> {
@@ -128,75 +161,72 @@ export class SmbProvider implements IRemoteProvider {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    const stream = await withTimeout(
-      (this.client! as any).createReadStream(remotePath),
-      8000,
-    );
+    const stream = this.client!.createReadStream(
+      remotePath,
+    ) as NodeJS.ReadableStream & { fileSize?: number };
 
     // Get file size if available
     let fileSize: number | undefined;
     try {
-      const stats = await withTimeout((this.client! as any).stat(remotePath), 8000);
-      fileSize = stats.size || stats.length;
+      const stats = await withTimeout(
+        (this.client! as any).stat(remotePath),
+        8000,
+      );
+      fileSize = stats.size || 0;
     } catch {
       /* ignore */
     }
 
     (stream as any).fileSize = fileSize;
-    return stream as NodeJS.ReadableStream & { fileSize?: number };
+    return stream;
   }
 
-  async createWriteStream(path: string, fileSize?: number): Promise<NodeJS.WritableStream> {
+  async createWriteStream(
+    path: string,
+    _fileSize?: number,
+  ): Promise<NodeJS.WritableStream> {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    return (this.client! as any).createWriteStream(remotePath) as NodeJS.WritableStream;
+    return this.client!.createWriteStream(
+      remotePath,
+    ) as NodeJS.WritableStream;
   }
 
-  async readFile(path: string, encoding: BufferEncoding = "utf8"): Promise<string> {
+  async readFile(
+    path: string,
+    encoding: BufferEncoding = "utf8",
+  ): Promise<string> {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    return await withTimeout(
-      (this.client! as any).readFile(remotePath, { encoding }),
+    const result = await withTimeout(
+      (this.client! as any).readFile(remotePath, encoding),
       8000,
     );
+
+    // smb3-client readFile returns Buffer by default, or string with encoding
+    if (typeof result === "string") return result;
+    return (result as Buffer).toString(encoding);
   }
 
   async writeFile(path: string, content: string | Buffer): Promise<void> {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    // Remove existing file first to avoid STATUS_OBJECT_NAME_COLLISION
-    await (this.client! as any).unlink(remotePath).catch(() => {});
-    await withTimeout((this.client! as any).writeFile(remotePath, content), 300000);
+    const data = Buffer.isBuffer(content)
+      ? content
+      : Buffer.from(content, "utf8");
+
+    // smb3-client writeFile handles create/overwrite internally
+    await withTimeout(
+      (this.client! as any).writeFile(remotePath, data),
+      300000,
+    );
   }
 
   async getQuota(): Promise<{ used: number; available: number } | null> {
-    // SMB2 protocol does not support disk space queries via @marsaud/smb2
+    // SMB3/2 protocol does not support disk space queries via this client
     return null;
   }
-
-  /**
-   * Low-level SMB2 operations exposed for reliable chunked writing.
-   * These bypass the broken createWriteStream and use SMB2 WRITE commands
-   * directly via @marsaud/smb2's open/write/close APIs.
-   */
-  async openSmb(path: string, flags: string): Promise<any> {
-    if (!this.client) await this.connect();
-    const remotePath = this.getRemotePath(path);
-    return (this.client! as any).open(remotePath, flags);
-  }
-
-  async writeSmb(fileHandle: any, buffer: Buffer, offset: number, length: number, start: number): Promise<{ bytesWritten: number; buffer: Buffer }> {
-    if (!this.client) await this.connect();
-    return (this.client! as any).write(fileHandle, buffer, offset, length, start);
-  }
-
-  async closeSmb(fileHandle: any): Promise<void> {
-    if (!this.client) await this.connect();
-    return (this.client! as any).close(fileHandle);
-  }
 }
-
-// Provider registration is handled by server/plugins/remoteProviders.ts

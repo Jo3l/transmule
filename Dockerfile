@@ -70,8 +70,7 @@ RUN chmod +x /entrypoint.sh
 VOLUME /app/data
 
 ENV NODE_ENV=production
-# Required for @marsaud/smb2 (NTLM crypto uses legacy OpenSSL algorithms)
-ENV NODE_OPTIONS="--experimental-sqlite --openssl-legacy-provider"
+ENV NODE_OPTIONS="--experimental-sqlite"
 # Nitro binds to loopback — not reachable from outside the container
 ENV NITRO_HOST=127.0.0.1
 ENV NITRO_PORT=3000

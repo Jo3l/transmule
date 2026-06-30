@@ -205,12 +205,13 @@ export async function smbRmRecursive(client: any, remotePath: string): Promise<v
   if (isDir) {
     const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
     for (const child of children) {
-      const childPath = remotePath + "\\" + child.name;
+      const childPath = remotePath + "/" + child.name;
       await smbRmRecursive(client, childPath);
     }
     await client.rmdir(remotePath);
   } else {
-    await client.unlink(remotePath);
+    await client.rm(remotePath);
+
   }
 }
 
@@ -224,7 +225,7 @@ export async function smbMeasureBytes(client: any, remotePath: string): Promise<
     const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
     let total = 0;
     for (const child of children) {
-      total += await smbMeasureBytes(client, remotePath + "\\" + child.name);
+      total += await smbMeasureBytes(client, remotePath + "/" + child.name);
     }
     return total;
   }
@@ -232,10 +233,10 @@ export async function smbMeasureBytes(client: any, remotePath: string): Promise<
 }
 
 export async function smbEnsureDir(client: any, remotePath: string): Promise<void> {
-  const parts = remotePath.split("\\").filter(Boolean);
+  const parts = remotePath.split("/").filter(Boolean);
   let current = "";
   for (const part of parts) {
-    current = current ? `${current}\\${part}` : part;
+    current = current ? `${current}/${part}` : part;
     await client.mkdir(current).catch(() => {});
   }
 }
