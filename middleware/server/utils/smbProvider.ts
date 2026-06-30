@@ -89,7 +89,6 @@ export class SmbProvider implements IRemoteProvider {
     if (!this.client) await this.connect();
 
     const remotePath = this.getRemotePath(path);
-    console.error("[smb3] readdir path=%j remotePath=%j share=%s base=%s", path, remotePath, this.config.share, this.config.path);
     const dirents = await withTimeout(
       (this.client! as any).readdir(remotePath, { withFileTypes: true }),
       8000,
