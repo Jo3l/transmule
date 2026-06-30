@@ -1226,7 +1226,7 @@
     "overwriteConfirm": "Üzerine Yaz",
     "readOnly": "Read only",
     "readOnlyHint": "Mounted folder is read-only",
-    "homeFolder": "başlangıç"
+    "homeFolder": "indirilenler"
   },
   "movies": {
     "title": "Filmler",

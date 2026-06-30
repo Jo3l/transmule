@@ -49,7 +49,10 @@ export default defineEventHandler(async (event) => {
   const maxDepth = Math.min(Number(depth) || 4, 8);
 
   const root = getDownloadsRoot();
-  const tree = buildTree(root, "home", maxDepth, 1);
+  const homeChildren = buildTree(root, "home", maxDepth, 1);
+  const tree: TreeNode[] = [
+    { name: "home", path: "home", children: homeChildren },
+  ];
 
   for (const cfg of loadSmbConfigs()) {
     try {

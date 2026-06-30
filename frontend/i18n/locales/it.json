@@ -1129,7 +1129,7 @@
     "overwriteConfirm": "Sovrascrivi",
     "readOnly": "Read only",
     "readOnlyHint": "Mounted folder is read-only",
-    "homeFolder": "inizio"
+    "homeFolder": "download"
   },
   "movies": {
     "title": "Film",

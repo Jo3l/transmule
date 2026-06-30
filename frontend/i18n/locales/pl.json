@@ -1226,7 +1226,7 @@
     "overwriteConfirm": "Nadpisz",
     "readOnly": "Read only",
     "readOnlyHint": "Mounted folder is read-only",
-    "homeFolder": "start"
+    "homeFolder": "pobrane"
   },
   "movies": {
     "title": "Filmy",

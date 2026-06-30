@@ -1226,7 +1226,7 @@
     "overwriteConfirm": "Перезаписать",
     "readOnly": "Read only",
     "readOnlyHint": "Mounted folder is read-only",
-    "homeFolder": "начало"
+    "homeFolder": "загрузки"
   },
   "movies": {
     "title": "Фильмы",
