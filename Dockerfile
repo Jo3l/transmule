@@ -27,8 +27,7 @@ RUN npm run generate
 FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm AS mw-builder
 WORKDIR /app
 
-COPY middleware/package.json middleware/package-lock.json middleware/apply-patches.mjs ./
-COPY middleware/patches ./patches
+COPY middleware/package.json middleware/package-lock.json ./
 RUN set -eux; \
   npm ci --no-audit --no-fund || npm ci --no-audit --no-fund
 
