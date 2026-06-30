@@ -1,21 +1,12 @@
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { getSmbMountPath, loadSmbConfigs } from "../../utils/remoteMounts";
-import { getDownloadsRoot } from "../../utils/files";
+import { getDownloadsRoot, loadSmbConfigs, smbListDir } from "../../utils/remoteMounts";
 import { getCachedTree, setCachedTree } from "~/utils/treeCache";
 
 defineRouteMeta({
-  openAPI: {
-    tags: ["File Manager"],
-    summary: "Get folder tree",
-    description: "Returns a recursive directory tree for the file browser sidebar.",
-    parameters: [
-      { name: "depth", in: "query", description: "Max depth (default 4, max 8)" },
-    ],
-    responses: {
-      200: { description: "Tree nodes" },
-    },
-  },
+  openAPI: { tags: ["File Manager"], summary: "Get folder tree",
+    parameters: [{ name: "depth", in: "query" }],
+    responses: { 200: {} } },
 });
 
 interface TreeNode { name: string; path: string; children: TreeNode[]; }
@@ -24,27 +15,33 @@ function buildTree(dir: string, relBase: string, maxDepth: number, depth: number
   if (depth > maxDepth) return [];
   let names: string[];
   try { names = readdirSync(dir); } catch { return []; }
-  return names
-    .filter((n) => !n.startsWith("."))
-    .map((name) => {
-      const full = join(dir, name);
-      try { if (!statSync(full).isDirectory()) return null; } catch { return null; }
-      const relPath = relBase ? `${relBase}/${name}` : name;
-      return { name, path: relPath, children: buildTree(full, relPath, maxDepth, depth + 1) };
-    })
-    .filter(Boolean) as TreeNode[];
+  return names.filter((n) => !n.startsWith(".")).map((name) => {
+    const full = join(dir, name);
+    try { if (!statSync(full).isDirectory()) return null; } catch { return null; }
+    const rp = relBase ? `${relBase}/${name}` : name;
+    return { name, path: rp, children: buildTree(full, rp, maxDepth, depth + 1) };
+  }).filter(Boolean) as TreeNode[];
 }
 
-function buildMountTree(name: string, mountPath: string, maxDepth: number): TreeNode[] {
+async function buildSmbTree(
+  name: string, config: any, subPath: string, maxDepth: number,
+): Promise<TreeNode[]> {
   if (maxDepth < 1) return [];
   try {
-    return buildTree(mountPath, name, maxDepth, 1);
+    const entries = await smbListDir(config, subPath);
+    const nodes: TreeNode[] = [];
+    for (const e of entries) {
+      if (e.type !== "directory") continue;
+      const childPath = subPath ? `${subPath}/${e.name}` : e.name;
+      const children = maxDepth > 1 ? await buildSmbTree(name, config, childPath, maxDepth - 1) : [];
+      nodes.push({ name: e.name, path: `${name}/${childPath}`, children });
+    }
+    return nodes;
   } catch { return []; }
 }
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
-
   const cached = getCachedTree();
   if (cached) return cached;
 
@@ -54,13 +51,11 @@ export default defineEventHandler(async (event) => {
   const root = getDownloadsRoot();
   const tree = buildTree(root, "downloads", maxDepth, 1);
 
-  // Add SMB mount entries at top level
   for (const cfg of loadSmbConfigs()) {
-    const mountPath = getSmbMountPath(cfg.name);
     try {
-      const mtree = buildMountTree(cfg.name, mountPath, maxDepth - 1);
-      tree.push({ name: cfg.name, path: cfg.name, children: mtree });
-    } catch { /* skip inaccessible mounts */ }
+      const children = await buildSmbTree(cfg.name, cfg, "", maxDepth - 1);
+      tree.push({ name: cfg.name, path: cfg.name, children });
+    } catch { /* skip */ }
   }
 
   setCachedTree(tree);
