@@ -1,16 +1,14 @@
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { pipeline } from "node:stream/promises";
-import { Readable } from "node:stream";
-
+import { resolveVirtualPath, ensureSmbMounted, getSmbConfigByName } from "../../utils/remoteMounts";
+import { getDownloadsRoot } from "../../utils/files";
 defineRouteMeta({
   openAPI: {
     tags: ["File Manager"],
     summary: "Upload files",
     description:
-      "Upload one or more files to the downloads directory or a remote mount. " +
-      "Send as multipart/form-data with a `dir` text field (relative destination path) " +
-      "and one or more `files` file fields.",
+      "Upload one or more files to the downloads directory or a mounted SMB share. " +
+      "Send as multipart/form-data with a `dir` text field and `files` file fields.",
     responses: {
       200: { description: "Files uploaded" },
       400: { description: "No files in request" },
@@ -29,25 +27,35 @@ export default defineEventHandler(async (event) => {
 
   const root = getDownloadsRoot();
 
-  // Target directory (relative)
   const dirField = form.find((f) => f.name === "dir");
   const relDir = dirField?.data?.toString() || "";
 
-  // Check if target is inside a remote mount
-  const mountInfo = resolveMountPath(relDir);
-  let smbClient: ReturnType<typeof createSmbClient> | null = null;
-  let remoteBase = "";
-
-  if (mountInfo) {
-    const { mount, subPath } = mountInfo;
-    smbClient = createSmbClient(mount);
-    // Store the raw subPath — the provider's getRemotePath() builds the full remote path
-    remoteBase = subPath;
-  } else {
-    const targetDir = resolveSafe(root, relDir);
-    if (!existsSync(targetDir)) {
-      mkdirSync(targetDir, { recursive: true });
+  // Resolve target directory
+  let targetDir: string;
+  if (relDir) {
+    const resolved = resolveVirtualPath(relDir);
+    if (!resolved) {
+      throw createError({ statusCode: 400, statusMessage: "Invalid destination path" });
     }
+    targetDir = resolved;
+
+    // Ensure mount if needed
+    const clean = relDir.replace(/\\/g, "/").replace(/^\/+/, "");
+    const firstSeg = clean.split("/")[0];
+    if (firstSeg !== "downloads") {
+      const cfg = getSmbConfigByName(firstSeg);
+      if (cfg) {
+        try { await ensureSmbMounted(cfg); } catch (err: any) {
+          throw createError({ statusCode: 500, statusMessage: `Cannot mount: ${err.message}` });
+        }
+      }
+    }
+  } else {
+    targetDir = root;
+  }
+
+  if (!existsSync(targetDir)) {
+    mkdirSync(targetDir, { recursive: true });
   }
 
   const uploaded: string[] = [];
@@ -56,45 +64,13 @@ export default defineEventHandler(async (event) => {
   for (const field of form) {
     if (!field.filename || !field.data) continue;
 
-    // Sanitize filename: strip path separators
     const safeName = field.filename.replace(/[/\\\\]/g, "_");
-
     try {
-      if (smbClient) {
-        // Build path relative to mount root — provider's getRemotePath() will prepend the mount path
-        const remotePath = remoteBase ? `${remoteBase}\\${safeName}` : safeName;
-        try {
-          const writable = await withTimeout(smbClient.createWriteStream(remotePath), 8000);
-          const readable = Readable.from([field.data]);
-          await pipeline(readable, writable);
-        } catch (err: any) {
-          // SMB2 may close the write stream before it finishes, producing
-          // STATUS_FILE_CLOSED even though the file was fully written.
-          // Check if the file exists remotely and treat as success if so.
-          try {
-            await withTimeout(smbClient.stat(remotePath), 8000);
-            // file exists — write succeeded despite the error
-          } catch {
-            throw err; // file doesn't exist, real failure
-          }
-        }
-        uploaded.push(safeName);
-      } else {
-        const dest = join(resolveSafe(root, relDir), safeName);
-        resolveSafe(root, dest.slice(root.length).replace(/^[/\\\\]/, ""));
-        writeFileSync(dest, field.data);
-        uploaded.push(safeName);
-      }
+      const dest = join(targetDir, safeName);
+      writeFileSync(dest, field.data);
+      uploaded.push(safeName);
     } catch (err: any) {
       errors.push(`${field.filename}: ${err.message}`);
-    }
-  }
-
-  if (smbClient) {
-    try {
-      smbClient.disconnect();
-    } catch {
-      /* ignore */
     }
   }
 

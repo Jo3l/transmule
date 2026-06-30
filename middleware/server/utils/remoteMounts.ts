@@ -1,187 +1,95 @@
 /**
- * Remote-mount utility helpers.
+ * Remote-mount configuration utilities.
  *
- * Persisted in data/remote-mounts.json (relative to CWD / NITRO_MOUNTS_DIR).
- * Provider-agnostic system supporting SMB, WebDAV, and future protocols.
+ * SMB/CIFS shares are configured via JSON (data/smb-mounts.json) and mounted
+ * on-demand at /mnt/<name> using the native Linux mount command.
+ *
+ * No JavaScript SMB client — all access goes through the kernel VFS after
+ * mounting.  The mounts are persistent until the user explicitly unmounts.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
 import {
-  IRemoteProvider,
-  RemoteMountConfig,
-  ProviderRegistry,
-} from "./remoteProvider";
+  readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, rmdirSync,
+} from "node:fs";
+import { join } from "node:path";
+import { execSync } from "node:child_process";
 
-export interface RemoteMount extends RemoteMountConfig {}
+// ── Types ────────────────────────────────────────────────────────────────────
 
-// Cache of active provider instances
-const providerCache = new Map<string, IRemoteProvider>();
-
-/**
- * Legacy SMB client factory for backward compatibility
- * @deprecated Use getProvider() instead
- */
-export function createSmbClient(mount: RemoteMount) {
-  const provider = getProvider(mount);
-  return provider;
+export interface SmbMountConfig {
+  id: string;
+  name: string;
+  host: string;
+  share: string;
+  /** Optional sub-path inside the share */
+  path?: string;
+  domain?: string;
+  username: string;
+  password: string;
+  readOnly: boolean;
 }
 
-function getMountsFilePath(): string {
+const MOUNT_ROOT = "/mnt";
+const MOUNTS_FILE = "smb-mounts.json";
+const MOUNT_TIMEOUT = 15000; // ms
+
+// ── Config file I/O ──────────────────────────────────────────────────────────
+
+function getConfigDir(): string {
   const base = process.env.NITRO_MOUNTS_DIR || join(process.cwd(), "data");
   if (!existsSync(base)) {
     mkdirSync(base, { recursive: true });
   }
-  return join(base, "remote-mounts.json");
+  return base;
 }
 
-export function loadMounts(): RemoteMount[] {
-  const file = getMountsFilePath();
+function getConfigPath(): string {
+  return join(getConfigDir(), MOUNTS_FILE);
+}
+
+export function loadSmbConfigs(): SmbMountConfig[] {
+  const file = getConfigPath();
   if (!existsSync(file)) return [];
   try {
-    const data = readFileSync(file, "utf-8");
-    return JSON.parse(data);
+    return JSON.parse(readFileSync(file, "utf-8"));
   } catch {
     return [];
   }
 }
 
-export function saveMounts(mounts: RemoteMount[]) {
-  const file = getMountsFilePath();
-  writeFileSync(file, JSON.stringify(mounts, null, 2));
+export function saveSmbConfigs(configs: SmbMountConfig[]): void {
+  const file = getConfigPath();
+  writeFileSync(file, JSON.stringify(configs, null, 2));
 }
 
-export function getMountById(id: string): RemoteMount | undefined {
-  return loadMounts().find((m) => m.id === id);
+export function getSmbConfigById(id: string): SmbMountConfig | undefined {
+  return loadSmbConfigs().find((c) => c.id === id);
 }
 
-export function getMountByName(name: string): RemoteMount | undefined {
-  return loadMounts().find((m) => m.name === name);
+export function getSmbConfigByName(name: string): SmbMountConfig | undefined {
+  return loadSmbConfigs().find((c) => c.name === name);
 }
+
+// ── Mount path helpers ───────────────────────────────────────────────────────
+
+export function getSmbMountPath(name: string): string {
+  return join(MOUNT_ROOT, name);
+}
+
+/** Escape commas in mount options (passwords etc.) */
+function escapeOption(s: string): string {
+  return s.replace(/,/g, "\\054");
+}
+
+// ── Mount / unmount ──────────────────────────────────────────────────────────
 
 /**
- * Get or create a provider instance for a mount
+ * Check whether a CIFS mount is currently active at /mnt/<name>.
  */
-export function getProvider(mount: RemoteMount): IRemoteProvider {
-  // Check cache
-  const cached = providerCache.get(mount.id);
-  if (cached) {
-    return cached;
-  }
-
-  // Create new provider
-  const provider = ProviderRegistry.createProvider(mount);
-  providerCache.set(mount.id, provider);
-  return provider;
-}
-
-/**
- * Clear provider from cache (e.g., on unmount)
- */
-export async function removeProvider(mountId: string): Promise<void> {
-  const provider = providerCache.get(mountId);
-  if (provider) {
-    try {
-      await provider.disconnect();
-    } catch {
-      /* ignore */
-    }
-    providerCache.delete(mountId);
-  }
-}
-
-/**
- * Wrap an promise with a timeout (in ms).
- */
-export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Connection timed out")), ms),
-    ),
-  ]);
-}
-
-/**
- * Sanitize a remote sub-path to prevent path traversal.
- * Removes empty segments, '.' and '..' so crafted paths can't escape the share.
- */
-export function sanitizeRemotePath(raw: string, isWebdav = false): string {
-  if (isWebdav) {
-    return raw
-      .replace(/\\/g, "/")
-      .split("/")
-      .map((s) => s.trim())
-      .filter((s) => s && s !== "." && s !== "..")
-      .join("/");
-  }
-  
-  return raw
-    .replace(/\//g, "\\")
-    .split("\\")
-    .map((s) => s.trim())
-    .filter((s) => s && s !== "." && s !== "..")
-    .join("\\");
-}
-
-/**
- * Build the absolute remote path for a mount + subPath.
- */
-export function buildRemotePath(mount: RemoteMount, subPath: string): string {
-  const isWebdav = mount.type === "webdav";
-  const base = mount.path ? sanitizeRemotePath(mount.path, isWebdav) : "";
-  const cleanSub = sanitizeRemotePath(subPath, isWebdav);
-  
-  if (isWebdav) {
-    if (base && cleanSub) return `${base}/${cleanSub}`;
-    return base || cleanSub;
-  } else {
-    // SMB
-    if (base && cleanSub) return `${base}\\${cleanSub}`;
-    return base || cleanSub;
-  }
-}
-
-/**
- * Given a relative path inside downloads, check if it starts with a mount name.
- * Returns { mount, relativePath } if inside a mount, otherwise null.
- */
-export function resolveMountPath(
-  relPath: string,
-): { mount: RemoteMount; subPath: string } | null {
-  const mounts = loadMounts();
-  const clean = relPath.replace(/\\/g, "/").replace(/^\/+/, "");
-  if (!clean) return null;
-  const firstSeg = clean.split("/")[0];
-  const mount = mounts.find((m) => m.name === firstSeg);
-  if (!mount) return null;
-  const subPath = sanitizeRemotePath(clean.slice(firstSeg.length), mount.type === "webdav");
-  return { mount, subPath };
-}
-
-/**
- * Returns true if the given relative path is exactly a mount name (root of mount).
- */
-export function isMountRoot(relPath: string): boolean {
-  const clean = relPath.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/$/, "");
-  if (!clean || clean.includes("/")) return false;
-  return !!getMountByName(clean);
-}
-
-/**
- * Get supported provider types
- */
-export function getSupportedTypes(): string[] {
-  return ProviderRegistry.getSupportedTypes();
-}
-
-/**
- * Test connection to a remote mount
- */
-export async function testConnection(mount: RemoteMount): Promise<boolean> {
-  const provider = getProvider(mount);
+export function isSmbMounted(name: string): boolean {
+  const mountPath = getSmbMountPath(name);
   try {
-    await provider.connect();
+    execSync('mountpoint -q "' + mountPath + '"', { stdio: "ignore", timeout: 3000 });
     return true;
   } catch {
     return false;
@@ -189,54 +97,222 @@ export async function testConnection(mount: RemoteMount): Promise<boolean> {
 }
 
 /**
- * Legacy functions for backward compatibility
- * @deprecated
+ * Mount an SMB share.  Idempotent — does nothing if already mounted.
+ * Throws on failure.
  */
-export function sanitizeSmbPath(raw: string): string {
-  return sanitizeRemotePath(raw, false);
-}
+export async function mountSmbShare(config: SmbMountConfig): Promise<void> {
+  const mountPath = getSmbMountPath(config.name);
 
-export async function smbRmRecursive(client: any, remotePath: string): Promise<void> {
-  const stats = await client.stat(remotePath).catch(() => null);
-  if (!stats) return;
+  if (isSmbMounted(config.name)) return;
 
-  const isDir = typeof stats.isDirectory === "function" ? stats.isDirectory() : stats.isDirectory === true;
+  // Create mount directory if it doesn't exist
+  if (!existsSync(mountPath)) {
+    mkdirSync(mountPath, { recursive: true });
+  }
 
-  if (isDir) {
-    const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
-    for (const child of children) {
-      const childPath = remotePath + "/" + child.name;
-      await smbRmRecursive(client, childPath);
-    }
-    await client.rmdir(remotePath);
+  const device = '//' + config.host + '/' + config.share;
+  const options = [
+    'username=' + escapeOption(config.username),
+    'password=' + escapeOption(config.password),
+    'iocharset=utf8',
+    'file_mode=0755',
+    'dir_mode=0755',
+  ];
+
+  if (config.domain) {
+    options.push('domain=' + escapeOption(config.domain));
+  }
+
+  if (config.readOnly) {
+    options.push("ro");
   } else {
-    await client.rm(remotePath);
+    options.push("rw");
+  }
 
+  const opts = options.join(",");
+
+  try {
+    execSync(
+      'mount -t cifs "' + device + '" "' + mountPath + '" -o "' + opts + '"',
+      { timeout: MOUNT_TIMEOUT, stdio: "pipe" },
+    );
+    console.log('[smb] Mounted ' + device + ' at ' + mountPath);
+  } catch (err: any) {
+    const stderr = err.stderr?.toString() || err.message;
+    console.error('[smb] Mount failed for ' + device + ': ' + stderr);
+    throw new Error('SMB mount failed: ' + stderr);
   }
 }
 
-export async function smbMeasureBytes(client: any, remotePath: string): Promise<number> {
-  const st = await client.stat(remotePath).catch(() => null);
-  if (!st) return 0;
+/**
+ * Unmount an SMB share.
+ */
+export function unmountSmbShare(config: SmbMountConfig): void {
+  const mountPath = getSmbMountPath(config.name);
 
-  const isDir = typeof st.isDirectory === "function" ? st.isDirectory() : st.isDirectory === true;
+  if (!isSmbMounted(config.name)) {
+    try {
+      if (existsSync(mountPath) && readdirSync(mountPath).length === 0) {
+        rmdirSync(mountPath);
+      }
+    } catch { /* ignore */ }
+    return;
+  }
 
-  if (isDir) {
-    const children = await client.readdir(remotePath, { stats: true }).catch(() => []);
-    let total = 0;
-    for (const child of children) {
-      total += await smbMeasureBytes(client, remotePath + "/" + child.name);
+  try {
+    execSync('umount "' + mountPath + '"', { timeout: 10000, stdio: "pipe" });
+    console.log('[smb] Unmounted ' + mountPath);
+  } catch (err: any) {
+    const stderr = err.stderr?.toString() || err.message;
+    console.error('[smb] Unmount failed for ' + mountPath + ': ' + stderr);
+    try {
+      execSync('umount -l "' + mountPath + '"', { timeout: 5000, stdio: "pipe" });
+    } catch { /* ignore */ }
+  }
+
+  try {
+    if (existsSync(mountPath) && readdirSync(mountPath).length === 0) {
+      rmdirSync(mountPath);
     }
-    return total;
-  }
-  return st.size || 0;
+  } catch { /* ignore */ }
 }
 
-export async function smbEnsureDir(client: any, remotePath: string): Promise<void> {
-  const parts = remotePath.split("/").filter(Boolean);
-  let current = "";
-  for (const part of parts) {
-    current = current ? `${current}/${part}` : part;
-    await client.mkdir(current).catch(() => {});
+/**
+ * Ensure a share is mounted, mounting it if needed.
+ */
+export async function ensureSmbMounted(config: SmbMountConfig): Promise<void> {
+  if (!isSmbMounted(config.name)) {
+    await mountSmbShare(config);
   }
+}
+
+// ── Path resolution ──────────────────────────────────────────────────────────
+
+/**
+ * Resolve a relative virtual path to an absolute filesystem path.
+ *
+ * Virtual path layout:
+ *   ""                      → virtual root (no real path)
+ *   "downloads"             → NITRO_DOWNLOADS_DIR
+ *   "downloads/sub/dir"     → NITRO_DOWNLOADS_DIR/sub/dir
+ *   "<mount-name>"          → /mnt/<mount-name>  (auto-mounts)
+ *   "<mount-name>/sub"      → /mnt/<mount-name>/sub
+ *
+ * Returns null for virtual root.
+ */
+export function resolveVirtualPath(relPath: string): string | null {
+  const clean = decodeURIComponent(String(relPath || ""))
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/$/, "");
+
+  if (!clean) return null;
+
+  const slashIdx = clean.indexOf("/");
+  const first = slashIdx === -1 ? clean : clean.slice(0, slashIdx);
+  const rest = slashIdx === -1 ? "" : clean.slice(slashIdx + 1);
+
+  if (first === "downloads") {
+    const root = internalGetDownloadsRoot();
+    return rest ? join(root, rest) : root;
+  }
+
+  // Check if it's a mount name
+  const cfg = getSmbConfigByName(first);
+  if (cfg) {
+    const base = getSmbMountPath(first);
+    return rest ? join(base, rest) : base;
+  }
+
+  // Fallback: treat as relative to downloads root
+  const root = internalGetDownloadsRoot();
+  return join(root, clean);
+}
+
+/**
+ * Resolve a path that may be inside a mount, ensuring the mount is active.
+ * Returns the real filesystem path, or null if not under a known mount.
+ */
+export async function resolveWithMount(relPath: string): Promise<string | null> {
+  const clean = decodeURIComponent(String(relPath || ""))
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/$/, "");
+
+  if (!clean) return null;
+
+  const slashIdx = clean.indexOf("/");
+  const first = slashIdx === -1 ? clean : clean.slice(0, slashIdx);
+
+  const cfg = getSmbConfigByName(first);
+  if (!cfg) return null;
+
+  await ensureSmbMounted(cfg);
+  const rest = slashIdx === -1 ? "" : clean.slice(slashIdx + 1);
+  const base = getSmbMountPath(first);
+  return rest ? join(base, rest) : base;
+}
+
+// ── Downloads root (internal) ──────────────────────────────────────────────
+
+function getDownloadsDir(): string {
+  return (process.env.NITRO_DOWNLOADS_DIR || "").trim();
+}
+
+/** Internal use — callers should use getDownloadsRoot from ~/utils/files */
+export function internalGetDownloadsRoot(): string {
+  const dir = getDownloadsDir();
+  if (!dir) {
+    throw createError({
+      statusCode: 503,
+      statusMessage: "Downloads directory not configured (set NITRO_DOWNLOADS_DIR)",
+    });
+  }
+  return dir;
+}
+
+// ── Virtual root listing ─────────────────────────────────────────────────────
+
+export interface VirtualRootEntry {
+  name: string;
+  type: "directory";
+  isRemoteMount?: boolean;
+  mountConfig?: SmbMountConfig;
+}
+
+export function getVirtualRootEntries(): VirtualRootEntry[] {
+  const entries: VirtualRootEntry[] = [
+    { name: "downloads", type: "directory", isRemoteMount: false },
+  ];
+
+  for (const cfg of loadSmbConfigs()) {
+    entries.push({
+      name: cfg.name,
+      type: "directory",
+      isRemoteMount: true,
+      mountConfig: cfg,
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (a.name === "downloads") return -1;
+    if (b.name === "downloads") return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  return entries;
+}
+
+// ── Legacy compatibility stubs ──────────────────────────────────────────────
+
+export function resolveMountPath(_relPath: string): null {
+  return null;
+}
+
+export function isMountRoot(_relPath: string): boolean {
+  return false;
+}
+
+export function loadMounts(): any[] {
+  return loadSmbConfigs();
 }

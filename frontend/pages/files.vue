@@ -74,12 +74,10 @@
               <span class="mdi mdi-chevron-down ml-1" />
             </SButton>
             <div v-if="showRemoteDropdown" class="fm-dropdown-menu">
-              <button class="fm-dropdown-item" @click="openRemoteModal('smb')">
+              <button class="fm-dropdown-item" @click="openRemoteModal">
                 <span class="mdi mdi-server-network mr-2" />{{ $t("fileManager.smb") }}
               </button>
-              <button class="fm-dropdown-item" @click="openRemoteModal('webdav')">
-                <span class="mdi mdi-cloud mr-2" />{{ $t("fileManager.webdav") }}
-              </button>
+
             </div>
           </div>
 
@@ -648,15 +646,7 @@
       </div>
     </template>
     
-    <!-- WebDAV fields -->
-    <template v-if="remoteForm.type === 'webdav'">
-      <SFormItem :label="$t('fileManager.url')">
-        <SInput v-model="remoteForm.url" placeholder="https://example.com/dav" />
-      </SFormItem>
-      <SFormItem :label="$t('fileManager.remotePath')">
-        <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
-      </SFormItem>
-    </template>
+
     <div class="flex-row gap-md">
       <SFormItem :label="$t('fileManager.username')" class="flex-1" style="margin-bottom:0">
         <SInput v-model="remoteForm.username" :placeholder="$t('fileManager.username')" />
@@ -722,10 +712,9 @@ interface FileItem {
 interface RemoteMount {
   id: string;
   name: string;
-  type: "smb" | "webdav";
-  host?: string;      // SMB
-  share?: string;     // SMB
-  url?: string;       // WebDAV
+  type: "smb";
+  host?: string;
+  share?: string;
   path?: string;
   domain?: string;    // SMB
   username: string;
@@ -1025,7 +1014,7 @@ const showRemoteDropdown = ref(false);
 // ── Remote mount dialog state ──────────────────────────────────────────────
 const showRemoteDialog = ref(false);
 const remoteForm = reactive({
-  type: "smb" as "smb" | "webdav",
+  type: "smb" as "smb",
   name: "",
   host: "",
   share: "",
@@ -1039,7 +1028,6 @@ const remoteForm = reactive({
 
 const protocolOptions = [
   { label: "SMB/CIFS", value: "smb" },
-  { label: "WebDAV", value: "webdav" },
 ];
 const validating = ref(false);
 
@@ -2063,13 +2051,12 @@ async function loadRemoteMounts() {
   }
 }
 
-function openRemoteModal(type: "smb" | "webdav") {
+function openRemoteModal() {
   showRemoteDropdown.value = false;
-  remoteForm.type = type;
+  remoteForm.type = "smb";
   remoteForm.name = "";
   remoteForm.host = "";
   remoteForm.share = "";
-  remoteForm.url = "";
   remoteForm.path = "";
   remoteForm.domain = "";
   remoteForm.username = "";
@@ -2088,15 +2075,10 @@ async function validateRemote() {
       password: remoteForm.password,
     };
     
-    if (remoteForm.type === "smb") {
-      body.host = remoteForm.host.trim();
-      body.share = remoteForm.share.trim();
-      body.path = remoteForm.path.trim() || undefined;
-      body.domain = remoteForm.domain.trim() || undefined;
-    } else {
-      body.url = remoteForm.url.trim();
-      body.path = remoteForm.path.trim() || undefined;
-    }
+    body.host = remoteForm.host.trim();
+    body.share = remoteForm.share.trim();
+    body.path = remoteForm.path.trim() || undefined;
+    body.domain = remoteForm.domain.trim() || undefined;
     
     // Create temporarily to validate
     const res = await apiFetch<{ id: string; name: string }>("/api/files/remote-mounts", {
@@ -2130,15 +2112,11 @@ async function doCreateRemote() {
     return;
   }
   
-  if (remoteForm.type === "smb" && (!remoteForm.host.trim() || !remoteForm.share.trim())) {
+  if (!remoteForm.host.trim() || !remoteForm.share.trim()) {
     showToast(t("fileManager.missingSmbFields"), "error");
     return;
   }
-  
-  if (remoteForm.type === "webdav" && !remoteForm.url.trim()) {
-    showToast(t("fileManager.missingWebdavFields"), "error");
-    return;
-  }
+
   
   working.value = true;
   try {
@@ -2149,15 +2127,10 @@ async function doCreateRemote() {
       password: remoteForm.password,
     };
     
-    if (remoteForm.type === "smb") {
-      body.host = remoteForm.host.trim();
-      body.share = remoteForm.share.trim();
-      body.path = remoteForm.path.trim() || undefined;
-      body.domain = remoteForm.domain.trim() || undefined;
-    } else {
-      body.url = remoteForm.url.trim();
-      body.path = remoteForm.path.trim() || undefined;
-    }
+    body.host = remoteForm.host.trim();
+    body.share = remoteForm.share.trim();
+    body.path = remoteForm.path.trim() || undefined;
+    body.domain = remoteForm.domain.trim() || undefined;
     body.readOnly = remoteForm.readOnly;
 
     await apiFetch("/api/files/remote-mounts", {
