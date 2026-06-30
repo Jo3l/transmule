@@ -376,9 +376,3 @@ export function resolveVirtualPath(relPath: string): ResolvedPath | null {
   const root = getDownloadsRoot();
   return { type: "local", absPath: join(root, clean) };
 }
-
-// ── Legacy stubs ─────────────────────────────────────────────────────────────
-
-export function resolveMountPath(_relPath: string): null { return null; }
-export function isMountRoot(_relPath: string): boolean { return false; }
-export function loadMounts(): any[] { return loadSmbConfigs(); }
