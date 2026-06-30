@@ -17,7 +17,6 @@ import { pipeline } from "node:stream/promises";
 import { join, basename, dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
-import type SMB2 from "@marsaud/smb2";
 import { smbEnsureDir } from "~/utils/remoteMounts";
 
 defineRouteMeta({
@@ -165,7 +164,7 @@ async function runNextTransfer(): Promise<void> {
     const abortCtrl = new AbortController();
     globalThis.__transferAbortControllers.set(nextId, abortCtrl);
 
-    const clients: SMB2[] = [];
+    const clients: any[] = [];
 
     try {
       job.bytesTotal = await measureBytes(job.sources).catch(() => 0);
@@ -336,7 +335,7 @@ async function copyAnyPath(
     }
 
     // Race pipeline against a timeout (especially important for SMB read streams
-    // which can stall with @marsaud/smb2). Same pattern as copyToSmbChunked.
+    // which could stall with older SMB clients). Same pattern as copyToSmbChunked.
     const PIPE_TIMEOUT = 300000; // 5 min
     const pipeTask = pipeline(readable as any, writable as any, { signal } as any);
     const timeoutTask = new Promise<never>((_, reject) => {
@@ -398,69 +397,45 @@ async function copyToSmbChunked(
     // File may not exist — that's fine
   }
 
-  // ── Chunked SMB2 write approach ──────────────────────────────────────
-  // Uses low-level SMB2 open/write/close commands instead of the broken
-  // createWriteStream. Accumulates chunks into 4MB batches and writes
-  // each batch via SMB2 WRITE, tracking progress per-batch.
+  // ── Buffered writeFile approach ────────────────────────────
+  // Buffers entire source in memory then writes via smb3-client writeFile.
+  // Memory: reads the entire source into a buffer. For a 7GB file this
+  // uses ~7GB RAM. Acceptable on typical production servers with 16GB+
+  // containers. For files >4GB consider increasing container memory.
   //
-  // Memory: ~4MB per batch + overhead, regardless of file size.
-  //
-  const fileHandle = await withTimeout(
-    dest.client.openSmb(dest.remotePath, "wx"),
-    SMB2_OPEN_CLOSE_TIMEOUT,
-  );
-
-  let smbOffset = 0;
+  const chunks: Buffer[] = [];
+  readable.on("data", (chunk: Buffer) => {
+    chunks.push(chunk);
+    job.bytesDone += chunk.length;
+  });
 
   try {
-    // Accumulate stream chunks into batches and write each batch
-    let batchChunks: Buffer[] = [];
-    let batchBytes = 0;
-
-    for await (const chunk of readable) {
-      if (signal?.aborted) {
-        throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
+    await new Promise<void>((resolve, reject) => {
+      readable.on("end", resolve);
+      readable.on("error", reject);
+      if (signal) {
+        if (signal.aborted) {
+          reject(Object.assign(new Error("Cancelled"), { name: "AbortError" }));
+          return;
+        }
+        signal.addEventListener("abort", () => {
+          readable.destroy();
+          reject(Object.assign(new Error("Cancelled"), { name: "AbortError" }));
+        });
       }
-
-      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as any);
-      batchChunks.push(buf);
-      batchBytes += buf.length;
-
-      // Write full batches as they fill up
-      if (batchBytes >= SMB2_BATCH_SIZE) {
-        const buffer = Buffer.concat(batchChunks);
-        await withTimeout(
-          dest.client.writeSmb(fileHandle, buffer, null, buffer.length, smbOffset),
-          SMB2_CHUNK_TIMEOUT,
-        );
-        smbOffset += buffer.length;
-        job.bytesDone = smbOffset;
-        batchChunks = [];
-        batchBytes = 0;
-      }
-    }
-
-    // Write any remaining partial batch
-    if (batchBytes > 0) {
-      const buffer = Buffer.concat(batchChunks);
-      await withTimeout(
-        dest.client.writeSmb(fileHandle, buffer, null, buffer.length, smbOffset),
-        SMB2_CHUNK_TIMEOUT,
-      );
-      smbOffset += buffer.length;
-      job.bytesDone = smbOffset;
-    }
-
-    // Close the file handle
-    await withTimeout(dest.client.closeSmb(fileHandle), SMB2_OPEN_CLOSE_TIMEOUT);
-  } catch (err) {
-    // Cleanup on error: fire-and-forget close (don't await — it can
-    // hang if the SMB connection is stuck, which blocks the error
-    // propagation and leaves the job stuck at "running" forever).
-    dest.client.closeSmb(fileHandle).catch(() => {});
+    });
+  } catch (err: any) {
     readable.destroy?.();
     throw err;
   }
+
+  const buffer = Buffer.concat(chunks);
+
+  // Write via SMB writeFile (concurrent, credit-aware)
+  await withTimeout(
+    dest.client.writeFile(dest.remotePath, buffer),
+    600000, // 10 min for very large files
+  );
 }
 
 async function isDirectory(info: PathInfo): Promise<boolean> {
@@ -511,7 +486,7 @@ async function runTransfer(
   destRel: string,
   mode: "move" | "copy",
   signal?: AbortSignal,
-  _clients?: SMB2[],
+  _clients?: any[],
 ) {
   const job = globalThis.__transferJobs.get(jobId);
   if (!job) return;
