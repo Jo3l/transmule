@@ -220,7 +220,7 @@ export class SmbProvider implements IRemoteProvider {
     // smb3-client writeFile handles create/overwrite internally
     await withTimeout(
       (this.client! as any).writeFile(remotePath, data),
-      300000,
+      1800000, // 30 min for very large files (>10GB)
     );
   }
 
