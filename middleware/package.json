@@ -7,7 +7,8 @@
     "dev": "nitropack dev",
     "build": "nitropack build",
     "preview": "node .output/server/index.mjs",
-    "prepare": "nitropack prepare"
+    "prepare": "nitropack prepare",
+    "postinstall": "node apply-patches.mjs"
   },
   "dependencies": {
     "amule-ec-client": "^0.5.2",
