@@ -41,7 +41,7 @@ FROM mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm
 WORKDIR /app
 
 RUN apt-get update && \
-  apt-get install -y --no-install-recommends nginx supervisor unar zip tar ca-certificates cifs-utils && \
+  apt-get install -y --no-install-recommends nginx supervisor unar zip tar ca-certificates smbclient && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /var/log/supervisor /var/log/nginx /run/nginx /app/data && \
     chmod 777 /app/data
