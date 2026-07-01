@@ -155,5 +155,7 @@ export function useServiceGuard() {
   const pyloadRunning = computed(
     () => !_loaded.value || _services.value === null || _services.value.pyload.running,
   );
-  return { amuleRunning, transmissionRunning, pyloadRunning };
+  // slskd is not a Docker-managed service — always assume running
+  const slskdRunning = computed(() => true);
+  return { amuleRunning, transmissionRunning, pyloadRunning, slskdRunning };
 }

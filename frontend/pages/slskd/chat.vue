@@ -86,10 +86,19 @@
             <div class="room-users-header">
               <span class="is-size-7 has-text-grey">{{ $t("slskd.roomUsers", "Usuarios") }}</span>
               <span class="is-size-7 has-text-grey">({{ roomUsers[tab.id]?.length ?? 0 }})</span>
+              <button
+                class="room-user-sort-btn"
+                :title="$t('slskd.sortByFiles', 'Ordenar por archivos')"
+                @click="cycleRoomUserSort(tab.id)"
+              >
+                <span class="mdi mdi-folder-multiple" />
+                <span v-if="(roomUserSort[tab.id] || '') === 'files-desc'" class="mdi mdi-chevron-down sort-arrow" />
+                <span v-else-if="(roomUserSort[tab.id] || '') === 'files-asc'" class="mdi mdi-chevron-up sort-arrow" />
+              </button>
             </div>
             <div class="room-users-list">
               <div
-                v-for="user in roomUsers[tab.id] ?? []"
+                v-for="user in getSortedRoomUsers(tab.id)"
                 :key="user.username ?? user"
                 class="room-user-item"
                 :title="`${user.username} · ${humanSpeed(user.averageSpeed)}`"
@@ -147,11 +156,34 @@
               <SInput
                 v-model="messageInput"
                 :placeholder="$t('slskd.messagePlaceholder', 'Escribe un mensaje...')"
-                @keyup.enter="sendRoomMessage(tab.id)"
+                @keyup.enter="sendRoomMessage(tab.label)"
               />
-              <SButton variant="primary" size="sm" @click="sendRoomMessage(tab.id)">
+              <button class="emoji-btn" @click.stop="toggleEmojiPicker" :title="$t('slskd.emoji', 'Emojis')">
+                <span class="mdi mdi-emoticon-happy-outline" />
+              </button>
+              <SButton variant="primary" size="sm" @click="sendRoomMessage(tab.label)">
                 <span class="mdi mdi-send" />
               </SButton>
+              <!-- Emoji picker popup -->
+              <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
+                <div class="emoji-categories">
+                  <button
+                    v-for="(icon, cat) in EMOJI_CATEGORIES"
+                    :key="cat"
+                    class="emoji-cat-btn"
+                    :class="{ active: emojiCategory === cat }"
+                    @click="emojiCategory = cat"
+                  >{{ icon }}</button>
+                </div>
+                <div class="emoji-grid">
+                  <button
+                    v-for="emoji in EMOJI_LIST[emojiCategory]"
+                    :key="emoji"
+                    class="emoji-item"
+                    @click="insertEmoji(emoji)"
+                  >{{ emoji }}</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -269,9 +301,32 @@
                 :placeholder="$t('slskd.messagePlaceholder', 'Escribe un mensaje...')"
                 @keyup.enter="sendUserMessage(tab.id, tab.label)"
               />
+              <button class="emoji-btn" @click.stop="toggleEmojiPicker" :title="$t('slskd.emoji', 'Emojis')">
+                <span class="mdi mdi-emoticon-happy-outline" />
+              </button>
               <SButton variant="primary" size="sm" @click="sendUserMessage(tab.id, tab.label)">
                 <span class="mdi mdi-send" />
               </SButton>
+              <!-- Emoji picker popup -->
+              <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
+                <div class="emoji-categories">
+                  <button
+                    v-for="(icon, cat) in EMOJI_CATEGORIES"
+                    :key="cat"
+                    class="emoji-cat-btn"
+                    :class="{ active: emojiCategory === cat }"
+                    @click="emojiCategory = cat"
+                  >{{ icon }}</button>
+                </div>
+                <div class="emoji-grid">
+                  <button
+                    v-for="emoji in EMOJI_LIST[emojiCategory]"
+                    :key="emoji"
+                    class="emoji-item"
+                    @click="insertEmoji(emoji)"
+                  >{{ emoji }}</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -462,6 +517,7 @@ function nextTabId(type: string, name: string): string {
 // ── Data stores ──────────────────────────────────────────────────────────
 const roomMessages = ref<Record<string, any[]>>({});
 const roomUsers = ref<Record<string, any[]>>({});
+const roomUserSort = ref<Record<string, string>>({}); // "" | "files-desc" | "files-asc"
 const userMessages = ref<Record<string, any[]>>({});
 const userInfo = ref<Record<string, any>>({});
 const loadingUserInfo = ref<Record<string, boolean>>({});
@@ -471,6 +527,71 @@ const browseQuery = ref<Record<string, string>>({});
 const loadingBrowse = ref<Record<string, boolean>>({});
 
 const messageInput = ref("");
+const showEmojiPicker = ref(false);
+const emojiCategory = ref("smileys");
+
+const EMOJI_CATEGORIES: Record<string, string> = {
+  smileys: "😀",
+  people: "👋",
+  animals: "🐵",
+  food: "🍎",
+  travel: "🚗",
+  objects: "💡",
+  symbols: "❤️",
+  flags: "🏁",
+};
+
+const EMOJI_LIST: Record<string, string[]> = {
+  smileys: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🥴","😵","🤯","🥳","🥺","😢","😭","😤","😠","😡","🤬","💀","☠️","💩","🤡","👹","👺","👻","👽","👾","🤖","😺","😸","😹","😻","😼","😽","🙀","😿","😾","💋","💌","💘","💝","💖","💗","💓","💞","💕","💟","❣️","💔","❤️‍🔥","❤️‍🩹","💯","💥","💫","💦","💨","🕳️"],
+  people: ["👋","🤚","🖐️","✋","🖖","👌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","💪","🦵","🦶","👂","🦻","👃","🧠","🫀","🫁","👀","👁️","👅","👄","👶","🧒","👦","👧","🧑","👱","👨","🧔","👩","🧓","👴","👵","🙍","🙎","🙅","🙆","💁","🙋","🧏","🙇","🤦","🤷","👮","🕵️","💂","🥷","👷","🤴","👸","👳","👲","🧕","🤵","👰","🤰","🤱","👼","🎅","🤶","🦸","🦹","🧙","🧚","🧛","🧜","🧝","🧞","🧟","💆","💇","🚶","🧍","🧎","🏃","💃","🕺","🕴️","👯","🧖","🧗","🤸","⛹️","🏋️","🚴","🚵","🤼","🤽","🤾","🤺","⛷️","🏂","🏄","🚣","🏊","🤿","🧘"],
+  animals: ["🐵","🐒","🦍","🦧","🐶","🐕","🦮","🐩","🐺","🦊","🦝","🐱","🐈","🦁","🐯","🐅","🐆","🐴","🐎","🦄","🦓","🦌","🐮","🐂","🐃","🐄","🐷","🐖","🐗","🐽","🐏","🐑","🐐","🐪","🐫","🦙","🦒","🐘","🦏","🦛","🐭","🐁","🐀","🐹","🐰","🐇","🐿️","🦔","🦇","🐻","🐨","🐼","🦥","🦦","🦨","🦘","🦡","🐾","🦃","🐔","🐓","🐣","🐤","🐥","🐦","🐧","🕊️","🦅","🦆","🦢","🦉","🦩","🦚","🦜","🐸","🐊","🐢","🦎","🐍","🐲","🐉","🦕","🦖","🐳","🐋","🐬","🐟","🐠","🐡","🦈","🐙","🐚","🐌","🦋","🐛","🐜","🐝","🐞","🦗","🕷️","🦂","🦟","🦠"],
+  food: ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🫑","🌽","🥕","🧄","🧅","🥔","🍠","🥐","🍞","🥖","🥨","🧀","🥚","🍳","🧈","🥞","🧇","🥓","🥩","🍗","🍖","🦴","🌭","🍔","🍟","🍕","🫓","🥪","🥙","🧆","🌮","🌯","🫔","🥗","🥘","🫕","🥫","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🦪","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🧁","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","🍼","☕","🍵","🧃","🥤","🍶","🍺","🍻","🥂","🍷","🥃","🍸","🍹","🧉","🍾","🧊","🥄","🍴","🍽️","🥣","🥡","🥢","🧂"],
+  travel: ["🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚐","🚚","🚛","🚜","🏍️","🛵","🚲","🛴","🛹","🚏","🛣️","🛤️","⛽","🚨","🚥","🚦","🛑","🚧","⚓","⛵","🛶","🚤","🛳️","⛴️","🛥️","🚢","✈️","🛩️","🛫","🛬","💺","🚁","🚟","🚠","🚡","🛰️","🚀","🛸","🌍","🌎","🌏","🗺️","🏔️","⛰️","🌋","🗻","🏕️","🏖️","🏜️","🏝️","🏞️","🏟️","🏛️","🏗️","🏘️","🏚️","🏠","🏡","🏢","🏣","🏤","🏥","🏦","🏨","🏩","🏪","🏫","🏬","🏭","🏯","🏰","💒","🗼","🗽","⛪","🕌","🛕","🕍","⛩️","🕋","⛲","⛺","🌁","🌃","🏙️","🌄","🌅","🌆","🌇","🌉","♨️","🎠","🎡","🎢","💈","🎪","🚂","🚃","🚄","🚅","🚆","🚇","🚈","🚉","🚊","🚝","🚞","🚋","🚌","🚍","🚎","🚐","🚑","🚒","🚓","🚔"],
+  objects: ["⌚","📱","💻","⌨️","🖥️","🖨️","🖱️","🖲️","🕹️","🗜️","💽","💾","💿","📀","📼","📷","📸","📹","🎥","📽️","🎞️","📞","☎️","📟","📠","📺","📻","🎙️","🎚️","🎛️","🧭","⏱️","⏲️","⏰","🕰️","⌛","📡","🔋","🔌","💡","🔦","🕯️","🧯","🗑️","🛢️","💸","💵","💴","💶","💷","💰","💳","💎","⚖️","🧰","🔧","🔨","⚒️","🛠️","⛏️","🔩","⚙️","🧱","⛓️","🧲","🔫","💣","🧨","🪓","🔪","🗡️","⚔️","🛡️","🚬","⚰️","⚱️","🏺","🔮","📿","🧿","💈","⚗️","🔭","🔬","🕳️","💊","💉","🩸","🩹","🩺","🌡️","🧹","🧺","🧻","🚽","🚰","🚿","🛁","🛀","🧼","🪥","🪒","🧽","🧴","🛎️","🔑","🗝️","🚪","🪑","🛋️","🛏️","🛌","🧸","🖼️","🛍️","🛒","🎁","🎈","🎏","🎀","🎊","🎉","🎎","🏮","🎐","🧧","✉️","📩","📨","📧","💌","📥","📤","📦","🏷️","📪","📫","📬","📭","📮","📯","📜","📃","📄","📑","🧾","📊","📈","📉","🗒️","🗓️","📆","📅","🗑️","📇","🗃️","🗳️","🗄️","📋","📁","📂","🗂️","🗞️","📰","📓","📔","📒","📕","📗","📘","📙","📚","📖","🔖","🧷","🔗","📎","🖇️","📐","📏","🧮","📌","📍","✂️","🖊️","🖋️","✒️","🖌️","🖍️","📝","✏️","🔍","🔎","🔏","🔐","🔒","🔓"],
+  symbols: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️","✝️","☪️","🕉️","☸️","✡️","🔯","🕎","☯️","☦️","🛐","⛎","♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓","🆔","⚛️","🉑","☢️","☣️","📴","📳","🈶","🈚","🈸","🈺","🈷️","✴️","🆚","💮","🉐","㊙️","㊗️","🈴","🈵","🈹","🈲","🅰️","🅱️","🆎","🆑","🅾️","🆘","❌","⭕","🛑","⛔","📛","🚫","💯","💢","♨️","🚷","🚯","🚳","🚱","🔞","📵","🚭","❗","❕","❓","❔","‼️","⁉️","🔅","🔆","〽️","⚠️","🚸","🔱","⚜️","🔰","♻️","✅","🈯","💹","❇️","✳️","❎","🌐","💠","Ⓜ️","🌀","💤","🏧","🚾","♿","🅿️","🈳","🈂️","🛂","🛃","🛄","🛅","🚹","🚺","🚼","🚻","🚮","🎦","📶","🈁","🔣","ℹ️","🔤","🔡","🔠","🆖","🆗","🆙","🆒","🆕","🆓","0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🔢","#️⃣","*️⃣","⏏️","▶️","⏸️","⏯️","⏹️","⏺️","⏭️","⏮️","⏩","⏪","⏫","⏬","◀️","🔼","🔽","➡️","⬅️","⬆️","⬇️","↗️","↘️","↙️","↖️","↕️","↔️","↪️","↩️","⤴️","⤵️","🔀","🔁","🔂","🔄","🔃","🎵","🎶","➕","➖","➗","✖️","♾️","💲","💱","™️","©️","®️","〰️","➰","➿","🔚","🔙","🔛","🔝","🔜","✔️","☑️","🔘","🔴","🟠","🟡","🟢","🔵","🟣","⚫","⚪","🟤","🔺","🔻","🔸","🔹","🔶","🔷","🔳","🔲","▪️","▫️","◾","◽","◼️","◻️","🟥","🟧","🟨","🟩","🟦","🟪","⬛","⬜","🟫","🔈","🔇","🔉","🔊","🔔","🔕","📣","📢","👁️‍🗨️","💬","💭","🗯️","♠️","♣️","♥️","♦️","🃏","🎴","🀄","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚","🕛","🕜","🕝","🕞","🕟","🕠","🕡","🕢","🕣","🕤","🕥","🕦","🕧"],
+  flags: ["🏳️","🏴","🏁","🚩","🏳️‍🌈","🏳️‍⚧️","🇺🇳","🇦🇫","🇦🇽","🇦🇱","🇩🇿","🇦🇸","🇦🇩","🇦🇴","🇦🇮","🇦🇶","🇦🇬","🇦🇷","🇦🇲","🇦🇼","🇦🇺","🇦🇹","🇦🇿","🇧🇸","🇧🇭","🇧🇩","🇧🇧","🇧🇾","🇧🇪","🇧🇿","🇧🇯","🇧🇲","🇧🇹","🇧🇴","🇧🇦","🇧🇼","🇧🇷","🇮🇴","🇻🇬","🇧🇳","🇧🇬","🇧🇫","🇧🇮","🇰🇭","🇨🇲","🇨🇦","🇮🇨","🇨🇻","🇧🇶","🇰🇾","🇨🇫","🇹🇩","🇨🇱","🇨🇳","🇨🇽","🇨🇨","🇨🇴","🇰🇲","🇨🇬","🇨🇩","🇨🇰","🇨🇷","🇨🇮","🇭🇷","🇨🇺","🇨🇼","🇨🇾","🇨🇿","🇩🇰","🇩🇯","🇩🇲","🇩🇴","🇪🇨","🇪🇬","🇸🇻","🇬🇶","🇪🇷","🇪🇪","🇪🇹","🇪🇺","🇫🇰","🇫🇴","🇫🇯","🇫🇮","🇫🇷","🇬🇫","🇵🇫","🇹🇫","🇬🇦","🇬🇲","🇬🇪","🇩🇪","🇬🇭","🇬🇮","🇬🇷","🇬🇱","🇬🇩","🇬🇵","🇬🇺","🇬🇹","🇬🇬","🇬🇳","🇬🇼","🇬🇾","🇭🇹","🇭🇳","🇭🇰","🇭🇺","🇮🇸","🇮🇳","🇮🇩","🇮🇷","🇮🇶","🇮🇪","🇮🇲","🇮🇱","🇮🇹","🇯🇲","🇯🇵","🎌","🇯🇪","🇯🇴","🇰🇿","🇰🇪","🇰🇮","🇽🇰","🇰🇼","🇰🇬","🇱🇦","🇱🇻","🇱🇧","🇱🇸","🇱🇷","🇱🇾","🇱🇮","🇱🇹","🇱🇺","🇲🇴","🇲🇰","🇲🇬","🇲🇼","🇲🇾","🇲🇻","🇲🇱","🇲🇹","🇲🇭","🇲🇶","🇲🇷","🇲🇺","🇾🇹","🇲🇽","🇫🇲","🇲🇩","🇲🇨","🇲🇳","🇲🇪","🇲🇸","🇲🇦","🇲🇿","🇲🇲","🇳🇦","🇳🇷","🇳🇵","🇳🇱","🇳🇨","🇳🇿","🇳🇮","🇳🇪","🇳🇬","🇳🇺","🇳🇫","🇰🇵","🇲🇵","🇳🇴","🇴🇲","🇵🇰","🇵🇼","🇵🇸","🇵🇦","🇵🇬","🇵🇾","🇵🇪","🇵🇭","🇵🇳","🇵🇱","🇵🇹","🇵🇷","🇶🇦","🇷🇪","🇷🇴","🇷🇺","🇷🇼","🇼🇸","🇸🇲","🇸🇦","🇸🇳","🇷🇸","🇸🇨","🇸🇱","🇸🇬","🇸🇽","🇸🇰","🇸🇮","🇸🇧","🇸🇴","🇿🇦","🇰🇷","🇸🇸","🇪🇸","🇱🇰","🇧🇱","🇸🇭","🇰🇳","🇱🇨","🇵🇲","🇻🇨","🇸🇩","🇸🇷","🇸🇿","🇸🇪","🇨🇭","🇸🇾","🇹🇼","🇹🇯","🇹🇿","🇹🇭","🇹🇱","🇹🇬","🇹🇰","🇹🇴","🇹🇹","🇹🇳","🇹🇷","🇹🇲","🇹🇨","🇹🇻","🇻🇮","🇺🇬","🇺🇦","🇦🇪","🇬🇧","🏴󠁧󠁢󠁥󠁮󠁧󠁿","🏴󠁧󠁢󠁳󠁣󠁴󠁿","🏴󠁧󠁢󠁷󠁬󠁳󠁿","🇺🇸","🇺🇾","🇺🇿","🇻🇺","🇻🇦","🇻🇪","🇻🇳","🇼🇫","🇪🇭","🇾🇪","🇿🇲","🇿🇼"],
+};
+
+function insertEmoji(emoji: string) {
+  messageInput.value += emoji;
+  showEmojiPicker.value = false;
+}
+
+function toggleEmojiPicker() {
+  showEmojiPicker.value = !showEmojiPicker.value;
+}
+
+function onEmojiPickerClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  if (!target.closest(".emoji-picker") && !target.closest(".emoji-btn")) {
+    showEmojiPicker.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener("click", onEmojiPickerClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", onEmojiPickerClickOutside);
+});
+
+function cycleRoomUserSort(tabId: string) {
+  const current = roomUserSort.value[tabId] || "";
+  if (current === "") roomUserSort.value[tabId] = "files-desc";
+  else if (current === "files-desc") roomUserSort.value[tabId] = "files-asc";
+  else roomUserSort.value[tabId] = "";
+}
+
+function getSortedRoomUsers(tabId: string): any[] {
+  const users = roomUsers.value[tabId];
+  if (!users) return [];
+  const sort = roomUserSort.value[tabId] || "";
+  if (!sort) return users;
+  const dir = sort === "files-desc" ? -1 : 1;
+  return [...users].sort((a, b) => ((a.fileCount ?? 0) - (b.fileCount ?? 0)) * dir);
+}
+
 const SCROLL_NEAR_BOTTOM_PX = 100;
 
 function getActiveMsgList(): HTMLDivElement | null {
@@ -679,6 +800,7 @@ function closeTab(tabId: string) {
   tabs.value = tabs.value.filter((t) => t.id !== tabId);
   delete roomMessages.value[tabId];
   delete roomUsers.value[tabId];
+  delete roomUserSort.value[tabId];
   delete userMessages.value[tabId];
   delete userInfo.value[tabId];
   delete loadingUserInfo.value[tabId];
@@ -1131,6 +1253,28 @@ onUnmounted(() => {
   align-items: center;
 }
 
+.room-user-sort-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--s-text-secondary);
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  transition: background 0.1s, color 0.1s;
+}
+.room-user-sort-btn:hover {
+  background: var(--s-bg-hover);
+  color: var(--s-accent);
+}
+.room-user-sort-btn .sort-arrow {
+  font-size: 0.6rem;
+}
+
 .room-users-list {
   overflow-y: auto;
   flex: 1;
@@ -1230,6 +1374,7 @@ onUnmounted(() => {
 }
 
 .room-input-row {
+  position: relative;
   display: flex;
   gap: 0.5rem;
   padding: 0.5rem;
@@ -1239,6 +1384,92 @@ onUnmounted(() => {
 
 .room-input-row > :first-child {
   flex: 1;
+}
+
+/* ── Emoji picker ──────────────────────────────────── */
+.emoji-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  background: var(--s-bg);
+  color: var(--s-text-secondary);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.emoji-btn:hover {
+  background: var(--s-bg-hover);
+  color: var(--s-accent);
+}
+
+.emoji-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: 320px;
+  max-height: 320px;
+  background: var(--s-bg);
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emoji-categories {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--s-border);
+  padding: 0.25rem;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.emoji-cat-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--s-text-secondary);
+  transition: background 0.1s;
+}
+.emoji-cat-btn:hover {
+  background: var(--s-bg-hover);
+}
+.emoji-cat-btn.active {
+  background: var(--s-accent-bg, rgba(72, 199, 116, 0.15));
+  color: var(--s-accent);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 0.35rem;
+  overflow-y: auto;
+  flex: 1;
+}
+.emoji-item {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+  text-align: center;
+  transition: background 0.1s;
+}
+.emoji-item:hover {
+  background: var(--s-bg-hover);
 }
 
 .icon-lg {
