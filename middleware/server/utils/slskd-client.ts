@@ -154,10 +154,11 @@ export class SlskdClient {
 
   private async rawFetch(
     path: string,
-    opts: { method?: string; body?: string; headers?: Record<string, string> } = {},
+    opts: { method?: string; body?: string; headers?: Record<string, string>; timeout?: number } = {},
   ): Promise<{ status: number; body: string; headers: Record<string, string> }> {
     const url = `${this.baseUrl}${path}`;
     const parsed = new URL(url);
+    const timeout = opts.timeout ?? 60_000; // default 60s — Soulseek ops can be slow
 
     return new Promise((resolve, reject) => {
       const req = httpRequest(
@@ -166,6 +167,7 @@ export class SlskdClient {
           port: Number(parsed.port) || 5030,
           path: parsed.pathname + parsed.search,
           method: opts.method || "GET",
+          timeout, // socket idle timeout
           headers: {
             accept: "application/json",
             "content-type": "application/json",
@@ -188,12 +190,16 @@ export class SlskdClient {
         },
       );
       req.on("error", reject);
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error(`slskd request timeout after ${timeout}ms: ${opts.method || "GET"} ${path}`));
+      });
       if (opts.body) req.write(opts.body);
       req.end();
     });
   }
 
-  private async fetch(path: string, opts: { method?: string; body?: string } = {}): Promise<{ status: number; body: string }> {
+  private async fetch(path: string, opts: { method?: string; body?: string; timeout?: number } = {}): Promise<{ status: number; body: string }> {
     const token = await this.ensureAuth();
     const headers: Record<string, string> = {};
     if (token) headers["authorization"] = `Bearer ${token}`;
@@ -306,19 +312,19 @@ export class SlskdClient {
   // ── Users / Conversations ─────────────────────────────────────────────────────
 
   async getUserInfo(username: string): Promise<any> {
-    const res = await this.fetch(`/users/${encodeURIComponent(username)}/info`);
+    const res = await this.fetch(`/users/${encodeURIComponent(username)}/info`, { timeout: 45_000 });
     if (res.status === 200) return JSON.parse(res.body);
     return null;
   }
 
   async getUserStatus(username: string): Promise<any> {
-    const res = await this.fetch(`/users/${encodeURIComponent(username)}/status`);
+    const res = await this.fetch(`/users/${encodeURIComponent(username)}/status`, { timeout: 45_000 });
     if (res.status === 200) return JSON.parse(res.body);
     return null;
   }
 
   async browseUserFiles(username: string): Promise<any> {
-    const res = await this.fetch(`/users/${encodeURIComponent(username)}/browse`);
+    const res = await this.fetch(`/users/${encodeURIComponent(username)}/browse`, { timeout: 120_000 });
     if (res.status === 200) return JSON.parse(res.body);
     return null;
   }

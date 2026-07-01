@@ -380,6 +380,12 @@ async function onSearch() {
     // Switch to the new search tab
     activeSearchTab.value = "srch-" + id;
     addToast(t("slskd.search.searchStarted", { query: text }), "success");
+    // Fetch responses shortly after creation (don't wait for poll cycle)
+    setTimeout(() => {
+      if (searchResults.value[id] !== undefined && (searchResults.value[id]?.length ?? 0) === 0) {
+        fetchResponses(id);
+      }
+    }, 2000);
   } catch (err: any) {
     addToast(err?.message ?? t("slskd.search.searchError"), "error");
   } finally {
@@ -440,7 +446,9 @@ async function startDownload(item: SlskdResponse) {
 async function pollActiveSearches() {
   await fetchSearches();
   for (const s of searches.value) {
-    if (s.state === "InProgress" || s.state === "Started") {
+    const cached = searchResults.value[s.id];
+    // Fetch if search is still active, OR if completed/ended but no results cached yet
+    if (s.state === "InProgress" || s.state === "Started" || !cached || cached.length === 0) {
       await fetchResponses(s.id);
     }
   }
