@@ -195,6 +195,9 @@ async function runTransfer(
         if (s && d && s.type === "smb" && d.type === "smb" && s.config.id === d.config.id) {
           try { await smbRename(s.config, s.subPath, d.subPath); }
           catch { await copyAnyPath(srcRel, targetRel, job as JobRef, signal); await rmAnyPath(srcRel); }
+        } else if (s && d && s.type === "local" && d.type === "local") {
+          try { await rename(s.absPath, d.absPath); }
+          catch { await copyAnyPath(srcRel, targetRel, job as JobRef, signal); await rmAnyPath(srcRel); }
         } else {
           await copyAnyPath(srcRel, targetRel, job as JobRef, signal);
           await rmAnyPath(srcRel);
