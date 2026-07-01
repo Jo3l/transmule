@@ -59,7 +59,7 @@
           <span v-else class="mdi fmp-icon" :class="fileIcon(item)" />
           <span class="fmp-mc-name">
             <span v-if="item.relpath" class="fm-relpath">{{ item.relpath }}/</span>
-            {{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}
+            {{ item.homeFolder ? $t("fileManager.homeFolder") : item.name }}
           </span>
           <span class="fmp-mc-size">{{ item.type === "file" ? fmtSize(item.size) : "" }}</span>
           <span
@@ -330,7 +330,6 @@
             'is-drop-target': dropTargetRow === '..',
             'is-drop-target-copy': dropTargetRow === '..' && isCopyKey,
           }"
-          @click.prevent="navigateUp"
           @dblclick.prevent="navigateUp"
           @dragover="onParentDragOver($event)"
           @dragleave="onParentDragLeave($event)"
@@ -385,8 +384,12 @@
                   >{{ item.relpath }}/</a
                 >
               </template>
-              <span v-if="item.type === 'directory'" class="fmp-filename">{{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}</span>
-              <span v-else class="fmp-filename" :title="item.name">{{ item.homeFolder ? $t('fileManager.homeFolder') : item.name }}</span>
+              <span v-if="item.type === 'directory'" class="fmp-filename">{{
+                item.homeFolder ? $t("fileManager.homeFolder") : item.name
+              }}</span>
+              <span v-else class="fmp-filename" :title="item.name">{{
+                item.homeFolder ? $t("fileManager.homeFolder") : item.name
+              }}</span>
             </span>
           </td>
           <td class="has-text-right has-text-grey is-size-7 fmp-col-size">
@@ -523,9 +526,9 @@
         >
           <span class="mdi mdi-eject mr-2" />{{ $t("fileManager.unmount") }}
         </button>
+        <template v-if="!isRootItem">
         <div class="fmp-ctx-sep" />
         <button
-          v-if="!isRootItem"
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="
@@ -541,7 +544,6 @@
           <span class="mdi mdi-folder-move mr-2" />{{ $t("fileManager.move") }}
         </button>
         <button
-          v-if="!isRootItem"
           class="fmp-ctx-item"
           @click="
             ctxIsMulti
@@ -556,7 +558,6 @@
           <span class="mdi mdi-content-copy mr-2" />{{ $t("fileManager.copy") }}
         </button>
         <button
-          v-if="!isRootItem"
           :disabled="readOnlyActive"
           class="fmp-ctx-item"
           @click="
@@ -574,7 +575,7 @@
         >
           <span class="mdi mdi-archive-arrow-up-outline mr-2" />{{ $t("fileManager.compress") }}
         </button>
-        <div class="fmp-ctx-sep" />
+        </template>
         <template
           v-if="
             !ctxIsMulti &&
@@ -583,6 +584,7 @@
             !ctxMenu.item.isRemoteMount
           "
         >
+        <div class="fmp-ctx-sep" />
           <button
             class="fmp-ctx-item"
             :disabled="readOnlyActive"
@@ -803,8 +805,8 @@ const ctxMenu = ref<{ visible: boolean; x: number; y: number; item: FileItem | n
   item: null,
 });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
-const isRootItem = computed(() =>
-  ctxMenu.value.item?.homeFolder || ctxMenu.value.item?.isRemoteMount
+const isRootItem = computed(
+  () => ctxMenu.value.item?.homeFolder || ctxMenu.value.item?.isRemoteMount,
 );
 
 function hideCtxMenu() {
@@ -1841,10 +1843,11 @@ onMounted(() => {
   & + .fmp-ctx-sep {
     display: none;
   }
+  &:last-child {
+    display: none;
+  }
 }
-.fmp-ctx-menu:has(:not(.fmp-ctx-sep:last-of-type + button)) .fmp-ctx-sep {
-  display: none;
-}
+
 .fmp-ctx-item {
   display: flex;
   align-items: center;
