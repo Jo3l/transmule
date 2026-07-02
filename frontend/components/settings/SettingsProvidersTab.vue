@@ -250,16 +250,14 @@ export default {
                 :loading="repoRefreshing === repo.id"
                 :title="$t('settings.reposRefresh')"
                 @click.stop="loadRepoPlugins(repo.id)"
-              >
-                <span class="mdi mdi-refresh" />
+               icon="mdi-refresh">
               </SButton>
               <SButton
                 variant="danger"
                 size="sm"
                 :title="$t('settings.reposRemove')"
                 @click.stop="onRemoveRepo(repo)"
-              >
-                <span class="mdi mdi-delete" />
+               icon="mdi-delete">
               </SButton>
               <span
                 class="mdi repo-chevron"

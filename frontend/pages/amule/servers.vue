@@ -1,7 +1,6 @@
 <template>
   <div id="page-amule-servers">
-    <h1 class="title is-4 mb-4">{{ $t("servers.title") }}</h1>
-
+    
     <STabs
       v-model="activeTab"
       :panes="[
@@ -59,12 +58,10 @@
             @click="disconnect"
             :loading="connecting"
             :disabled="connecting"
-          >
-            <span class="mdi mdi-lan-disconnect mr-1" />
+           icon="mdi-lan-disconnect">
             {{ $t("servers.disconnect") }}
           </SButton>
-          <SButton v-else variant="success" @click="autoConnect" :loading="connecting" :disabled="connecting">
-            <span class="mdi mdi-lan-connect mr-1" />
+          <SButton v-else variant="success" @click="autoConnect" :loading="connecting" :disabled="connecting" icon="mdi-lan-connect">
             {{ $t("servers.connect") }}
           </SButton>
         </div>
@@ -127,8 +124,7 @@
                 </div>
               </div>
               <div class="flex-end">
-                <SButton variant="primary" native-type="submit" :loading="kadLoading">
-                  <span class="mdi mdi-connection mr-1" />
+                <SButton variant="primary" native-type="submit" :loading="kadLoading" icon="mdi-connection">
                   {{ $t("kad.bootstrapButton") }}
                 </SButton>
               </div>

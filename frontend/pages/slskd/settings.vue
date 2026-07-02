@@ -1,10 +1,6 @@
 <template>
   <SLoading id="page-slskd-settings" :loading="loading">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-cog-outline mr-1" />
-      {{ $t("nav.slskdSettings") }}
-    </h1>
-
+    
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
     <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("slskd.settingsSaved") }}</SAlert>
 
@@ -43,8 +39,7 @@
           </p>
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" :disabled="!hasChanges" @click="save">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" :disabled="!hasChanges" @click="save" icon="mdi-content-save">
               {{ $t("common.save") }}
             </SButton>
           </div>

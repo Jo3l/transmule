@@ -1313,6 +1313,7 @@
       "state": "Transfer state"
     },
     "actionError": "Action failed",
+    "refresh": "Refresh",
     "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
     "credentials": "Credentials",
     "log": "Log",
@@ -1382,6 +1383,7 @@
     "directories": "folders",
     "files": "files",
     "noFiles": "No files",
+    "emptyFolder": "Empty folder",
     "closeTab": "Close tab",
     "status": "Status",
     "userDescription": "Description",

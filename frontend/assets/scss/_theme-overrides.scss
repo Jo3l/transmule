@@ -49,8 +49,11 @@
     width: 17px;
     height: 17px;
   }
+  ::-webkit-scrollbar-corner {
+    background: #d6d2c2;
+  }
 
-  /* ═══ Buttons: Classic XP 3D raised look ═══ */
+  /* ── Buttons: XP Royal (Noir) ────────────────────────── */
   .s-btn {
     // Restore XP outer-button styling (overrides the bevel defaults)
     display: inline-flex;
@@ -828,6 +831,9 @@
     &:hover {
       background: #ffffff;
     }
+  }
+  ::-webkit-scrollbar-corner {
+    background: #000000;
   }
 
   /* ═══ Buttons: Spectrum pixel style ═══ */

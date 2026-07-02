@@ -14,8 +14,7 @@
       {{ selfPwError }}
     </p>
     <div class="flex-end">
-      <SButton variant="primary" :loading="savingSelfPw" @click="submitSelfPw">
-        <span class="mdi mdi-content-save mr-1" />
+      <SButton variant="primary" :loading="savingSelfPw" @click="submitSelfPw" icon="mdi-content-save">
         {{ $t("settings.save") }}
       </SButton>
     </div>

@@ -1,10 +1,6 @@
 <template>
   <SLoading id="page-pyload-settings" :loading="loading">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-cog mr-1" />
-      {{ $t("pyloadSettings.title") }}
-    </h1>
-
+    
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
     <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("pyloadSettings.saved") }}</SAlert>
 
@@ -72,8 +68,7 @@
           </p>
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveDownloads">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveDownloads" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -130,8 +125,7 @@
           </p>
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveProxy">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveProxy" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -177,8 +171,7 @@
           </p>
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveReconnection">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveReconnection" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -339,8 +332,7 @@
           </div>
 
           <div class="flex-end mt-4">
-            <SButton variant="primary" @click="openAddAccount">
-              <span class="mdi mdi-plus mr-1" />
+            <SButton variant="primary" @click="openAddAccount" icon="mdi-plus">
               {{ $t("pyloadSettings.addAccount") }}
             </SButton>
           </div>

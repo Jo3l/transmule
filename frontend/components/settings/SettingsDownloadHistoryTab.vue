@@ -37,8 +37,7 @@
               :disabled="!!historyRedownloading"
               :title="$t('settings.downloadHistoryReDownload')"
               @click="reDownload(row)"
-            >
-              <span class="mdi mdi-download mr-1" />
+             icon="mdi-download">
               {{ $t("settings.downloadHistoryReDownload") }}
             </SButton>
             <SButton
@@ -48,8 +47,7 @@
               :disabled="!!historyRemoving"
               :title="$t('settings.downloadHistoryRemove')"
               @click="removeHistoryEntry(row)"
-            >
-              <span class="mdi mdi-delete mr-1" />
+             icon="mdi-delete">
               {{ $t("settings.downloadHistoryRemove") }}
             </SButton>
           </div>
@@ -62,8 +60,8 @@
           size="sm"
           :disabled="historyPage <= 1"
           @click="gotoHistoryPage(historyPage - 1)"
-        >
-          <span class="mdi mdi-chevron-left mr-1" />{{ $t("settings.downloadHistoryPrev") }}
+         icon="mdi-chevron-left">
+          {{ $t("settings.downloadHistoryPrev") }}
         </SButton>
         <span class="dh-page-info">
           {{ $t("settings.downloadHistoryPage", { page: historyPage, pages: historyPages }) }}

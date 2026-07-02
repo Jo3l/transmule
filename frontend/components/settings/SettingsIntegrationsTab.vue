@@ -42,12 +42,10 @@
     </p>
 
     <div class="stt-btn-row">
-      <SButton variant="primary" :loading="savingTvdb" @click="saveTvdbKey">
-        <span class="mdi mdi-content-save mr-1" />
+      <SButton variant="primary" :loading="savingTvdb" @click="saveTvdbKey" icon="mdi-content-save">
         {{ $t("settings.save") }}
       </SButton>
-      <SButton v-if="tvdbKeySet" variant="danger" :loading="savingTvdb" @click="clearTvdbKey">
-        <span class="mdi mdi-delete mr-1" />
+      <SButton v-if="tvdbKeySet" variant="danger" :loading="savingTvdb" @click="clearTvdbKey" icon="mdi-delete">
         {{ $t("settings.tvdbKeyClear") }}
       </SButton>
     </div>
@@ -100,12 +98,10 @@
     </p>
 
     <div class="stt-btn-row">
-      <SButton variant="primary" :loading="savingTmdb" @click="saveTmdbKey">
-        <span class="mdi mdi-content-save mr-1" />
+      <SButton variant="primary" :loading="savingTmdb" @click="saveTmdbKey" icon="mdi-content-save">
         {{ $t("settings.save") }}
       </SButton>
-      <SButton v-if="tmdbKeySet" variant="danger" :loading="savingTmdb" @click="clearTmdbKey">
-        <span class="mdi mdi-delete mr-1" />
+      <SButton v-if="tmdbKeySet" variant="danger" :loading="savingTmdb" @click="clearTmdbKey" icon="mdi-delete">
         {{ $t("settings.tmdbKeyClear") }}
       </SButton>
     </div>

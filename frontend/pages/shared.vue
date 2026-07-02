@@ -2,11 +2,10 @@
   <div id="page-shared">
     <div class="level mb-4">
       <div class="level-left">
-        <h1 class="title is-4 mb-0">{{ $t("shared.title") }}</h1>
-      </div>
+              </div>
       <div class="level-right">
-        <SButton size="sm" @click="doReload" :loading="loading">
-          <span class="mdi mdi-refresh mr-1" /> {{ $t("shared.reload") }}
+        <SButton size="sm" @click="doReload" :loading="loading" icon="mdi-refresh">
+          {{ $t("shared.reload") }}
         </SButton>
       </div>
     </div>

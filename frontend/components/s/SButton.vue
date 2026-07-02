@@ -9,6 +9,7 @@
       <span class="button-shadow">
         <span class="button-inside">
           <span v-if="loading" class="mdi mdi-loading mdi-spin s-btn__spinner" />
+          <span v-else-if="icon" class="mdi s-btn__icon" :class="icon" />
           <span class="button-text">
             <!-- label prop → per-character jump animation -->
             <span v-if="label" class="button-text-characters-container">
@@ -36,6 +37,8 @@ const props = withDefaults(
     size?: "mini" | "sm" | "md" | "lg";
     /** Optional plain-text label. When provided each character gets a staggered jump animation on hover. */
     label?: string;
+    /** Optional mdi icon class (e.g. "mdi-refresh"). Replaced by spinner during loading. */
+    icon?: string;
     loading?: boolean;
     disabled?: boolean;
     block?: boolean;

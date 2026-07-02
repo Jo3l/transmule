@@ -5,8 +5,7 @@
   <div id="page-setup" class="box">
     <div class="has-text-centered mb-5">
       <img src="~/assets/logo/logo128.png" alt="TransMule" class="auth-logo" />
-      <h1 class="title is-4 mt-2">{{ $t("setup.title") }}</h1>
-      <p class="subtitle is-6 has-text-grey">
+            <p class="subtitle is-6 has-text-grey">
         {{ $t("setup.subtitle") }}
       </p>
     </div>

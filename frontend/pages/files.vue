@@ -1,9 +1,5 @@
 <template>
   <div id="page-files" class="fm-page" @click="hideCtxMenu" @keydown.esc.window="hideCtxMenu">
-    <div class="fm-header-row mb-4">
-      <h1 class="title is-4">{{ $t("fileManager.title") }}</h1>
-    </div>
-
     <!-- Not configured -->
     <SAlert v-if="notConfigured" variant="warning">
       {{ $t("fileManager.notConfigured") }}
@@ -34,14 +30,16 @@
         <nav class="breadcrumb fm-breadcrumb" aria-label="breadcrumbs">
           <ul>
             <li :class="{ 'is-active': !activePath }">
-              <a @click.prevent="navigate('')"
-                 @dragover="onBcDragOver($event, '')"
-                 @dragleave="onBcDragLeave($event)"
-                 @drop.prevent="onBcDrop($event, '')"
-                 :class="{
-                   'is-drop-target': dropTargetBc === '',
-                   'is-drop-target-copy': dropTargetBc === '' && isCopyKey,
-                 }">
+              <a
+                @click.prevent="navigate('')"
+                @dragover="onBcDragOver($event, '')"
+                @dragleave="onBcDragLeave($event)"
+                @drop.prevent="onBcDrop($event, '')"
+                :class="{
+                  'is-drop-target': dropTargetBc === '',
+                  'is-drop-target-copy': dropTargetBc === '' && isCopyKey,
+                }"
+              >
                 <span class="mdi mdi-folder-home mr-1" />
                 {{ $t("fileManager.root") }}
               </a>
@@ -51,14 +49,17 @@
               :key="i"
               :class="{ 'is-active': i === pathSegments.length - 1 }"
             >
-              <a @click.prevent="navigate(pathSegments.slice(0, i + 1).join('/'))"
-                 @dragover="onBcDragOver($event, pathSegments.slice(0, i + 1).join('/'))"
-                 @dragleave="onBcDragLeave($event)"
-                 @drop.prevent="onBcDrop($event, pathSegments.slice(0, i + 1).join('/'))"
-                 :class="{
-                   'is-drop-target': dropTargetBc === pathSegments.slice(0, i + 1).join('/'),
-                   'is-drop-target-copy': dropTargetBc === pathSegments.slice(0, i + 1).join('/') && isCopyKey,
-                 }">
+              <a
+                @click.prevent="navigate(pathSegments.slice(0, i + 1).join('/'))"
+                @dragover="onBcDragOver($event, pathSegments.slice(0, i + 1).join('/'))"
+                @dragleave="onBcDragLeave($event)"
+                @drop.prevent="onBcDrop($event, pathSegments.slice(0, i + 1).join('/'))"
+                :class="{
+                  'is-drop-target': dropTargetBc === pathSegments.slice(0, i + 1).join('/'),
+                  'is-drop-target-copy':
+                    dropTargetBc === pathSegments.slice(0, i + 1).join('/') && isCopyKey,
+                }"
+              >
                 {{ displaySeg(seg) }}
               </a>
             </li>
@@ -77,15 +78,19 @@
               <button class="fm-dropdown-item" @click="openRemoteModal">
                 <span class="mdi mdi-server-network mr-2" />{{ $t("fileManager.smb") }}
               </button>
-
             </div>
           </div>
 
-          <SButton v-if="isAdmin" size="sm" @click="showNewFolderDialog = true">
-            <span class="mdi mdi-folder-plus mr-1" />{{ $t("fileManager.newFolder") }}
+          <SButton
+            v-if="isAdmin"
+            size="sm"
+            @click="showNewFolderDialog = true"
+            icon="mdi-folder-plus"
+          >
+            {{ $t("fileManager.newFolder") }}
           </SButton>
-          <SButton v-if="isAdmin" size="sm" @click="triggerFileInput">
-            <span class="mdi mdi-upload mr-1" />{{ $t("fileManager.upload") }}
+          <SButton v-if="isAdmin" size="sm" @click="triggerFileInput" icon="mdi-upload">
+            {{ $t("fileManager.upload") }}
           </SButton>
           <SButton
             v-if="isAdmin && selectedItems.size > 0"
@@ -106,7 +111,9 @@
         <FolderTreeSidebar
           v-if="treeVisible"
           ref="folderTreeRef"
-          :current-path="splitActive ? (activePanelIndex === 0 ? leftPanelPath : rightPanelPath) : currentPath"
+          :current-path="
+            splitActive ? (activePanelIndex === 0 ? leftPanelPath : rightPanelPath) : currentPath
+          "
           @navigate="navigate"
           @close="treeVisible = false"
           @transfer="onTreeTransfer"
@@ -178,10 +185,7 @@
             @upload-files="onPanelUploadFiles"
             @unmount-item="onPanelUnmountItem"
           />
-          <div
-            class="fm-split-divider"
-            @mousedown.prevent="onDividerMouseDown"
-          />
+          <div class="fm-split-divider" @mousedown.prevent="onDividerMouseDown" />
           <FileManagerPanel
             ref="rightPanelRef"
             v-model:current-path="rightPanelPath"
@@ -282,13 +286,12 @@
           <SButton @click="cancelOverwrite">
             {{ $t("fileManager.cancel") }}
           </SButton>
-          <SButton variant="warning" @click="confirmOverwrite">
-            <span class="mdi mdi-alert-outline mr-1" />{{ $t("fileManager.overwriteConfirm") }}
+          <SButton variant="warning" @click="confirmOverwrite" icon="mdi-alert-outline">
+            {{ $t("fileManager.overwriteConfirm") }}
           </SButton>
         </div>
       </template>
     </SDialog>
-
   </div>
 
   <!-- ── Image preview dialog ──────────────────────────────────────────── -->
@@ -345,8 +348,13 @@
     />
     <template #footer>
       <div class="flex-end-center">
-        <SButton variant="primary" :loading="savingText" @click="saveTextFile">
-          <span class="mdi mdi-content-save mr-1" />{{ $t("fileManager.save") }}
+        <SButton
+          variant="primary"
+          :loading="savingText"
+          @click="saveTextFile"
+          icon="mdi-content-save"
+        >
+          {{ $t("fileManager.save") }}
         </SButton>
         <SButton @click="closeTextEditor">{{ $t("fileManager.close") }}</SButton>
       </div>
@@ -601,8 +609,12 @@
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showCompressDialog = false">{{ $t("fileManager.cancel") }}</SButton>
-        <SButton variant="primary" :disabled="!compressArchiveName" @click="doCompress">
-          <span class="mdi mdi-archive-arrow-up-outline mr-1" />
+        <SButton
+          variant="primary"
+          :disabled="!compressArchiveName"
+          @click="doCompress"
+          icon="mdi-archive-arrow-up-outline"
+        >
           {{ $t("fileManager.compress") }}
         </SButton>
       </div>
@@ -614,51 +626,50 @@
   <!-- ── Add remote mount dialog ─────────────────────────────────────────────── -->
   <SDialog v-model="showRemoteDialog" :title="$t('fileManager.addRemoteFolder')" width="480px">
     <div class="flex-row gap-md">
-      <SFormItem :label="$t('fileManager.protocol')" class="flex-1" style="margin-bottom:0">
+      <SFormItem :label="$t('fileManager.protocol')" class="flex-1" style="margin-bottom: 0">
         <SSelect v-model="remoteForm.type" :options="protocolOptions" />
       </SFormItem>
-      <SFormItem :label="$t('fileManager.readOnly')" style="margin-bottom:0">
+      <SFormItem :label="$t('fileManager.readOnly')" style="margin-bottom: 0">
         <SSwitch v-model="remoteForm.readOnly" />
       </SFormItem>
     </div>
-    
+
     <SFormItem :label="$t('fileManager.mountName')">
       <SInput v-model="remoteForm.name" :placeholder="$t('fileManager.mountName')" />
     </SFormItem>
-    
+
     <!-- SMB fields -->
     <template v-if="remoteForm.type === 'smb'">
       <div class="flex-row gap-md">
-        <SFormItem :label="$t('fileManager.host')" class="flex-1" style="margin-bottom:0">
+        <SFormItem :label="$t('fileManager.host')" class="flex-1" style="margin-bottom: 0">
           <SInput v-model="remoteForm.host" placeholder="192.168.1.100" />
         </SFormItem>
-        <SFormItem :label="$t('fileManager.share')" class="flex-1" style="margin-bottom:0">
+        <SFormItem :label="$t('fileManager.share')" class="flex-1" style="margin-bottom: 0">
           <SInput v-model="remoteForm.share" placeholder="downloads" />
         </SFormItem>
       </div>
       <div class="flex-row gap-md">
-        <SFormItem :label="$t('fileManager.domain')" class="flex-1" style="margin-bottom:0">
+        <SFormItem :label="$t('fileManager.domain')" class="flex-1" style="margin-bottom: 0">
           <SInput v-model="remoteForm.domain" :placeholder="$t('fileManager.domain')" />
         </SFormItem>
-        <SFormItem :label="$t('fileManager.remotePath')" class="flex-1" style="margin-bottom:0">
+        <SFormItem :label="$t('fileManager.remotePath')" class="flex-1" style="margin-bottom: 0">
           <SInput v-model="remoteForm.path" :placeholder="$t('fileManager.remotePathOptional')" />
         </SFormItem>
       </div>
     </template>
-    
 
     <div class="flex-row gap-md">
-      <SFormItem :label="$t('fileManager.username')" class="flex-1" style="margin-bottom:0">
+      <SFormItem :label="$t('fileManager.username')" class="flex-1" style="margin-bottom: 0">
         <SInput v-model="remoteForm.username" :placeholder="$t('fileManager.username')" />
       </SFormItem>
-      <SFormItem label="Password" class="flex-1" style="margin-bottom:0">
+      <SFormItem label="Password" class="flex-1" style="margin-bottom: 0">
         <SInput v-model="remoteForm.password" type="password" placeholder="Password" />
       </SFormItem>
     </div>
     <template #footer>
       <div class="flex-end gap-sm">
-        <SButton variant="info" :loading="validating" @click="validateRemote">
-          <span class="mdi mdi-connection mr-1" />{{ $t("fileManager.validate") }}
+        <SButton variant="info" :loading="validating" @click="validateRemote" icon="mdi-connection">
+          {{ $t("fileManager.validate") }}
         </SButton>
         <SButton @click="showRemoteDialog = false">{{ $t("fileManager.cancel") }}</SButton>
         <SButton variant="primary" :loading="working" @click="doCreateRemote">
@@ -674,8 +685,8 @@
     <template #footer>
       <div class="flex-end gap-sm">
         <SButton @click="showUnmountDialog = false">{{ $t("fileManager.cancel") }}</SButton>
-        <SButton variant="danger" :loading="working" @click="doUnmount">
-          <span class="mdi mdi-eject mr-1" />{{ $t("fileManager.unmount") }}
+        <SButton variant="danger" :loading="working" @click="doUnmount" icon="mdi-eject">
+          {{ $t("fileManager.unmount") }}
         </SButton>
       </div>
     </template>
@@ -717,7 +728,7 @@ interface RemoteMount {
   host?: string;
   share?: string;
   path?: string;
-  domain?: string;    // SMB
+  domain?: string; // SMB
   username: string;
   password?: string;
 }
@@ -738,7 +749,8 @@ const { apiFetch, showToast } = useApi();
 const auth = useAuth();
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 const config = useRuntimeConfig();
-const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, hasActive } = useTransferJobs();
+const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, hasActive } =
+  useTransferJobs();
 const route = useRoute();
 const router = useRouter();
 
@@ -886,11 +898,11 @@ function onPanelUnmountItem(item: FileItem) {
 const searchQuery = ref("");
 const searchResults = ref<FileItem[]>([]);
 const searching = ref(false);
-const hasSearched = computed(() => searchResults.value.length > 0 || (searching.value && searchQuery.value.trim().length > 0));
-
-const displayItems = computed(() =>
-  hasSearched.value ? searchResults.value : sortedItems.value,
+const hasSearched = computed(
+  () => searchResults.value.length > 0 || (searching.value && searchQuery.value.trim().length > 0),
 );
+
+const displayItems = computed(() => (hasSearched.value ? searchResults.value : sortedItems.value));
 
 async function doSearch() {
   const q = searchQuery.value.trim();
@@ -924,7 +936,9 @@ async function loadDirAndTree() {
   (rightPanelRef as any)?.value?.refresh?.();
   try {
     await apiFetch("/api/files/cache-invalidate", { method: "POST", query: { reason: "file-op" } });
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   folderTreeRef.value?.refresh();
 }
 
@@ -1027,9 +1041,7 @@ const remoteForm = reactive({
   readOnly: false,
 });
 
-const protocolOptions = [
-  { label: "SMB/CIFS", value: "smb" },
-];
+const protocolOptions = [{ label: "SMB/CIFS", value: "smb" }];
 const validating = ref(false);
 
 // ── Unmount dialog state ───────────────────────────────────────────────────
@@ -1120,15 +1132,12 @@ async function doTransfer() {
 
   // Check for conflicts before adding the job
   try {
-    const { conflicts } = await apiFetch<{ conflicts: string[] }>(
-      "/api/files/check-conflicts",
-      {
-        query: {
-          sources: transferSources.value,
-          destination: transferDest.value,
-        },
+    const { conflicts } = await apiFetch<{ conflicts: string[] }>("/api/files/check-conflicts", {
+      query: {
+        sources: transferSources.value,
+        destination: transferDest.value,
       },
-    );
+    });
 
     if (conflicts.length > 0) {
       // Save transfer params and show overwrite dialog
@@ -1436,7 +1445,9 @@ onMounted(() => {
     if (e.key === "Control" || e.key === "Shift") {
       isCopyKey.value = true;
       if (currentBcDragEl.value) {
-        currentBcDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+        currentBcDragEl.value.dispatchEvent(
+          new DragEvent("dragover", { bubbles: true, cancelable: true }),
+        );
       }
     }
   };
@@ -1444,7 +1455,9 @@ onMounted(() => {
     if (e.key === "Control" || e.key === "Shift") {
       isCopyKey.value = false;
       if (currentBcDragEl.value) {
-        currentBcDragEl.value.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+        currentBcDragEl.value.dispatchEvent(
+          new DragEvent("dragover", { bubbles: true, cancelable: true }),
+        );
       }
     }
   };
@@ -1515,13 +1528,13 @@ function openComic(item: FileItem, initialPage?: number) {
   // Persist to URL hash for refresh recovery
   const relPath = currentPath.value ? `${currentPath.value}/${item.name}` : item.name;
   const hashPage = initialPage && initialPage > 0 ? initialPage : 1;
-  history.replaceState(null, '', `#comic=${encodeURIComponent(relPath)}|${hashPage}`);
+  history.replaceState(null, "", `#comic=${encodeURIComponent(relPath)}|${hashPage}`);
 }
 
 function onComicClose() {
   comicFilePath.value = "";
   comicFileName.value = "";
-  history.replaceState(null, '', window.location.pathname + window.location.search);
+  history.replaceState(null, "", window.location.pathname + window.location.search);
 }
 
 function onComicPageChange(page: number) {
@@ -1531,7 +1544,7 @@ function onComicPageChange(page: number) {
     const parts = hash.slice(7).split("|");
     if (parts.length >= 2) {
       // parts[0] is already URL-encoded — reuse as-is to avoid double encoding
-      history.replaceState(null, '', `#comic=${parts[0]}|${page}`);
+      history.replaceState(null, "", `#comic=${parts[0]}|${page}`);
     }
   }
 }
@@ -1661,7 +1674,9 @@ function onSmartRenameRenamed(payload?: { clearSelection?: boolean }) {
 // ── Computed helpers ───────────────────────────────────────────────────────
 const activePath = computed(() =>
   splitActive.value
-    ? (activePanelIndex.value === 0 ? leftPanelPath.value : rightPanelPath.value)
+    ? activePanelIndex.value === 0
+      ? leftPanelPath.value
+      : rightPanelPath.value
     : currentPath.value,
 );
 const pathSegments = computed(() =>
@@ -2106,13 +2121,12 @@ async function doCreateRemote() {
     showToast(t("fileManager.missingFields"), "error");
     return;
   }
-  
+
   if (!remoteForm.host.trim() || !remoteForm.share.trim()) {
     showToast(t("fileManager.missingSmbFields"), "error");
     return;
   }
 
-  
   working.value = true;
   try {
     const body: any = {
@@ -2121,7 +2135,7 @@ async function doCreateRemote() {
       username: remoteForm.username.trim(),
       password: remoteForm.password,
     };
-    
+
     body.host = remoteForm.host.trim();
     body.share = remoteForm.share.trim();
     body.path = remoteForm.path.trim() || undefined;
@@ -2138,7 +2152,11 @@ async function doCreateRemote() {
     loadDir();
     folderTreeRef.value?.refresh();
   } catch (err: any) {
-    showToast(err?.data?.statusMessage ?? t("fileManager.mountError", { error: err?.data?.statusMessage || "" }), "error");
+    showToast(
+      err?.data?.statusMessage ??
+        t("fileManager.mountError", { error: err?.data?.statusMessage || "" }),
+      "error",
+    );
   } finally {
     working.value = false;
   }
@@ -2317,7 +2335,8 @@ watch(
   { immediate: true },
 );
 // Initial load bypasses debounce so the directory shows immediately
-loadDirNow();</script>
+loadDirNow();
+</script>
 
 <style scoped>
 .fm-page {
@@ -2422,7 +2441,10 @@ loadDirNow();</script>
   color: var(--s-text-secondary);
   cursor: pointer;
   font-size: 1rem;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 .fm-split-toggle:hover,
 .fm-split-toggle.is-active {

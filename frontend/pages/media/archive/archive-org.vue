@@ -1,10 +1,6 @@
 <template>
   <div id="page-archive-org">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-archive mr-1" />
-      Archive.org Search
-    </h1>
-
+    
     <!-- Search form: query + filters + button -->
     <div class="box mb-4">
       <form @submit.prevent="onSearch">
@@ -17,8 +13,8 @@
           >
             <template #prefix><span class="mdi mdi-magnify" /></template>
           </SInput>
-          <SButton variant="primary" native-type="submit" class="archive-search-btn">
-            <span class="mdi mdi-magnify mr-1" /> {{ $t("search.button") }}
+          <SButton variant="primary" native-type="submit" class="archive-search-btn" icon="mdi-magnify">
+            {{ $t("search.button") }}
           </SButton>
         </div>
         <div class="archive-filters-row">
@@ -89,8 +85,8 @@
 
         <!-- Pagination -->
         <div v-if="tab.total > 0" class="provider-pagination">
-          <SButton size="sm" :disabled="tab.page <= 1 || tab.status === 'searching'" @click="goToPage(tab.id, tab.page - 1)">
-            <span class="mdi mdi-chevron-left" /> {{ $t("media.prevPage") }}
+          <SButton size="sm" :disabled="tab.page <= 1 || tab.status === 'searching'" @click="goToPage(tab.id, tab.page - 1)" icon="mdi-chevron-left">
+            {{ $t("media.prevPage") }}
           </SButton>
           <span class="provider-page-num">{{ $t("media.page", { n: tab.page }) }}</span>
           <SButton size="sm" :disabled="!tab.hasMore || tab.status === 'searching'" @click="goToPage(tab.id, tab.page + 1)">

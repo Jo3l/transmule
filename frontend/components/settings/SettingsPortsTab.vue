@@ -5,8 +5,7 @@
         <h6 class="title is-6 mb-1 mt-3">{{ $t("ports.title") }}</h6>
         <p class="has-text-grey is-size-7 mb-3">{{ $t("ports.description") }}</p>
       </div>
-      <SButton variant="default" size="sm" :loading="checking" @click="refresh">
-        <span class="mdi mdi-refresh mr-1" />
+      <SButton variant="default" size="sm" :loading="checking" @click="refresh" icon="mdi-refresh">
         {{ $t("ports.refresh") }}
       </SButton>
     </div>

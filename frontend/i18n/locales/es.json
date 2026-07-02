@@ -1313,6 +1313,7 @@
       "state": "Estado"
     },
     "actionError": "Error al cambiar la conexión",
+    "refresh": "Refrescar",
     "rooms": "Canales",
     "browse": "Explorar",
     "chat": "Chat",
@@ -1397,6 +1398,7 @@
     "directories": "carpetas",
     "files": "archivos",
     "noFiles": "Sin archivos",
+    "emptyFolder": "Carpeta vacía",
     "status": "Estado",
     "userDescription": "Descripción",
     "credentialsGuide": "No hay formulario de registro online. Simplemente introduce cualquier usuario y contraseña no usados — la red Soulseek te registrará automáticamente."

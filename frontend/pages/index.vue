@@ -2,27 +2,28 @@
   <div id="page-downloads">
     <div class="level mb-4">
       <div class="level-left">
-        <h1 class="title is-4 mb-0">{{ $t("downloads.title") }}</h1>
-      </div>
+              </div>
       <div class="level-right flex-row gap-sm">
         <SButton
           variant="primary"
           size="sm"
           :disabled="transmissionStopped"
           @click="showAddTorrent = true"
+          icon="mdi-magnet"
         >
-          <span class="mdi mdi-magnet mr-1" /> {{ $t("downloads.addTorrent") }}
+          {{ $t("downloads.addTorrent") }}
         </SButton>
-        <SButton variant="primary" size="sm" :disabled="amuleStopped" @click="showAddLink = true">
-          <span class="mdi mdi-donkey mr-1" /> {{ $t("downloads.addEd2k") }}
+        <SButton variant="primary" size="sm" :disabled="amuleStopped" @click="showAddLink = true" icon="mdi-donkey">
+          {{ $t("downloads.addEd2k") }}
         </SButton>
         <SButton
           variant="primary"
           size="sm"
           :disabled="pyloadStopped"
           @click="showAddPyload = true"
+          icon="mdi-download"
         >
-          <span class="mdi mdi-download mr-1" /> {{ $t("downloads.addPyload") }}
+          {{ $t("downloads.addPyload") }}
         </SButton>
       </div>
     </div>
@@ -114,8 +115,9 @@
           :loading="clearingDownloaded"
           :title="$t('downloads.clearDownloaded')"
           @click="clearDownloaded"
+          icon="mdi-broom"
         >
-          <span class="mdi mdi-broom mr-1" />{{ $t("downloads.clearDownloaded") }}
+          {{ $t("downloads.clearDownloaded") }}
         </SButton>
       </div>
       <!-- Action buttons (desktop only, shown when items selected) -->
@@ -127,15 +129,15 @@
           <span class="is-size-7 has-text-grey mr-1 is-align-self-center"
             >{{ totalSelected }} selected:</span
           >
-          <SButton variant="success" size="sm" @click="doUnifiedAction('start')"
-            ><span class="mdi mdi-play mr-1" /> {{ $t("downloads.actions.start") }}</SButton
-          >
-          <SButton variant="warning" size="sm" @click="doUnifiedAction('stop')"
-            ><span class="mdi mdi-pause mr-1" /> {{ $t("downloads.actions.stop") }}</SButton
-          >
-          <SButton variant="danger" size="sm" @click="doUnifiedAction('cancel')"
-            ><span class="mdi mdi-delete mr-1" /> {{ $t("downloads.actions.cancel") }}</SButton
-          >
+          <SButton variant="success" size="sm" @click="doUnifiedAction('start')" icon="mdi-play">
+            {{ $t("downloads.actions.start") }}
+          </SButton>
+          <SButton variant="warning" size="sm" @click="doUnifiedAction('stop')" icon="mdi-pause">
+            {{ $t("downloads.actions.stop") }}
+          </SButton>
+          <SButton variant="danger" size="sm" @click="doUnifiedAction('cancel')" icon="mdi-delete">
+            {{ $t("downloads.actions.cancel") }}
+          </SButton>
         </div>
       </div>
     </div>
@@ -305,40 +307,26 @@
                   variant="warning"
                   size="sm"
                   @click="doCardAction(row, 'pause')"
-                  ><span class="mdi mdi-pause"
-                /></SButton>
-                <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')"
-                  ><span class="mdi mdi-play"
-                /></SButton>
-                <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')"
-                  ><span class="mdi mdi-close-circle"
-                /></SButton>
+                  icon="mdi-pause"
+                />
+                <SButton v-else variant="success" size="sm" @click="doCardAction(row, 'resume')" icon="mdi-play" />
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'cancel')" icon="mdi-close-circle" />
               </template>
               <template v-else-if="row._type === 'torrent'">
-                <SButton variant="success" size="sm" @click="doCardAction(row, 'start')"
-                  ><span class="mdi mdi-play"
-                /></SButton>
-                <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')"
-                  ><span class="mdi mdi-pause"
-                /></SButton>
-                <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')"
-                  ><span class="mdi mdi-delete"
-                /></SButton>
+                <SButton variant="success" size="sm" @click="doCardAction(row, 'start')" icon="mdi-play" />
+                <SButton variant="warning" size="sm" @click="doCardAction(row, 'stop')" icon="mdi-pause" />
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'remove_data')" icon="mdi-delete" />
               </template>
               <template v-else>
-                <SButton variant="success" size="sm" @click="doCardAction(row, 'restart')"
-                  ><span class="mdi mdi-play"
-                /></SButton>
+                <SButton variant="success" size="sm" @click="doCardAction(row, 'restart')" icon="mdi-play" />
                 <SButton
                   v-if="row.activeLinks > 0"
                   variant="warning"
                   size="sm"
                   @click="doCardAction(row, 'stop')"
-                  ><span class="mdi mdi-pause"
-                /></SButton>
-                <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')"
-                  ><span class="mdi mdi-delete"
-                /></SButton>
+                  icon="mdi-pause"
+                />
+                <SButton variant="danger" size="sm" @click="doCardAction(row, 'delete')" icon="mdi-delete" />
               </template>
             </div>
 
@@ -875,14 +863,12 @@
                 </div>
                 <!-- Copy links at bottom of info tab -->
                 <div class="mt-2" v-if="row._type === 'amule' && row.ed2kLink">
-                  <SButton size="sm" @click="copyToClipboard(row.ed2kLink)">
-                    <span class="mdi mdi-donkey mr-1" />
+                  <SButton size="sm" @click="copyToClipboard(row.ed2kLink)" icon="mdi-donkey">
                     {{ $t("downloads.info.copyEd2k") }}
                   </SButton>
                 </div>
                 <div class="mt-2" v-if="row._type === 'torrent' && row.magnetLink">
-                  <SButton size="sm" @click="copyToClipboard(row.magnetLink)">
-                    <span class="mdi mdi-magnet mr-1" />
+                  <SButton size="sm" @click="copyToClipboard(row.magnetLink)" icon="mdi-magnet">
                     {{ $t("downloads.info.copyMagnet") }}
                   </SButton>
                 </div>
@@ -1026,8 +1012,7 @@
               >
                 <div class="mb-2 flex-center gap-sm">
                   <span v-if="sourceLoading[row.hash]" class="mdi mdi-loading mdi-spin" />
-                  <SButton size="sm" variant="text" @click="fetchSources(row.hash)">
-                    <span class="mdi mdi-refresh mr-1" />
+                  <SButton size="sm" variant="text" @click="fetchSources(row.hash)" icon="mdi-refresh">
                     {{ $t("downloads.sourcesTab.refresh") }}
                   </SButton>
                 </div>
@@ -1465,8 +1450,8 @@
     <SDialog v-model="showCancelDialog" title="Cancel downloads?" width="400px">
       <p>Cancel {{ cancelTotal }} selected download{{ cancelTotal !== 1 ? 's' : '' }}?</p>
       <template #footer>
-        <SButton variant="danger" :loading="cancelling" @click="doCancel">
-          <span class="mdi mdi-delete mr-1" /> {{ $t("downloads.actions.cancel") }}
+        <SButton variant="danger" :loading="cancelling" @click="doCancel" icon="mdi-delete">
+          {{ $t("downloads.actions.cancel") }}
         </SButton>
         <SButton @click="showCancelDialog = false">No</SButton>
       </template>

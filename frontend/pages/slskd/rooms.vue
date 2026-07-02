@@ -1,10 +1,6 @@
 <template>
   <div id="page-slskd-rooms">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-chat-outline mr-1" />
-      {{ $t("slskd.rooms", "Canales") }}
-    </h1>
-
+    
     <div class="mb-3">
       <SInput v-model="roomQuery" :placeholder="$t('search.filter')" class="mw-300">
         <template #prefix><span class="mdi mdi-magnify" /></template>
@@ -121,8 +117,10 @@ async function onRoomClick(row: any) {
 #page-slskd-rooms {
 }
 .rooms-scroll {
+  /* Let STable's s-table-wrap handle scrolling so thead stays sticky */
+}
+.rooms-scroll :deep(.s-table-wrap) {
   max-height: calc(100vh - 200px);
-  overflow-y: auto;
 }
 .icon-lg {
   font-size: 2rem;

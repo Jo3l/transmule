@@ -1,10 +1,6 @@
 <template>
   <div id="page-slskd-chat">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-message-text-outline mr-1" />
-      {{ $t("slskd.chat", "Chat") }}
-    </h1>
-
+    
     <STabs v-model="activeTabId" :panes="tabPanes">
       <!-- Tab labels with prefix + close button (skip for rooms tab) -->
       <template v-for="tab in closableTabs" :key="tab.id" #[`tab-${tab.id}`]>
@@ -161,8 +157,7 @@
               <button class="emoji-btn" @click.stop="toggleEmojiPicker" :title="$t('slskd.emoji', 'Emojis')">
                 <span class="mdi mdi-emoticon-happy-outline" />
               </button>
-              <SButton variant="primary" size="sm" @click="sendRoomMessage(tab.label)">
-                <span class="mdi mdi-send" />
+              <SButton variant="primary" size="sm" @click="sendRoomMessage(tab.label)" icon="mdi-send">
               </SButton>
               <!-- Emoji picker popup -->
               <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
@@ -278,7 +273,7 @@
                   formatTime(msg.timestamp)
                 }}</span>
                 <span v-if="msg.direction === 'Out'" class="message-author has-text-weight-medium"
-                  >{{ $t("app.title") }}:</span
+                  >{{ slskdUsername || $t("app.title") }}:</span
                 >
                 <span
                   v-else
@@ -304,8 +299,7 @@
               <button class="emoji-btn" @click.stop="toggleEmojiPicker" :title="$t('slskd.emoji', 'Emojis')">
                 <span class="mdi mdi-emoticon-happy-outline" />
               </button>
-              <SButton variant="primary" size="sm" @click="sendUserMessage(tab.id, tab.label)">
-                <span class="mdi mdi-send" />
+              <SButton variant="primary" size="sm" @click="sendUserMessage(tab.id, tab.label)" icon="mdi-send">
               </SButton>
               <!-- Emoji picker popup -->
               <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
@@ -351,6 +345,15 @@
               >{{ browseInfo[tab.id].files }} {{ $t("slskd.files") }}</span
             >
           </div>
+          <SButton
+            variant="primary"
+            size="sm"
+            :loading="loadingBrowse[tab.id] ?? false"
+            :title="$t('slskd.refresh', 'Refrescar')"
+            class="ml-2"
+            icon="mdi-refresh"
+            @click="fetchBrowse(tab.id, tab.label)"
+          />
           <div class="browse-filter ml-auto">
             <SInput
               v-model="browseQuery[tab.id]"
@@ -365,30 +368,35 @@
         <div class="browse-tree">
           <SLoading :loading="loadingBrowse[tab.id] ?? false">
             <div v-if="filteredBrowseTree(tab.id)?.length" class="browse-items">
-              <div v-for="dir in filteredBrowseTree(tab.id)" :key="dir.name" class="browse-item">
-                <div
-                  class="browse-dir-header"
-                  @click="dir._open = !dir._open"
-                  @contextmenu.prevent.stop="onDirContextmenu($event, dir, tab.label)"
+              <ul class="browse-root-list">
+                <FolderTreeNode
+                  v-for="dir in filteredBrowseTree(tab.id)"
+                  :key="dir.path"
+                  :node="dir"
+                  :expanded="dir._open"
+                  current-path=""
+                  @ctx-menu="(p: any) => onDirContextmenuFromNode(p, tab.label)"
                 >
-                  <span class="mdi" :class="dir._open ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
-                  <span class="mdi mdi-folder" />
-                  <span class="browse-dir-name">{{ displayName(dir.name) }}</span>
-                  <span class="browse-dir-count">({{ dir.fileCount }})</span>
-                </div>
-                <div v-if="dir._open" class="browse-children">
-                  <div
-                    v-for="file in dir._filteredFiles ?? dir.files ?? []"
-                    :key="file.filename"
-                    class="browse-file"
-                    @contextmenu.prevent.stop="onFileContextmenu($event, file, tab.label)"
-                  >
-                    <span class="mdi mdi-file" />
-                    <span class="browse-file-name">{{ file.filename }}</span>
-                    <span class="browse-file-size">{{ formatSize(file.size) }}</span>
-                  </div>
-                </div>
-              </div>
+                  <template #extra>
+                    <div
+                      v-for="file in dir._filteredFiles ?? dir.files ?? []"
+                      :key="file.filename"
+                      class="browse-file"
+                      @contextmenu.prevent.stop="onFileContextmenu($event, file, dir, tab.label)"
+                    >
+                      <span class="mdi mdi-file" />
+                      <span class="browse-file-name">{{ file.filename }}</span>
+                      <span class="browse-file-size">{{ formatSize(file.size) }}</span>
+                    </div>
+                    <div
+                      v-if="(!dir.children || dir.children.length === 0) && (!dir.files || dir.files.length === 0)"
+                      class="has-text-grey is-size-7 has-text-centered py-2"
+                    >
+                      {{ $t("slskd.emptyFolder", "Carpeta vacía") }}
+                    </div>
+                  </template>
+                </FolderTreeNode>
+              </ul>
             </div>
             <div v-else class="has-text-grey is-size-7 has-text-centered py-5">
               {{ $t("slskd.noFiles") }}
@@ -481,6 +489,7 @@ const { apiFetch } = useApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
+const slskdUsername = ref('');
 
 // ── Tab model ────────────────────────────────────────────────────────────
 interface ChatTab {
@@ -911,6 +920,61 @@ async function sendUserMessage(tabId: string, username: string) {
   }
 }
 
+// ── Browse tree builder ─────────────────────────────────────────────────
+
+function buildBrowseTree(flatDirs: any[]): any[] {
+  const byPath = new Map<string, any>();
+  for (const d of flatDirs) {
+    const parts = d.name.split("\\");
+    const displayName = parts[parts.length - 1] || d.name;
+    byPath.set(d.name, {
+      name: displayName,
+      path: d.name,
+      fileCount: d.fileCount ?? 0,
+      files: d.files ?? [],
+      locked: d.locked ?? false,
+      _open: false,
+      _totalFileCount: d.fileCount ?? 0,
+      children: [],
+    });
+  }
+  const roots: any[] = [];
+  for (const [path, node] of byPath) {
+    const parentPath = path.includes("\\")
+      ? path.substring(0, path.lastIndexOf("\\"))
+      : null;
+    if (parentPath && byPath.has(parentPath)) {
+      byPath.get(parentPath)!.children.push(node);
+      byPath.get(parentPath)!._totalFileCount += node._totalFileCount;
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
+
+function filterBrowseTree(nodes: any[], q: string): any[] {
+  const result: any[] = [];
+  for (const node of nodes) {
+    const dirPath = (node.path || "").toLowerCase();
+    const dirMatches = dirPath.includes(q);
+    const matchedFiles = (node.files || []).filter((f: any) => {
+      const fp = dirPath + "\\" + (f.filename || "").toLowerCase();
+      return fp.includes(q);
+    });
+    const filteredChildren = filterBrowseTree(node.children, q);
+    if (dirMatches) {
+      result.push({ ...node, _open: true, _filteredFiles: null,
+        children: filteredChildren.length > 0 ? filteredChildren : node.children.map((c: any) => ({ ...c, _open: true })) });
+    } else if (matchedFiles.length > 0 || filteredChildren.length > 0) {
+      result.push({ ...node, _open: true,
+        _filteredFiles: matchedFiles.length > 0 ? matchedFiles : null,
+        children: filteredChildren.length > 0 ? filteredChildren : node.children });
+    }
+  }
+  return result;
+}
+
 // ── Data fetching: Browse ────────────────────────────────────────────────
 async function fetchBrowse(tabId: string, username: string) {
   loadingBrowse.value[tabId] = true;
@@ -925,16 +989,12 @@ async function fetchBrowse(tabId: string, username: string) {
         directories: data.directories?.length ?? 0,
         files: allDirs.reduce((s: number, d: any) => s + (d.fileCount ?? 0), 0),
       };
-      browseTree.value[tabId] = allDirs.map((d: any) => ({ ...d, _open: false }));
+      browseTree.value[tabId] = buildBrowseTree(allDirs);
     }
   } catch {
     /* silent */
   }
   loadingBrowse.value[tabId] = false;
-}
-
-function toggleBrowseDir(tabId: string, dir: any) {
-  dir._open = !dir._open;
 }
 
 /** Filter browse tree by query string (matches full remote path) */
@@ -943,26 +1003,7 @@ function filteredBrowseTree(tabId: string): any[] {
   const dirs = browseTree.value[tabId];
   if (!dirs) return [];
   if (!q) return dirs;
-
-  return dirs
-    .map((dir) => {
-      const dirName = (dir.name || "").toLowerCase();
-      const matchedFiles = (dir.files || []).filter((f: any) => {
-        const fullPath = dirName + "\\" + (f.filename || "").toLowerCase();
-        return fullPath.includes(q);
-      });
-      // Include the dir if the dir name matches OR it has matching files
-      const dirMatches = dirName.includes(q);
-      if (dirMatches) {
-        // Show all files when dir name matches
-        return { ...dir, _filteredFiles: null, _open: true };
-      }
-      if (matchedFiles.length > 0) {
-        return { ...dir, _filteredFiles: matchedFiles, _open: true };
-      }
-      return null;
-    })
-    .filter(Boolean);
+  return filterBrowseTree(dirs, q);
 }
 
 // ── Context menu (users in room) ─────────────────────────────────────────
@@ -1007,13 +1048,35 @@ const browseCtx = reactive({
   username: "",
 });
 
-function onFileContextmenu(event: MouseEvent, file: any, username: string) {
+function onDirContextmenuFromNode(payload: { path: string; name: string; x: number; y: number }, username: string) {
+  const tabId = activeTabId.value;
+  if (!tabId) return;
+  const findNode = (nodes: any[]): any => {
+    for (const n of nodes) {
+      if (n.path === payload.path) return n;
+      const found = findNode(n.children || []);
+      if (found) return found;
+    }
+    return null;
+  };
+  const dir = findNode(browseTree.value[tabId] || []);
+  if (!dir) return;
+  browseCtx.visible = true;
+  browseCtx.x = payload.x;
+  browseCtx.y = payload.y;
+  browseCtx.type = "dir";
+  browseCtx.file = null;
+  browseCtx.dir = dir;
+  browseCtx.username = username;
+}
+
+function onFileContextmenu(event: MouseEvent, file: any, dir: any, username: string) {
   browseCtx.visible = true;
   browseCtx.x = event.clientX;
   browseCtx.y = event.clientY;
   browseCtx.type = "file";
   browseCtx.file = file;
-  browseCtx.dir = null;
+  browseCtx.dir = dir;
   browseCtx.username = username;
 }
 
@@ -1030,10 +1093,13 @@ function onDirContextmenu(event: MouseEvent, dir: any, username: string) {
 function ctxDownloadFile() {
   browseCtx.visible = false;
   const file = browseCtx.file;
+  const dir = browseCtx.dir;
   if (!file || !browseCtx.username) return;
+  // Soulseek needs the full relative path from the user's share root
+  const fullPath = dir?.name ? dir.name + "\\" + file.filename : file.filename;
   apiFetch("/api/slskd/transfers/download", {
     method: "POST",
-    body: { username: browseCtx.username, files: [{ filename: file.filename, size: file.size }] },
+    body: { username: browseCtx.username, files: [{ filename: fullPath, size: file.size }] },
   }).catch(() => {});
 }
 
@@ -1041,7 +1107,11 @@ function ctxDownloadBrowseDir() {
   browseCtx.visible = false;
   const dir = browseCtx.dir;
   if (!dir || !browseCtx.username) return;
-  const allFiles = (dir.files ?? []).map((f: any) => ({ filename: f.filename, size: f.size }));
+  // Soulseek needs the full relative path from the user's share root
+  const allFiles = (dir.files ?? []).map((f: any) => ({
+    filename: dir.name + "\\" + f.filename,
+    size: f.size,
+  }));
   if (allFiles.length === 0) return;
   apiFetch("/api/slskd/transfers/download", {
     method: "POST",
@@ -1630,41 +1700,20 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-.browse-dir-header {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.35rem 0.5rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-  border-bottom: 1px solid var(--s-border);
-}
-.browse-dir-header:hover {
-  background: var(--s-bg-hover);
-}
-
-.browse-dir-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.browse-dir-count {
-  font-size: 0.7rem;
-  color: var(--s-text-secondary);
-}
-
-.browse-children {
-  border-bottom: 1px solid var(--s-border);
+.browse-root-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .browse-file {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  padding: 0.25rem 0.5rem 0.25rem 1.8rem;
+  padding: 0.15rem 0.4rem;
   font-size: 0.8rem;
-  cursor: default;
+  cursor: pointer;
+  border-radius: 3px;
 }
 .browse-file:hover {
   background: var(--s-bg-hover);
@@ -1674,6 +1723,7 @@ onUnmounted(() => {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .browse-file-size {
@@ -1686,8 +1736,10 @@ onUnmounted(() => {
 #page-slskd-rooms {
 }
 #page-slskd-rooms .rooms-scroll {
+  /* Let STable's s-table-wrap handle scrolling so thead stays sticky */
+}
+#page-slskd-rooms .rooms-scroll :deep(.s-table-wrap) {
   max-height: calc(100vh - 240px);
-  overflow-y: auto;
 }
 #page-slskd-rooms :deep(.s-table tbody tr) {
   cursor: pointer;

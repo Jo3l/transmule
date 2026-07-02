@@ -5,8 +5,7 @@
     class="service-dropdown"
     ref="dropdownRef"
   >
-    <SButton size="sm" @click="open = !open">
-      <span class="mdi mdi-server-network" />
+    <SButton size="sm" @click="open = !open" icon="mdi-server-network">
       <span class="service-dropdown__label">{{ $t("services.title") }}</span>
       <span class="mdi" :class="open ? 'mdi-chevron-up' : 'mdi-chevron-down'" />
     </SButton>

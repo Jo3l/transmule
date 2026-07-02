@@ -1,10 +1,6 @@
 <template>
   <SLoading id="page-transmission-settings" :loading="loading">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-cog mr-1" />
-      {{ $t("transmission.settings.title") }}
-    </h1>
-
+    
     <STabs v-model="activeTab" :panes="tabPanes">
       <!-- ── Stats ── -->
       <template #tab-stats>
@@ -207,8 +203,7 @@
 
           <SDivider />
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveSpeed">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveSpeed" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -262,8 +257,7 @@
 
           <SDivider />
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveFolders">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveFolders" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -349,8 +343,7 @@
 
           <SDivider />
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveSharing">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveSharing" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -400,8 +393,7 @@
                 >{{ privacy.blocklistSize.toLocaleString() }}
                 {{ $t("transmission.privacy.rules") }}</span
               >
-              <SButton size="sm" class="ml-3" :loading="updatingBlocklist" @click="updateBlocklist">
-                <span class="mdi mdi-refresh mr-1" />
+              <SButton size="sm" class="ml-3" :loading="updatingBlocklist" @click="updateBlocklist" icon="mdi-refresh">
                 {{ $t("transmission.privacy.updateNow") }}
               </SButton>
             </SFormItem>
@@ -409,8 +401,7 @@
 
           <SDivider />
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="savePrivacy">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="savePrivacy" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -444,8 +435,7 @@
 
           <SDivider />
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="saveNetwork">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="saveNetwork" icon="mdi-content-save">
               {{ $t("settings.save") }}
             </SButton>
           </div>
@@ -476,8 +466,8 @@
             :placeholder="$t('torrentSearch.trackersPlaceholder')"
           />
           <div class="flex-end mt-3">
-            <SButton variant="primary" :loading="savingTrackers" @click="saveTrackers">
-              <span class="mdi mdi-content-save mr-1" /> {{ $t("settings.save") }}
+            <SButton variant="primary" :loading="savingTrackers" @click="saveTrackers" icon="mdi-content-save">
+              {{ $t("settings.save") }}
             </SButton>
           </div>
         </div>
