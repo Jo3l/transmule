@@ -14,16 +14,14 @@
             size="sm"
             :title="$t('settings.changePassword')"
             @click="openChangePw(row)"
-          >
-            <span class="mdi mdi-key" />
+           icon="mdi-key">
           </SButton>
           <SButton
             v-if="row.id !== currentUserId"
             variant="danger"
             size="sm"
             @click="removeUser(row.id)"
-          >
-            <span class="mdi mdi-delete" />
+           icon="mdi-delete">
           </SButton>
         </div>
       </template>

@@ -1,7 +1,6 @@
 <template>
   <SLoading id="page-amule-settings" :loading="loading">
-    <h1 class="title is-4 mb-4">{{ $t("amuleSettings.title") }}</h1>
-
+    
     <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
     <SAlert v-if="saved" variant="success" class="mb-4">{{ $t("amuleSettings.saved") }}</SAlert>
 
@@ -162,8 +161,7 @@
           <SDivider />
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="save('general')">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="save('general')" icon="mdi-content-save">
               {{ $t("amuleSettings.save") }}
             </SButton>
           </div>
@@ -270,8 +268,7 @@
           <SDivider />
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="save('connection')">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="save('connection')" icon="mdi-content-save">
               {{ $t("amuleSettings.save") }}
             </SButton>
           </div>
@@ -320,8 +317,7 @@
           <SDivider />
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="save('servers')">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="save('servers')" icon="mdi-content-save">
               {{ $t("amuleSettings.save") }}
             </SButton>
           </div>
@@ -424,8 +420,7 @@
           <SDivider />
 
           <div class="flex-end">
-            <SButton variant="primary" :loading="saving" @click="save('security')">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" :loading="saving" @click="save('security')" icon="mdi-content-save">
               {{ $t("amuleSettings.save") }}
             </SButton>
           </div>
@@ -455,12 +450,10 @@
           <p class="has-text-grey is-size-7 mt-1">{{ $t("amuleSettings.includeSubdirsHelp", "Al escanear archivos compartidos, incluye tambi\u00e9n los de subdirectorios.") }}</p>
 
           <div class="mt-4">
-            <SButton variant="default" size="sm" :loading="reloadingShared" @click="reloadShared">
-              <span class="mdi mdi-refresh mr-1" />
+            <SButton variant="default" size="sm" :loading="reloadingShared" @click="reloadShared" icon="mdi-refresh">
               {{ $t("amuleSettings.reloadShared", "Recargar archivos compartidos") }}
             </SButton>
-            <SButton variant="primary" class="ml-2" :loading="saving" @click="saveSharing">
-              <span class="mdi mdi-content-save mr-1" />
+            <SButton variant="primary" class="ml-2" :loading="saving" @click="saveSharing" icon="mdi-content-save">
               {{ $t("amuleSettings.save") }}
             </SButton>
           </div>

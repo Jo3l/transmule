@@ -3,13 +3,10 @@
     <!-- Header -->
     <div class="level mb-4">
       <div class="level-left">
-        <h1 class="title is-4 mb-0">
-          {{ mediaTypeLabel }} — {{ providerMeta?.name || providerId }}
-        </h1>
-      </div>
+              </div>
       <div class="level-right">
-        <SButton size="sm" @click="load(undefined, true)">
-          <span class="mdi mdi-refresh mr-1" />{{ $t("media.refresh") }}
+        <SButton size="sm" @click="load(undefined, true)" icon="mdi-refresh">
+          {{ $t("media.refresh") }}
         </SButton>
       </div>
     </div>
@@ -64,8 +61,8 @@
         :variant="urlChanged ? 'primary' : 'default'"
         :disabled="loading"
         @click="saveAndLoad"
-      >
-        <span class="mdi mdi-content-save mr-1" />{{ $t("media.saveUrl") }}
+       icon="mdi-content-save">
+        {{ $t("media.saveUrl") }}
       </SButton>
     </div>
 
@@ -89,8 +86,8 @@
         size="sm"
         :disabled="currentPage <= 1 || loading"
         @click="goToPage(currentPage - 1)"
-      >
-        <span class="mdi mdi-chevron-left" /> {{ $t("media.prevPage") }}
+       icon="mdi-chevron-left">
+        {{ $t("media.prevPage") }}
       </SButton>
       <span class="provider-page-num">{{ $t("media.page", { n: currentPage }) }}</span>
       <SButton

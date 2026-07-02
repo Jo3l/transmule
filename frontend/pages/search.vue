@@ -1,10 +1,6 @@
 <template>
   <div id="page-unified-search">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-magnify mr-1" />
-      {{ $t("search.globalSearch") }}
-    </h1>
-
+    
     <!-- Search form: input + source select + button -->
     <div class="box mb-4">
       <form @submit.prevent="onSearch" class="unified-search-form">
@@ -120,8 +116,7 @@
                 size="sm"
                 @click="startSlskdDownload(row)"
                 :title="$t('slskd.search.download')"
-              >
-                <span class="mdi mdi-download" />
+               icon="mdi-download">
               </SButton>
             </template>
             <template v-else>

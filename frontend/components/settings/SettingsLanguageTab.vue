@@ -13,8 +13,7 @@
     </SFormItem>
 
     <div class="flex-end">
-      <SButton variant="primary" :loading="savingLocale" @click="applyLocale">
-        <span class="mdi mdi-content-save mr-1" />
+      <SButton variant="primary" :loading="savingLocale" @click="applyLocale" icon="mdi-content-save">
         {{ $t("settings.save") }}
       </SButton>
     </div>

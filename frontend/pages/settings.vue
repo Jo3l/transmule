@@ -1,7 +1,6 @@
 <template>
   <SLoading id="page-settings" :loading="loading">
-    <h1 class="title is-4 mb-4">{{ $t("settings.title") }}</h1>
-
+    
     <STabs v-model="activeTab" :panes="tabPanes">
       <template #tab-theme
         ><span class="mdi mdi-palette mr-1" /> {{ $t("settings.theme") }}</template

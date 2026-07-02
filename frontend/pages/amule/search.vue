@@ -1,7 +1,6 @@
 <template>
   <div id="page-amule-search">
-    <h1 class="title is-4 mb-4">{{ $t("search.title") }}</h1>
-
+    
     <!-- Search form -->
     <div class="box mb-4">
       <form @submit.prevent="onSearch">
@@ -39,11 +38,11 @@
                 <SSelect v-model="maxSizeUnit" :options="sizeUnits" />
               </div>
             </SFormItem>
+            <SButton variant="primary" native-type="submit" icon="mdi-magnify" class="search-form__search-btn">
+              {{ $t("search.button") }}
+            </SButton>
           </div>
         </div>
-        <SButton variant="primary" native-type="submit">
-          <span class="mdi mdi-magnify mr-1" /> {{ $t("search.button") }}
-        </SButton>
       </form>
     </div>
 
@@ -83,18 +82,6 @@
         :label="tab.query"
         :active="tab.id === (activeTabId ?? '')"
       >
-        <!-- Progress bar + stop for active search -->
-        <div
-          v-if="tab.status === 'searching'"
-          class="flex-row justify-center gap-md mb-2 align-items-center"
-        >
-          <SButton variant="warning" size="sm" @click="stopSearch(tab.id)">
-            <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
-          </SButton>
-          <span class="has-text-grey is-size-7">
-            {{ $t("search.searching") }} {{ Math.round(tab.progress * 100) }}%
-          </span>
-        </div>
 
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
@@ -252,18 +239,6 @@ async function loadCover(row: any) {
   );
 }
 
-// ── Stop ────────────────────────────────────────────────────────────────────
-
-function stopSearch(tabId: string) {
-  // Stop the backend search but keep the tab with current results
-  apiFetch("/api/amule/search", {
-    method: "POST",
-    body: { action: "stop" },
-  }).catch(() => {});
-  // Stop polling and mark tab complete
-  import("../../composables/useSearchTabs").then((m) => m.stopAmuleSearch(tabId));
-}
-
 // ── Init ───────────────────────────────────────────────────────────────────
 
 onMounted(() => {
@@ -300,12 +275,16 @@ onMounted(() => {
 .search-form__size {
   min-width: 200px;
 }
+.search-form__search-btn {
+  align-self: flex-end;
+}
 
 @media (max-width: 480px) {
   .search-form__query,
   .search-form__type,
   .search-form__sources,
-  .search-form__size {
+  .search-form__size,
+  .search-form__search-btn {
     flex: 1 1 100%;
   }
 }

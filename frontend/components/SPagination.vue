@@ -5,8 +5,7 @@
       variant="default"
       :disabled="modelValue <= 1"
       @click="go(modelValue - 1)"
-    >
-      <span class="mdi mdi-chevron-left" />
+     icon="mdi-chevron-left">
     </SButton>
     <span class="s-pagination__info">{{ modelValue }} / {{ totalPages }}</span>
     <SButton

@@ -11,7 +11,7 @@
       @dragleave.stop="isDragOver = false"
       @drop.prevent.stop="onDrop"
     >
-      <button v-if="node.children.length" class="ftn-chevron" @click.stop="expanded = !expanded">
+      <button v-if="node.children.length" class="ftn-chevron" @click.stop="toggleExpand">
         <span class="mdi" :class="expanded ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
       </button>
       <span v-else class="ftn-chevron-placeholder" />
@@ -29,6 +29,9 @@
         @ctx-menu="$emit('ctx-menu', $event)"
       />
     </ul>
+    <div v-if="expanded" class="ftn-extra">
+      <slot name="extra" />
+    </div>
   </li>
 </template>
 
@@ -42,6 +45,7 @@ interface TreeNode {
 const props = defineProps<{
   node: TreeNode;
   currentPath: string;
+  expanded?: boolean;
 }>();
 
 const { t } = useI18n();
@@ -59,18 +63,34 @@ const emit = defineEmits<{
 
 const isActive = computed(() => props.currentPath === props.node.path);
 
+const _useExternalExpand = computed(() => props.expanded !== undefined);
+
 const expanded = ref(
-  props.currentPath === props.node.path || props.currentPath.startsWith(props.node.path + "/"),
+  _useExternalExpand.value
+    ? props.expanded!
+    : (props.currentPath === props.node.path || props.currentPath.startsWith(props.node.path + "/")),
 );
 
-watch(
-  () => props.currentPath,
-  (p) => {
+watch(() => props.expanded, (val) => {
+  if (_useExternalExpand.value && val !== undefined) {
+    expanded.value = val;
+  }
+});
+
+watch(() => props.currentPath, (p) => {
+  if (!_useExternalExpand.value) {
     if (p === props.node.path || p.startsWith(props.node.path + "/")) {
       expanded.value = true;
     }
-  },
-);
+  }
+});
+
+function toggleExpand() {
+  expanded.value = !expanded.value;
+  if (_useExternalExpand.value) {
+    (props.node as any)._open = expanded.value;
+  }
+}
 
 const isDragOver = ref(false);
 

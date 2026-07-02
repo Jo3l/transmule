@@ -16,8 +16,7 @@
       <template v-if="hasSourceFilter" #header-source="{ column }">
         <div class="source-header-wrap">
           <span class="source-header-label">{{ column.label }}</span>
-          <SButton size="mini" @click.stop="showFilter = !showFilter">
-            <span class="mdi mdi-filter-variant" />
+          <SButton size="mini" @click.stop="showFilter = !showFilter" icon="mdi-filter-variant">
           </SButton>
           <div v-if="showFilter" class="src-filter-dropdown" @click.stop>
             <label v-for="src in sortedSources" :key="src" class="src-filter-item" @click.stop>
@@ -319,6 +318,12 @@ const extraSlotColumns = computed(() => {
 </script>
 
 <style scoped>
+.search-results-table {
+  /* Let STable's s-table-wrap handle scrolling so thead stays sticky */
+}
+.search-results-table :deep(.s-table-wrap) {
+  max-height: calc(100vh - 400px);
+}
 .source-header-wrap {
   display: flex;
   align-items: center;
@@ -342,6 +347,13 @@ const extraSlotColumns = computed(() => {
 :deep(.s-table td.s-table__empty) {
   display: table-cell;
   text-align: center;
+}
+:deep(.s-table td.s-table__empty .has-text-centered) {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 :deep(.s-table td:nth-last-child(2)) {
   overflow: visible;

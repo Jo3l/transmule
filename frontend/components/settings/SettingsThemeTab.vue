@@ -20,8 +20,7 @@
     </p>
 
     <div class="flex-end">
-      <SButton variant="primary" :loading="savingTheme" @click="applyTheme">
-        <span class="mdi mdi-content-save mr-1" />
+      <SButton variant="primary" :loading="savingTheme" @click="applyTheme" icon="mdi-content-save">
         {{ $t("settings.save") }}
       </SButton>
     </div>

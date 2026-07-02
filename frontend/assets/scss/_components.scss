@@ -2,6 +2,11 @@
    COMPONENT STYLES — S* component classes
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── Global: prevent white scrollbar corner ──────────────────────────────── */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ── SButton ─────────────────────────────────────────────────────────────── */
 .s-btn {
   // ── Per-button design tokens (overridden by variant classes)
@@ -42,7 +47,7 @@
 
   // ── Size modifiers
   &.s-btn--sm .button-inside {
-    padding: 2px 16px;
+    padding: 2px 6px 2px 10px;
     font-size: 0.8rem;
   }
   &.s-btn--mini .button-inside {
@@ -235,6 +240,13 @@
     height: 14px;
     font-size: 14px;
     line-height: 1;
+    flex-shrink: 0;
+  }
+
+  // ── Icon (replaced by spinner during loading)
+  .s-btn__icon {
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
   }
 }

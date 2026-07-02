@@ -1,10 +1,6 @@
 <template>
   <div>
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-magnify mr-1" />
-      {{ $t("torrentSearch.title") }}
-    </h1>
-
+    
     <!-- Search form -->
     <div class="box mb-4">
       <form @submit.prevent="onSearch">
@@ -22,11 +18,11 @@
             </SFormItem>
           </div>
         </div>
-        <SButton variant="primary" native-type="submit">
-          <span class="mdi mdi-magnify mr-1" /> {{ $t("torrentSearch.button") }}
+        <SButton variant="primary" native-type="submit" icon="mdi-magnify">
+          {{ $t("torrentSearch.button") }}
         </SButton>
-        <SButton class="ml-3" @click.prevent="openTrackers">
-          <span class="mdi mdi-antenna mr-1" /> {{ $t("torrentSearch.trackers") }}
+        <SButton class="ml-3" @click.prevent="openTrackers" icon="mdi-antenna">
+          {{ $t("torrentSearch.trackers") }}
         </SButton>
       </form>
     </div>
@@ -77,8 +73,8 @@
             <span class="mdi mdi-loading mdi-spin mr-1" />
             Searching {{ tab.sourcesCompleted.length }} / {{ totalPluginCount }} sources...
           </span>
-          <SButton variant="warning" size="sm" @click="stopTorrentSearch(tab.id)">
-            <span class="mdi mdi-stop mr-1" /> {{ $t("search.stop") }}
+          <SButton variant="warning" size="sm" @click="stopTorrentSearch(tab.id)" icon="mdi-stop">
+            {{ $t("search.stop") }}
           </SButton>
         </div>
 
@@ -126,8 +122,8 @@
         :placeholder="$t('torrentSearch.trackersPlaceholder')"
       />
       <template #footer>
-        <SButton variant="primary" :loading="savingTrackers" @click="saveAndClose">
-          <span class="mdi mdi-content-save mr-1" /> {{ $t("settings.save") }}
+        <SButton variant="primary" :loading="savingTrackers" @click="saveAndClose" icon="mdi-content-save">
+          {{ $t("settings.save") }}
         </SButton>
       </template>
     </SDialog>

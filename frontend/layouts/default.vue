@@ -8,8 +8,7 @@
     <div class="app-main">
       <div class="app-topbar">
         <div class="flex-center gap-md">
-          <SButton size="sm" class="is-hidden-tablet" @click="sidebarOpen = !sidebarOpen">
-            <span class="mdi mdi-menu" />
+          <SButton size="sm" class="is-hidden-tablet" @click="sidebarOpen = !sidebarOpen" icon="mdi-menu">
           </SButton>
           <LazyConnectionStatus class="is-hidden-mobile" />
         </div>
@@ -28,8 +27,7 @@
               <span class="mdi mdi-account" /> {{ user?.username }}
             </STag>
           </span>
-          <SButton size="sm" class="is-hidden-mobile" @click="doLogout">
-            <span class="mdi mdi-logout" />
+          <SButton size="sm" class="is-hidden-mobile" @click="doLogout" icon="mdi-logout">
           </SButton>
         </div>
       </div>

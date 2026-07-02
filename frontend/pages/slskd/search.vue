@@ -1,10 +1,6 @@
 <template>
   <div id="page-slskd">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-account-music mr-1" />
-      {{ $t("nav.slskd") }}
-    </h1>
-
+    
     <!-- Search form -->
     <div class="box mb-4">
       <form @submit.prevent="onSearch">
@@ -103,8 +99,7 @@
               :loading="downloadingId === row.id"
               @click="startDownload(row)"
               :title="$t('slskd.search.download')"
-            >
-              <span class="mdi mdi-download" />
+             icon="mdi-download">
             </SButton>
           </template>
         </SearchResultsTable>
@@ -335,6 +330,37 @@ function formatSpeed(bytesPerSec: number | undefined | null): string {
   return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
 }
 
+// ── Session cache ──────────────────────────────────────────────────────────
+
+const SESSION_KEY = "slskd_search_cache";
+
+interface SearchCache {
+  results: Record<string, SlskdResponse[]>;
+  pages: Record<string, number>;
+}
+
+function saveSessionCache() {
+  try {
+    const cache: SearchCache = {
+      results: searchResults.value,
+      pages: searchPage.value,
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(cache));
+  } catch {
+    /* quota exceeded, ignore */
+  }
+}
+
+function loadSessionCache(): SearchCache | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // ── API ─────────────────────────────────────────────────────────────────────
 
 async function fetchSearches() {
@@ -353,6 +379,7 @@ async function fetchResponses(searchId: string) {
       `/api/slskd/searches/${searchId}/responses`,
     );
     searchResults.value[searchId] = data ?? [];
+    saveSessionCache();
   } catch {
     searchResults.value[searchId] = [];
   } finally {
@@ -416,6 +443,7 @@ async function removeSearch(id: string) {
     delete searchResults.value[id];
     delete loadingSearchResults.value[id];
     delete searchPage.value[id];
+    saveSessionCache();
     await fetchSearches();
   } catch (err: any) {
     addToast(err?.message ?? t("slskd.search.actionError"), "error");
@@ -441,6 +469,21 @@ async function startDownload(item: SlskdResponse) {
   }
 }
 
+/** Refresh results in background without showing loading state */
+async function refreshResponsesSilent(searchId: string) {
+  try {
+    const data = await apiFetch<SlskdResponse[]>(
+      `/api/slskd/searches/${searchId}/responses`,
+    );
+    if (data) {
+      searchResults.value[searchId] = data;
+      saveSessionCache();
+    }
+  } catch {
+    /* silent */
+  }
+}
+
 // ── Polling ─────────────────────────────────────────────────────────────────
 
 async function pollActiveSearches() {
@@ -457,16 +500,45 @@ async function pollActiveSearches() {
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+  // 1. Restore cached results from session (instant display)
+  const cached = loadSessionCache();
+  if (cached) {
+    searchResults.value = cached.results || {};
+    searchPage.value = cached.pages || {};
+  }
+
+  // 2. Fetch search list from API
   loadingSearches.value = true;
   await fetchSearches();
   loadingSearches.value = false;
 
-  // Auto-select latest search tab
+  // 3. Clean up cached results for searches that no longer exist
+  const activeIds = new Set(searches.value.map((s) => s.id));
+  for (const id of Object.keys(searchResults.value)) {
+    if (!activeIds.has(id)) {
+      delete searchResults.value[id];
+      delete searchPage.value[id];
+    }
+  }
+
+  // 4. Load results for each search (instant if cached, fetch if not)
+  for (const s of searches.value) {
+    const existing = searchResults.value[s.id];
+    if (!existing || existing.length === 0) {
+      fetchResponses(s.id);
+    } else if (s.state === "InProgress" || s.state === "Started") {
+      refreshResponsesSilent(s.id);
+    }
+  }
+
+  // 5. Auto-select latest search tab
   if (searches.value.length > 0) {
     const latest = searches.value[searches.value.length - 1];
     activeSearchTab.value = "srch-" + latest.id;
-    fetchResponses(latest.id);
   }
+
+  // 6. Save cleaned cache
+  saveSessionCache();
 
   pollTimer = setInterval(pollActiveSearches, 5000);
 });

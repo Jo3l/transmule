@@ -1,7 +1,6 @@
 <template>
   <div id="page-uploads">
-    <h1 class="title is-4 mb-4">{{ $t("uploads.title") }}</h1>
-
+    
     <!-- Totals bar -->
     <div class="box py-3 mb-4">
       <div class="totals-bar">

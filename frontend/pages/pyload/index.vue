@@ -1,10 +1,6 @@
 <template>
   <div id="page-pyload">
-    <h1 class="title is-4 mb-4">
-      <span class="mdi mdi-download-circle-outline mr-1" />
-      {{ $t("pyload.title") }}
-    </h1>
-
+    
     <!-- Status bar -->
     <div v-if="status" class="box mb-4">
       <div class="flex-center gap-lg flex-wrap">
@@ -165,16 +161,14 @@
               size="sm"
               :title="$t('pyload.restartPackage')"
               @click="packageAction('restart', pkg.pid)"
-            >
-              <span class="mdi mdi-restart" />
+             icon="mdi-restart">
             </SButton>
             <SButton
               variant="danger"
               size="sm"
               :title="$t('pyload.deletePackage')"
               @click="packageAction('delete', pkg.pid)"
-            >
-              <span class="mdi mdi-delete" />
+             icon="mdi-delete">
             </SButton>
           </div>
         </div>
