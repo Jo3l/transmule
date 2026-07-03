@@ -1,5 +1,3 @@
-import type { PyLoadStatus } from "~/utils/pyload-client";
-
 defineRouteMeta({
   openAPI: {
     tags: ["pyLoad"],

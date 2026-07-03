@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
 import {
   resolveVirtualPath, smbDownloadStream, smbUploadStream,
-  smbRmRecursive, smbRm, smbStat, smbMkdir, smbRename, smbListDir,
+  smbRmRecursive, smbStat, smbMkdir, smbRename, smbListDir,
 } from "~/utils/remoteMounts";
 
 defineRouteMeta({

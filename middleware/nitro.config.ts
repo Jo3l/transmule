@@ -43,5 +43,6 @@ export default defineNitroConfig({
     amuleEd2kUdpPort: "16882",
     amuleKadUdpPort: "16883",
     transmissionPeerPort: "16884",
+    slskdListenPort: "50300",
   },
 });

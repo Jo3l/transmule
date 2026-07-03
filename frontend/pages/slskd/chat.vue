@@ -25,10 +25,16 @@
       <!-- ── Rooms list tab (permanent, first) ─────────────────── -->
       <STabPane name="_rooms" :active="activeTabId === '_rooms'">
         <div id="page-slskd-rooms">
-          <div class="mb-3">
+          <div class="mb-3 flex-row gap-sm align-items-center">
             <SInput v-model="roomQuery" :placeholder="$t('search.filter')" class="mw-300">
               <template #prefix><span class="mdi mdi-magnify" /></template>
             </SInput>
+            <SButton size="sm" icon="mdi-plus" @click="showCreateRoom = true">
+              {{ $t("slskd.createRoom", "Crear canal") }}
+            </SButton>
+            <SButton size="sm" variant="success" icon="mdi-account-group" @click="joinRoom('Transmule')">
+              {{ $t("slskd.joinTransmule", "Transmule") }}
+            </SButton>
           </div>
           <div class="rooms-scroll">
             <SLoading :loading="loadingRooms">
@@ -376,26 +382,8 @@
                   :expanded="dir._open"
                   current-path=""
                   @ctx-menu="(p: any) => onDirContextmenuFromNode(p, tab.label)"
-                >
-                  <template #extra>
-                    <div
-                      v-for="file in dir._filteredFiles ?? dir.files ?? []"
-                      :key="file.filename"
-                      class="browse-file"
-                      @contextmenu.prevent.stop="onFileContextmenu($event, file, dir, tab.label)"
-                    >
-                      <span class="mdi mdi-file" />
-                      <span class="browse-file-name">{{ file.filename }}</span>
-                      <span class="browse-file-size">{{ formatSize(file.size) }}</span>
-                    </div>
-                    <div
-                      v-if="(!dir.children || dir.children.length === 0) && (!dir.files || dir.files.length === 0)"
-                      class="has-text-grey is-size-7 has-text-centered py-2"
-                    >
-                      {{ $t("slskd.emptyFolder", "Carpeta vacía") }}
-                    </div>
-                  </template>
-                </FolderTreeNode>
+                  @fileCtx="(e: MouseEvent, f: any, d: any) => onFileContextmenu(e, f, d, tab.label)"
+                />
               </ul>
             </div>
             <div v-else class="has-text-grey is-size-7 has-text-centered py-5">
@@ -481,6 +469,20 @@
         {{ $t("slskd.downloadDirectory", "Descargar carpeta") }}
       </div>
     </SContextMenu>
+
+    <!-- ── Create room modal ────────────────────────────────── -->
+    <SDialog v-model="showCreateRoom" :title="$t('slskd.createRoom', 'Crear canal')" width="400px">
+      <SFormItem :label="$t('slskd.roomName', 'Nombre del canal')">
+        <SInput v-model="createRoomName" :placeholder="$t('slskd.roomNamePlaceholder', 'Nombre del canal...')" @keyup.enter="doCreateRoom" />
+      </SFormItem>
+      <p v-if="createRoomError" class="has-text-danger is-size-7 mt-2">{{ createRoomError }}</p>
+      <template #footer>
+        <SButton @click="showCreateRoom = false">{{ $t("common.cancel", "Cancelar") }}</SButton>
+        <SButton variant="primary" :loading="creatingRoom" @click="doCreateRoom" icon="mdi-plus">
+          {{ $t("slskd.createRoom", "Crear canal") }}
+        </SButton>
+      </template>
+    </SDialog>
   </div>
 </template>
 
@@ -520,7 +522,7 @@ const userTabs = computed(() => tabs.value.filter((t) => t.type === "user"));
 const fileTabs = computed(() => tabs.value.filter((t) => t.type === "files"));
 
 function nextTabId(type: string, name: string): string {
-  return `${type}::${name}`;
+  return `${type}:${name}`;
 }
 
 // ── Data stores ──────────────────────────────────────────────────────────
@@ -629,6 +631,10 @@ const roomsList = ref<any[]>([]);
 const loadingRooms = ref(false);
 const sortField = ref("");
 const sortDir = ref<"asc" | "desc">("asc");
+const showCreateRoom = ref(false);
+const createRoomName = ref("");
+const creatingRoom = ref(false);
+const createRoomError = ref("");
 
 const roomColumns = computed(() => [
   { key: "type", label: "", width: 36 },
@@ -680,6 +686,38 @@ function onSort(field: string, dir: "asc" | "desc") {
 function onRoomClick(row: any) {
   const roomName = row.name;
   if (!roomName) return;
+  joinRoom(roomName);
+}
+
+async function doCreateRoom() {
+  const name = createRoomName.value.trim();
+  if (!name) return;
+  createRoomError.value = "";
+
+  // Check if room already exists in the available list
+  if (roomsList.value.some((r: any) => r.name?.toLowerCase() === name.toLowerCase())) {
+    createRoomError.value = t("slskd.roomExists", "Este canal ya existe");
+    return;
+  }
+
+  creatingRoom.value = true;
+  try {
+    await apiFetch("/api/slskd/rooms/join", {
+      method: "POST",
+      body: { roomName: name },
+    });
+    showCreateRoom.value = false;
+    createRoomName.value = "";
+    joinRoom(name);
+    fetchRoomsList();
+  } catch (err: any) {
+    createRoomError.value = err?.message || t("slskd.actionError");
+  } finally {
+    creatingRoom.value = false;
+  }
+}
+
+function joinRoom(roomName: string) {
   addRoom(roomName);
 }
 
@@ -824,7 +862,7 @@ function closeTab(tabId: string) {
     const remaining = tabs.value;
     activeTabId.value = remaining.length > 0 ? remaining[remaining.length - 1].id : "";
   }
-  const hash = activeTabId.value ? encodeURIComponent(activeTabId.value) : "";
+  const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + activeTabId.value : "";
   router.replace({ hash });
   if (wasBrowse) saveBrowseTabs();
   if (tab.type === "user") saveUserTabs();
@@ -1292,6 +1330,15 @@ watch(
     }
   },
 );
+
+// Sync hash when active tab changes
+watch(activeTabId, (id) => {
+  if (id && id !== "_rooms") {
+    router.replace({ hash: "#" + id });
+  } else {
+    router.replace({ hash: "" });
+  }
+});
 
 // ── Init ────────────────────────────────────────────────────────────
 

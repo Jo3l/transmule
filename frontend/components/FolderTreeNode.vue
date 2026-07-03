@@ -11,7 +11,7 @@
       @dragleave.stop="isDragOver = false"
       @drop.prevent.stop="onDrop"
     >
-      <button v-if="node.children.length" class="ftn-chevron" @click.stop="toggleExpand">
+      <button v-if="hasExpandableContent" class="ftn-chevron" @click.stop="toggleExpand">
         <span class="mdi" :class="expanded ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
       </button>
       <span v-else class="ftn-chevron-placeholder" />
@@ -27,9 +27,26 @@
         @navigate="$emit('navigate', $event)"
         @drop-transfer="$emit('drop-transfer', $event)"
         @ctx-menu="$emit('ctx-menu', $event)"
+        @fileCtx="(e, f, d) => $emit('fileCtx', e, f, d)"
       />
     </ul>
     <div v-if="expanded" class="ftn-extra">
+      <div
+        v-for="file in node._filteredFiles ?? node.files ?? []"
+        :key="file.filename"
+        class="browse-file"
+        @contextmenu.prevent.stop="$emit('fileCtx', $event, file, node)"
+      >
+        <span class="mdi mdi-file" />
+        <span class="browse-file-name">{{ file.filename }}</span>
+        <span class="browse-file-size">{{ formatFileSize(file.size) }}</span>
+      </div>
+      <div
+        v-if="(!node.children || node.children.length === 0) && (!node.files || node.files.length === 0)"
+        class="has-text-grey is-size-7 has-text-centered py-2"
+      >
+        {{ $t("slskd.emptyFolder", "Carpeta vacía") }}
+      </div>
       <slot name="extra" />
     </div>
   </li>
@@ -59,9 +76,24 @@ const emit = defineEmits<{
   navigate: [path: string];
   "drop-transfer": [payload: { sources: string[]; dest: string; copy: boolean }];
   "ctx-menu": [payload: { path: string; name: string; x: number; y: number }];
+  fileCtx: [event: MouseEvent, file: any, dir: any];
 }>();
 
+function formatFileSize(bytes: number): string {
+  if (!bytes) return "0 B";
+  if (bytes >= 1_000_000_000) return (bytes / 1_000_000_000).toFixed(1) + " GB";
+  if (bytes >= 1_000_000) return (bytes / 1_000_000).toFixed(1) + " MB";
+  if (bytes >= 1_000) return (bytes / 1_000).toFixed(0) + " KB";
+  return bytes + " B";
+}
+
 const isActive = computed(() => props.currentPath === props.node.path);
+
+const hasExpandableContent = computed(() =>
+  props.node.children?.length > 0 ||
+  props.node.files?.length > 0 ||
+  (props.node as any)._filteredFiles?.length > 0,
+);
 
 const _useExternalExpand = computed(() => props.expanded !== undefined);
 
@@ -211,5 +243,33 @@ function onDrop(e: DragEvent) {
   padding: 0;
   margin: 0;
   padding-left: 1.1rem;
+}
+
+/* ── Browse files (slskd) ──────────────────────────────── */
+.ftn-extra {
+  padding-left: 1.1rem;
+}
+.browse-file {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.browse-file:hover {
+  background: var(--s-bg-hover);
+}
+.browse-file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.browse-file-size {
+  font-size: 0.7rem;
+  color: var(--s-text-secondary);
+  flex-shrink: 0;
 }
 </style>

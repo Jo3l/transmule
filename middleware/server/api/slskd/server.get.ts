@@ -1,5 +1,3 @@
-import type { SlskdServerState } from "~/utils/slskd-client";
-
 defineRouteMeta({
   openAPI: {
     tags: ["slskd"],

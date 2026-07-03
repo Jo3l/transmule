@@ -24,7 +24,6 @@ import {
   type AmuleUpDownClient,
   type AmuleFriend,
   type AmuleCategory,
-  DownloadCommand,
   SearchType,
   ECDetailLevel,
   type SearchFilters,
@@ -38,9 +37,9 @@ import {
   UIntTag,
   UShortTag,
   StringTag,
-  ULongTag,
   Hash16Tag,
 } from "amule-ec-client";
+
 
 // ─── EC Preference request helpers ────────────────────────────────────────────
 
@@ -132,11 +131,6 @@ export interface AmulePreferences {
 
 // ─── Tag parsing helpers ─────────────────────────────────────────────────────
 
-/** Check if a tag value represents boolean "true" in EC protocol (empty Buffer = present = true) */
-function isBoolTag(val: unknown): boolean {
-  if (Buffer.isBuffer(val)) return true; // presence of tag = true
-  return !!val;
-}
 
 /** Find a nested tag by its ECTagName code */
 function findNested(tag: any, code: number): any | undefined {
@@ -576,13 +570,6 @@ class AmuleECClient {
 
   async deleteDownload(hash: Buffer): Promise<void> {
     return this.exec(() => this.client.deleteDownload(hash));
-  }
-
-  async sendDownloadCommand(
-    hash: Buffer,
-    command: DownloadCommand,
-  ): Promise<void> {
-    return this.exec(() => this.client.sendDownloadCommand(hash, command));
   }
 
   /**
@@ -1112,7 +1099,7 @@ export interface ParsedSource {
 }
 
 // Re-export useful types and enums
-export { DownloadCommand, SearchType, FileStatus, ECDetailLevel };
+export { SearchType };
 export type {
   AmuleTransferringFile,
   AmuleFile,

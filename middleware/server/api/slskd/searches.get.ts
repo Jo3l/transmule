@@ -1,5 +1,3 @@
-import type { SlskdSearch } from "~/utils/slskd-client";
-
 defineRouteMeta({
   openAPI: {
     tags: ["slskd"],

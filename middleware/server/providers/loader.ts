@@ -11,7 +11,6 @@ import { readdir } from "node:fs/promises";
 import { resolve, join, dirname, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync, mkdirSync, watch as fsWatch } from "node:fs";
-import { getConfig } from "../utils/database";
 
 const _providers = new Map<string, AnyPlugin>();
 const _pluginFilenames = new Map<string, string>(); // id → filename (or virtual id for bundled)

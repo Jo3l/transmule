@@ -13,12 +13,6 @@ export function initJobStore() {
 }
 initJobStore();
 
-export function getDownloadsRoot(): string {
-  const dir = (process.env.NITRO_DOWNLOADS_DIR || '').trim();
-  if (!dir) throw createError({ statusCode: 503, statusMessage: 'Downloads directory not configured (set NITRO_DOWNLOADS_DIR)' });
-  return dir;
-}
-
 export function resolveSafe(root: string, relPath: string): string {
   const clean = decodeURIComponent(String(relPath || '')).replace(/\\/g, '/').replace(/^\/+/, '');
   const abs = resolve(join(root, clean));

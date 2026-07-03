@@ -160,14 +160,6 @@ export function getPluginIdsByRepo(repoId: number): string[] {
   return rows.map((r) => r.plugin_id);
 }
 
-/** Remove the repo-source record for a plugin. */
-export function clearPluginRepoSource(pluginId: string): void {
-  const db = useDatabase();
-  db.prepare("DELETE FROM plugin_repo_sources WHERE plugin_id = ?").run(
-    pluginId,
-  );
-}
-
 // ─── Config helpers ─────────────────────────────────────────────────────────
 
 export function getConfig(key: string): string | undefined {
