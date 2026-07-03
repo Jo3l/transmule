@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { Readable, Writable } from "node:stream";
+import { Readable } from "node:stream";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

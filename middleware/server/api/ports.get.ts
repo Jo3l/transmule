@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
   const tcpPorts = [
     Number(cfg.amuleEd2kTcpPort) || 16881,
     Number(cfg.transmissionPeerPort) || 16884,
+    Number(cfg.slskdListenPort) || 50300,
   ];
 
   const checkResults = publicIp
@@ -88,6 +89,9 @@ export default defineEventHandler(async (event) => {
     },
     transmission: {
       peer: Number(cfg.transmissionPeerPort) || 16884,
+    },
+    slskd: {
+      peer: Number(cfg.slskdListenPort) || 50300,
     },
   };
 });

@@ -130,6 +130,7 @@ export NITRO_PYLOAD_URL="http://127.0.0.1:8000"
 export NITRO_PYLOAD_USERNAME="${PYLOAD_USER:-pyload}"
 export NITRO_PYLOAD_PASSWORD="${PYLOAD_PASSWORD:-pyload}"
 export NITRO_SLSKD_URL="http://127.0.0.1:5030"
+export NITRO_SLSKD_LISTEN_PORT="50300"
 # Let local middleware and docker CLI share the same Docker socket in dev mode.
 # Priority: explicit NITRO_DOCKER_SOCKET > DOCKER_HOST unix socket > standard sockets.
 detect_docker_socket() {

@@ -7,7 +7,8 @@ import {
   getHeader,
 } from "h3";
 import type { H3Event } from "h3";
-import { getDownloadsRoot, resolveSafe } from "../../utils/files";
+import { getDownloadsRoot } from "../../utils/remoteMounts";
+import { resolveSafe } from "../../utils/files";
 
 interface MediaResult {
   type: "tv" | "movie" | "unknown";

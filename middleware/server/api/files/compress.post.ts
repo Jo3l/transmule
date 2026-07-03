@@ -8,7 +8,6 @@ import { spawn } from "node:child_process";
 import { join, basename, dirname } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { rm } from "node:fs/promises";
-import { Readable } from "node:stream";
 import { resolveVirtualPath, getDownloadsRoot, smbDownloadStream } from "../../utils/remoteMounts";
 
 const VALID_FORMATS = ["zip", "tar", "tar.gz", "tar.bz2", "tar.xz"] as const;

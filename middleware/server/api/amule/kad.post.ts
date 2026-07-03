@@ -47,8 +47,6 @@ export default defineEventHandler(async (event) => {
     return { error: "Missing required field: action" };
   }
 
-  const client = useAmuleClient();
-
   switch (body.action) {
     case "bootstrap": {
       // EC protocol uses connect to server for KAD bootstrap

@@ -23,6 +23,7 @@ export function usePortStatus() {
     { label: "aMule ED2K", port: 16882, proto: "UDP", checkable: false, open: null },
     { label: "aMule KAD", port: 16883, proto: "UDP", checkable: false, open: null },
     { label: "Transmission", port: 16884, proto: "TCP", checkable: true, open: null },
+    { label: "Soulseek (slskd)", port: 50300, proto: "TCP", checkable: true, open: null },
   ]);
   const checking = ref(false);
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -36,6 +37,7 @@ export function usePortStatus() {
         checks: Record<number, boolean>;
         amule: { tcp: number; udp: number; kad: number };
         transmission: { peer: number };
+        slskd: { peer: number };
       }>(`${config.public.apiBase}/api/ports`);
 
       privateIp.value = data.privateIp;
@@ -68,6 +70,13 @@ export function usePortStatus() {
           proto: "TCP",
           checkable: true,
           open: data.checks[data.transmission.peer] ?? null,
+        },
+        {
+          label: "Soulseek (slskd)",
+          port: data.slskd.peer,
+          proto: "TCP",
+          checkable: true,
+          open: data.checks[data.slskd.peer] ?? null,
         },
       ];
     } catch {
