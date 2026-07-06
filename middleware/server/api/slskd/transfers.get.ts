@@ -26,16 +26,16 @@ export default defineEventHandler(async (event) => {
     } else {
       transfers = await client.getTransfers(direction);
     }
-    // Record speed for the speed graph (only active transfers)
+    // Record speed for the speed graph — count any transfer with actual
+    // data flow, not just those with a specific state string.
     const totalSpeed = grouped
       ? (transfers as any[]).reduce(
           (sum: number, userGrp: any) => {
-            const dirs = userGrp.directories ?? [];
-            for (const dir of dirs) {
+            for (const dir of (userGrp.directories ?? [])) {
               for (const f of (dir.files ?? [])) {
-                const state = f.state || "";
-                const isActive = state.includes("InProgress") || state.includes("Transferring");
-                if (isActive) sum += (f.averageSpeed || 0);
+                const bytes = f.bytesTransferred || 0;
+                const speed = f.averageSpeed || 0;
+                if (bytes > 0 || speed > 0) sum += speed;
               }
             }
             return sum;
@@ -44,9 +44,9 @@ export default defineEventHandler(async (event) => {
         )
       : transfers.reduce(
           (sum: number, t: any) => {
-            const state = t.state || "";
-            const isActive = state.includes("InProgress") || state.includes("Transferring");
-            return sum + (isActive ? (t.averageSpeed || 0) : 0);
+            const bytes = t.bytesTransferred || 0;
+            const speed = t.averageSpeed || 0;
+            return sum + (bytes > 0 || speed > 0 ? speed : 0);
           },
           0,
         );

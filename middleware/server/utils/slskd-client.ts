@@ -390,9 +390,19 @@ export class SlskdClient {
     const res = await this.fetch(`/searches/${encodeURIComponent(id)}/responses`);
     if (res.status === 200) {
       const raw: SlskdSearchResponse[] = JSON.parse(res.body);
-      // Flatten grouped responses into individual file items
+      // Flatten grouped responses into individual file items.
+      // Use a stable hash of username+filename so IDs don't change across polls.
       const items: SlskdFileItem[] = [];
       let idx = 0;
+      function stableId(u: string, f: string): number {
+        let h = 0;
+        const s = u + "|" + f;
+        for (let i = 0; i < s.length; i++) {
+          h = ((h << 5) - h) + s.charCodeAt(i);
+          h |= 0;
+        }
+        return Math.abs(h);
+      }
       for (const userResp of raw) {
         // Extract folder from first file's full path (Soulseek uses \ as separator)
         const userFolder = userResp.files.length > 0
@@ -411,7 +421,7 @@ export class SlskdClient {
           const shortName = lastSep >= 0 ? file.filename.substring(lastSep + 1) : file.filename;
 
           items.push({
-            id: idx++,
+            id: stableId(userResp.username, file.filename),
             username: userResp.username,
             filename: shortName,
             fullFilename: file.filename,
@@ -436,39 +446,33 @@ export class SlskdClient {
   // ── Transfers ───────────────────────────────────────────────────────────────
 
   async getTransfers(direction: "download" | "upload"): Promise<SlskdTransfer[]> {
-    const path = direction === "download" ? "/transfers/downloads" : "/transfers/uploads";
-    const res = await this.fetch(path);
-    if (res.status === 200) {
-      const raw: any[] = JSON.parse(res.body);
-      // Flatten grouped user > directories > files into a flat transfer list
-      const transfers: SlskdTransfer[] = [];
-      for (const userGrp of raw) {
-        const dirs = userGrp.directories ?? [];
-        for (const dir of dirs) {
-          const files = dir.files ?? [];
-          for (const file of files) {
-            transfers.push({
-              id: file.id ?? String(file.filename),
-              username: file.username ?? userGrp.username,
-              filename: file.filename,
-              size: file.size ?? 0,
-              bytesTransferred: file.bytesTransferred ?? 0,
-              bytesRemaining: file.bytesRemaining ?? 0,
-              startTime: file.startedAt ?? null,
-              endTime: file.endedAt ?? null,
-              state: file.state ?? "Unknown",
-              direction: file.direction ?? direction,
-              priority: file.priority ?? 0,
-              duration: file.elapsedTime ?? null,
-              averageSpeed: file.averageSpeed ?? null,
-              offset: file.startOffset ?? 0,
-            });
-          }
+    const raw = await this.getTransfersGrouped(direction);
+    const transfers: SlskdTransfer[] = [];
+    for (const userGrp of raw) {
+      const dirs = userGrp.directories ?? [];
+      for (const dir of dirs) {
+        const files = dir.files ?? [];
+        for (const file of files) {
+          transfers.push({
+            id: file.id ?? String(file.filename),
+            username: file.username ?? userGrp.username,
+            filename: file.filename,
+            size: file.size ?? 0,
+            bytesTransferred: file.bytesTransferred ?? 0,
+            bytesRemaining: file.bytesRemaining ?? 0,
+            startTime: file.startedAt ?? null,
+            endTime: file.endedAt ?? null,
+            state: file.state ?? "Unknown",
+            direction: file.direction ?? direction,
+            priority: file.priority ?? 0,
+            duration: file.elapsedTime ?? null,
+            averageSpeed: file.averageSpeed ?? null,
+            offset: file.startOffset ?? 0,
+          });
         }
       }
-      return transfers;
     }
-    return [];
+    return transfers;
   }
 
   /** Get transfers grouped by user and directory (raw slskd format, not flattened) */
@@ -477,13 +481,15 @@ export class SlskdClient {
     const res = await this.fetch(path);
     if (res.status === 200) {
       const raw: any[] = JSON.parse(res.body);
-      // Ensure every file has an id (slskd may omit it for some states);
-      // fall back to filename so the frontend always has a usable identifier.
+      // Ensure every file has an id (slskd may omit it or return empty string).
+      // Use a synthetic id as fallback — the real cancel API needs a numeric id,
+      // but at least this gives the frontend a non-empty unique value to work with.
+      let synthId = 0;
       for (const userGrp of raw) {
         for (const dir of (userGrp.directories ?? [])) {
           for (const file of (dir.files ?? [])) {
-            if (file.id == null) {
-              file.id = String(file.filename || '');
+            if (file.id == null || file.id === '') {
+              file.id = `synth-${++synthId}`;
             }
           }
         }

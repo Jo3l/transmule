@@ -332,7 +332,8 @@
       "files": "Pliki",
       "fileName": "Plik",
       "noValidFiles": "Brak prawidłowych plików do anulowania",
-      "actionError": "Niektóre transfery nie mogły zostać przetworzone"
+      "actionError": "Niektóre transfery nie mogły zostać przetworzone",
+      "cancelledN": "Anulowano {n} plików"
     }
   },
   "search": {

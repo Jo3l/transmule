@@ -332,7 +332,8 @@
       "files": "File",
       "fileName": "File",
       "noValidFiles": "Nessun file valido da annullare",
-      "actionError": "Alcuni trasferimenti non possono essere elaborati"
+      "actionError": "Alcuni trasferimenti non possono essere elaborati",
+      "cancelledN": "{n} file annullati"
     }
   },
   "search": {
