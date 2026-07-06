@@ -145,7 +145,7 @@
                   "
                   >{{ msg.username ?? msg.user }}:</span
                 >
-                <span class="message-text">{{ msg.message }}</span>
+                <span class="message-text" v-html="linkify(msg.message)"></span>
               </div>
               <div
                 v-if="!roomMessages[tab.id]?.length"
@@ -287,7 +287,7 @@
                   @contextmenu.prevent.stop="onUserContextmenu($event, tab.label, tab.id)"
                   >{{ tab.label }}:</span
                 >
-                <span class="message-text">{{ msg.message }}</span>
+                <span class="message-text" v-html="linkify(msg.message)"></span>
               </div>
               <div
                 v-if="!userMessages[tab.id]?.length"
@@ -358,7 +358,7 @@
             :title="$t('slskd.refresh', 'Refrescar')"
             class="ml-2"
             icon="mdi-refresh"
-            @click="fetchBrowse(tab.id, tab.label)"
+            @click="fetchBrowse(tab.id, tab.label, true)"
           />
           <div class="browse-filter ml-auto">
             <SInput
@@ -772,7 +772,6 @@ function addUserChat(username: string) {
   fetchUserInfo(id, username);
   fetchUserMessages(id, username);
   pollTimers[id] = setInterval(() => fetchUserMessages(id, username), 3000);
-  saveUserTabs();
 }
 
 function addBrowseFiles(username: string) {
@@ -791,15 +790,6 @@ function saveBrowseTabs() {
   try {
     const names = tabs.value.filter((t) => t.type === "files").map((t) => t.label);
     sessionStorage.setItem("slskd_browse_tabs", JSON.stringify(names));
-  } catch {
-    /* quota exceeded, ignore */
-  }
-}
-
-function saveUserTabs() {
-  try {
-    const names = tabs.value.filter((t) => t.type === "user").map((t) => t.label);
-    sessionStorage.setItem("slskd_user_tabs", JSON.stringify(names));
   } catch {
     /* quota exceeded, ignore */
   }
@@ -827,47 +817,14 @@ function restoreBrowseTabs() {
   }
 }
 
-function restoreUserTabs() {
-  try {
-    const raw = sessionStorage.getItem("slskd_user_tabs");
-    if (!raw) return;
-    const names: string[] = JSON.parse(raw);
-    if (!Array.isArray(names)) return;
-    names.forEach((username) => {
-      if (!username) return;
-      const id = nextTabId("user", username);
-      if (tabs.value.find((t) => t.id === id)) return;
-      tabs.value.push({ type: "user", id, label: username });
-      userMessages.value[id] = [];
-      userInfo.value[id] = null;
-      loadingUserInfo.value[id] = true;
-      fetchUserInfo(id, username);
-      fetchUserMessages(id, username);
-      pollTimers[id] = setInterval(() => fetchUserMessages(id, username), 3000);
-    });
-  } catch {
-    /* silent */
-  }
-}
-
-function closeTab(tabId: string) {
+async function closeTab(tabId: string) {
   if (tabId === "_rooms") return; // never close the rooms tab
   const tab = tabs.value.find((t) => t.id === tabId);
   if (!tab) return;
   const wasBrowse = tab.type === "files";
 
-  // Notify slskd when closing a room or user conversation
-  if (tab.type === "room") {
-    apiFetch("/api/slskd/rooms/leave", {
-      method: "POST",
-      body: { roomName: tab.label },
-    }).catch(() => {});
-  } else if (tab.type === "user") {
-    apiFetch(`/api/slskd/conversations/${encodeURIComponent(tab.label)}`, {
-      method: "DELETE",
-    }).catch(() => {});
-  }
-
+  // Update UI immediately — the user wants the tab gone regardless of API outcome.
+  // Save session state now so a refresh won't bring it back.
   tabs.value = tabs.value.filter((t) => t.id !== tabId);
   delete roomMessages.value[tabId];
   delete roomUsers.value[tabId];
@@ -889,7 +846,23 @@ function closeTab(tabId: string) {
   const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + encodeURIComponent(activeTabId.value) : "";
   router.replace({ hash });
   if (wasBrowse) saveBrowseTabs();
-  if (tab.type === "user") saveUserTabs();
+
+  // Notify slskd — await so the conversation is actually closed server-side.
+  // If the API fails, the tab stays closed (UI already updated, session saved).
+  try {
+    if (tab.type === "room") {
+      await apiFetch("/api/slskd/rooms/leave", {
+        method: "POST",
+        body: { roomName: tab.label },
+      });
+    } else if (tab.type === "user") {
+      await apiFetch(`/api/slskd/conversations/${encodeURIComponent(tab.label)}`, {
+        method: "DELETE",
+      });
+    }
+  } catch {
+    // Tab is already gone from UI; slskd will clean up on its own eventually
+  }
 }
 
 // ── Data fetching: Rooms ─────────────────────────────────────────────────
@@ -1038,10 +1011,11 @@ function filterBrowseTree(nodes: any[], q: string): any[] {
 }
 
 // ── Data fetching: Browse ────────────────────────────────────────────────
-async function fetchBrowse(tabId: string, username: string) {
+async function fetchBrowse(tabId: string, username: string, force = false) {
   loadingBrowse.value[tabId] = true;
   try {
-    const data = await apiFetch<any>(`/api/slskd/users/${encodeURIComponent(username)}/browse`);
+    const qs = force ? '?force=true' : '';
+    const data = await apiFetch<any>(`/api/slskd/users/${encodeURIComponent(username)}/browse${qs}`);
     if (data) {
       const allDirs = [
         ...(data.directories ?? []),
@@ -1217,6 +1191,26 @@ const mobileCtx = reactive({
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────
+
+/** Escape HTML entities and convert URLs to clickable links that open in a new tab. */
+function linkify(text: string): string {
+  if (!text) return '';
+  // 1. Escape HTML to prevent XSS
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  // 2. Convert URLs to <a> tags (http, https, ftp, magnet, ed2k, slsk)
+  return escaped.replace(
+    /(https?:\/\/|ftp:\/\/|magnet:\?|ed2k:\/\/|slsk:\/\/)[^\s<>"{}|\\^`[\]]+/gi,
+    (url) => {
+      const href = url.replace(/&amp;/g, '&'); // undo escaping for the href attribute
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="chat-link">${url}</a>`;
+    },
+  );
+}
+
 function formatTime(ts: string | number | null): string {
   if (!ts) return "";
   const d = new Date(ts);
@@ -1330,10 +1324,7 @@ onMounted(async () => {
   // 3. Restore browse tabs from session (persistent across refresh)
   restoreBrowseTabs();
 
-  // 4. Restore user tabs from session (catches users without active API conversations)
-  restoreUserTabs();
-
-  // 5. Check hash for a specific tab (overrides all of the above)
+  // 4. Check hash for a specific tab (overrides all of the above)
   const hash = route.hash?.replace(/^#/, "");
   if (hash) {
     const decoded = decodeURIComponent(hash);
@@ -1844,5 +1835,16 @@ onUnmounted(() => {
 #page-slskd-rooms :deep(.s-table tbody tr:hover td) {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* ── Chat links ─────────────────────────────────────────────────────── */
+:deep(.chat-link) {
+  color: var(--s-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+:deep(.chat-link:hover) {
+  color: var(--s-info);
 }
 </style>
