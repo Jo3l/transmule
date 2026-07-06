@@ -19,6 +19,33 @@ defineRouteMeta({
 
 initJobStore();
 
+/* ── SMB error helper ──────────────────────────────────────────────────────── */
+
+/** Characters that are invalid in Windows/SMB filenames */
+const SMB_INVALID_CHARS = /[\\\/:*?"<>|]/;
+
+/**
+ * Check if an error message indicates an SMB invalid-character issue.
+ * Returns a user-friendly message if so, otherwise returns null.
+ */
+function smbFriendlyError(err: any, filename: string): string | null {
+  const msg = String(err?.message ?? err ?? '');
+  if (
+    msg.includes('NT_STATUS_FILE_SYSTEM_LIMITATION') ||
+    msg.includes('NT_STATUS_INVALID_NETWORK_RESPONSE') ||
+    msg.includes('NT_STATUS_OBJECT_NAME_INVALID') ||
+    msg.includes('NT_STATUS_OBJECT_PATH_NOT_FOUND')
+  ) {
+    // Check if the filename has invalid characters
+    const base = filename.replace(/^.*[\\\/]/, '');
+    if (SMB_INVALID_CHARS.test(base)) {
+      return `El archivo "${base}" contiene caracteres no válidos para SMB/Windows (\\ / : * ? " < > |). Renómbralo e inténtalo de nuevo.`;
+    }
+    return `Error de SMB al escribir "${base}": ${msg.split('\n')[0].trim()}`;
+  }
+  return null;
+}
+
 /* ── Handler ─────────────────────────────────────────────────────────────── */
 
 export default defineEventHandler(async (event) => {
@@ -130,7 +157,15 @@ async function copyAnyPath(
 
   if (srcIsDir) {
     if (dest.type === "local") await mkdir(dest.absPath, { recursive: true });
-    else await smbMkdir(dest.config, dest.subPath).catch(() => {});
+    else {
+      try {
+        await smbMkdir(dest.config, dest.subPath);
+      } catch (err: any) {
+        const friendly = smbFriendlyError(err, dest.subPath);
+        if (friendly) throw new Error(friendly);
+        // Directory might already exist, don't fail for that
+      }
+    }
 
     let children: { name: string; type: "file" | "directory" }[];
     if (src.type === "local") {
@@ -165,7 +200,13 @@ async function copyAnyPath(
       const writable = createWriteStream(dest.absPath);
       await pipeline(readable as any, writable as any, { signal } as any);
     } else {
-      await smbUploadStream(dest.config, dest.subPath, readable);
+      try {
+        await smbUploadStream(dest.config, dest.subPath, readable);
+      } catch (err: any) {
+        const friendly = smbFriendlyError(err, dest.subPath);
+        if (friendly) throw new Error(friendly);
+        throw err;
+      }
     }
   }
 }
