@@ -907,7 +907,7 @@
                     <template #cell-state="{ row: fr }">
                       <STag
                         size="sm"
-                        :variant="fr.state?.includes('Rejected') ? 'danger' : fr.state?.includes('Completed') ? 'success' : fr.state?.includes('InProgress') || fr.state?.includes('Transferring') ? 'info' : 'default'"
+                        :variant="fr.state?.includes('Rejected') || fr.state?.includes('Cancelled') ? 'danger' : fr.state?.includes('Completed') ? 'success' : fr.state?.includes('InProgress') || fr.state?.includes('Transferring') ? 'info' : 'default'"
                       >{{ fr.state }}</STag>
                     </template>
                   </STable>
@@ -1961,62 +1961,64 @@ const totalSelected = computed(() =>
 
 async function doSlskdAction(action: 'retry' | 'cancel') {
   let hadError = false;
-  let cancelledCount = 0;
+  // Collect ALL valid files from ALL selected rows first
+  const allValidFiles: { username: string; id: string | number; fullFilename: string; size: number }[] = [];
   for (const uid of selectedItems) {
     const row = allFiles.value.find((r: any) => r._uid === uid);
     if (!row || row._type !== 'slskd') continue;
-    const files = row._files ?? [];
-    if (files.length === 0) continue;
-    try {
-      // Only process files that have proper username and id
-      const validFiles = files.filter((f: any) => f.username && f.id);
-      if (validFiles.length === 0) {
-        addToast(t('downloads.slskd.noValidFiles', 'No valid files to cancel'), 'error');
-        continue;
+    for (const f of (row._files ?? [])) {
+      if (f.username && f.id) {
+        allValidFiles.push({ username: f.username, id: f.id, fullFilename: f.fullFilename, size: f.size });
       }
-      if (action === 'cancel') {
-        // Cancel in parallel chunks of 5 to avoid overwhelming slskd
-        const CHUNK = 5;
-        for (let i = 0; i < validFiles.length; i += CHUNK) {
-          const chunk = validFiles.slice(i, i + CHUNK);
-          const results = await Promise.allSettled(
-            chunk.map((f: any) =>
-              apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-                method: 'DELETE',
-              }).then(() => true).catch(() => false),
-            ),
-          );
-          cancelledCount += results.filter((r) => r.status === 'fulfilled' && r.value).length;
-          if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
-        }
-      } else if (action === 'retry') {
-        // Remove all files in parallel chunks
-        const CHUNK = 5;
-        for (let i = 0; i < validFiles.length; i += CHUNK) {
-          const chunk = validFiles.slice(i, i + CHUNK);
-          const results = await Promise.allSettled(
-            chunk.map((f: any) =>
-              apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-                method: 'DELETE',
-              }).then(() => true).catch(() => false),
-            ),
-          );
-          if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
-        }
-        // Re-queue all files
-        const fileList = validFiles.map((f: any) => ({ filename: f.fullFilename, size: f.size }));
-        await apiFetch('/api/slskd/transfers', {
-          method: 'POST',
-          body: { username: validFiles[0].username, files: fileList },
-        }).catch(() => { hadError = true; });
-      }
-    } catch { hadError = true; }
+    }
   }
-  if (cancelledCount > 0) {
-    addToast(t('downloads.slskd.cancelledN', '{n} files cancelled').replace('{n}', String(cancelledCount)), 'success');
-  } else if (hadError) {
+  if (allValidFiles.length === 0) {
+    addToast(t('downloads.slskd.noValidFiles', 'No valid files to cancel'), 'error');
+    return;
+  }
+  try {
+    if (action === 'cancel') {
+      // Cancel in parallel chunks of 5 to avoid overwhelming slskd
+      const CHUNK = 5;
+      for (let i = 0; i < allValidFiles.length; i += CHUNK) {
+        const chunk = allValidFiles.slice(i, i + CHUNK);
+        const results = await Promise.allSettled(
+          chunk.map((f) =>
+            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+              method: 'DELETE',
+            }).then(() => true).catch(() => false),
+          ),
+        );
+        const ok = results.filter((r) => r.status === 'fulfilled' && r.value).length;
+        if (ok < chunk.length) hadError = true;
+      }
+    } else if (action === 'retry') {
+      const CHUNK = 5;
+      for (let i = 0; i < allValidFiles.length; i += CHUNK) {
+        const chunk = allValidFiles.slice(i, i + CHUNK);
+        const results = await Promise.allSettled(
+          chunk.map((f) =>
+            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+              method: 'DELETE',
+            }).then(() => true).catch(() => false),
+          ),
+        );
+        if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
+      }
+      const fileList = allValidFiles.map((f) => ({ filename: f.fullFilename, size: f.size }));
+      await apiFetch('/api/slskd/transfers', {
+        method: 'POST',
+        body: { username: allValidFiles[0].username, files: fileList },
+      }).catch(() => { hadError = true; });
+    }
+  } catch { hadError = true; }
+  if (hadError) {
     addToast(t('downloads.slskd.actionError', 'Some transfers could not be processed'), 'warning');
+  } else {
+    addToast(t('downloads.slskd.cancelledN', '{n} files cancelled').replace('{n}', String(allValidFiles.length)), 'success');
   }
+  // Small delay so slskd has time to process removals before we refresh
+  await new Promise((r) => setTimeout(r, 500));
   refreshSlskd();
 }
 
@@ -2454,8 +2456,17 @@ async function refreshSlskd() {
     function makeGroup(fileItems: any[], folderName: string, username: string): any {
       const totalSz = fileItems.reduce((s, f) => s + (f.size || 0), 0);
       const totalDone = fileItems.reduce((s, f) => s + (f.bytesDone || 0), 0);
-      const completed = fileItems.filter((f) => f.state?.includes("Completed") && !f.state?.includes("Rejected")).length;
+      // "Completed, Cancelled" and "Completed, Rejected" are NOT successful
+      const completed = fileItems.filter((f) =>
+        f.state?.includes("Completed") &&
+        !f.state?.includes("Rejected") &&
+        !f.state?.includes("Cancelled"),
+      ).length;
       const rejected = fileItems.filter((f) => f.state?.includes("Rejected")).length;
+      const cancelled = fileItems.filter((f) =>
+        f.state?.includes("Cancelled") && !f.state?.includes("Completed"),
+      ).length;
+      const cancelledOrRejected = rejected + cancelled;
       // slskd may report state "Queued" even when data is flowing; also check
       // bytesTransferred and averageSpeed as reliable signs of active transfer
       const downloading = fileItems.filter((f) =>
@@ -2471,11 +2482,11 @@ async function refreshSlskd() {
         f.bytesDone === 0 &&
         f.speed_fmt === "0 B/s",
       ).length;
-      const allDone = (completed + rejected) === fileItems.length && fileItems.length > 0;
-      const allRejected = rejected > 0 && rejected === fileItems.length;
+      const allDone = (completed + cancelledOrRejected) === fileItems.length && fileItems.length > 0;
+      const allBad = cancelledOrRejected > 0 && cancelledOrRejected === fileItems.length;
 
       let status: string;
-      if (allRejected) status = "Rejected";
+      if (allBad) status = "Rejected";
       else if (allDone) status = "Complete";
       else if (downloading > 0) status = "Downloading";
       else if (waiting > 0) status = "Waiting";
@@ -2496,7 +2507,7 @@ async function refreshSlskd() {
         totalSize_fmt: formatBytes(totalSz),
         doneSize_fmt: formatBytes(totalDone),
         status,
-        activeLinks: downloading, failedLinks: 0,
+        activeLinks: downloading, failedLinks: cancelledOrRejected,
         finishedLinks: completed, linkCount: fileItems.length,
         dest: "queue", username, folder: folderName, fullFilename: folderName,
         startTime: fileItems.reduce((earliest, f) => {
@@ -2578,8 +2589,10 @@ async function refreshSlskd() {
       }
     }
 
-    slskdTotals.value = totalFiles > 0 ? { count: totalFiles } : null;
-    slskdFiles.value = groups;
+    // Auto-remove groups where every file is cancelled or rejected
+    const visible = groups.filter((g) => g.status !== "Rejected");
+    slskdTotals.value = visible.length > 0 ? { count: visible.reduce((s, g) => s + (g.linkCount || 0), 0) } : null;
+    slskdFiles.value = visible;
   } catch {
     /* silent */
   }
