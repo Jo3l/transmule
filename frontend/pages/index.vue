@@ -202,7 +202,7 @@
                         : $t("pyload.destCollector")
               }}</STag
             >
-            <STag v-else-if="row._type === 'slskd'" variant="default" size="sm">{{
+            <STag v-else-if="row._type === 'slskd'" size="sm" :variant="row.status === 'Rejected' ? 'danger' : row.status === 'Complete' ? 'success' : row.status === 'Downloading' ? 'info' : 'default'">{{
               row.status
             }}</STag>
             <span
@@ -247,7 +247,7 @@
             <SProgress
               v-else-if="row._type === 'slskd'"
               :percentage="row.progress || 0"
-              :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : 'var(--s-text-muted)'"
+              :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : row.status === 'Rejected' ? 'var(--s-danger)' : 'var(--s-text-muted)'"
               :height="10"
             />
             <div class="card-progress-label">
@@ -535,7 +535,7 @@
           <SProgress
             v-else-if="row._type === 'slskd'"
             :percentage="row.progress || 0"
-            :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : 'var(--s-text-muted)'"
+            :color="row.status === 'Downloading' ? 'var(--s-info)' : row.status === 'Complete' ? 'var(--s-success)' : row.status === 'Rejected' ? 'var(--s-danger)' : 'var(--s-text-muted)'"
             :height="12"
           />
         </template>
@@ -592,7 +592,7 @@
                       : $t("pyload.destCollector")
             }}</STag
           >
-          <STag v-else-if="row._type === 'slskd'" size="sm" :variant="row.status === 'Downloading' ? 'info' : row.status === 'Complete' ? 'success' : row.status === 'Waiting' ? 'default' : 'default'">{{ row.status }}</STag>
+          <STag v-else-if="row._type === 'slskd'" size="sm" :variant="row.status === 'Downloading' ? 'info' : row.status === 'Complete' ? 'success' : row.status === 'Rejected' ? 'danger' : row.status === 'Waiting' ? 'default' : 'default'">{{ row.status }}</STag>
         </template>
 
         <!-- ═══ EXPAND SLOT ═══ -->
@@ -907,7 +907,7 @@
                     <template #cell-state="{ row: fr }">
                       <STag
                         size="sm"
-                        :variant="fr.state?.includes('Completed') ? 'success' : fr.state?.includes('InProgress') || fr.state?.includes('Transferring') ? 'info' : 'default'"
+                        :variant="fr.state?.includes('Rejected') ? 'danger' : fr.state?.includes('Completed') ? 'success' : fr.state?.includes('InProgress') || fr.state?.includes('Transferring') ? 'info' : 'default'"
                       >{{ fr.state }}</STag>
                     </template>
                   </STable>
@@ -1833,6 +1833,7 @@ const statusOptions = computed(() => [
   { label: t("downloads.statusFilter.seeding"), value: "Seeding" },
   { label: t("downloads.statusFilter.complete"), value: "Complete" },
   { label: t("downloads.statusFilter.waitingQueued"), value: "Waiting" },
+  { label: t("downloads.statusFilter.rejected", "Rechazado"), value: "Rejected" },
   { label: t("downloads.statusFilter.verifying"), value: "Verifying" },
 ]);
 const sortOptions = computed(() => [
@@ -2193,6 +2194,19 @@ function matchesFilter(row: any): boolean {
       default:
         return true;
     }
+  } else if (row._type === "slskd") {
+    switch (filterStatus.value) {
+      case "Downloading":
+        return row.status === "Downloading";
+      case "Complete":
+        return row.status === "Complete";
+      case "Rejected":
+        return row.status === "Rejected";
+      case "Waiting":
+        return row.status === "Waiting";
+      default:
+        return true;
+    }
   } else {
     switch (filterStatus.value) {
       case "Downloading":
@@ -2421,13 +2435,29 @@ async function refreshSlskd() {
     function makeGroup(fileItems: any[], folderName: string, username: string): any {
       const totalSz = fileItems.reduce((s, f) => s + (f.size || 0), 0);
       const totalDone = fileItems.reduce((s, f) => s + (f.bytesDone || 0), 0);
-      const completed = fileItems.filter((f) => f.state?.includes("Completed")).length;
-      const downloading = fileItems.filter((f) => f.state?.includes("InProgress") || f.state?.includes("Transferring")).length;
-      const waiting = fileItems.filter((f) => f.state?.includes("Queued") && !f.state?.includes("Transferring") && !f.state?.includes("InProgress")).length;
-      const allDone = completed === fileItems.length && fileItems.length > 0;
+      const completed = fileItems.filter((f) => f.state?.includes("Completed") && !f.state?.includes("Rejected")).length;
+      const rejected = fileItems.filter((f) => f.state?.includes("Rejected")).length;
+      // slskd may report state "Queued" even when data is flowing; also check
+      // bytesTransferred and averageSpeed as reliable signs of active transfer
+      const downloading = fileItems.filter((f) =>
+        f.state?.includes("InProgress") ||
+        f.state?.includes("Transferring") ||
+        (f.bytesDone > 0 && f.progress < 100) ||
+        f.speed_fmt !== "0 B/s",
+      ).length;
+      const waiting = fileItems.filter((f) =>
+        f.state?.includes("Queued") &&
+        !f.state?.includes("Transferring") &&
+        !f.state?.includes("InProgress") &&
+        f.bytesDone === 0 &&
+        f.speed_fmt === "0 B/s",
+      ).length;
+      const allDone = (completed + rejected) === fileItems.length && fileItems.length > 0;
+      const allRejected = rejected > 0 && rejected === fileItems.length;
 
       let status: string;
-      if (allDone) status = "Complete";
+      if (allRejected) status = "Rejected";
+      else if (allDone) status = "Complete";
       else if (downloading > 0) status = "Downloading";
       else if (waiting > 0) status = "Waiting";
       else status = fileItems[0]?.state || "Unknown";
@@ -2495,14 +2525,21 @@ async function refreshSlskd() {
       for (const batch of userBatches) {
         const root = batch.rootPath;
         const normRoot = normPath(root);
-        // Find directories that are under this root (including root itself)
-        // Skip entries already claimed by a more specific batch
-        const children = dirs.filter((d) =>
-          !(d as any)._batched &&
-          (normPath(d.folder) === normRoot || normPath(d.folder).startsWith(normRoot + "/")),
-        );
+        // Find directories that are under this root (including root itself).
+        // slskd may return directory names as full paths ("base\libros") or
+        // as leaf-only ("libros"); check both the directory name and file paths.
+        const children = dirs.filter((d) => {
+          if ((d as any)._batched) return false;
+          const nd = normPath(d.folder);
+          if (nd === normRoot || nd.startsWith(normRoot + "/")) return true;
+          // Fallback: check if any file's full path is under the root
+          return d.fileItems.some((f: any) => {
+            const fp = normPath(f.fullFilename || "");
+            return fp.startsWith(normRoot + "/") || fp === normRoot;
+          });
+        });
         if (children.length > 1) {
-          // Merge all children into one group
+          // Merge all children into one group under the root name
           const merged = children.flatMap((d) => d.fileItems);
           for (const c of children) {
             const idx = dirs.indexOf(c);
