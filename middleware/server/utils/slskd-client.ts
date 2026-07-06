@@ -471,6 +471,28 @@ export class SlskdClient {
     return [];
   }
 
+  /** Get transfers grouped by user and directory (raw slskd format, not flattened) */
+  async getTransfersGrouped(direction: 'download' | 'upload'): Promise<any[]> {
+    const path = direction === 'download' ? '/transfers/downloads' : '/transfers/uploads';
+    const res = await this.fetch(path);
+    if (res.status === 200) {
+      const raw: any[] = JSON.parse(res.body);
+      // Ensure every file has an id (slskd may omit it for some states);
+      // fall back to filename so the frontend always has a usable identifier.
+      for (const userGrp of raw) {
+        for (const dir of (userGrp.directories ?? [])) {
+          for (const file of (dir.files ?? [])) {
+            if (file.id == null) {
+              file.id = String(file.filename || '');
+            }
+          }
+        }
+      }
+      return raw;
+    }
+    return [];
+  }
+
   async startDownload(username: string, files: { filename: string; size: number }[]): Promise<{ success: boolean; response?: string }> {
     const res = await this.fetch(`/transfers/downloads/${encodeURIComponent(username)}`, {
       method: "POST",

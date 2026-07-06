@@ -137,7 +137,8 @@
     "sources": {
       "amule": "aMule",
       "torrent": "Torrent",
-      "pyload": "pyLoad"
+      "pyload": "pyLoad",
+      "slskd": "Soulseek"
     },
     "statusFilter": {
       "downloading": "İndiriliyor",
@@ -164,7 +165,8 @@
     "tooltip": {
       "amule": "aMule (ed2k)",
       "torrent": "Torrent",
-      "pyload": "pyLoad direct download"
+      "pyload": "pyLoad direct download",
+      "slskd": "Soulseek P2P"
     },
     "info": {
       "title": "İndirme Bilgisi",
@@ -325,6 +327,12 @@
     "contextMenu": {
       "copyUserHash": "Kullanıcı karmasını kopyala",
       "copyIP": "IP adresini kopyala"
+    },
+    "slskd": {
+      "files": "Dosyalar",
+      "fileName": "Dosya",
+      "noValidFiles": "İptal edilecek geçerli dosya yok",
+      "actionError": "Bazı transferler işlenemedi"
     }
   },
   "search": {
@@ -1399,6 +1407,9 @@
     "rooms": "Rooms",
     "roomUsers": "Users",
     "roomsPlaceholder": "Chat rooms — coming soon",
-    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically."
+    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically.",
+    "emoji": "Emojiler",
+    "searchFiles": "Dosyaları filtrele...",
+    "sortByFiles": "Dosyalara göre sırala"
   }
 }
