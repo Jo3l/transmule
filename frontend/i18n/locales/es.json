@@ -137,7 +137,8 @@
     "sources": {
       "amule": "aMule",
       "torrent": "Torrent",
-      "pyload": "pyLoad"
+      "pyload": "pyLoad",
+      "slskd": "Soulseek"
     },
     "statusFilter": {
       "downloading": "Descargando",
@@ -164,7 +165,8 @@
     "tooltip": {
       "amule": "aMule (ed2k)",
       "torrent": "Torrent",
-      "pyload": "Descarga directa pyLoad"
+      "pyload": "Descarga directa pyLoad",
+      "slskd": "Soulseek P2P"
     },
     "info": {
       "title": "Info de descarga",
@@ -325,6 +327,12 @@
     "contextMenu": {
       "copyUserHash": "Copiar hash de usuario",
       "copyIP": "Copiar dirección IP"
+    },
+    "slskd": {
+      "files": "Archivos",
+      "fileName": "Archivo",
+      "noValidFiles": "No hay archivos válidos para cancelar",
+      "actionError": "Algunas transferencias no se pudieron procesar"
     }
   },
   "search": {
@@ -1405,6 +1413,9 @@
     "emptyFolder": "Carpeta vacía",
     "status": "Estado",
     "userDescription": "Descripción",
-    "credentialsGuide": "No hay formulario de registro online. Simplemente introduce cualquier usuario y contraseña no usados — la red Soulseek te registrará automáticamente."
+    "credentialsGuide": "No hay formulario de registro online. Simplemente introduce cualquier usuario y contraseña no usados — la red Soulseek te registrará automáticamente.",
+    "emoji": "Emojis",
+    "searchFiles": "Filtrar archivos...",
+    "sortByFiles": "Ordenar por archivos"
   }
 }

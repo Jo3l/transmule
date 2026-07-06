@@ -874,6 +874,46 @@
                 </div>
               </STabPane>
 
+              <!-- ── Files tab (slskd only) ── -->
+              <STabPane
+                v-if="row._type === 'slskd' && row._files?.length"
+                name="files"
+                :label="t('downloads.slskd.files', 'Archivos') + ' (' + row._files.length + ')'"
+                :active="detailTab[row._uid] === 'files'"
+              >
+                <div class="slskd-files-table-wrap">
+                  <STable
+                    :data="row._files"
+                    :columns="slskdFileColumns"
+                    row-key="_fileIndex"
+                    size="sm"
+                    class="slskd-files-table"
+                  >
+                    <template #cell-filename="{ row: fr }">
+                      <span class="is-size-7" :title="fr.fullFilename">{{ fr.filename }}</span>
+                    </template>
+                    <template #cell-size="{ row: fr }">
+                      <span class="is-size-7">{{ fr.size_fmt }}</span>
+                    </template>
+                    <template #cell-progress="{ row: fr }">
+                      <div class="flex-row gap-sm align-items-center">
+                        <SProgress :percentage="fr.progress" :height="6" style="width: 80px" />
+                        <span class="is-size-7 has-text-grey">{{ fr.progress }}%</span>
+                      </div>
+                    </template>
+                    <template #cell-speed="{ row: fr }">
+                      <span class="is-size-7">{{ fr.speed_fmt }}</span>
+                    </template>
+                    <template #cell-state="{ row: fr }">
+                      <STag
+                        size="sm"
+                        :variant="fr.state?.includes('Completed') ? 'success' : fr.state?.includes('InProgress') || fr.state?.includes('Transferring') ? 'info' : 'default'"
+                      >{{ fr.state }}</STag>
+                    </template>
+                  </STable>
+                </div>
+              </STabPane>
+
               <!-- ── Chunks tab (aMule only) ── -->
               <STabPane
                 v-if="row._type === 'amule'"
@@ -1744,6 +1784,15 @@ const pyloadPanes = computed<TabPaneDef[]>(() => [
 ]);
 const slskdPanes = computed<TabPaneDef[]>(() => [
   { name: "info", label: t("downloads.info.title") },
+  { name: "files", label: t("downloads.slskd.files", "Archivos") },
+]);
+
+const slskdFileColumns = computed<STableColumn[]>(() => [
+  { key: "filename", label: t("downloads.slskd.fileName", "Archivo") },
+  { key: "size", label: t("downloads.columns.size"), width: 90 },
+  { key: "progress", label: t("downloads.columns.progress"), width: 180 },
+  { key: "speed", label: t("downloads.columns.speed"), width: 90 },
+  { key: "state", label: t("downloads.columns.status"), width: 110 },
 ]);
 const pyloadLinkCols = computed<STableColumn[]>(() => [
   { prop: "name", label: t("pyload.columns.name") },
@@ -1910,25 +1959,43 @@ const totalSelected = computed(() =>
 );
 
 async function doSlskdAction(action: 'retry' | 'cancel') {
+  let hadError = false;
   for (const uid of selectedItems) {
     const row = allFiles.value.find((r: any) => r._uid === uid);
     if (!row || row._type !== 'slskd') continue;
+    const files = row._files ?? [];
+    if (files.length === 0) continue;
     try {
+      // Only process files that have proper username and id
+      const validFiles = files.filter((f: any) => f.username && f.id);
+      if (validFiles.length === 0) {
+        addToast(t('downloads.slskd.noValidFiles', 'No valid files to cancel'), 'error');
+        continue;
+      }
       if (action === 'cancel') {
-        await apiFetch(`/api/slskd/transfers/${encodeURIComponent(row.username)}/${encodeURIComponent(row.id)}?remove=true`, {
-          method: 'DELETE',
-        });
+        // Cancel all valid files in this group
+        for (const f of validFiles) {
+          await apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+            method: 'DELETE',
+          }).catch(() => { hadError = true; });
+        }
       } else if (action === 'retry') {
-        // Remove and re-queue via the transfer endpoint
-        await apiFetch(`/api/slskd/transfers/${encodeURIComponent(row.username)}/${encodeURIComponent(row.id)}?remove=true`, {
-          method: 'DELETE',
-        });
+        // Remove all files and re-queue via the transfer endpoint
+        for (const f of validFiles) {
+          await apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+            method: 'DELETE',
+          }).catch(() => { hadError = true; });
+        }
+        const fileList = validFiles.map((f: any) => ({ filename: f.fullFilename, size: f.size }));
         await apiFetch('/api/slskd/transfers', {
           method: 'POST',
-          body: { username: row.username, files: [{ filename: row.filename || row.name, size: row.size }] },
-        });
+          body: { username: validFiles[0].username, files: fileList },
+        }).catch(() => { hadError = true; });
       }
-    } catch { /* silent */ }
+    } catch { hadError = true; }
+  }
+  if (hadError) {
+    addToast(t('downloads.slskd.actionError', 'Some transfers could not be processed'), 'warning');
   }
   refreshSlskd();
 }
@@ -2310,51 +2377,157 @@ async function refreshPyload() {
 async function refreshSlskd() {
   if (slskdStopped.value) return;
   try {
-    const res = await apiFetch<any>("/api/slskd/transfers?direction=download");
+    // Fetch grouped transfers
+    const res = await apiFetch<any>("/api/slskd/transfers?direction=download&grouped=true");
     const raw = Array.isArray(res) ? res : [];
-    slskdTotals.value = raw.length > 0 ? { count: raw.length } : null;
-    slskdFiles.value = raw.map((t: any) => {
-      const bytesTotal = t.size || 0;
-      const bytesDone = t.bytesTransferred || 0;
-      const isComplete = t.state?.includes("Completed");
-      return {
-        ...t,
-        _type: "slskd",
-        _uid: "slskd-" + t.id,
-        name: (() => {
-          const fn = t.filename || t.name || "";
+    const groups: any[] = [];
+    let totalFiles = 0;
+    let uidCounter = 0;
+
+    // ── Helpers ────────────────────────────────────────────────────────
+    function normPath(p: string): string {
+      return p.replace(/\\/g, "/").replace(/\/+$/, "");
+    }
+    function makeFileItems(files: any[], username: string): any[] {
+      return files.map((f: any, idx: number) => {
+        const sz = f.size || 0;
+        const done = f.bytesTransferred || 0;
+        const complete = f.state?.includes("Completed");
+        const pct = complete ? 100 : (sz > 0 ? Math.min(100, (done / sz) * 100) : 0);
+        const short = (() => {
+          const fn = f.filename || "";
           const parts = fn.replace(/\\/g, "/").split("/");
           return parts[parts.length - 1] || fn;
-        })(),
-        size: bytesTotal,
-        progress: isComplete ? 100 : (bytesTotal > 0 ? Math.min(100, (bytesDone / bytesTotal) * 100) : 0),
-        speed_fmt: formatSpeed(t.averageSpeed || 0),
-        totalSize_fmt: formatBytes(bytesTotal),
-        doneSize_fmt: formatBytes(bytesDone),
-        status: isComplete ? "Complete" : (t.state?.includes("InProgress") || t.state?.includes("Transferring")) ? "Downloading" : t.state?.includes("Queued") ? "Waiting" : t.state || "Unknown",
-        activeLinks: 0,
-        failedLinks: 0,
-        finishedLinks: isComplete ? 1 : 0,
-        linkCount: 1,
-        dest: "queue",
-        username: t.username || "",
-        folder: (() => {
-          const fn = t.filename || "";
-          const lastSep = Math.max(fn.lastIndexOf("\\"), fn.lastIndexOf("/"));
-          return lastSep >= 0 ? fn.substring(0, lastSep) : "";
-        })(),
-        fullFilename: t.filename || "",
-        startTime: t.startedAt ? new Date(t.startedAt).getTime() : null,
-        endTime: t.endedAt ? new Date(t.endedAt).getTime() : null,
-        averageSpeed: t.averageSpeed || 0,
-        percentComplete: t.percentComplete ?? (bytesTotal > 0 ? Math.round((bytesDone / bytesTotal) * 10000) / 100 : 0),
+        })();
+        return {
+          id: f.id ?? `file-${idx}`,
+          filename: short,
+          fullFilename: f.filename || "",
+          size: sz,
+          size_fmt: formatBytes(sz),
+          bytesDone: done,
+          done_fmt: formatBytes(done),
+          progress: pct,
+          speed_fmt: formatSpeed(f.averageSpeed || 0),
+          state: f.state || "Unknown",
+          startTime: f.startedAt ? new Date(f.startedAt).getTime() : null,
+          endTime: f.endedAt ? new Date(f.endedAt).getTime() : null,
+          username: f.username || username,
+          _fileIndex: idx,
+        };
+      });
+    }
+
+    function makeGroup(fileItems: any[], folderName: string, username: string): any {
+      const totalSz = fileItems.reduce((s, f) => s + (f.size || 0), 0);
+      const totalDone = fileItems.reduce((s, f) => s + (f.bytesDone || 0), 0);
+      const completed = fileItems.filter((f) => f.state?.includes("Completed")).length;
+      const downloading = fileItems.filter((f) => f.state?.includes("InProgress") || f.state?.includes("Transferring")).length;
+      const waiting = fileItems.filter((f) => f.state?.includes("Queued") && !f.state?.includes("Transferring") && !f.state?.includes("InProgress")).length;
+      const allDone = completed === fileItems.length && fileItems.length > 0;
+
+      let status: string;
+      if (allDone) status = "Complete";
+      else if (downloading > 0) status = "Downloading";
+      else if (waiting > 0) status = "Waiting";
+      else status = fileItems[0]?.state || "Unknown";
+
+      const pct = totalSz > 0 ? Math.min(100, Math.round((totalDone / totalSz) * 100)) : 0;
+      const display = (() => {
+        const parts = folderName.replace(/\\/g, "/").split("/");
+        return parts[parts.length - 1] || folderName;
+      })();
+      const avgSpeed = fileItems.reduce((s, f) => s + (parseFloat(f.speed_fmt) || 0), 0);
+
+      const uid = "slskd-" + (++uidCounter);
+      return {
+        _type: "slskd", _uid: uid, _files: fileItems,
+        name: display, size: totalSz, progress: pct,
+        speed_fmt: formatSpeed(avgSpeed),
+        totalSize_fmt: formatBytes(totalSz),
+        doneSize_fmt: formatBytes(totalDone),
+        status,
+        activeLinks: downloading, failedLinks: 0,
+        finishedLinks: completed, linkCount: fileItems.length,
+        dest: "queue", username, folder: folderName, fullFilename: folderName,
+        startTime: fileItems.reduce((earliest, f) => {
+          if (!f.startTime) return earliest;
+          return earliest === null || f.startTime < earliest ? f.startTime : earliest;
+        }, null as number | null),
+        endTime: allDone ? fileItems.reduce((latest, f) => {
+          if (!f.endTime) return latest;
+          return latest === null || f.endTime > latest ? f.endTime : latest;
+        }, null as number | null) : null,
+        averageSpeed: avgSpeed, percentComplete: pct, id: uid,
       };
-    });
+    }
+
+    // ── Read batch roots from sessionStorage ────────────────────────────
+    let batches: { rootPath: string; username: string; ts: number }[] = [];
+    try {
+      const rawB = sessionStorage.getItem("slskd_batches");
+      if (rawB) batches = JSON.parse(rawB);
+    } catch { /* ignore */ }
+
+    // ── Collect per-user directories ────────────────────────────────────
+    const userDirs = new Map<string, { folder: string; fileItems: any[] }[]>();
+    for (const userGrp of raw) {
+      const uname = userGrp.username || "Unknown";
+      if (!userDirs.has(uname)) userDirs.set(uname, []);
+      const dirs = userDirs.get(uname)!;
+      for (const dir of (userGrp.directories ?? [])) {
+        const files = dir.files ?? [];
+        if (files.length === 0) continue;
+        const fname = dir.directory || files[0]?.filename?.replace(/[\\/][^\\/]*$/, "") || "";
+        dirs.push({ folder: fname, fileItems: makeFileItems(files, uname) });
+      }
+    }
+
+    // ── Merge subdirectories under batch root ───────────────────────────
+    const now = Date.now();
+    for (const [uname, dirs] of userDirs) {
+      const userBatches = batches.filter((b) => b.username === uname && now - b.ts < 300_000);
+
+      // Sort batches by rootPath length descending (most specific first)
+      // so that subdirectory downloads don't get swallowed by parent batches
+      userBatches.sort((a, b) => b.rootPath.length - a.rootPath.length);
+
+      for (const batch of userBatches) {
+        const root = batch.rootPath;
+        const normRoot = normPath(root);
+        // Find directories that are under this root (including root itself)
+        // Skip entries already claimed by a more specific batch
+        const children = dirs.filter((d) =>
+          !(d as any)._batched &&
+          (normPath(d.folder) === normRoot || normPath(d.folder).startsWith(normRoot + "/")),
+        );
+        if (children.length > 1) {
+          // Merge all children into one group
+          const merged = children.flatMap((d) => d.fileItems);
+          for (const c of children) {
+            const idx = dirs.indexOf(c);
+            if (idx >= 0) dirs.splice(idx, 1);
+          }
+          // Mark as batched so parent batches don't consume it
+          const entry: any = { folder: root, fileItems: merged };
+          entry._batched = true;
+          dirs.push(entry);
+        }
+      }
+
+      // Build final groups
+      for (const d of dirs) {
+        totalFiles += d.fileItems.length;
+        groups.push(makeGroup(d.fileItems, d.folder, uname));
+      }
+    }
+
+    slskdTotals.value = totalFiles > 0 ? { count: totalFiles } : null;
+    slskdFiles.value = groups;
   } catch {
     /* silent */
   }
 }
-
 async function pushSpeedHistory() {
   // history is now accumulated server-side; fetch it from the API
 }
@@ -2427,17 +2600,19 @@ async function clearDownloaded() {
       );
     }
 
-    // slskd completed
+    // slskd completed — iterate all files in each group
     const slskdDone = done
-      .filter((r) => r._type === "slskd" && r.status === "Complete")
-      .map((r) => ({ username: r.username, id: r.id }));
-    for (const item of slskdDone) {
-      if (item.username && item.id) {
-        ops.push(
-          apiFetch(`/api/slskd/transfers/${encodeURIComponent(item.username)}/${encodeURIComponent(item.id)}?remove=true`, {
-            method: "DELETE",
-          }).catch(() => {}),
-        );
+      .filter((r) => r._type === "slskd" && r.status === "Complete");
+    for (const group of slskdDone) {
+      const files = group._files ?? [];
+      for (const f of files) {
+        if (f.username && f.id) {
+          ops.push(
+            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+              method: "DELETE",
+            }).catch(() => {}),
+          );
+        }
       }
     }
 
@@ -2848,6 +3023,12 @@ onUnmounted(() => {
 }
 .avail-bar-wrapper {
   max-width: 600px;
+}
+
+/* ── slskd files tab scroll ────────────────────────────────────────────── */
+.slskd-files-table-wrap {
+  max-height: 20rem;
+  overflow-y: auto;
 }
 .avail-bar {
   display: flex;

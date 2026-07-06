@@ -594,13 +594,37 @@ function cycleRoomUserSort(tabId: string) {
   else roomUserSort.value[tabId] = "";
 }
 
+/** Parse a value as integer for sorting — handles numbers, strings, null, undefined */
+function parseFileCount(val: any): number {
+  if (val == null) return 0;
+  const n = typeof val === "number" ? val : parseInt(String(val), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+/** Computed: sorted room users map, one entry per tab */
+const sortedRoomUsers = computed(() => {
+  const result: Record<string, any[]> = {};
+  for (const tabId of Object.keys(roomUsers.value)) {
+    const users = roomUsers.value[tabId];
+    if (!users || !Array.isArray(users)) {
+      result[tabId] = [];
+      continue;
+    }
+    const sort = roomUserSort.value[tabId] || "";
+    if (!sort) {
+      result[tabId] = users;
+      continue;
+    }
+    const dir = sort === "files-desc" ? -1 : 1;
+    result[tabId] = [...users].sort(
+      (a, b) => (parseFileCount(a.fileCount) - parseFileCount(b.fileCount)) * dir,
+    );
+  }
+  return result;
+});
+
 function getSortedRoomUsers(tabId: string): any[] {
-  const users = roomUsers.value[tabId];
-  if (!users) return [];
-  const sort = roomUserSort.value[tabId] || "";
-  if (!sort) return users;
-  const dir = sort === "files-desc" ? -1 : 1;
-  return [...users].sort((a, b) => ((a.fileCount ?? 0) - (b.fileCount ?? 0)) * dir);
+  return sortedRoomUsers.value[tabId] ?? [];
 }
 
 const SCROLL_NEAR_BOTTOM_PX = 100;
@@ -862,7 +886,7 @@ function closeTab(tabId: string) {
     const remaining = tabs.value;
     activeTabId.value = remaining.length > 0 ? remaining[remaining.length - 1].id : "";
   }
-  const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + activeTabId.value : "";
+  const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + encodeURIComponent(activeTabId.value) : "";
   router.replace({ hash });
   if (wasBrowse) saveBrowseTabs();
   if (tab.type === "user") saveUserTabs();
@@ -1134,11 +1158,25 @@ function ctxDownloadFile() {
   const dir = browseCtx.dir;
   if (!file || !browseCtx.username) return;
   // Soulseek needs the full relative path from the user's share root
-  const fullPath = dir?.name ? dir.name + "\\" + file.filename : file.filename;
+  const basePath = dir?.path || dir?.name || "";
+  const fullPath = basePath ? basePath + "\\" + file.filename : file.filename;
   apiFetch("/api/slskd/transfers/download", {
     method: "POST",
     body: { username: browseCtx.username, files: [{ filename: fullPath, size: file.size }] },
   }).catch(() => {});
+}
+
+/** Recursively collect all files from a directory node (including subdirectories) */
+function collectAllFilesRecursive(node: any, basePath: string): { filename: string; size: number }[] {
+  const files: { filename: string; size: number }[] = [];
+  for (const f of (node.files ?? [])) {
+    files.push({ filename: basePath + "\\" + f.filename, size: f.size });
+  }
+  for (const child of (node.children ?? [])) {
+    const childPath = child.path || (basePath ? basePath + "\\" + child.name : child.name);
+    files.push(...collectAllFilesRecursive(child, childPath));
+  }
+  return files;
 }
 
 function ctxDownloadBrowseDir() {
@@ -1146,14 +1184,26 @@ function ctxDownloadBrowseDir() {
   const dir = browseCtx.dir;
   if (!dir || !browseCtx.username) return;
   // Soulseek needs the full relative path from the user's share root
-  const allFiles = (dir.files ?? []).map((f: any) => ({
-    filename: dir.name + "\\" + f.filename,
-    size: f.size,
-  }));
+  // Use dir.path (full path) — dir.name is only the leaf name
+  const basePath = dir.path || dir.name;
+  // Recursively collect ALL files from this directory and its subdirectories
+  const allFiles = collectAllFilesRecursive(dir, basePath);
   if (allFiles.length === 0) return;
   apiFetch("/api/slskd/transfers/download", {
     method: "POST",
     body: { username: browseCtx.username, files: allFiles },
+  }).then(() => {
+    // Track this batch so the downloads page can merge subdirectory groups
+    // under the root folder the user selected
+    try {
+      const raw = sessionStorage.getItem("slskd_batches");
+      const batches: { rootPath: string; username: string; ts: number }[] = raw ? JSON.parse(raw) : [];
+      // Remove batches older than 5 minutes
+      const now = Date.now();
+      const fresh = batches.filter((b) => now - b.ts < 300_000);
+      fresh.push({ rootPath: basePath, username: browseCtx.username, ts: now });
+      sessionStorage.setItem("slskd_batches", JSON.stringify(fresh));
+    } catch { /* quota exceeded, ignore */ }
   }).catch(() => {});
 }
 
@@ -1162,7 +1212,7 @@ const mobileCtx = reactive({
   visible: false,
   x: 0,
   y: 0,
-  type: "" as "user" | "file",
+  type: "" as "user" | "file" | "dir",
   username: "",
 });
 
@@ -1334,7 +1384,7 @@ watch(
 // Sync hash when active tab changes
 watch(activeTabId, (id) => {
   if (id && id !== "_rooms") {
-    router.replace({ hash: "#" + id });
+    router.replace({ hash: "#" + encodeURIComponent(id) });
   } else {
     router.replace({ hash: "" });
   }

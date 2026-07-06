@@ -137,7 +137,8 @@
     "sources": {
       "amule": "aMule",
       "torrent": "Torrent",
-      "pyload": "pyLoad"
+      "pyload": "pyLoad",
+      "slskd": "Soulseek"
     },
     "statusFilter": {
       "downloading": "In download",
@@ -164,7 +165,8 @@
     "tooltip": {
       "amule": "aMule (ed2k)",
       "torrent": "Torrent",
-      "pyload": "Download diretto pyLoad"
+      "pyload": "Download diretto pyLoad",
+      "slskd": "Soulseek P2P"
     },
     "info": {
       "title": "Info download",
@@ -325,6 +327,12 @@
     "contextMenu": {
       "copyUserHash": "Copia hash utente",
       "copyIP": "Copia indirizzo IP"
+    },
+    "slskd": {
+      "files": "File",
+      "fileName": "File",
+      "noValidFiles": "Nessun file valido da annullare",
+      "actionError": "Alcuni trasferimenti non possono essere elaborati"
     }
   },
   "search": {
@@ -1399,6 +1407,9 @@
     "rooms": "Rooms",
     "roomUsers": "Users",
     "roomsPlaceholder": "Chat rooms — coming soon",
-    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically."
+    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically.",
+    "emoji": "Emoji",
+    "searchFiles": "Filtra file...",
+    "sortByFiles": "Ordina per file"
   }
 }

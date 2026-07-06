@@ -137,7 +137,8 @@
     "sources": {
       "amule": "aMule",
       "torrent": "टोरेंट",
-      "pyload": "pyLoad"
+      "pyload": "pyLoad",
+      "slskd": "Soulseek"
     },
     "statusFilter": {
       "downloading": "डाउनलोड हो रहा है",
@@ -164,7 +165,8 @@
     "tooltip": {
       "amule": "aMule (ed2k)",
       "torrent": "टोरेंट",
-      "pyload": "pyLoad डायरेक्ट डाउनलोड"
+      "pyload": "pyLoad डायरेक्ट डाउनलोड",
+      "slskd": "Soulseek P2P"
     },
     "info": {
       "title": "डाउनलोड जानकारी",
@@ -325,6 +327,12 @@
     "contextMenu": {
       "copyUserHash": "उपयोगकर्ता हैश कॉपी करें",
       "copyIP": "IP पता कॉपी करें"
+    },
+    "slskd": {
+      "files": "फ़ाइलें",
+      "fileName": "फ़ाइल",
+      "noValidFiles": "रद्द करने के लिए कोई मान्य फ़ाइल नहीं",
+      "actionError": "कुछ स्थानांतरण संसाधित नहीं किए जा सके"
     }
   },
   "search": {
@@ -1399,6 +1407,9 @@
     "rooms": "Rooms",
     "roomUsers": "Users",
     "roomsPlaceholder": "Chat rooms — coming soon",
-    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically."
+    "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically.",
+    "emoji": "इमोजी",
+    "searchFiles": "फ़ाइलें फ़िल्टर करें...",
+    "sortByFiles": "फ़ाइलों के अनुसार क्रमबद्ध करें"
   }
 }

@@ -244,14 +244,14 @@ function ctxOpenChat() {
   closeCtx();
   const username = ctxMenu.username;
   if (!username) return;
-  router.push(`/slskd/chat#user:${encodeURIComponent(username)}`);
+  router.push(`/slskd/chat#${encodeURIComponent(`user:${username}`)}`);
 }
 
 function ctxBrowseFiles() {
   closeCtx();
   const username = ctxMenu.username;
   if (!username) return;
-  router.push(`/slskd/chat#files:${encodeURIComponent(username)}`);
+  router.push(`/slskd/chat#${encodeURIComponent(`files:${username}`)}`);
 }
 
 async function ctxDownloadFolder() {
