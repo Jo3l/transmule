@@ -332,7 +332,8 @@
       "files": "Arquivos",
       "fileName": "Arquivo",
       "noValidFiles": "Nenhum arquivo válido para cancelar",
-      "actionError": "Algumas transferências não puderam ser processadas"
+      "actionError": "Algumas transferências não puderam ser processadas",
+      "cancelledN": "{n} arquivos cancelados"
     }
   },
   "search": {

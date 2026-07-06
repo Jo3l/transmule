@@ -1961,6 +1961,7 @@ const totalSelected = computed(() =>
 
 async function doSlskdAction(action: 'retry' | 'cancel') {
   let hadError = false;
+  let cancelledCount = 0;
   for (const uid of selectedItems) {
     const row = allFiles.value.find((r: any) => r._uid === uid);
     if (!row || row._type !== 'slskd') continue;
@@ -1974,19 +1975,35 @@ async function doSlskdAction(action: 'retry' | 'cancel') {
         continue;
       }
       if (action === 'cancel') {
-        // Cancel all valid files in this group
-        for (const f of validFiles) {
-          await apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-            method: 'DELETE',
-          }).catch(() => { hadError = true; });
+        // Cancel in parallel chunks of 5 to avoid overwhelming slskd
+        const CHUNK = 5;
+        for (let i = 0; i < validFiles.length; i += CHUNK) {
+          const chunk = validFiles.slice(i, i + CHUNK);
+          const results = await Promise.allSettled(
+            chunk.map((f: any) =>
+              apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+                method: 'DELETE',
+              }).then(() => true).catch(() => false),
+            ),
+          );
+          cancelledCount += results.filter((r) => r.status === 'fulfilled' && r.value).length;
+          if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
         }
       } else if (action === 'retry') {
-        // Remove all files and re-queue via the transfer endpoint
-        for (const f of validFiles) {
-          await apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-            method: 'DELETE',
-          }).catch(() => { hadError = true; });
+        // Remove all files in parallel chunks
+        const CHUNK = 5;
+        for (let i = 0; i < validFiles.length; i += CHUNK) {
+          const chunk = validFiles.slice(i, i + CHUNK);
+          const results = await Promise.allSettled(
+            chunk.map((f: any) =>
+              apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+                method: 'DELETE',
+              }).then(() => true).catch(() => false),
+            ),
+          );
+          if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
         }
+        // Re-queue all files
         const fileList = validFiles.map((f: any) => ({ filename: f.fullFilename, size: f.size }));
         await apiFetch('/api/slskd/transfers', {
           method: 'POST',
@@ -1995,7 +2012,9 @@ async function doSlskdAction(action: 'retry' | 'cancel') {
       }
     } catch { hadError = true; }
   }
-  if (hadError) {
+  if (cancelledCount > 0) {
+    addToast(t('downloads.slskd.cancelledN', '{n} files cancelled').replace('{n}', String(cancelledCount)), 'success');
+  } else if (hadError) {
     addToast(t('downloads.slskd.actionError', 'Some transfers could not be processed'), 'warning');
   }
   refreshSlskd();
@@ -2637,19 +2656,31 @@ async function clearDownloaded() {
       );
     }
 
-    // slskd completed — iterate all files in each group
+    // slskd completed — collect all valid files across all groups
     const slskdDone = done
       .filter((r) => r._type === "slskd" && r.status === "Complete");
+    const slskdFiles: { username: string; id: string | number }[] = [];
     for (const group of slskdDone) {
-      const files = group._files ?? [];
-      for (const f of files) {
+      for (const f of (group._files ?? [])) {
         if (f.username && f.id) {
-          ops.push(
-            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-              method: "DELETE",
-            }).catch(() => {}),
-          );
+          slskdFiles.push({ username: f.username, id: f.id });
         }
+      }
+    }
+    // Cancel in parallel chunks of 5 to avoid overwhelming slskd
+    const CHUNK = 5;
+    for (let i = 0; i < slskdFiles.length; i += CHUNK) {
+      const chunk = slskdFiles.slice(i, i + CHUNK);
+      ops.push(
+        ...chunk.map((f) =>
+          apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
+            method: "DELETE",
+          }).catch(() => {}),
+        ),
+      );
+      if (i + CHUNK < slskdFiles.length) {
+        // Small delay between chunks to let slskd breathe
+        await new Promise((r) => setTimeout(r, 200));
       }
     }
 

@@ -1160,7 +1160,7 @@ function ctxDownloadFile() {
   // Soulseek needs the full relative path from the user's share root
   const basePath = dir?.path || dir?.name || "";
   const fullPath = basePath ? basePath + "\\" + file.filename : file.filename;
-  apiFetch("/api/slskd/transfers/download", {
+  apiFetch("/api/slskd/transfers", {
     method: "POST",
     body: { username: browseCtx.username, files: [{ filename: fullPath, size: file.size }] },
   }).catch(() => {});
@@ -1189,7 +1189,7 @@ function ctxDownloadBrowseDir() {
   // Recursively collect ALL files from this directory and its subdirectories
   const allFiles = collectAllFilesRecursive(dir, basePath);
   if (allFiles.length === 0) return;
-  apiFetch("/api/slskd/transfers/download", {
+  apiFetch("/api/slskd/transfers", {
     method: "POST",
     body: { username: browseCtx.username, files: allFiles },
   }).then(() => {

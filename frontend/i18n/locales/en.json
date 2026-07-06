@@ -332,7 +332,8 @@
       "files": "Files",
       "fileName": "File",
       "noValidFiles": "No valid files to cancel",
-      "actionError": "Some transfers could not be processed"
+      "actionError": "Some transfers could not be processed",
+      "cancelledN": "{n} files cancelled"
     }
   },
   "search": {

@@ -332,7 +332,8 @@
       "files": "Dosyalar",
       "fileName": "Dosya",
       "noValidFiles": "İptal edilecek geçerli dosya yok",
-      "actionError": "Bazı transferler işlenemedi"
+      "actionError": "Bazı transferler işlenemedi",
+      "cancelledN": "{n} dosya iptal edildi"
     }
   },
   "search": {

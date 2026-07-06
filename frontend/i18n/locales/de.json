@@ -332,7 +332,8 @@
       "files": "Dateien",
       "fileName": "Datei",
       "noValidFiles": "Keine gültigen Dateien zum Abbrechen",
-      "actionError": "Einige Übertragungen konnten nicht verarbeitet werden"
+      "actionError": "Einige Übertragungen konnten nicht verarbeitet werden",
+      "cancelledN": "{n} Dateien abgebrochen"
     }
   },
   "search": {
