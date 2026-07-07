@@ -12,8 +12,11 @@ export default defineEventHandler(async (event) => {
   const username = getRouterParam(event, "username");
   if (!username) throw createError({ statusCode: 400, statusMessage: "Missing username" });
   try {
+    console.log(`[slskd] closeConversation: username="${username}"`);
     const ok = await client.closeConversation(username);
-    return { success: ok };
+    console.log(`[slskd] closeConversation: username="${username}" → ${ok ? "OK" : "FAILED"}`);
+    if (!ok) throw new Error("slskd did not confirm conversation close");
+    return { success: true };
   } catch (err: any) {
     throw createError({ statusCode: 502, statusMessage: `slskd close conversation error: ${err.message}` });
   }

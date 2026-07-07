@@ -487,7 +487,7 @@
 </template>
 
 <script setup lang="ts">
-const { apiFetch } = useApi();
+const { apiFetch, showToast } = useApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -860,8 +860,9 @@ async function closeTab(tabId: string) {
         method: "DELETE",
       });
     }
-  } catch {
-    // Tab is already gone from UI; slskd will clean up on its own eventually
+  } catch (err: any) {
+    console.warn("[closeTab] slskd close failed:", err);
+    showToast(t("slskd.closeConversationError", "No se pudo cerrar la conversación en slskd"), "warning", 4000);
   }
 }
 
