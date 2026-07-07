@@ -2522,13 +2522,6 @@ async function refreshSlskd() {
       };
     }
 
-    // ── Read batch roots from sessionStorage ────────────────────────────
-    let batches: { rootPath: string; username: string; ts: number }[] = [];
-    try {
-      const rawB = sessionStorage.getItem("slskd_batches");
-      if (rawB) batches = JSON.parse(rawB);
-    } catch { /* ignore */ }
-
     // ── Collect per-user directories ────────────────────────────────────
     const userDirs = new Map<string, { folder: string; fileItems: any[] }[]>();
     for (const userGrp of raw) {
@@ -2543,43 +2536,30 @@ async function refreshSlskd() {
       }
     }
 
-    // ── Merge subdirectories under batch root ───────────────────────────
-    const now = Date.now();
+    // ── Merge child directories into parents (hierarchy-based) ─────────
+    // Deterministic: no sessionStorage, same result in every tab.
+    // A directory is merged into its parent if it shares a path prefix.
     for (const [uname, dirs] of userDirs) {
-      const userBatches = batches.filter((b) => b.username === uname && now - b.ts < 300_000);
+      // Sort by path depth ascending (shallowest first)
+      dirs.sort((a, b) => normPath(a.folder).split("/").length - normPath(b.folder).split("/").length);
 
-      // Sort batches by rootPath length descending (most specific first)
-      // so that subdirectory downloads don't get swallowed by parent batches
-      userBatches.sort((a, b) => b.rootPath.length - a.rootPath.length);
-
-      for (const batch of userBatches) {
-        const root = batch.rootPath;
-        const normRoot = normPath(root);
-        // Find directories that are under this root (including root itself).
-        // slskd may return directory names as full paths ("base\libros") or
-        // as leaf-only ("libros"); check both the directory name and file paths.
-        const children = dirs.filter((d) => {
-          if ((d as any)._batched) return false;
-          const nd = normPath(d.folder);
-          if (nd === normRoot || nd.startsWith(normRoot + "/")) return true;
-          // Fallback: check if any file's full path is under the root
-          return d.fileItems.some((f: any) => {
-            const fp = normPath(f.fullFilename || "");
-            return fp.startsWith(normRoot + "/") || fp === normRoot;
-          });
-        });
-        if (children.length > 1) {
-          // Merge all children into one group under the root name
-          const merged = children.flatMap((d) => d.fileItems);
-          for (const c of children) {
-            const idx = dirs.indexOf(c);
-            if (idx >= 0) dirs.splice(idx, 1);
+      const mergedIndices = new Set<number>();
+      for (let i = 0; i < dirs.length; i++) {
+        if (mergedIndices.has(i)) continue;
+        const parentPath = normPath(dirs[i].folder);
+        for (let j = i + 1; j < dirs.length; j++) {
+          if (mergedIndices.has(j)) continue;
+          const childPath = normPath(dirs[j].folder);
+          if (childPath.startsWith(parentPath + "/")) {
+            dirs[i].fileItems.push(...dirs[j].fileItems);
+            mergedIndices.add(j);
           }
-          // Mark as batched so parent batches don't consume it
-          const entry: any = { folder: root, fileItems: merged };
-          entry._batched = true;
-          dirs.push(entry);
         }
+      }
+
+      // Remove merged children (reverse order so indices stay valid)
+      for (const idx of [...mergedIndices].sort((a, b) => b - a)) {
+        dirs.splice(idx, 1);
       }
 
       // Build final groups

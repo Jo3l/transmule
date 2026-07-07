@@ -92,11 +92,14 @@ services:
     volumes:
       - ${APPDATA_DIR:-/mnt/user/appdata/transmule}/slskd:/app
       - ${DOWNLOAD_DIR:-/mnt/user/downloads}:/downloads
+      - ${INCOMPLETE_DIR:-/mnt/user/incomplete}:/incomplete
     environment:
       PUID: ${PUID:-99}
       PGID: ${PGID:-100}
       SLSKD_REMOTE_CONFIGURATION: "true"
       SLSKD_DOWNLOADS_DIR: /downloads
+      SLSKD_INCOMPLETE_DIR: /incomplete
+      SLSKD_TRANSFERS__DOWNLOAD__DESTINATION__SUBDIRECTORY: $${SOURCE_USERNAME}/$${SOURCE_PATH}
     networks:
       - transmule
 
