@@ -14,15 +14,13 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const client = useSlskdClient();
-  const roomName = getRouterParam(event, "room");
+  const roomName = decodeURIComponent(getRouterParam(event, "room") ?? "");
 
   if (!roomName) {
     throw createError({ statusCode: 400, statusMessage: "Missing room name" });
   }
 
-  try {
-    const messages = await client.getRoomMessages(roomName);
-    return messages;
+  try {    const messages = await client.getRoomMessages(roomName);    return messages;
   } catch (err: any) {
     throw createError({
       statusCode: 502,

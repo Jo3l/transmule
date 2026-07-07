@@ -229,24 +229,51 @@ export class SlskdClient {
   }
 
   /**
-   * Apply Soulseek credentials from the local DB to slskd's YAML config,
-   * then connect to the Soulseek network.
+   * Apply all configuration to slskd and connect to the Soulseek network.
+   * Each config step is applied via a single YAML roundtrip to avoid races.
+   * If the YAML fetch fails, connection proceeds with existing config.
    */
   async connect(): Promise<boolean> {
-    // Sync DB-stored credentials to slskd before connecting
     const dbUser = getConfig("slskd_username");
     const dbPass = getConfig("slskd_password");
+
+    // Build all transforms for a single YAML roundtrip
+    const transforms: { label: string; fn: (yaml: string) => string }[] = [];
     if (dbUser && dbPass) {
-      console.log(`[slskd] connect: applying DB credentials before connect — username="${dbUser}"`);
-      const ok = await this.setSoulseekCredentials(dbUser, dbPass);
-      console.log(`[slskd] connect: setSoulseekCredentials → ${ok ? "OK" : "FAILED"}`);
-    } else {
-      console.log(`[slskd] connect: no Soulseek credentials in DB, connecting with existing config`);
+      transforms.push({ label: "soulseek credentials", fn: this._credentialsTransform(dbUser, dbPass) });
     }
-    // Ensure the downloads directory is shared
-    console.log(`[slskd] connect: ensuring shared directories`);
-    const sharedOk = await this.setSharedDirectories("/downloads");
-    console.log(`[slskd] connect: setSharedDirectories → ${sharedOk ? "OK" : "FAILED"}`);
+    transforms.push({ label: "shared directories", fn: this._sharesTransform("/downloads") });
+
+    // Fetch YAML once, chain all transforms, PUT once if anything changed
+    const getRes = await this.fetch("/options/yaml", { timeout: 10_000 });
+    if (getRes.status !== 200) {
+      console.warn(`[slskd] connect: cannot fetch YAML config (${getRes.status}), connecting with existing config`);
+    } else {
+      let yaml = getRes.body;
+      if (yaml.length > 0) {
+        try { const parsed = JSON.parse(yaml); if (typeof parsed === "string") yaml = parsed; } catch { /* raw YAML */ }
+      }
+
+      let changed = false;
+      for (const t of transforms) {
+        const before = yaml;
+        yaml = t.fn(yaml);
+        // transform applied silently
+        if (yaml !== before) changed = true;
+      }
+
+      if (changed) {
+        const putRes = await this.fetch("/options/yaml", {
+          method: "PUT", body: JSON.stringify(yaml), timeout: 10_000,
+        });
+        console.log(`[slskd] connect: PUT /options/yaml → ${putRes.status}`);
+        if (putRes.status === 200) {
+          const scanRes = await this.fetch("/shares", { method: "PUT" });
+          console.log(`[slskd] connect: PUT /shares (rescan) → ${scanRes.status}`);
+        }
+      }
+    }
+
     const res = await this.fetch("/server", { method: "PUT" });
     return res.status === 200 || res.status === 205;
   }
@@ -307,7 +334,6 @@ export class SlskdClient {
     });
     return res.status === 200 || res.status === 201;
   }
-
 
   // ── Users / Conversations ─────────────────────────────────────────────────────
 
@@ -532,260 +558,91 @@ export class SlskdClient {
     return res.status === 200 || res.status === 204;
   }
 
+  // ── Config helpers (private transforms, chained by connect()) ──────────────
 
-  async setSoulseekCredentials(username: string, password: string): Promise<boolean> {
-    // Fetch current YAML config
-    const getRes = await this.fetch("/options/yaml");
-    if (getRes.status !== 200) return false;
-
-    let yaml = getRes.body;
-
-    // slskd GET /options/yaml returns the YAML as a JSON-encoded string (quoted).
-    // Parse it if the response looks like a JSON value.
-    if (yaml.length > 0) {
-      try {
-        const parsed = JSON.parse(yaml);
-        if (typeof parsed === "string") {
-          yaml = parsed;
-          console.log(`[slskd] setSoulseekCredentials: response was JSON-encoded, decoded (len=${yaml.length})`);
-        }
-      } catch {
-        // Not JSON — treat as raw YAML
+  private _credentialsTransform(dbUser: string, dbPass: string): (yaml: string) => string {
+    return (yaml) => {
+      const hasSoulseek = /^soulseek:/m.test(yaml);
+      if (!hasSoulseek) {
+        return yaml.trimEnd() + `\n\nsoulseek:\n  username: ${dbUser}\n  password: ${dbPass}\n`;
       }
-    }
 
-    // Check if soulseek section exists in the YAML
-    const hasSoulseek = /^soulseek:/m.test(yaml);
-
-    if (hasSoulseek) {
-      // Walk lines, replace ONLY username/password values in the soulseek block
       const lines = yaml.split("\n");
       const result: string[] = [];
       let inSoulseek = false;
       let insertedUser = false;
       let insertedPass = false;
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+      for (const line of lines) {
         const trimmed = line.trimStart();
 
-        if (!inSoulseek && trimmed === "soulseek:") {
-          inSoulseek = true;
-          result.push(line);
-          continue;
-        }
-
+        if (!inSoulseek && trimmed === "soulseek:") { inSoulseek = true; result.push(line); continue; }
         if (inSoulseek) {
-          // Leaving the soulseek block: next top-level key (no indent)
           if (line.length > 0 && line[0] !== " " && line[0] !== "\t") {
             inSoulseek = false;
-            // Insert username/password before this line if missing
-            if (!insertedUser) result.push("  username: " + username);
-            if (!insertedPass) result.push("  password: " + password);
+            if (!insertedUser) result.push("  username: " + dbUser);
+            if (!insertedPass) result.push("  password: " + dbPass);
             result.push(line);
             continue;
           }
-
-          // Blank line inside the soulseek block — preserve it without exiting
-          if (trimmed === "") {
-            result.push(line);
-            continue;
-          }
-
-          // Inside the soulseek block — replace username / password lines only
+          if (trimmed === "") { result.push(line); continue; }
           const keyMatch = trimmed.match(/^(username|password):\s*.*$/);
           if (keyMatch) {
             const key = keyMatch[1];
             const indent = line.match(/^\s*/)?.[0] || "";
-            result.push(indent + key + ": " + (key === "username" ? username : password));
+            result.push(indent + key + ": " + (key === "username" ? dbUser : dbPass));
             if (key === "username") insertedUser = true;
             if (key === "password") insertedPass = true;
             continue;
           }
-
-          // Preserve any other sub-keys (address, port, search, …)
           result.push(line);
           continue;
         }
-
         result.push(line);
       }
 
-      // If soulseek was the last section, append any missing fields
       if (inSoulseek) {
-        if (!insertedUser) result.push("  username: " + username);
-        if (!insertedPass) result.push("  password: " + password);
+        if (!insertedUser) result.push("  username: " + dbUser);
+        if (!insertedPass) result.push("  password: " + dbPass);
       }
-
-      yaml = result.join("\n");
-    } else {
-      // No soulseek section — append one at the end
-      yaml =
-        yaml.trimEnd() +
-        "\n\nsoulseek:\n  username: " +
-        username +
-        "\n  password: " +
-        password +
-        "\n";
-    }
-
-    console.log(`[slskd] setSoulseekCredentials: username="${username}", password=${password ? "[set]" : "[empty]"}`);
-    console.log(`[slskd] setSoulseekCredentials: modified YAML:\n${yaml}`);
-
-    // Save updated YAML — slskd expects a JSON-encoded string with Content-Type application/json
-    const token = await this.ensureAuth();
-    const authHeaders: Record<string, string> = {};
-    if (token) authHeaders["authorization"] = `Bearer ${token}`;
-
-    const putRes = await this.rawFetch("/options/yaml", {
-      method: "PUT",
-      body: JSON.stringify(yaml),
-      headers: { "content-type": "application/json", ...authHeaders },
-    });
-    console.log(`[slskd] setSoulseekCredentials: PUT /options/yaml → ${putRes.status}`);
-    if (putRes.status !== 200) {
-      console.log(`[slskd] setSoulseekCredentials: response body (first 500 chars): ${putRes.body.slice(0, 500)}`);
-    }
-    return putRes.status === 200;
+      return result.join("\n");
+    };
   }
 
-  /**
-   * Ensure a directory is added to slskd's shared directories.
-   * slskd uses `shares.directories` (NOT `directories.shared`) in the YAML.
-   * After updating the YAML, triggers a rescan via PUT /shares.
-   */
-  async setSharedDirectories(dir: string): Promise<boolean> {
-    // Fetch current YAML config
-    const getRes = await this.fetch("/options/yaml");
-    if (getRes.status !== 200) return false;
+  private _sharesTransform(dir: string): (yaml: string) => string {
+    return (yaml) => {
+      const escaped = dir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp("^\\s*-\\s+" + escaped + "\\s*$", "m").test(yaml)) return yaml;
 
-    let yaml = getRes.body;
+      if (/^shares:/m.test(yaml)) {
+        const lines = yaml.split("\n");
+        const result: string[] = [];
+        let inShares = false, inDirectories = false, inserted = false;
 
-    // Decode if JSON-encoded
-    if (yaml.length > 0) {
-      try {
-        const parsed = JSON.parse(yaml);
-        if (typeof parsed === "string") {
-          yaml = parsed;
-        }
-      } catch {
-        /* not JSON */
-      }
-    }
-
-    // Check if dir is already under shares.directories
-    const alreadyShared = new RegExp(
-      "^\\s*-\\s+" + dir.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "\\s*$",
-      "m"
-    ).test(yaml);
-
-    if (alreadyShared) {
-      console.log(`[slskd] setSharedDirectories: "${dir}" already shared`);
-      return true;
-    }
-
-    // Check if shares section exists
-    if (/^shares:/m.test(yaml)) {
-      // Add dir under shares.directories list
-      const lines = yaml.split("\n");
-      const result: string[] = [];
-      let inShares = false;
-      let inDirectories = false;
-      let inserted = false;
-
-      for (const line of lines) {
-        result.push(line);
-
-        if (!inShares && line.trimStart() === "shares:") {
-          inShares = true;
-          continue;
+        for (const line of lines) {
+          result.push(line);
+          if (!inShares && line.trimStart() === "shares:") { inShares = true; continue; }
+          if (inShares && !inserted) {
+            const t = line.trimStart();
+            if (!inDirectories && t === "directories:") { inDirectories = true; continue; }
+            if (line.length > 0 && line[0] !== " " && line[0] !== "\t" && t !== "") {
+              inShares = false;
+              if (!inDirectories) { result.pop(); result.push("  directories:"); result.push("    - " + dir); result.push(line); inserted = true; }
+              continue;
+            }
+          }
         }
 
         if (inShares && !inserted) {
-          const trimmed = line.trimStart();
-
-          // Detect directories: sub-key inside shares
-          if (!inDirectories && trimmed === "directories:") {
-            inDirectories = true;
-            continue;
-          }
-
-          // Leaving shares block: next top-level key (no indent)
-          if (line.length > 0 && line[0] !== " " && line[0] !== "\t" && trimmed !== "") {
-            inShares = false;
-            // Insert directories before this line if not already present
-            if (!inDirectories) {
-              result.pop();
-              result.push("  directories:");
-              result.push("    - " + dir);
-              result.push(line);
-              inserted = true;
-            }
-            continue;
-          }
-
-          // Inside directories list - check if we're past the list items
-          if (inDirectories) {
-            const nextIsTopLevel = line.length > 0 && line[0] !== " " && line[0] !== "\t" && trimmed !== "";
-            if (nextIsTopLevel) {
-              inShares = false;
-              inDirectories = false;
-            }
-          }
+          if (inDirectories) result.push("    - " + dir);
+          else { result.push("  directories:"); result.push("    - " + dir); }
+          inserted = true;
         }
+        if (inserted) return result.join("\n");
+        return yaml.replace(/^(shares:)/m, "$1\n  directories:\n    - " + dir);
       }
-
-      // If we reached EOF while in shares section
-      if (inShares && !inserted) {
-        if (inDirectories) {
-          // Append to existing directories list
-          result.push("    - " + dir);
-        } else {
-          // Add directories sub-key
-          result.push("  directories:");
-          result.push("    - " + dir);
-        }
-        inserted = true;
-      }
-
-      if (inserted) {
-        yaml = result.join("\n");
-      } else {
-        // Fallback: append directories to shares section
-        yaml = yaml.replace(
-          /^(shares:)/m,
-          "$1\n  directories:\n    - " + dir
-        );
-      }
-    } else {
-      // No shares section — append at the end
-      yaml =
-        yaml.trimEnd() +
-        "\n\nshares:\n  directories:\n    - " +
-        dir +
-        "\n";
-    }
-
-    // PUT updated YAML
-    const token = await this.ensureAuth();
-    const authHeaders: Record<string, string> = {};
-    if (token) authHeaders["authorization"] = "Bearer " + token;
-
-    const putRes = await this.rawFetch("/options/yaml", {
-      method: "PUT",
-      body: JSON.stringify(yaml),
-      headers: { "content-type": "application/json", ...authHeaders },
-    });
-    console.log(`[slskd] setSharedDirectories: PUT /options/yaml → ${putRes.status}`);
-    if (putRes.status !== 200) {
-      console.log(`[slskd] setSharedDirectories: response body (first 500 chars): ${putRes.body.slice(0, 500)}`);
-      return false;
-    }
-
-    // Trigger rescan so shares are picked up immediately
-    const scanRes = await this.fetch("/shares", { method: "PUT" });
-    console.log(`[slskd] setSharedDirectories: PUT /shares (rescan) → ${scanRes.status}`);
-    return true;
+      return yaml.trimEnd() + `\n\nshares:\n  directories:\n    - ${dir}\n`;
+    };
   }
 
   // ── Shares (local shared files) ──────────────────────────────────────────────

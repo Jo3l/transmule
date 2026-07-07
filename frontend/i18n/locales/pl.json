@@ -146,7 +146,8 @@
       "seeding": "Rozsiewanie",
       "complete": "Ukończone",
       "waitingQueued": "Oczekujące / W kolejce",
-      "verifying": "Weryfikacja"
+      "verifying": "Weryfikacja",
+      "rejected": "Odrzucone"
     },
     "sortOptions": {
       "name": "Nazwa",

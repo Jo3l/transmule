@@ -99,7 +99,6 @@ services:
       SLSKD_REMOTE_CONFIGURATION: "true"
       SLSKD_DOWNLOADS_DIR: /downloads
       SLSKD_INCOMPLETE_DIR: /incomplete
-      SLSKD_TRANSFERS__DOWNLOAD__DESTINATION__SUBDIRECTORY: $${SOURCE_USERNAME}/$${SOURCE_PATH}
     networks:
       - transmule
 

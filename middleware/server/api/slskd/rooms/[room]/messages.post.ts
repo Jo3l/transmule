@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const client = useSlskdClient();
-  const roomName = getRouterParam(event, "room");
+  const roomName = decodeURIComponent(getRouterParam(event, "room") ?? "");
   const body = await readBody(event);
 
   if (!roomName) {

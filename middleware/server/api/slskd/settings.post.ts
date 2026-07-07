@@ -39,18 +39,14 @@ export default defineEventHandler(async (event) => {
     setConfig("slskd_password", body.password);
   }
 
-  // Apply credentials to the running slskd instance via API
+  // Apply credentials and all config to the running slskd instance
   if (body?.username || body?.password) {
     try {
       const client = useSlskdClient();
       const savedUser = getConfig("slskd_username") ?? "";
       const savedPass = getConfig("slskd_password") ?? "";
       console.log(`[settings] slskd: applying to slskd API — username="${savedUser}", password=${savedPass ? "[set]" : "[EMPTY]"}`);
-      await client.setSoulseekCredentials(
-        body.username ?? savedUser,
-        body.password ?? savedPass,
-      );
-      // Disconnect and reconnect so slskd picks up the new credentials
+      // connect() handles credentials + shares + subdirectory, then connects
       await client.disconnect("credentials updated — reconnecting");
       await client.connect();
     } catch (err) {

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const params = getRouterParams(event);
   const query = getQuery(event);
 
-  const username = params.username as string;
+  const username = decodeURIComponent(params.username as string ?? "");
   const transferId = params.id as string;
   const direction = (query.direction as string) || "download";
   const remove = query.remove === "true";

@@ -146,7 +146,8 @@
       "seeding": "In seed",
       "complete": "Completo",
       "waitingQueued": "In attesa / In coda",
-      "verifying": "Verifica"
+      "verifying": "Verifica",
+      "rejected": "Rifiutato"
     },
     "sortOptions": {
       "name": "Nome",

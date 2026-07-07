@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
 
   const client = useSlskdClient();
-  const id = getRouterParam(event, "id");
+  const id = decodeURIComponent(getRouterParam(event, "id" ?? ""));
 
   if (!id) {
     throw createError({ statusCode: 400, statusMessage: "Missing search id" });

@@ -146,7 +146,8 @@
       "seeding": "सीडिंग",
       "complete": "पूर्ण",
       "waitingQueued": "प्रतीक्षा / कतारबद्ध",
-      "verifying": "सत्यापित हो रहा है"
+      "verifying": "सत्यापित हो रहा है",
+      "rejected": "अस्वीकृत"
     },
     "sortOptions": {
       "name": "नाम",
