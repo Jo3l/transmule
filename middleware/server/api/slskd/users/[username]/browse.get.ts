@@ -7,9 +7,11 @@ defineRouteMeta({
   },
 });
 
+import { gzipSync, gunzipSync } from "node:zlib";
+
 // ── In-memory browse cache (persists across requests within the server process) ──
 interface CacheEntry {
-  data: any;
+  data: Buffer;  // gzipped JSON
   ts: number;
 }
 const _browseCache = new Map<string, CacheEntry>();
@@ -18,7 +20,7 @@ const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export default defineEventHandler(async (event) => {
   requireUser(event);
   const client = useSlskdClient();
-  const username = getRouterParam(event, "username");
+  const username = decodeURIComponent(getRouterParam(event, "username" ?? ""));
   if (!username) throw createError({ statusCode: 400, statusMessage: "Missing username" });
 
   const query = getQuery(event);
@@ -27,15 +29,24 @@ export default defineEventHandler(async (event) => {
   // Check cache (skip if force-refresh)
   if (!force) {
     const cached = _browseCache.get(username);
-    if (cached && Date.now() - cached.ts < BROWSE_CACHE_TTL_MS) {
-      return cached.data;
-    }
-  }
+    if (cached && Date.now() - cached.ts < BROWSE_CACHE_TTL_MS) {      return JSON.parse(gunzipSync(cached.data).toString());
+    }  }
 
   try {
     const data = await client.browseUserFiles(username);
     if (data) {
-      _browseCache.set(username, { data, ts: Date.now() });
+      // Strip per-file metadata to keep cache lean
+      const stripFile = (f: any) => ({ filename: f.filename, size: f.size });
+      const stripped = {
+        directories: (data.directories || []).map((d: any) => ({
+          ...d, files: (d.files || []).map(stripFile),
+        })),
+        lockedDirectories: (data.lockedDirectories || []).map((d: any) => ({
+          ...d, files: (d.files || []).map(stripFile), locked: true,
+        })),
+      };
+      const compressed = gzipSync(JSON.stringify(stripped));
+      _browseCache.set(username, { data: compressed, ts: Date.now() });      return stripped;
     }
     return data;
   } catch (err: any) {
@@ -43,7 +54,7 @@ export default defineEventHandler(async (event) => {
     const stale = _browseCache.get(username);
     if (stale) {
       console.warn(`[slskd] browse error for ${username}, returning stale cache:`, err.message);
-      return stale.data;
+      return JSON.parse(gunzipSync(stale.data).toString());
     }
     throw createError({ statusCode: 502, statusMessage: `slskd browse error: ${err.message}` });
   }

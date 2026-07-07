@@ -487,11 +487,12 @@
 </template>
 
 <script setup lang="ts">
-const { apiFetch, showToast } = useApi();
+const { apiFetch } = useApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const slskdUsername = ref('');
+
 
 // ── Tab model ────────────────────────────────────────────────────────────
 interface ChatTab {
@@ -746,17 +747,21 @@ function joinRoom(roomName: string) {
 }
 
 // ── Tab management ───────────────────────────────────────────────────────
-function addRoom(roomName: string) {
+async function addRoom(roomName: string) {
   const id = nextTabId("room", roomName);
   if (tabs.value.find((t) => t.id === id)) return;
   tabs.value.push({ type: "room", id, label: roomName });
   roomMessages.value[id] = [];
   roomUsers.value[id] = [];
   activeTabId.value = id;
-  apiFetch("/api/slskd/rooms/join", {
-    method: "POST",
-    body: { roomName },
-  }).catch(() => {});
+  // Join the room first, then fetch data
+  try {
+    const joinRes = await apiFetch("/api/slskd/rooms/join", {
+      method: "POST",
+      body: { roomName },
+    });
+    // joinRes?.success already checked above
+  } catch { /* join may fail if already joined */ }
   fetchRoomData(id, roomName);
   pollTimers[id] = setInterval(() => fetchRoomData(id, roomName), 3000);
 }
@@ -790,9 +795,7 @@ function saveBrowseTabs() {
   try {
     const names = tabs.value.filter((t) => t.type === "files").map((t) => t.label);
     sessionStorage.setItem("slskd_browse_tabs", JSON.stringify(names));
-  } catch {
-    /* quota exceeded, ignore */
-  }
+  } catch { /* quota exceeded */ }
 }
 
 function restoreBrowseTabs() {
@@ -823,8 +826,27 @@ async function closeTab(tabId: string) {
   if (!tab) return;
   const wasBrowse = tab.type === "files";
 
-  // Update UI immediately — the user wants the tab gone regardless of API outcome.
-  // Save session state now so a refresh won't bring it back.
+  // Close server-side FIRST so a refresh won't bring the tab back.
+  // If the API fails, still remove from UI — the user wants it gone.
+  if (tab.type === "room" || tab.type === "user") {
+    try {
+      if (tab.type === "room") {
+        await apiFetch("/api/slskd/rooms/leave", {
+          method: "POST",
+          body: { roomName: tab.label },
+        });
+      } else {
+        await apiFetch(`/api/slskd/conversations/${encodeURIComponent(tab.label)}`, {
+          method: "DELETE",
+        });
+      }
+    } catch (err: any) {
+      showToast(t("slskd.closeConversationError", "No se pudo cerrar la conversación en slskd"), "warning", 4000);
+    }
+  }
+
+  // Remove from UI after API call (or on error)
+  if (!tabs.value.find((t) => t.id === tabId)) return; // already removed (e.g. double click)
   tabs.value = tabs.value.filter((t) => t.id !== tabId);
   delete roomMessages.value[tabId];
   delete roomUsers.value[tabId];
@@ -843,27 +865,9 @@ async function closeTab(tabId: string) {
     const remaining = tabs.value;
     activeTabId.value = remaining.length > 0 ? remaining[remaining.length - 1].id : "";
   }
-  const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + encodeURIComponent(activeTabId.value) : "";
+  const hash = activeTabId.value && activeTabId.value !== "_rooms" ? "#" + activeTabId.value : "";
   router.replace({ hash });
   if (wasBrowse) saveBrowseTabs();
-
-  // Notify slskd — await so the conversation is actually closed server-side.
-  // If the API fails, the tab stays closed (UI already updated, session saved).
-  try {
-    if (tab.type === "room") {
-      await apiFetch("/api/slskd/rooms/leave", {
-        method: "POST",
-        body: { roomName: tab.label },
-      });
-    } else if (tab.type === "user") {
-      await apiFetch(`/api/slskd/conversations/${encodeURIComponent(tab.label)}`, {
-        method: "DELETE",
-      });
-    }
-  } catch (err: any) {
-    console.warn("[closeTab] slskd close failed:", err);
-    showToast(t("slskd.closeConversationError", "No se pudo cerrar la conversación en slskd"), "warning", 4000);
-  }
 }
 
 // ── Data fetching: Rooms ─────────────────────────────────────────────────
@@ -1341,6 +1345,8 @@ onMounted(async () => {
     } else if (decoded.startsWith("files:")) {
       const username = decoded.slice(6);
       if (username) addBrowseFiles(username);
+    } else if (decoded.startsWith("room:")) {
+      addRoom(decoded.slice(5));
     } else {
       addRoom(decoded);
     }
@@ -1366,6 +1372,8 @@ watch(
       } else if (decoded.startsWith("files:")) {
         const username = decoded.slice(6);
         if (username) addBrowseFiles(username);
+      } else if (decoded.startsWith("room:")) {
+        addRoom(decoded.slice(5));
       } else {
         addRoom(decoded);
       }
@@ -1376,7 +1384,7 @@ watch(
 // Sync hash when active tab changes
 watch(activeTabId, (id) => {
   if (id && id !== "_rooms") {
-    router.replace({ hash: "#" + encodeURIComponent(id) });
+    router.replace({ hash: "#" + id });
   } else {
     router.replace({ hash: "" });
   }

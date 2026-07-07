@@ -146,7 +146,8 @@
       "seeding": "Tohumlama",
       "complete": "Tamamlandı",
       "waitingQueued": "Bekliyor / Sırada",
-      "verifying": "Doğrulanıyor"
+      "verifying": "Doğrulanıyor",
+      "rejected": "Reddedildi"
     },
     "sortOptions": {
       "name": "Ad",

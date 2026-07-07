@@ -146,7 +146,8 @@
       "seeding": "Раздаётся",
       "complete": "Завершено",
       "waitingQueued": "Ожидание / В очереди",
-      "verifying": "Проверка"
+      "verifying": "Проверка",
+      "rejected": "Отклонено"
     },
     "sortOptions": {
       "name": "Имя",
