@@ -204,6 +204,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from "vue";
+import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js";
 
 const props = defineProps<{
   visible: boolean;
@@ -361,31 +362,56 @@ function close() {
   emit("close");
 }
 
-// ── Library
-let _libsLoaded = false, _libsLoading = false;
-const _libsCallbacks: Array<() => void> = [];
+// ── Archive opening
 let _cancelled = false;
 
-function waitForLibs(): Promise<void> {
-  if (_libsLoaded) return Promise.resolve();
-  return new Promise((resolve) => {
-    if (_libsLoading) _libsCallbacks.push(resolve);
-    else { _libsLoading = true; _libsCallbacks.push(resolve); loadLibs(); }
-  });
+/** Stream-download a file with progress, returning a Blob. */
+async function downloadWithProgress(url: string): Promise<Blob> {
+  const resp = await fetch(url, { credentials: "include" });
+  if (!resp.ok) throw new Error(`Failed to download: ${resp.status}`);
+
+  const contentLength = Number(resp.headers.get("Content-Length")) || 0;
+  const reader = resp.body!.getReader();
+  const chunks: BlobPart[] = [];
+  let received = 0;
+  let lastUpdate = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+
+    const now = performance.now();
+    if (now - lastUpdate < 1000) continue;
+    lastUpdate = now;
+
+    if (contentLength > 0) {
+      loadingProgress.value = (received / contentLength) * 100;
+      const pct = ((received / contentLength) * 100).toFixed(0);
+      const mb = (received / 1024 / 1024).toFixed(1);
+      const totalMb = (contentLength / 1024 / 1024).toFixed(1);
+      loadingText.value = `Downloading... ${pct}% (${mb} / ${totalMb} MB)`;
+    } else {
+      const mb = (received / 1024 / 1024).toFixed(1);
+      loadingText.value = `Downloading... ${mb} MB`;
+    }
+  }
+
+  return new Blob(chunks);
 }
 
-function loadLibs() {
-  const script = document.createElement("script");
-  script.src = "/lib/uncompress.js";
-  script.onload = () => {
-    (window as any).loadArchiveFormats(["rar", "zip"], () => {
-      _libsLoaded = true; _libsLoading = false;
-      for (const cb of _libsCallbacks) cb();
-      _libsCallbacks.length = 0;
-    });
-  };
-  script.onerror = () => { error.value = "Failed to load archive libraries"; loading.value = false; _libsLoading = false; };
-  document.head.appendChild(script);
+/** Set of extensions that are treated as images inside archives. */
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp"]);
+
+/** Map file extension to MIME type for blob creation. */
+function imageMime(ext: string): string {
+  if (ext === "png") return "image/png";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "avif") return "image/avif";
+  if (ext === "bmp") return "image/bmp";
+  return "image/jpeg";
 }
 
 // ── Open file
@@ -397,33 +423,95 @@ async function openFile() {
   viewMode.value = "single"; fitMode.value = "best"; rotation.value = 0; showHeader.value = true;
   const ext = props.fileName.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") await openPdf();
-  else await openArchive();
+  else if (ext === "cbz" || ext === "zip") await openCbz();
+  else await openLegacyArchive();
 }
 
-async function openArchive() {
+/** Open CBZ/ZIP archives using @zip.js/zip.js. */
+async function openCbz() {
   try {
-    await waitForLibs();
-    loadingText.value = "Downloading..."; loadingProgress.value = 5;
-    const resp = await fetch(props.filePath, { credentials: "include" });
-    if (!resp.ok) throw new Error("Failed to download: " + resp.status);
-    const blob = await resp.blob();
-    loadingText.value = "Opening archive..."; loadingProgress.value = 15;
+    loadingText.value = "Downloading comic..."; loadingProgress.value = 0;
+    const blob = await downloadWithProgress(props.filePath);
+    loadingText.value = "Reading pages..."; loadingProgress.value = 100;
+
+    const zipReader = new ZipReader(new BlobReader(blob));
+
+    // Get all entries, filter and sort images
+    const allEntries = await zipReader.getEntries();
+    const entries = allEntries
+      .filter((e) => !e.directory && e.filename)
+      .filter((e) => {
+        const ext = e.filename.split(".").pop()?.toLowerCase() ?? "";
+        return IMAGE_EXTS.has(ext);
+      })
+      .sort((a, b) => a.filename.localeCompare(b.filename, undefined, { numeric: true }));
+
+    if (entries.length === 0) {
+      await zipReader.close();
+      throw new Error("No images found in archive");
+    }
+
+    // Pre-allocate so totalPages is accurate from the start
+    images.value = new Array(entries.length).fill(null);
+    if (props.initialPage) {
+      if (props.initialPage === -1) currentPage.value = entries.length - 1;
+      else currentPage.value = Math.min(props.initialPage - 1, entries.length - 1);
+    }
+
+    // Extract pages progressively — show first page ASAP, then continue in background.
+    // zip.js only holds one decompressed entry at a time when we await sequentially,
+    // so memory stays bounded regardless of archive size.
+    let firstPageShown = false;
+    for (let i = 0; i < entries.length; i++) {
+      if (_cancelled) break;
+      const entry = entries[i];
+      const data = await entry.getData(new BlobWriter());
+      if (_cancelled) break;
+      const ext = entry.filename.split(".").pop()?.toLowerCase() ?? "jpeg";
+      const mime = imageMime(ext);
+      // Use slice() to retype the blob without copying the data
+      const imgBlob = data.slice(0, data.size, mime);
+      images.value[i] = URL.createObjectURL(imgBlob);
+      loadingProgress.value = ((i + 1) / entries.length) * 100;
+      if (!firstPageShown) {
+        firstPageShown = true;
+        extracting.value = true;
+        loading.value = false; // Show viewer as soon as first page is ready
+        loadingProgress.value = 0; // Reset for extraction bar
+      }
+    }
+
+    await zipReader.close();
+    if (!_cancelled) {
+      extracting.value = false;
+      loadingProgress.value = 100;
+    }
+  } catch (e: any) {
+    error.value = e?.message ?? "Failed to open comic";
+    loading.value = false;
+  }
+}
+
+/** Fallback for CBR/RAR archives using legacy uncompress.js. */
+async function openLegacyArchive() {
+  try {
+    await waitForLegacyLibs();
+    loadingText.value = "Downloading..."; loadingProgress.value = 0;
+    const blob = await downloadWithProgress(props.filePath);
+    loadingText.value = "Opening archive..."; loadingProgress.value = 80;
     const file = new File([blob], props.fileName);
     await new Promise<void>((resolve, reject) => {
       (window as any).archiveOpenFile(file, null, (archive: any, err: any) => {
         if (err) return reject(err);
         if (!archive) return reject(new Error("Failed to open archive"));
         loadingText.value = "Extracting pages...";
-        const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp"]);
         let entries = archive.entries.filter((e: any) => {
           if (!e.is_file) return false;
           const ext = e.name.split(".").pop()?.toLowerCase() ?? "";
           return IMAGE_EXTS.has(ext);
         });
         if (entries.length === 0) return reject(new Error("No images found in archive"));
-        // Sort by filename so pages appear in correct order as they load
         entries.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        // Pre-allocate so totalPages is accurate from the start
         images.value = new Array(entries.length).fill(null);
         if (props.initialPage) {
           if (props.initialPage === -1) currentPage.value = entries.length - 1;
@@ -435,16 +523,17 @@ async function openArchive() {
           entry.readData((data: ArrayBuffer | null) => {
             if (_cancelled) return;
             processed++;
-            loadingProgress.value = 15 + (processed / entries.length) * 80;
+            loadingProgress.value = (processed / entries.length) * 100;
             if (data) {
               const ext = entry.name.split(".").pop()?.toLowerCase() ?? "jpeg";
-              const mime = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : "image/jpeg";
+              const mime = imageMime(ext);
               const imgBlob = new Blob([data], { type: mime });
               images.value[index] = URL.createObjectURL(imgBlob);
               if (!firstPageShown) {
                 firstPageShown = true;
                 extracting.value = true;
-                loading.value = false; // Show viewer as soon as first page is ready
+                loading.value = false;
+                loadingProgress.value = 0; // Reset for extraction bar
               }
             }
             if (processed >= entries.length) {
@@ -459,15 +548,40 @@ async function openArchive() {
   } catch (e: any) { error.value = e?.message ?? "Failed to open archive"; loading.value = false; }
 }
 
+// ── Legacy library loading (for CBR/RAR only)
+let _legacyLibsLoaded = false, _legacyLibsLoading = false;
+const _legacyLibsCallbacks: Array<() => void> = [];
+
+function waitForLegacyLibs(): Promise<void> {
+  if (_legacyLibsLoaded) return Promise.resolve();
+  return new Promise((resolve) => {
+    if (_legacyLibsLoading) _legacyLibsCallbacks.push(resolve);
+    else { _legacyLibsLoading = true; _legacyLibsCallbacks.push(resolve); loadLegacyLibs(); }
+  });
+}
+
+function loadLegacyLibs() {
+  const script = document.createElement("script");
+  script.src = "/lib/uncompress.js";
+  script.onload = () => {
+    (window as any).loadArchiveFormats(["rar"], () => {
+      _legacyLibsLoaded = true; _legacyLibsLoading = false;
+      for (const cb of _legacyLibsCallbacks) cb();
+      _legacyLibsCallbacks.length = 0;
+    });
+  };
+  script.onerror = () => { error.value = "Failed to load archive libraries"; loading.value = false; _legacyLibsLoading = false; };
+  document.head.appendChild(script);
+}
+
 async function openPdf() {
   try {
-    loadingText.value = "Downloading PDF..."; loadingProgress.value = 10;
-    const resp = await fetch(props.filePath, { credentials: "include" });
-    if (!resp.ok) throw new Error("Failed to download: " + resp.status);
-    const buf = await resp.arrayBuffer();
-    loadingText.value = "Loading PDF engine..."; loadingProgress.value = 30;
+    loadingText.value = "Downloading PDF..."; loadingProgress.value = 0;
+    const blob = await downloadWithProgress(props.filePath);
+    const buf = await blob.arrayBuffer();
+    loadingText.value = "Loading PDF engine..."; loadingProgress.value = 100;
     const pdfjs = await loadPdfJs();
-    loadingText.value = "Rendering pages..."; loadingProgress.value = 40;
+    loadingText.value = "Rendering pages..."; loadingProgress.value = 100;
     const pdf = await pdfjs.getDocument({ data: buf }).promise;
     // Pre-allocate so totalPages is accurate immediately
     images.value = new Array(pdf.numPages).fill(null);
@@ -478,7 +592,7 @@ async function openPdf() {
     let firstPageShown = false;
     for (let i = 1; i <= pdf.numPages; i++) {
       if (_cancelled) { pdf.destroy(); return; }
-      loadingProgress.value = 40 + (i / pdf.numPages) * 55;
+      loadingProgress.value = (i / pdf.numPages) * 100;
       loadingText.value = "Rendering page " + i + "/" + pdf.numPages + "...";
       const page = await pdf.getPage(i);
       const viewport = page.getViewport({ scale: 1.5 });
@@ -490,6 +604,7 @@ async function openPdf() {
         firstPageShown = true;
         extracting.value = true;
         loading.value = false; // Show viewer as soon as first page is ready
+        loadingProgress.value = 0; // Reset for extraction bar
       }
     }
     extracting.value = false; loadingProgress.value = 100;
@@ -511,8 +626,12 @@ function loadPdfJs(): Promise<any> {
   return _pdfJsPromise;
 }
 
-watch(() => props.visible, (v) => { if (v) { nextTick(() => openFile()); nextTick(() => overlayRef.value?.focus()); } });
-watch(() => props.filePath, (newPath, oldPath) => { if (newPath && newPath !== oldPath) { openFile(); } });
+watch(() => props.filePath, (newPath, oldPath) => {
+  if (newPath && newPath !== oldPath) {
+    openFile();
+    nextTick(() => overlayRef.value?.focus());
+  }
+});
 watch(currentPage, (p) => { if (images.value.length > 0) emit("pageChange", p + 1); });
 </script>
 

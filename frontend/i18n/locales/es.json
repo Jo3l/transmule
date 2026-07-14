@@ -1110,6 +1110,8 @@
     "searchPlaceholder": "Buscar archivos...",
     "searchEmpty": "Sin resultados",
     "dropToUpload": "Suelta archivos aquí para subirlos",
+    "downloadStarted": "Descargando {name}…",
+    "downloadDone": "Descarga completa: {name}",
     "uploading": "Subiendo…",
     "uploadingMultiple": "Subiendo {count} archivos…",
     "confirmDelete": "¿Eliminar \"{ name }\"?",

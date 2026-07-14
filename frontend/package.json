@@ -1,6 +1,6 @@
 {
   "name": "transmule",
-  "version": "1.121",
+  "version": "1.122",
   "private": true,
   "description": "TransMule — unified download manager with custom theming",
   "scripts": {
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@nuxtjs/i18n": "^10.2.3",
+    "@zip.js/zip.js": "^2.8.29",
     "webamp": "^2.2.0"
   }
 }
