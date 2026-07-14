@@ -12,6 +12,7 @@
   "dependencies": {
     "amule-ec-client": "^0.5.2",
     "bcryptjs": "^2",
+    "busboy": "^1.6.0",
     "jsonwebtoken": "^9"
   },
   "devDependencies": {

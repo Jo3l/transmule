@@ -102,6 +102,7 @@ function rowModeSymbol(job: TransferJob) {
   if (job.mode === "extract") return "↓";
   if (job.mode === "compress") return "↑";
   if (job.mode === "upload") return "↑";
+  if (job.mode === "download") return "↓";
   return "⊕"; // copy
 }
 
@@ -113,6 +114,7 @@ function rowIcon(job: TransferJob) {
   if (job.mode === "extract") return "mdi-archive-arrow-down-outline";
   if (job.mode === "compress") return "mdi-archive-arrow-up-outline";
   if (job.mode === "upload") return "mdi-upload";
+  if (job.mode === "download") return "mdi-download";
   return "mdi-transfer";
 }
 

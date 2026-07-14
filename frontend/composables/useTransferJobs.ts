@@ -14,7 +14,7 @@ export interface TransferJob {
   source: string; // archive path (extract) | archive name (compress) | file path (move/copy)
   sources?: string[]; // multiple sources for compress
   destination: string;
-  mode: "move" | "copy" | "extract" | "compress" | "upload";
+  mode: "move" | "copy" | "extract" | "compress" | "upload" | "download";
   name: string; // display name — basename of source
   archiveName?: string; // desired archive name (compress only)
   format?: string; // compression format (compress only)
@@ -568,6 +568,42 @@ export function useTransferJobs() {
     };
   }
 
+  /** Create a download job tracked externally via fetch stream progress. */
+  function addDownloadJob(name: string, destination: string) {
+    const queueId = createQueueId();
+    jobs.value.push({
+      queueId,
+      source: name,
+      destination,
+      mode: "download",
+      name,
+      percent: 0,
+      status: "running",
+    });
+    persist();
+    const job = jobs.value.find((j) => j.queueId === queueId)!;
+    showToast(t("fileManager.downloadStarted", { name }), "info");
+    return {
+      setPercent(p: number) {
+        job.percent = p;
+      },
+      setDone() {
+        job.status = "done";
+        job.percent = 100;
+        job.finishedAt = new Date().toISOString();
+        showToast(t("fileManager.downloadDone", { name }), "success");
+        persist();
+      },
+      setError(msg: string) {
+        job.status = "error";
+        job.error = msg;
+        job.finishedAt = new Date().toISOString();
+        showToast(msg, "error");
+        persist();
+      },
+    };
+  }
+
   return {
     jobs,
     activeJobs,
@@ -576,6 +612,7 @@ export function useTransferJobs() {
     enqueueExtract,
     enqueueCompress,
     addUploadJob,
+    addDownloadJob,
     cancelJob,
     clearDone,
   };

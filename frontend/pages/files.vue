@@ -749,7 +749,7 @@ const { apiFetch, showToast } = useApi();
 const auth = useAuth();
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 const config = useRuntimeConfig();
-const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, hasActive } =
+const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, addDownloadJob, hasActive } =
   useTransferJobs();
 const route = useRoute();
 const router = useRouter();
@@ -1824,13 +1824,29 @@ function downloadUrl(filename: string): string {
  */
 async function downloadFile(filename: string) {
   const url = downloadUrl(filename);
+  const { setPercent, setDone, setError } = addDownloadJob(filename, currentPath.value);
   try {
     const response = await fetch(url);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.statusMessage || t("fileManager.downloadError"));
     }
-    const blob = await response.blob();
+
+    // Stream download with progress
+    const contentLength = Number(response.headers.get("Content-Length")) || 0;
+    const reader = response.body!.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (contentLength > 0) setPercent(Math.round((received / contentLength) * 100));
+    }
+
+    const blob = new Blob(chunks);
     const downloadUrlObj = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrlObj;
@@ -1839,8 +1855,9 @@ async function downloadFile(filename: string) {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(downloadUrlObj);
+    setDone();
   } catch (err: any) {
-    showToast(err.message || t("fileManager.downloadError"), "error");
+    setError(err.message || t("fileManager.downloadError"));
   }
 }
 
