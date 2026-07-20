@@ -89,6 +89,7 @@
               <span class="mdi mdi-open-in-new ml-1" />
             </a>
           </div>
+          <GithubCalendar />
         </template>
 
         <div v-else-if="ghError" class="has-text-danger is-size-7">{{ ghError }}</div>

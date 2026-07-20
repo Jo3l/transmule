@@ -266,10 +266,12 @@ async function ctxDownloadFolder() {
     addToast(t("slskd.search.noFilesInFolder", "No se encontraron archivos en la carpeta"), "error");
     return;
   }
+  // Use batch API (slskd 0.26.0+) for multi-file downloads
+  const batchId = crypto.randomUUID();
   try {
     await apiFetch("/api/slskd/transfers", {
       method: "POST",
-      body: { username: row.username, files },
+      body: { username: row.username, files, batchId },
     });
     apiFetch("/api/download-history", {
       method: "POST",

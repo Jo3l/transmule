@@ -1168,19 +1168,21 @@ function ctxDownloadBrowseDir() {
   // Recursively collect ALL files from this directory and its subdirectories
   const allFiles = collectAllFilesRecursive(dir, basePath);
   if (allFiles.length === 0) return;
+  // Use batch API (slskd 0.26.0+) for folder downloads — generates a UUID batchId
+  const batchId = crypto.randomUUID();
   apiFetch("/api/slskd/transfers", {
     method: "POST",
-    body: { username: browseCtx.username, files: allFiles },
+    body: { username: browseCtx.username, files: allFiles, batchId },
   }).then(() => {
     // Track this batch so the downloads page can merge subdirectory groups
     // under the root folder the user selected
     try {
       const raw = sessionStorage.getItem("slskd_batches");
-      const batches: { rootPath: string; username: string; ts: number }[] = raw ? JSON.parse(raw) : [];
+      const batches: { rootPath: string; username: string; ts: number; batchId: string }[] = raw ? JSON.parse(raw) : [];
       // Remove batches older than 5 minutes
       const now = Date.now();
       const fresh = batches.filter((b) => now - b.ts < 300_000);
-      fresh.push({ rootPath: basePath, username: browseCtx.username, ts: now });
+      fresh.push({ rootPath: basePath, username: browseCtx.username, ts: now, batchId });
       sessionStorage.setItem("slskd_batches", JSON.stringify(fresh));
     } catch { /* quota exceeded, ignore */ }
   }).catch(() => {});

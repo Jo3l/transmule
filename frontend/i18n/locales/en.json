@@ -679,6 +679,9 @@
     "loading": "Loading GitHub data...",
     "mute": "Mute music",
     "unmute": "Unmute music",
+    "contributionsInLastYear": "contributions in the last year",
+    "less": "Less",
+    "more": "More",
     "about": "About",
     "splitToggle": "Toggle split"
   },

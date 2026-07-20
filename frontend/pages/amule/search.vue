@@ -277,6 +277,7 @@ onMounted(() => {
 }
 .search-form__search-btn {
   align-self: flex-end;
+  margin-left: auto;
 }
 
 @media (max-width: 480px) {
