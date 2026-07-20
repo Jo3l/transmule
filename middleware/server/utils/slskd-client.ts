@@ -243,6 +243,8 @@ export class SlskdClient {
       transforms.push({ label: "soulseek credentials", fn: this._credentialsTransform(dbUser, dbPass) });
     }
     transforms.push({ label: "shared directories", fn: this._sharesTransform("/downloads") });
+    transforms.push({ label: "permissions migration (0.26.0)", fn: this._permissionsMigrationTransform() });
+    transforms.push({ label: "download destination", fn: this._destinationTransform() });
 
     // Fetch YAML once, chain all transforms, PUT once if anything changed
     const getRes = await this.fetch("/options/yaml", { timeout: 10_000 });
@@ -536,6 +538,43 @@ export class SlskdClient {
     };
   }
 
+  /**
+   * Enqueue a batch download (slskd 0.26.0+).
+   * Uses the new batch API with a batch ID and options.
+   * Falls back to startDownload() if the batch endpoint returns 404 (older slskd).
+   */
+  async enqueueDownloadBatch(
+    username: string,
+    files: { filename: string; size: number }[],
+    opts?: { batchId?: string; searchId?: string },
+  ): Promise<{ success: boolean; status: number; body?: any }> {
+    const batchId = opts?.batchId || crypto.randomUUID();
+    const reqBody: any = {
+      id: batchId,
+      username,
+      files: files.map((f) => ({ filename: f.filename, size: f.size })),
+    };
+    if (opts?.searchId) reqBody.searchId = opts.searchId;
+
+    const res = await this.fetch("/transfers/downloads/batches", {
+      method: "POST",
+      body: JSON.stringify(reqBody),
+      timeout: 120_000,
+    });
+
+    // 404 means the batch endpoint doesn't exist (pre-0.26.0), fall back to old API
+    if (res.status === 404) {
+      const fallback = await this.startDownload(username, files);
+      return { success: fallback.success, status: fallback.success ? 201 : 502 };
+    }
+
+    const isSuccess = res.status === 200 || res.status === 201 || res.status === 207;
+    let parsed: any = undefined;
+    try { parsed = JSON.parse(res.body); } catch {}
+
+    return { success: isSuccess, status: res.status, body: parsed };
+  }
+
   async cancelTransfer(
     usernameOrId: string | number,
     transferId?: string,
@@ -642,6 +681,137 @@ export class SlskdClient {
         return yaml.replace(/^(shares:)/m, "$1\n  directories:\n    - " + dir);
       }
       return yaml.trimEnd() + `\n\nshares:\n  directories:\n    - ${dir}\n`;
+    };
+  }
+
+  /**
+   * Set download destination subdirectory to organize by remote username.
+   * slskd 0.26.0+ evaluates ${SOURCE_USERNAME} at download time.
+   */
+  private _destinationTransform(): (yaml: string) => string {
+    const subdirValue = "${SOURCE_USERNAME}";
+
+    return (yaml) => {
+      // Already configured with our value? Skip.
+      if (yaml.includes("subdirectory: " + subdirValue)) return yaml;
+
+      const lines = yaml.split("\n");
+      const result: string[] = [];
+      let inTransfers = false;
+      let inDownload = false;
+      let inDestination = false;
+      let inserted = false;
+
+      for (const line of lines) {
+        const trimmed = line.trimStart();
+
+        if (!inTransfers && trimmed === "transfers:") { inTransfers = true; result.push(line); continue; }
+        if (inTransfers) {
+          if (!inDownload && /^\s+download:/.test(line)) { inDownload = true; result.push(line); continue; }
+          if (inDownload && !inDestination && /^\s+destination:/.test(line)) { inDestination = true; result.push(line); continue; }
+
+          // Leaving the transfers block? Insert before exiting.
+          if (line.length > 0 && line[0] !== " " && line[0] !== "\t") {
+            if (!inserted) {
+              if (!inDownload) {
+                result.push("  download:");
+                result.push("    destination:");
+                result.push("      subdirectory: " + subdirValue);
+              } else if (!inDestination) {
+                result.push("    destination:");
+                result.push("      subdirectory: " + subdirValue);
+              } else {
+                result.push("      subdirectory: " + subdirValue);
+              }
+              inserted = true;
+            }
+            inTransfers = false;
+            inDownload = false;
+            inDestination = false;
+            result.push(line);
+            continue;
+          }
+
+          // Inside destination block, update existing subdirectory key
+          if (inDestination && /^\s+subdirectory:/.test(line)) {
+            const indent = line.match(/^\s*/)?.[0] || "";
+            result.push(indent + "subdirectory: " + subdirValue);
+            inserted = true;
+            continue;
+          }
+
+          result.push(line);
+          continue;
+        }
+        result.push(line);
+      }
+
+      // End of file, still inside transfers
+      if (!inserted) {
+        if (!inTransfers) {
+          result.push("transfers:");
+          result.push("  download:");
+          result.push("    destination:");
+          result.push("      subdirectory: " + subdirValue);
+        } else if (!inDownload) {
+          result.push("  download:");
+          result.push("    destination:");
+          result.push("      subdirectory: " + subdirValue);
+        } else if (!inDestination) {
+          result.push("    destination:");
+          result.push("      subdirectory: " + subdirValue);
+        } else {
+          result.push("      subdirectory: " + subdirValue);
+        }
+      }
+
+      return result.join("\n");
+    };
+  }
+
+  /**
+   * Migrate old permissions.file.mode to new location (slskd 0.26.0 breaking change).
+   * This runs once on first connect after upgrade and is idempotent.
+   */
+  private _permissionsMigrationTransform(): (yaml: string) => string {
+    return (yaml) => {
+      // Only act if the old key still exists
+      if (!/^permissions:\s*$/m.test(yaml)) return yaml;
+
+      const modeMatch = yaml.match(/^\s+mode:\s*(.+)$/m);
+      if (!modeMatch) return yaml;
+
+      const modeValue = modeMatch[1].trim();
+
+      // Remove old permissions block (the whole "permissions:" section)
+      let result = yaml.replace(/^permissions:\s*\n(?:\s+.*\n)*/m, "");
+
+      // Insert into new location under transfers.download.destination.permissions
+      const newSection = "    permissions:\n      mode: " + modeValue;
+
+      if (/^transfers:/m.test(result)) {
+        // Add under existing transfers.download.destination if it exists
+        if (/^\s+destination:/m.test(result)) {
+          result = result.replace(
+            /^(\s+destination:.*\n)/m,
+            "$1" + newSection + "\n",
+          );
+        } else if (/^\s+download:/m.test(result)) {
+          result = result.replace(
+            /^(\s+download:.*\n)/m,
+            "$1  destination:\n" + newSection + "\n",
+          );
+        } else {
+          result = result.replace(
+            /^(transfers:.*\n)/m,
+            "$1  download:\n    destination:\n" + newSection + "\n",
+          );
+        }
+      } else {
+        result = result.trimEnd() + "\n\ntransfers:\n  download:\n    destination:\n" + newSection + "\n";
+      }
+
+      return result;
     };
   }
 

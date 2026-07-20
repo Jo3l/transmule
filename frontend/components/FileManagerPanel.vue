@@ -628,7 +628,6 @@
         </template>
         <button
           v-if="
-            !ctxIsMulti &&
             ctxMenu.item &&
             ctxMenu.item.type === 'file' &&
             !ctxMenu.item.isRemoteMount
@@ -636,7 +635,7 @@
           class="fmp-ctx-item fmp-ctx-item--accent"
           :disabled="readOnlyActive"
           @click="
-            $emit('smart-rename-paths', [childPath(ctxMenu.item.name)]);
+            $emit('smart-rename-paths', ctxIsMulti ? getSelectedPaths() : [childPath(ctxMenu.item.name)]);
             hideCtxMenu();
           "
         >

@@ -1508,7 +1508,7 @@ function hideTreeCtxMenu() {
 const { webampTrack, isMp3Name, openTrack, openTracks, setPendingDragTracks } = useWebamp();
 
 /** Comic file extensions */
-const COMIC_EXTS = new Set(["cbr", "cbz", "pdf"]);
+const COMIC_EXTS = new Set(["cbz", "pdf"]);
 
 /** Currently open comic path/name for ComicReader component */
 const comicFilePath = ref("");
@@ -1803,7 +1803,7 @@ const FILE_HANDLERS: FileHandler[] = [
   { exts: TEXT_EDIT_RE, action: openTextEditor },
   { exts: VIDEO_RE, action: openVideoPreview },
   { exts: /\.(mp3|wav|flac|ogg|m4a|opus|aac|wma)$/i, action: openInWebamp },
-  { exts: /\.(cbr|cbz|pdf)$/i, action: openComic },
+  { exts: /\.(cbz|pdf)$/i, action: openComic },
 ];
 
 function getFileHandler(item: FileItem): FileHandler | undefined {
