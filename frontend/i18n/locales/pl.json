@@ -430,6 +430,7 @@
       "torrent": "wysyłanie Transmission"
     },
     "columns": {
+      "date": "Data",
       "client": "Klient",
       "file": "Plik",
       "speed": "Prędkość",

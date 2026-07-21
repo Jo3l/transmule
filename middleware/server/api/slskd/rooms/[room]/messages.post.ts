@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
 
   if (!roomName) {
-    throw createError({ statusCode: 400, statusMessage: "Missing room name" });
+    throw createError({ statusCode: 400, statusMessage: "room is required" });
   }
 
   const message = typeof body === "string" ? body : body?.message;

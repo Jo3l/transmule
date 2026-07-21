@@ -9,9 +9,11 @@ defineRouteMeta({
 export default defineEventHandler(async (event) => {
   requireUser(event);
   const client = useSlskdClient();
-  const username = decodeURIComponent(getRouterParam(event, "username" ?? ""));
-  if (!username) throw createError({ statusCode: 400, statusMessage: "Missing username" });
-  try {    const ok = await client.closeConversation(username);    if (!ok) throw new Error("slskd did not confirm conversation close");
+  const username = decodeURIComponent(getRouterParam(event, "username") ?? "");
+  if (!username) throw createError({ statusCode: 400, statusMessage: "username is required" });
+  try {
+    const ok = await client.closeConversation(username);
+    if (!ok) throw new Error("slskd did not confirm conversation close");
     return { success: true };
   } catch (err: any) {
     throw createError({ statusCode: 502, statusMessage: `slskd close conversation error: ${err.message}` });

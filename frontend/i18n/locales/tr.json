@@ -430,6 +430,7 @@
       "torrent": "Transmission yüklemesi"
     },
     "columns": {
+      "date": "Tarih",
       "client": "İstemci",
       "file": "Dosya",
       "speed": "Hız",

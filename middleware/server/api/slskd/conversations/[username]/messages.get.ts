@@ -9,8 +9,8 @@ defineRouteMeta({
 export default defineEventHandler(async (event) => {
   requireUser(event);
   const client = useSlskdClient();
-  const username = decodeURIComponent(getRouterParam(event, "username" ?? ""));
-  if (!username) throw createError({ statusCode: 400, statusMessage: "Missing username" });
+  const username = decodeURIComponent(getRouterParam(event, "username") ?? "");
+  if (!username) throw createError({ statusCode: 400, statusMessage: "username is required" });
   try {
     return await client.getConversationMessages(username);
   } catch (err: any) {

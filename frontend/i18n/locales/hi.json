@@ -430,6 +430,7 @@
       "torrent": "Transmission अपलोड"
     },
     "columns": {
+      "date": "दिनांक",
       "client": "क्लाइंट",
       "file": "फ़ाइल",
       "speed": "गति",

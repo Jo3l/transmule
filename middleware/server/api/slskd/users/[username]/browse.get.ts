@@ -20,8 +20,8 @@ const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export default defineEventHandler(async (event) => {
   requireUser(event);
   const client = useSlskdClient();
-  const username = decodeURIComponent(getRouterParam(event, "username" ?? ""));
-  if (!username) throw createError({ statusCode: 400, statusMessage: "Missing username" });
+  const username = decodeURIComponent(getRouterParam(event, "username") ?? "");
+  if (!username) throw createError({ statusCode: 400, statusMessage: "username is required" });
 
   const query = getQuery(event);
   const force = query.force === "true";
@@ -29,8 +29,10 @@ export default defineEventHandler(async (event) => {
   // Check cache (skip if force-refresh)
   if (!force) {
     const cached = _browseCache.get(username);
-    if (cached && Date.now() - cached.ts < BROWSE_CACHE_TTL_MS) {      return JSON.parse(gunzipSync(cached.data).toString());
-    }  }
+    if (cached && Date.now() - cached.ts < BROWSE_CACHE_TTL_MS) {
+      return JSON.parse(gunzipSync(cached.data).toString());
+    }
+  }
 
   try {
     const data = await client.browseUserFiles(username);
@@ -46,7 +48,8 @@ export default defineEventHandler(async (event) => {
         })),
       };
       const compressed = gzipSync(JSON.stringify(stripped));
-      _browseCache.set(username, { data: compressed, ts: Date.now() });      return stripped;
+      _browseCache.set(username, { data: compressed, ts: Date.now() });
+      return stripped;
     }
     return data;
   } catch (err: any) {

@@ -11,10 +11,9 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler((_event) => {
-  // Anyone authenticated can read the slskd username
-  // (needed for chat display and other non-admin features).
-  // Only the POST endpoint (save) requires admin.
+export default defineEventHandler((event) => {
+  requireUser(event);
+
   return {
     username: getConfig("slskd_username") || "",
     hasPassword: !!getConfig("slskd_password"),
