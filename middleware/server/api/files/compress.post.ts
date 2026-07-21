@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   requireUser(event);
   const body = await readBody(event);
   const { sources, destination, archiveName, format, password } = body ?? {};
-  if (!Array.isArray(sources) || !sources.length || destination === undefined ||
+  if (!Array.isArray(sources) || !sources.length || typeof destination !== "string" || !destination ||
       typeof archiveName !== "string" || !archiveName || !VALID_FORMATS.includes(format))
     throw createError({ statusCode: 400, statusMessage: "sources[], destination, archiveName and format required" });
 

@@ -14,6 +14,7 @@
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmdirSync } from "node:fs";
+import { resolveVirtualPath, getDownloadsRoot } from "../../utils/remoteMounts";
 
 defineRouteMeta({
   openAPI: {
@@ -53,11 +54,18 @@ export default defineEventHandler(async (event) => {
   }
 
   const root = getDownloadsRoot();
-  const absSrc = resolveSafe(root, source as string);
-  const absDest =
-    typeof destination === "string" && destination !== ""
-      ? resolveSafe(root, destination as string)
-      : root;
+  const srcResolved = resolveVirtualPath(source as string);
+  if (!srcResolved) throw createError({ statusCode: 400, statusMessage: "Invalid source path" });
+  const absSrc = srcResolved.absPath;
+
+  let absDest: string;
+  if (typeof destination === "string" && destination !== "") {
+    const destResolved = resolveVirtualPath(destination);
+    if (!destResolved) throw createError({ statusCode: 400, statusMessage: "Invalid destination path" });
+    absDest = destResolved.absPath;
+  } else {
+    absDest = root;
+  }
 
   if (!existsSync(absSrc)) {
     throw createError({

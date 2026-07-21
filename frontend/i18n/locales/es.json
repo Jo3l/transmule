@@ -430,6 +430,7 @@
       "torrent": "Subida Transmission"
     },
     "columns": {
+      "date": "Fecha",
       "client": "Cliente",
       "file": "Archivo",
       "speed": "Velocidad",

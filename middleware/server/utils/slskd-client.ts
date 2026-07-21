@@ -685,11 +685,15 @@ export class SlskdClient {
   }
 
   /**
-   * Set download destination subdirectory to organize by remote username.
-   * slskd 0.26.0+ evaluates ${SOURCE_USERNAME} at download time.
+   * Set download destination subdirectory to organize by remote username
+   * and preserve the full remote directory structure.
+   * slskd 0.26.0+ evaluates ${SOURCE_USERNAME} and ${SOURCE_PATH} at download time.
+   *
+   * For a file @@abcde\Music\Albums\CoolAlbum\CD1\track01.mp3 from user Bob:
+   *   /downloads/Bob/@@abcde/Music/Albums/CoolAlbum/CD1/track01.mp3
    */
   private _destinationTransform(): (yaml: string) => string {
-    const subdirValue = "${SOURCE_USERNAME}";
+    const subdirValue = "${SOURCE_USERNAME}/${SOURCE_PATH}";
 
     return (yaml) => {
       // Already configured with our value? Skip.

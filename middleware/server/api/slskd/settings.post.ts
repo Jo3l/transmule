@@ -30,8 +30,6 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event);
 
-  console.log(`[settings] slskd: saving credentials — username="${body?.username ?? "(unchanged)"}", password=${body?.password ? "[set]" : "(unchanged)"}`);
-
   if (body?.username !== undefined) {
     setConfig("slskd_username", body.username);
   }
@@ -43,10 +41,6 @@ export default defineEventHandler(async (event) => {
   if (body?.username || body?.password) {
     try {
       const client = useSlskdClient();
-      const savedUser = getConfig("slskd_username") ?? "";
-      const savedPass = getConfig("slskd_password") ?? "";
-      console.log(`[settings] slskd: applying to slskd API — username="${savedUser}", password=${savedPass ? "[set]" : "[EMPTY]"}`);
-      // connect() handles credentials + shares + subdirectory, then connects
       await client.disconnect("credentials updated — reconnecting");
       await client.connect();
     } catch (err) {

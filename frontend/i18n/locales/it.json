@@ -430,6 +430,7 @@
       "torrent": "Upload Transmission"
     },
     "columns": {
+      "date": "Data",
       "client": "Client",
       "file": "File",
       "speed": "Velocità",

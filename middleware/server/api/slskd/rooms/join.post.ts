@@ -21,7 +21,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "roomName is required" });
   }
 
-  try {    const ok = await client.joinRoom(roomName);    return { success: ok };
+  try {
+    const ok = await client.joinRoom(roomName);
+    return { success: ok };
   } catch (err: any) {
     throw createError({
       statusCode: 502,

@@ -43,7 +43,7 @@
       </div>
     </div>
 
-    <STable :data="filteredClients" :columns="columns" :loading="loading">
+    <STable :data="pagedClients" :columns="columns" :loading="loading">
       <template #cell-type="{ row }">
         <STag
           v-if="row._type === 'amule'"
@@ -64,6 +64,10 @@
         <STag v-else variant="info" size="sm" :title="$t('uploads.tooltip.torrent')">
           <span class="mdi mdi-magnet" />
         </STag>
+      </template>
+      <template #cell-date="{ row }">
+        <span v-if="row.startTime" class="is-size-7">{{ fmtDate(row.startTime) }}</span>
+        <span v-else class="has-text-grey is-size-7">&mdash;</span>
       </template>
       <template #cell-client="{ row }">
         <span class="has-text-weight-medium">{{ row.clientName }}</span>
@@ -111,6 +115,14 @@
         </div>
       </template>
     </STable>
+
+    <SPagination
+      v-if="filteredClients.length > PAGE_SIZE"
+      v-model="uploadPage"
+      :total="filteredClients.length"
+      :page-size="PAGE_SIZE"
+      class="mt-2"
+    />
   </div>
 </template>
 
@@ -127,6 +139,21 @@ const speedHistory = ref<
 >([]);
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
+function fmtDate(ts: string | null): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit", year: "2-digit" })
+    + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+const uploadPage = ref(1);
+const PAGE_SIZE = 25;
+
+const pagedClients = computed(() => {
+  const start = (uploadPage.value - 1) * PAGE_SIZE;
+  return filteredClients.value.slice(start, start + PAGE_SIZE);
+});
+
 const filterSource = ref("all");
 
 const sourceOptions = computed(() => [
@@ -141,6 +168,8 @@ const filteredClients = computed(() => {
   return clients.value.filter((c) => c._type === filterSource.value);
 });
 
+watch(filterSource, () => { uploadPage.value = 1; });
+
 const amuleCount = computed(() => clients.value.filter((c) => c._type === "amule").length);
 const transmissionCount = computed(
   () => clients.value.filter((c) => c._type === "transmission").length,
@@ -149,6 +178,7 @@ const slskdCount = computed(() => clients.value.filter((c) => c._type === "slskd
 
 const columns = computed(() => [
   { key: "type", label: "", width: 42 },
+  { key: "date", label: t("uploads.columns.date"), width: 100 },
   { key: "client", label: t("uploads.columns.client"), sortable: true },
   { key: "file", label: t("uploads.columns.file") },
   {
@@ -236,6 +266,7 @@ async function refresh() {
               uploadTotal_fmt: formatBytes(t.size || 0),
               ip: "",
               port: 0,
+              startTime: t.startTime || null,
               peerProgress: t.size > 0 ? (t.bytesTransferred || 0) / t.size : 0,
             }));
             clients.value = [...amuleEntries, ...slskdEntries];

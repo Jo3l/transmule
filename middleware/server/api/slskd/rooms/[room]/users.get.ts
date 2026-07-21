@@ -17,10 +17,12 @@ export default defineEventHandler(async (event) => {
   const roomName = decodeURIComponent(getRouterParam(event, "room") ?? "");
 
   if (!roomName) {
-    throw createError({ statusCode: 400, statusMessage: "Missing room name" });
+    throw createError({ statusCode: 400, statusMessage: "room is required" });
   }
 
-  try {    const users = await client.getRoomUsers(roomName);    return users;
+  try {
+    const users = await client.getRoomUsers(roomName);
+    return users;
   } catch (err: any) {
     throw createError({
       statusCode: 502,
