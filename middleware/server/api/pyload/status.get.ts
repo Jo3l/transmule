@@ -4,7 +4,8 @@ defineRouteMeta({
     summary: "pyLoad server status",
     description:
       "Returns the current status of the pyLoad download manager: " +
-      "active downloads, queue size, download speed, pause state and free disk space.",
+      "active downloads, queue size, download speed, pause state and free disk space. " +
+      "Cached for 5 seconds to avoid hitting pyLoad's rate limiter (100 req/min).",
     responses: {
       200: { description: "pyLoad status" },
       502: { description: "pyLoad connection error" },
@@ -12,8 +13,16 @@ defineRouteMeta({
   },
 });
 
+// ── Short-lived cache ──
+let _statusCache: { data: any; ts: number } | null = null;
+const STATUS_CACHE_TTL_MS = 5000;
+
 export default defineEventHandler(async (event) => {
   requireUser(event);
+
+  if (_statusCache && Date.now() - _statusCache.ts < STATUS_CACHE_TTL_MS) {
+    return _statusCache.data;
+  }
 
   const client = usePyLoadClient();
 
@@ -36,7 +45,7 @@ export default defineEventHandler(async (event) => {
       return false;
     };
 
-    return {
+    const result = {
       connected: true,
       status: {
         paused: status.pause,
@@ -44,7 +53,7 @@ export default defineEventHandler(async (event) => {
         queue: status.queue,
         total: status.total,
         speed: status.speed,
-        speed_fmt: formatSpeed(status.speed), // pyLoad reports bytes/s
+        speed_fmt: formatSpeed(status.speed),
         download: status.download,
         reconnect: status.reconnect,
         proxy_enabled: isEnabled(proxyEnabled),
@@ -54,6 +63,9 @@ export default defineEventHandler(async (event) => {
       freeSpace_fmt: freeSpace != null ? formatBytes(freeSpace) : null,
       version,
     };
+
+    _statusCache = { data: result, ts: Date.now() };
+    return result;
   } catch (err: any) {
     return {
       connected: false,

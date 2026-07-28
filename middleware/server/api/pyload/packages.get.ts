@@ -10,7 +10,8 @@ defineRouteMeta({
     summary: "List pyLoad packages",
     description:
       "Returns all packages in the download queue and collector, " +
-      "each with their download links and progress information.",
+      "each with their download links and progress information. " +
+      "Cached for 5 seconds to avoid hitting pyLoad's rate limiter (100 req/min).",
     responses: {
       200: { description: "Package list" },
       502: { description: "pyLoad connection error" },
@@ -40,8 +41,6 @@ const LINK_STATUS: Record<number, string> = {
 function mapLink(link: PyLoadLink, active?: PyLoadActiveDownload) {
   const totalBytes = link.size || 0;
 
-  // Prefer real-time data from status_downloads (has live speed, bleft, percent)
-  // over the static snapshot from get_queue_data (bleft is always absent).
   let progress: number;
   let speedBytesPerSec: number;
   let doneBytes: number;
@@ -51,7 +50,6 @@ function mapLink(link: PyLoadLink, active?: PyLoadActiveDownload) {
     speedBytesPerSec = active.speed || 0;
     doneBytes = totalBytes > 0 ? Math.max(0, totalBytes - active.bleft) : 0;
   } else if (link.status === 0) {
-    // Finished — static snapshot has no bleft but status tells us it's done
     progress = 100;
     speedBytesPerSec = 0;
     doneBytes = totalBytes;
@@ -123,8 +121,21 @@ function mapPackage(
   };
 }
 
+// ── Short-lived cache to avoid hitting pyLoad's rate limiter (100 req/min/IP) ──
+interface PackagesCacheEntry {
+  data: any;
+  ts: number;
+}
+let _packagesCache: PackagesCacheEntry | null = null;
+const PACKAGES_CACHE_TTL_MS = 5000; // 5 seconds
+
 export default defineEventHandler(async (event) => {
   requireUser(event);
+
+  // Return cached response if still fresh
+  if (_packagesCache && Date.now() - _packagesCache.ts < PACKAGES_CACHE_TTL_MS) {
+    return _packagesCache.data;
+  }
 
   const client = usePyLoadClient();
 
@@ -151,10 +162,15 @@ export default defineEventHandler(async (event) => {
 
   updateServiceSpeed("pyload", totalSpeed);
 
-  return {
+  const result = {
     packages: allPackages,
     count: allPackages.length,
     totalSpeed,
     totalSpeed_fmt: formatSpeed(totalSpeed),
   };
+
+  // Cache for next requests
+  _packagesCache = { data: result, ts: Date.now() };
+
+  return result;
 });
