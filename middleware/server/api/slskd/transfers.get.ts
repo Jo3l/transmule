@@ -26,16 +26,25 @@ export default defineEventHandler(async (event) => {
     } else {
       transfers = await client.getTransfers(direction);
     }
-    // Record speed for the speed graph — count any transfer with actual
-    // data flow, not just those with a specific state string.
+    // Record speed for the speed graph — only count files that are
+    // actively transferring. slskd's averageSpeed is the lifetime
+    // average, so completed/queued files would inflate the total.
+    const isActive = (f: any) => {
+      const state = f.state || "";
+      const done = f.bytesTransferred || 0;
+      const sz = f.size || 0;
+      return (
+        state.includes("InProgress") ||
+        state.includes("Transferring") ||
+        (done > 0 && sz > 0 && done < sz)
+      );
+    };
     const totalSpeed = grouped
       ? (transfers as any[]).reduce(
           (sum: number, userGrp: any) => {
             for (const dir of (userGrp.directories ?? [])) {
               for (const f of (dir.files ?? [])) {
-                const bytes = f.bytesTransferred || 0;
-                const speed = f.averageSpeed || 0;
-                if (bytes > 0 || speed > 0) sum += speed;
+                if (isActive(f)) sum += f.averageSpeed || 0;
               }
             }
             return sum;
@@ -43,11 +52,7 @@ export default defineEventHandler(async (event) => {
           0,
         )
       : transfers.reduce(
-          (sum: number, t: any) => {
-            const bytes = t.bytesTransferred || 0;
-            const speed = t.averageSpeed || 0;
-            return sum + (bytes > 0 || speed > 0 ? speed : 0);
-          },
+          (sum: number, t: any) => (isActive(t) ? sum + (t.averageSpeed || 0) : sum),
           0,
         );
     if (direction === "download") {

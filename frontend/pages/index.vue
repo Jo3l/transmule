@@ -2498,7 +2498,16 @@ async function refreshSlskd() {
         const parts = folderName.replace(/\\/g, "/").split("/");
         return parts[parts.length - 1] || folderName;
       })();
-      const avgSpeed = fileItems.reduce((s, f) => s + (f._speedBytes || 0), 0);
+      // Only count actively-transferring files for speed display.
+      // slskd's averageSpeed is the lifetime average, not current speed —
+      // summing completed/queued files inflates the total.
+      const avgSpeed = fileItems
+        .filter((f) =>
+          f.state?.includes("InProgress") ||
+          f.state?.includes("Transferring") ||
+          (f.bytesDone > 0 && f.progress < 100),
+        )
+        .reduce((s, f) => s + (f._speedBytes || 0), 0);
 
       const uid = "slskd-" + (++uidCounter);
       return {
