@@ -85,32 +85,41 @@ export default defineEventHandler(async (event) => {
     return { success: true, batch: true, totalFiles: 0 };
   }
 
-  // 4. Send all files in a single batch request to slskd
-  //    slskd's batch API handles large lists (tested with 1M+ files in browse)
-  const batchId = body.batchId || crypto.randomUUID();
+  // 4. Chunk files and send to slskd in multiple batches (unique batchId each)
+  //    slskd's batch API can't handle 188k+ files in one request (500 error).
+  //    We chunk into 2500-file batches, each with a unique UUID.
+  //    All files land in the same directory structure thanks to ${SOURCE_USERNAME}/${SOURCE_PATH}.
+  const CHUNK_SIZE = 2500;
+  const batchIds: string[] = [];
+  let sent = 0;
+  let failed = 0;
 
-  try {
-    const result = await client.enqueueDownloadBatch(username, collected, {
-      batchId,
-    });
-    if (!result.success) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `slskd batch rejected (status ${result.status})`,
+  for (let i = 0; i < collected.length; i += CHUNK_SIZE) {
+    const chunk = collected.slice(i, i + CHUNK_SIZE);
+    const chunkBatchId = crypto.randomUUID();
+    try {
+      const result = await client.enqueueDownloadBatch(username, chunk, {
+        batchId: chunkBatchId,
       });
+      if (result.success) {
+        sent += chunk.length;
+        batchIds.push(chunkBatchId);
+      } else {
+        failed += chunk.length;
+      }
+    } catch {
+      failed += chunk.length;
     }
-    return {
-      success: true,
-      batch: true,
-      batchId,
-      totalFiles: collected.length,
-    };
-  } catch (err: any) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: `slskd download error: ${err.message}`,
-    });
   }
+
+  return {
+    success: sent > 0,
+    batch: true,
+    batchIds,
+    totalFiles: collected.length,
+    sent,
+    failed,
+  };
 });
 
 /**
