@@ -2444,6 +2444,7 @@ async function refreshSlskd() {
           done_fmt: formatBytes(done),
           progress: pct,
           speed_fmt: formatSpeed(f.averageSpeed || 0),
+          _speedBytes: f.averageSpeed || 0,
           state: f.state || "Unknown",
           startTime: f.startedAt ? new Date(f.startedAt).getTime() : null,
           endTime: f.endedAt ? new Date(f.endedAt).getTime() : null,
@@ -2473,14 +2474,14 @@ async function refreshSlskd() {
         f.state?.includes("InProgress") ||
         f.state?.includes("Transferring") ||
         (f.bytesDone > 0 && f.progress < 100) ||
-        f.speed_fmt !== "0 B/s",
+        f._speedBytes > 0,
       ).length;
       const waiting = fileItems.filter((f) =>
         f.state?.includes("Queued") &&
         !f.state?.includes("Transferring") &&
         !f.state?.includes("InProgress") &&
         f.bytesDone === 0 &&
-        f.speed_fmt === "0 B/s",
+        f._speedBytes === 0,
       ).length;
       const allDone = (completed + cancelledOrRejected) === fileItems.length && fileItems.length > 0;
       const allBad = cancelledOrRejected > 0 && cancelledOrRejected === fileItems.length;
@@ -2497,7 +2498,7 @@ async function refreshSlskd() {
         const parts = folderName.replace(/\\/g, "/").split("/");
         return parts[parts.length - 1] || folderName;
       })();
-      const avgSpeed = fileItems.reduce((s, f) => s + (parseFloat(f.speed_fmt) || 0), 0);
+      const avgSpeed = fileItems.reduce((s, f) => s + (f._speedBytes || 0), 0);
 
       const uid = "slskd-" + (++uidCounter);
       return {
