@@ -424,10 +424,7 @@ async function openFile() {
   const ext = props.fileName.split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") await openPdf();
   else if (ext === "cbz" || ext === "zip") await openCbz();
-  else {
-    error.value = `Unsupported format: .${ext}`;
-    loading.value = false;
-  }
+  else await openLegacyArchive();
 }
 
 /** Open CBZ/ZIP archives using @zip.js/zip.js. */
@@ -493,6 +490,88 @@ async function openCbz() {
     error.value = e?.message ?? "Failed to open comic";
     loading.value = false;
   }
+}
+
+/** Fallback for CBR/RAR archives using legacy uncompress.js. */
+async function openLegacyArchive() {
+  try {
+    await waitForLegacyLibs();
+    loadingText.value = "Downloading..."; loadingProgress.value = 0;
+    const blob = await downloadWithProgress(props.filePath);
+    loadingText.value = "Opening archive..."; loadingProgress.value = 80;
+    const file = new File([blob], props.fileName);
+    await new Promise<void>((resolve, reject) => {
+      (window as any).archiveOpenFile(file, null, (archive: any, err: any) => {
+        if (err) return reject(err);
+        if (!archive) return reject(new Error("Failed to open archive"));
+        loadingText.value = "Extracting pages...";
+        let entries = archive.entries.filter((e: any) => {
+          if (!e.is_file) return false;
+          const ext = e.name.split(".").pop()?.toLowerCase() ?? "";
+          return IMAGE_EXTS.has(ext);
+        });
+        if (entries.length === 0) return reject(new Error("No images found in archive"));
+        entries.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        images.value = new Array(entries.length).fill(null);
+        if (props.initialPage) {
+          if (props.initialPage === -1) currentPage.value = entries.length - 1;
+          else currentPage.value = Math.min(props.initialPage - 1, entries.length - 1);
+        }
+        let processed = 0;
+        let firstPageShown = false;
+        entries.forEach((entry: any, index: number) => {
+          entry.readData((data: ArrayBuffer | null) => {
+            if (_cancelled) return;
+            processed++;
+            loadingProgress.value = (processed / entries.length) * 100;
+            if (data) {
+              const ext = entry.name.split(".").pop()?.toLowerCase() ?? "jpeg";
+              const mime = imageMime(ext);
+              const imgBlob = new Blob([data], { type: mime });
+              images.value[index] = URL.createObjectURL(imgBlob);
+              if (!firstPageShown) {
+                firstPageShown = true;
+                extracting.value = true;
+                loading.value = false;
+                loadingProgress.value = 0; // Reset for extraction bar
+              }
+            }
+            if (processed >= entries.length) {
+              extracting.value = false;
+              loadingProgress.value = 100;
+              resolve();
+            }
+          });
+        });
+      });
+    });
+  } catch (e: any) { error.value = e?.message ?? "Failed to open archive"; loading.value = false; }
+}
+
+// ── Legacy library loading (for CBR/RAR only)
+let _legacyLibsLoaded = false, _legacyLibsLoading = false;
+const _legacyLibsCallbacks: Array<() => void> = [];
+
+function waitForLegacyLibs(): Promise<void> {
+  if (_legacyLibsLoaded) return Promise.resolve();
+  return new Promise((resolve) => {
+    if (_legacyLibsLoading) _legacyLibsCallbacks.push(resolve);
+    else { _legacyLibsLoading = true; _legacyLibsCallbacks.push(resolve); loadLegacyLibs(); }
+  });
+}
+
+function loadLegacyLibs() {
+  const script = document.createElement("script");
+  script.src = "/lib/uncompress.js";
+  script.onload = () => {
+    (window as any).loadArchiveFormats(["rar"], () => {
+      _legacyLibsLoaded = true; _legacyLibsLoading = false;
+      for (const cb of _legacyLibsCallbacks) cb();
+      _legacyLibsCallbacks.length = 0;
+    });
+  };
+  script.onerror = () => { error.value = "Failed to load archive libraries"; loading.value = false; _legacyLibsLoading = false; };
+  document.head.appendChild(script);
 }
 
 async function openPdf() {

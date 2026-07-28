@@ -809,11 +809,20 @@ function restoreBrowseTabs() {
       const id = nextTabId("files", username);
       if (tabs.value.find((t) => t.id === id)) return;
       tabs.value.push({ type: "files", id, label: username });
-      browseTree.value[id] = [];
-      browseInfo.value[id] = null;
-      loadingBrowse.value[id] = true;
       if (!activeTabId.value) activeTabId.value = id;
-      fetchBrowse(id, username);
+
+      // Try sessionStorage cache first — instant restore for large shares
+      const cached = loadBrowseCache(username);
+      if (cached) {
+        applyBrowseData(id, cached);
+        // Refresh in background to keep cache fresh (no force, uses middleware cache)
+        fetchBrowse(id, username);
+      } else {
+        browseTree.value[id] = [];
+        browseInfo.value[id] = null;
+        loadingBrowse.value[id] = true;
+        fetchBrowse(id, username);
+      }
     });
   } catch {
     /* silent */
@@ -1015,27 +1024,52 @@ function filterBrowseTree(nodes: any[], q: string): any[] {
   return result;
 }
 
+// ── Browse sessionStorage cache helpers ────────────────────────────────
+const BROWSE_CACHE_PREFIX = "slskd_browse_data:";
+
+function saveBrowseCache(username: string, data: any): void {
+  try {
+    sessionStorage.setItem(BROWSE_CACHE_PREFIX + username, JSON.stringify(data));
+  } catch {
+    // Quota exceeded — silently skip, data is still in memory
+  }
+}
+
+function loadBrowseCache(username: string): any | null {
+  try {
+    const raw = sessionStorage.getItem(BROWSE_CACHE_PREFIX + username);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Data fetching: Browse ────────────────────────────────────────────────
 async function fetchBrowse(tabId: string, username: string, force = false) {
   loadingBrowse.value[tabId] = true;
   try {
-    const qs = force ? '?force=true' : '';
+    const qs = force ? "?force=true" : "";
     const data = await apiFetch<any>(`/api/slskd/users/${encodeURIComponent(username)}/browse${qs}`);
     if (data) {
-      const allDirs = [
-        ...(data.directories ?? []),
-        ...(data.lockedDirectories ?? []).map((d: any) => ({ ...d, locked: true })),
-      ];
-      browseInfo.value[tabId] = {
-        directories: data.directories?.length ?? 0,
-        files: allDirs.reduce((s: number, d: any) => s + (d.fileCount ?? 0), 0),
-      };
-      browseTree.value[tabId] = buildBrowseTree(allDirs);
+      saveBrowseCache(username, data);
+      applyBrowseData(tabId, data);
     }
   } catch {
     /* silent */
   }
   loadingBrowse.value[tabId] = false;
+}
+
+function applyBrowseData(tabId: string, data: any) {
+  const allDirs = [
+    ...(data.directories ?? []),
+    ...(data.lockedDirectories ?? []).map((d: any) => ({ ...d, locked: true })),
+  ];
+  browseInfo.value[tabId] = {
+    directories: data.directories?.length ?? 0,
+    files: allDirs.reduce((s: number, d: any) => s + (d.fileCount ?? 0), 0),
+  };
+  browseTree.value[tabId] = buildBrowseTree(allDirs);
 }
 
 /** Filter browse tree by query string (matches full remote path) */
@@ -1145,47 +1179,36 @@ function ctxDownloadFile() {
   }).catch(() => {});
 }
 
-/** Recursively collect all files from a directory node (including subdirectories) */
-function collectAllFilesRecursive(node: any, basePath: string): { filename: string; size: number }[] {
-  const files: { filename: string; size: number }[] = [];
-  for (const f of (node.files ?? [])) {
-    files.push({ filename: basePath + "\\" + f.filename, size: f.size });
-  }
-  for (const child of (node.children ?? [])) {
-    const childPath = child.path || (basePath ? basePath + "\\" + child.name : child.name);
-    files.push(...collectAllFilesRecursive(child, childPath));
-  }
-  return files;
-}
-
 function ctxDownloadBrowseDir() {
   browseCtx.visible = false;
   const dir = browseCtx.dir;
   if (!dir || !browseCtx.username) return;
-  // Soulseek needs the full relative path from the user's share root
-  // Use dir.path (full path) — dir.name is only the leaf name
-  const basePath = dir.path || dir.name;
-  // Recursively collect ALL files from this directory and its subdirectories
-  const allFiles = collectAllFilesRecursive(dir, basePath);
-  if (allFiles.length === 0) return;
-  // Use batch API (slskd 0.26.0+) for folder downloads — generates a UUID batchId
-  const batchId = crypto.randomUUID();
-  apiFetch("/api/slskd/transfers", {
+  // Send just the directory path — the middleware recursively collects files
+  // from its browse cache and chunks them to slskd. Much lighter than sending
+  // the full file list from the frontend.
+  const directoryPath = dir.path || dir.name;
+  apiFetch("/api/slskd/download-directory", {
     method: "POST",
-    body: { username: browseCtx.username, files: allFiles, batchId },
-  }).then(() => {
+    body: { username: browseCtx.username, directoryPath },
+  }).then((res: any) => {
     // Track this batch so the downloads page can merge subdirectory groups
-    // under the root folder the user selected
-    try {
-      const raw = sessionStorage.getItem("slskd_batches");
-      const batches: { rootPath: string; username: string; ts: number; batchId: string }[] = raw ? JSON.parse(raw) : [];
-      // Remove batches older than 5 minutes
-      const now = Date.now();
-      const fresh = batches.filter((b) => now - b.ts < 300_000);
-      fresh.push({ rootPath: basePath, username: browseCtx.username, ts: now, batchId });
-      sessionStorage.setItem("slskd_batches", JSON.stringify(fresh));
-    } catch { /* quota exceeded, ignore */ }
-  }).catch(() => {});
+    if (res?.batchId) {
+      try {
+        const raw = sessionStorage.getItem("slskd_batches");
+        const batches: { rootPath: string; username: string; ts: number; batchId: string }[] = raw ? JSON.parse(raw) : [];
+        const now = Date.now();
+        const fresh = batches.filter((b) => now - b.ts < 300_000);
+        fresh.push({ rootPath: directoryPath, username: browseCtx.username, ts: now, batchId: res.batchId });
+        sessionStorage.setItem("slskd_batches", JSON.stringify(fresh));
+      } catch { /* quota exceeded, ignore */ }
+    }
+    if (res?.totalFiles) {
+      // Optional: surface a notification (handled by the global toast system)
+      console.log(`[slskd] Queued ${res.sent}/${res.totalFiles} files from "${directoryPath}" (${res.username || browseCtx.username})`);
+    }
+  }).catch((err: any) => {
+    console.warn("[slskd] Directory download failed:", err);
+  });
 }
 
 // ── Context menu (mobile fallback via click) ────────────────────────────
