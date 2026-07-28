@@ -1191,20 +1191,21 @@ function ctxDownloadBrowseDir() {
     method: "POST",
     body: { username: browseCtx.username, directoryPath },
   }).then((res: any) => {
-    // Track this batch so the downloads page can merge subdirectory groups
-    if (res?.batchId) {
+    // Track batches so the downloads page can merge subdirectory groups
+    if (res?.batchIds?.length) {
       try {
         const raw = sessionStorage.getItem("slskd_batches");
         const batches: { rootPath: string; username: string; ts: number; batchId: string }[] = raw ? JSON.parse(raw) : [];
         const now = Date.now();
         const fresh = batches.filter((b) => now - b.ts < 300_000);
-        fresh.push({ rootPath: directoryPath, username: browseCtx.username, ts: now, batchId: res.batchId });
+        for (const bid of res.batchIds) {
+          fresh.push({ rootPath: directoryPath, username: browseCtx.username, ts: now, batchId: bid });
+        }
         sessionStorage.setItem("slskd_batches", JSON.stringify(fresh));
       } catch { /* quota exceeded, ignore */ }
     }
     if (res?.totalFiles) {
-      // Optional: surface a notification (handled by the global toast system)
-      console.log(`[slskd] Queued ${res.totalFiles} files from "${directoryPath}" (${browseCtx.username})`);
+      console.log(`[slskd] Queued ${res.sent ?? res.totalFiles}/${res.totalFiles} files from "${directoryPath}" (${browseCtx.username})`);
     }
   }).catch((err: any) => {
     console.warn("[slskd] Directory download failed:", err);
