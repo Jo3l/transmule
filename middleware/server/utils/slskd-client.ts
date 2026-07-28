@@ -687,24 +687,29 @@ export class SlskdClient {
   /**
    * Set download destination subdirectory to organize by remote username
    * and preserve the full remote directory structure.
+   * Also sets exists=overwrite so already-downloaded files are replaced
+   * instead of duplicated (rename is the slskd default).
    * slskd 0.26.0+ evaluates ${SOURCE_USERNAME} and ${SOURCE_PATH} at download time.
    *
-   * For a file @@abcde\Music\Albums\CoolAlbum\CD1\track01.mp3 from user Bob:
+   * For a file @@abcde\\Music\\Albums\\CoolAlbum\\CD1\\track01.mp3 from user Bob:
    *   /downloads/Bob/@@abcde/Music/Albums/CoolAlbum/CD1/track01.mp3
    */
   private _destinationTransform(): (yaml: string) => string {
     const subdirValue = "${SOURCE_USERNAME}/${SOURCE_PATH}";
+    const existsValue = "overwrite";
 
     return (yaml) => {
-      // Already configured with our value? Skip.
-      if (yaml.includes("subdirectory: " + subdirValue)) return yaml;
+      // Already configured with our values? Skip.
+      if (yaml.includes("subdirectory: " + subdirValue) &&
+          yaml.includes("exists: " + existsValue)) return yaml;
 
       const lines = yaml.split("\n");
       const result: string[] = [];
       let inTransfers = false;
       let inDownload = false;
       let inDestination = false;
-      let inserted = false;
+      let insertedSubdir = false;
+      let insertedExists = false;
 
       for (const line of lines) {
         const trimmed = line.trimStart();
@@ -716,18 +721,21 @@ export class SlskdClient {
 
           // Leaving the transfers block? Insert before exiting.
           if (line.length > 0 && line[0] !== " " && line[0] !== "\t") {
-            if (!inserted) {
+            if (!insertedSubdir) {
               if (!inDownload) {
                 result.push("  download:");
                 result.push("    destination:");
                 result.push("      subdirectory: " + subdirValue);
+                result.push("      exists: " + existsValue);
               } else if (!inDestination) {
                 result.push("    destination:");
                 result.push("      subdirectory: " + subdirValue);
+                result.push("      exists: " + existsValue);
               } else {
                 result.push("      subdirectory: " + subdirValue);
+                result.push("      exists: " + existsValue);
               }
-              inserted = true;
+              insertedSubdir = true;
             }
             inTransfers = false;
             inDownload = false;
@@ -740,7 +748,15 @@ export class SlskdClient {
           if (inDestination && /^\s+subdirectory:/.test(line)) {
             const indent = line.match(/^\s*/)?.[0] || "";
             result.push(indent + "subdirectory: " + subdirValue);
-            inserted = true;
+            insertedSubdir = true;
+            continue;
+          }
+
+          // Inside destination block, update existing exists key
+          if (inDestination && /^\s+exists:/.test(line)) {
+            const indent = line.match(/^\s*/)?.[0] || "";
+            result.push(indent + "exists: " + existsValue);
+            insertedExists = true;
             continue;
           }
 
@@ -751,21 +767,33 @@ export class SlskdClient {
       }
 
       // End of file, still inside transfers
-      if (!inserted) {
+      if (!insertedSubdir) {
         if (!inTransfers) {
           result.push("transfers:");
           result.push("  download:");
           result.push("    destination:");
           result.push("      subdirectory: " + subdirValue);
+          result.push("      exists: " + existsValue);
         } else if (!inDownload) {
           result.push("  download:");
           result.push("    destination:");
           result.push("      subdirectory: " + subdirValue);
+          result.push("      exists: " + existsValue);
         } else if (!inDestination) {
           result.push("    destination:");
           result.push("      subdirectory: " + subdirValue);
+          result.push("      exists: " + existsValue);
         } else {
           result.push("      subdirectory: " + subdirValue);
+          result.push("      exists: " + existsValue);
+        }
+      } else if (!insertedExists) {
+        // subdirectory was inserted but exists wasn't — add it
+        // Find the line where subdirectory was inserted and add exists after it
+        const idx = result.findIndex(l => l.includes("subdirectory: " + subdirValue));
+        if (idx >= 0) {
+          const indent = result[idx].match(/^\s*/)?.[0] || "      ";
+          result.splice(idx + 1, 0, indent + "exists: " + existsValue);
         }
       }
 
