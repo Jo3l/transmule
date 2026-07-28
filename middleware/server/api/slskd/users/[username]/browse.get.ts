@@ -7,15 +7,7 @@ defineRouteMeta({
   },
 });
 
-import { gzipSync, gunzipSync } from "node:zlib";
-
-// ── In-memory browse cache (persists across requests within the server process) ──
-interface CacheEntry {
-  data: Buffer;  // gzipped JSON
-  ts: number;
-}
-const _browseCache = new Map<string, CacheEntry>();
-const BROWSE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+import { getBrowseCache, setBrowseCache } from "../../../../utils/browseCache";
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
@@ -28,10 +20,8 @@ export default defineEventHandler(async (event) => {
 
   // Check cache (skip if force-refresh)
   if (!force) {
-    const cached = _browseCache.get(username);
-    if (cached && Date.now() - cached.ts < BROWSE_CACHE_TTL_MS) {
-      return JSON.parse(gunzipSync(cached.data).toString());
-    }
+    const cached = getBrowseCache(username);
+    if (cached) return cached;
   }
 
   try {
@@ -47,17 +37,16 @@ export default defineEventHandler(async (event) => {
           ...d, files: (d.files || []).map(stripFile), locked: true,
         })),
       };
-      const compressed = gzipSync(JSON.stringify(stripped));
-      _browseCache.set(username, { data: compressed, ts: Date.now() });
+      setBrowseCache(username, stripped);
       return stripped;
     }
     return data;
   } catch (err: any) {
     // On error, return stale cache if available (better than nothing)
-    const stale = _browseCache.get(username);
+    const stale = getBrowseCache(username);
     if (stale) {
       console.warn(`[slskd] browse error for ${username}, returning stale cache:`, err.message);
-      return JSON.parse(gunzipSync(stale.data).toString());
+      return stale;
     }
     throw createError({ statusCode: 502, statusMessage: `slskd browse error: ${err.message}` });
   }
