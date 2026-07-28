@@ -1204,7 +1204,7 @@ function ctxDownloadBrowseDir() {
     }
     if (res?.totalFiles) {
       // Optional: surface a notification (handled by the global toast system)
-      console.log(`[slskd] Queued ${res.sent}/${res.totalFiles} files from "${directoryPath}" (${res.username || browseCtx.username})`);
+      console.log(`[slskd] Queued ${res.totalFiles} files from "${directoryPath}" (${browseCtx.username})`);
     }
   }).catch((err: any) => {
     console.warn("[slskd] Directory download failed:", err);

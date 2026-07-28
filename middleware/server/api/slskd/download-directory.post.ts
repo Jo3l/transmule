@@ -3,7 +3,7 @@ defineRouteMeta({
     tags: ["slskd"],
     summary: "Download directory",
     description:
-      "Download an entire directory from a remote user. The middleware recursively collects all files from cached browse data and chunks them into slskd batch downloads. Much lighter than sending the full file list from the frontend.",
+      "Download an entire directory from a remote user. The middleware recursively collects all files from cached browse data and sends them as a single batch to slskd. Much lighter than sending the full file list from the frontend.",
     responses: {
       200: { description: "Download queued" },
       400: { description: "Missing parameters" },
@@ -14,8 +14,6 @@ defineRouteMeta({
 });
 
 import { getBrowseCache, setBrowseCache } from "../../utils/browseCache";
-
-const CHUNK_SIZE = 500; // files per slskd batch request
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
@@ -84,38 +82,35 @@ export default defineEventHandler(async (event) => {
   }
 
   if (collected.length === 0) {
-    return { success: true, batch: true, chunks: 0, totalFiles: 0 };
+    return { success: true, batch: true, totalFiles: 0 };
   }
 
-  // 4. Chunk and send to slskd
+  // 4. Send all files in a single batch request to slskd
+  //    slskd's batch API handles large lists (tested with 1M+ files in browse)
   const batchId = body.batchId || crypto.randomUUID();
-  let sent = 0;
-  let failed = 0;
 
-  for (let i = 0; i < collected.length; i += CHUNK_SIZE) {
-    const chunk = collected.slice(i, i + CHUNK_SIZE);
-    try {
-      const result = await client.enqueueDownloadBatch(username, chunk, {
-        batchId,
+  try {
+    const result = await client.enqueueDownloadBatch(username, collected, {
+      batchId,
+    });
+    if (!result.success) {
+      throw createError({
+        statusCode: 502,
+        statusMessage: `slskd batch rejected (status ${result.status})`,
       });
-      if (result.success) {
-        sent += chunk.length;
-      } else {
-        failed += chunk.length;
-      }
-    } catch {
-      failed += chunk.length;
     }
+    return {
+      success: true,
+      batch: true,
+      batchId,
+      totalFiles: collected.length,
+    };
+  } catch (err: any) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: `slskd download error: ${err.message}`,
+    });
   }
-
-  return {
-    success: sent > 0,
-    batch: true,
-    batchId,
-    totalFiles: collected.length,
-    sent,
-    failed,
-  };
 });
 
 /**

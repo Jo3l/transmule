@@ -559,7 +559,7 @@ export class SlskdClient {
     const res = await this.fetch("/transfers/downloads/batches", {
       method: "POST",
       body: JSON.stringify(reqBody),
-      timeout: 120_000,
+      timeout: 300_000,
     });
 
     // 404 means the batch endpoint doesn't exist (pre-0.26.0), fall back to old API
