@@ -22,7 +22,16 @@ export default defineEventHandler(async (event) => {
 
   try {
     const users = await client.getRoomUsers(roomName);
-    return users;
+    // Deduplicate by username — slskd can report the same user multiple times
+    // if the Soulseek network fires duplicate UserJoinedRoom events.
+    const seen = new Set<string>();
+    const deduped = (users ?? []).filter((u: any) => {
+      const key = u.username ?? u;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return deduped;
   } catch (err: any) {
     throw createError({
       statusCode: 502,

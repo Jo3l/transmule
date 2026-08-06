@@ -90,12 +90,23 @@
               <span class="is-size-7 has-text-grey">({{ roomUsers[tab.id]?.length ?? 0 }})</span>
               <button
                 class="room-user-sort-btn"
+                :class="{ active: isSortType(tab.id, 'flag') }"
+                :title="$t('slskd.sortByFlag', 'Ordenar por país')"
+                @click="cycleRoomUserSort(tab.id, 'flag')"
+              >
+                <span class="mdi mdi-flag-variant" />
+                <span v-if="roomUserSort[tab.id] === 'flag-asc'" class="mdi mdi-chevron-down sort-arrow" />
+                <span v-else-if="roomUserSort[tab.id] === 'flag-desc'" class="mdi mdi-chevron-up sort-arrow" />
+              </button>
+              <button
+                class="room-user-sort-btn"
+                :class="{ active: isSortType(tab.id, 'files') }"
                 :title="$t('slskd.sortByFiles', 'Ordenar por archivos')"
-                @click="cycleRoomUserSort(tab.id)"
+                @click="cycleRoomUserSort(tab.id, 'files')"
               >
                 <span class="mdi mdi-folder-multiple" />
-                <span v-if="(roomUserSort[tab.id] || '') === 'files-desc'" class="mdi mdi-chevron-down sort-arrow" />
-                <span v-else-if="(roomUserSort[tab.id] || '') === 'files-asc'" class="mdi mdi-chevron-up sort-arrow" />
+                <span v-if="roomUserSort[tab.id] === 'files-desc'" class="mdi mdi-chevron-down sort-arrow" />
+                <span v-else-if="roomUserSort[tab.id] === 'files-asc'" class="mdi mdi-chevron-up sort-arrow" />
               </button>
             </div>
             <div class="room-users-list">
@@ -588,11 +599,23 @@ onUnmounted(() => {
   document.removeEventListener("click", onEmojiPickerClickOutside);
 });
 
-function cycleRoomUserSort(tabId: string) {
+function cycleRoomUserSort(tabId: string, type: 'flag' | 'files') {
   const current = roomUserSort.value[tabId] || "";
-  if (current === "") roomUserSort.value[tabId] = "files-desc";
-  else if (current === "files-desc") roomUserSort.value[tabId] = "files-asc";
-  else roomUserSort.value[tabId] = "";
+  // If switching sort type, start with ascending for that type
+  if (type === 'flag') {
+    if (current === 'flag-asc') roomUserSort.value[tabId] = 'flag-desc';
+    else if (current === 'flag-desc') roomUserSort.value[tabId] = '';
+    else roomUserSort.value[tabId] = 'flag-asc';
+  } else {
+    if (current === 'files-desc') roomUserSort.value[tabId] = 'files-asc';
+    else if (current === 'files-asc') roomUserSort.value[tabId] = '';
+    else roomUserSort.value[tabId] = 'files-desc';
+  }
+}
+
+function isSortType(tabId: string, type: 'flag' | 'files'): boolean {
+  const s = roomUserSort.value[tabId] || '';
+  return s.startsWith(type);
 }
 
 /** Parse a value as integer for sorting — handles numbers, strings, null, undefined */
@@ -616,10 +639,31 @@ const sortedRoomUsers = computed(() => {
       result[tabId] = users;
       continue;
     }
-    const dir = sort === "files-desc" ? -1 : 1;
-    result[tabId] = [...users].sort(
-      (a, b) => (parseFileCount(a.fileCount) - parseFileCount(b.fileCount)) * dir,
-    );
+    if (sort === "flag-asc") {
+      result[tabId] = [...users].sort((a, b) => {
+        const ca = (a.countryCode || "").toLowerCase();
+        const cb = (b.countryCode || "").toLowerCase();
+        // Users without country code go last
+        if (!ca && !cb) return 0;
+        if (!ca) return 1;
+        if (!cb) return -1;
+        return ca.localeCompare(cb);
+      });
+    } else if (sort === "flag-desc") {
+      result[tabId] = [...users].sort((a, b) => {
+        const ca = (a.countryCode || "").toLowerCase();
+        const cb = (b.countryCode || "").toLowerCase();
+        if (!ca && !cb) return 0;
+        if (!ca) return 1;
+        if (!cb) return -1;
+        return cb.localeCompare(ca);
+      });
+    } else {
+      const dir = sort === "files-desc" ? -1 : 1;
+      result[tabId] = [...users].sort(
+        (a, b) => (parseFileCount(a.fileCount) - parseFileCount(b.fileCount)) * dir,
+      );
+    }
   }
   return result;
 });
@@ -1447,7 +1491,6 @@ onUnmounted(() => {
 }
 
 .room-user-sort-btn {
-  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;
@@ -1460,9 +1503,16 @@ onUnmounted(() => {
   gap: 1px;
   transition: background 0.1s, color 0.1s;
 }
+.room-user-sort-btn:first-of-type {
+  margin-left: auto;
+}
 .room-user-sort-btn:hover {
   background: var(--s-bg-hover);
   color: var(--s-accent);
+}
+.room-user-sort-btn.active {
+  color: var(--s-accent);
+  background: var(--s-bg-hover);
 }
 .room-user-sort-btn .sort-arrow {
   font-size: 0.6rem;
