@@ -43,7 +43,8 @@
       </div>
     </div>
 
-    <STable :data="pagedClients" :columns="columns" :loading="loading">
+    <div class="uploads-table-scroll">
+      <STable :data="pagedClients" :columns="columns" :loading="loading">
       <template #cell-type="{ row }">
         <STag
           v-if="row._type === 'amule'"
@@ -115,6 +116,7 @@
         </div>
       </template>
     </STable>
+    </div>
 
     <SPagination
       v-if="filteredClients.length > PAGE_SIZE"
@@ -220,12 +222,13 @@ const slskdSpeedFmt = computed(() =>
   ),
 );
 
-async function fetchSpeedHistory() {
+async function fetchSpeedHistory(payload?: any) {
   try {
-    const data =
-      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]>(
-        "/api/speed-history",
-      );
+    const data = payload !== undefined
+      ? payload
+      : await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]>(
+          "/api/speed-history",
+        );
     speedHistory.value = data ?? [];
   } catch {
     /* silent */
@@ -234,46 +237,59 @@ async function fetchSpeedHistory() {
 }
 
 async function refresh() {
+  // Single unified round-trip — the middleware fans out server-side.
+  // Fallback: individual endpoints if the snapshot fails.
+  let snap: any = null;
+  try {
+    snap = await apiFetch<any>("/api/downloads/uploads-snapshot");
+  } catch {
+    snap = null;
+  }
+
   await Promise.all([
     amuleRunning.value
-      ? apiFetch<any>("/api/amule/uploads")
-          .then((res) => {
-            const amuleClients = res?.uploads?.clients || [];
-            // Merge with existing slskd clients, preserve slskd entries
-            const slskdEntries = clients.value.filter((c: any) => c._type === "slskd");
-            clients.value = [...amuleClients, ...slskdEntries];
-          })
-          .catch(() => {})
+      ? (snap
+          ? Promise.resolve(snap.uploads)
+          : apiFetch<any>("/api/amule/uploads").catch(() => null)
+        ).then((res: any) => {
+          if (!res || res.error) return;
+          const amuleClients = res?.uploads?.clients || [];
+          // Merge with existing slskd clients, preserve slskd entries
+          const slskdEntries = clients.value.filter((c: any) => c._type === "slskd");
+          clients.value = [...amuleClients, ...slskdEntries];
+        })
       : Promise.resolve(),
     slskdRunning.value
-      ? apiFetch<any[]>("/api/slskd/transfers?direction=upload")
-          .then((transfers) => {
-            const amuleEntries = clients.value.filter((c: any) => c._type !== "slskd");
-            const slskdEntries = (transfers || []).map((t: any) => ({
-              _type: "slskd" as const,
-              clientName: t.username || "Unknown",
-              userHash: "",
-              software: "",
-              softwareVersion: "",
-              fileName: t.filename || "",
-              score: 0,
-              uploadSpeed: t.averageSpeed || 0,
-              uploadSpeed_fmt: formatSpeed(t.averageSpeed || 0),
-              uploadSession: t.bytesTransferred || 0,
-              uploadSession_fmt: formatBytes(t.bytesTransferred || 0),
-              uploadTotal: t.size || 0,
-              state: t.state || "",
-              uploadTotal_fmt: formatBytes(t.size || 0),
-              ip: "",
-              port: 0,
-              startTime: t.startTime || null,
-              peerProgress: t.size > 0 ? (t.bytesTransferred || 0) / t.size : 0,
-            }));
-            clients.value = [...amuleEntries, ...slskdEntries];
-          })
-          .catch(() => {})
+      ? (snap
+          ? Promise.resolve(snap.slskdUploads)
+          : apiFetch<any[]>("/api/slskd/transfers?direction=upload").catch(() => null)
+        ).then((transfers: any) => {
+          if (!transfers || (!Array.isArray(transfers) && transfers.error)) return;
+          const amuleEntries = clients.value.filter((c: any) => c._type !== "slskd");
+          const slskdEntries = (transfers || []).map((t: any) => ({
+            _type: "slskd" as const,
+            clientName: t.username || "Unknown",
+            userHash: "",
+            software: "",
+            softwareVersion: "",
+            fileName: t.filename || "",
+            score: 0,
+            uploadSpeed: t.averageSpeed || 0,
+            uploadSpeed_fmt: formatSpeed(t.averageSpeed || 0),
+            uploadSession: t.bytesTransferred || 0,
+            uploadSession_fmt: formatBytes(t.bytesTransferred || 0),
+            uploadTotal: t.size || 0,
+            state: t.state || "",
+            uploadTotal_fmt: formatBytes(t.size || 0),
+            ip: "",
+            port: 0,
+            startTime: t.startTime || null,
+            peerProgress: t.size > 0 ? (t.bytesTransferred || 0) / t.size : 0,
+          }));
+          clients.value = [...amuleEntries, ...slskdEntries];
+        })
       : Promise.resolve(),
-    fetchSpeedHistory(),
+    fetchSpeedHistory(snap?.speedHistory),
   ]);
 }
 
@@ -287,3 +303,18 @@ onUnmounted(() => {
   if (refreshInterval) clearInterval(refreshInterval);
 });
 </script>
+
+<style scoped>
+/* Uploads table: scroll inside the table wrapper (sticky thead),
+   page stays put so topbar/sidebar remain visible.
+   300px ≈ topbar + app-content padding + totals box + filters + pagination.
+   dvh = dynamic viewport height (iOS Safari toolbar-safe), vh = fallback. */
+.uploads-table-scroll {
+  /* Let STable's s-table-wrap handle scrolling so thead stays sticky */
+}
+.uploads-table-scroll :deep(.s-table-wrap) {
+  max-height: calc(100vh - 300px);
+  max-height: calc(100dvh - 300px);
+  overflow-y: auto;
+}
+</style>

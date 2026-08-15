@@ -692,6 +692,40 @@ function scrollToBottom(el: HTMLDivElement) {
   el.scrollTop = el.scrollHeight;
 }
 
+// ── Scroll-follow intent ────────────────────────────────────────────────
+// Whether each tab's message list should stick to the bottom on updates.
+// Defaults to true (newest messages always visible). The user disables it
+// per-tab by scrolling up deliberately; it re-enables when they scroll back
+// near the bottom, send a message, or switch to the tab.
+const followBottom: Record<string, boolean> = {};
+
+function shouldFollow(tabId: string): boolean {
+  return followBottom[tabId] !== false;
+}
+
+function scrollActiveListToBottom(tabId: string, force = false) {
+  if (!force && !shouldFollow(tabId)) return;
+  const el = getActiveMsgList();
+  if (el) scrollToBottom(el);
+}
+
+// Scroll listener (event delegation — the lists are created/destroyed with tabs)
+function onMsgListScroll(e: Event) {
+  const el = (e.target as HTMLElement).closest?.(".room-messages-list") as HTMLDivElement | null;
+  if (!el) return;
+  const tabId = activeTabId.value;
+  if (!tabId) return;
+  // Scrolling up disables follow; reaching the bottom re-enables it
+  followBottom[tabId] = isNearBottom(el);
+}
+
+// Scroll to bottom when switching tabs (the new tab should show latest)
+watch(activeTabId, (tabId) => {
+  if (!tabId) return;
+  followBottom[tabId] = true;
+  nextTick(() => scrollActiveListToBottom(tabId, true));
+});
+
 let pollTimers: Record<string, ReturnType<typeof setInterval>> = {};
 
 // ── Rooms list state ─────────────────────────────────────────────────────
@@ -808,6 +842,9 @@ async function addRoom(roomName: string) {
   } catch { /* join may fail if already joined */ }
   fetchRoomData(id, roomName);
   pollTimers[id] = setInterval(() => fetchRoomData(id, roomName), 3000);
+  // New tab → start pinned to bottom (latest messages visible)
+  followBottom[id] = true;
+  nextTick(() => scrollActiveListToBottom(id, true));
 }
 
 function addUserChat(username: string) {
@@ -821,6 +858,9 @@ function addUserChat(username: string) {
   fetchUserInfo(id, username);
   fetchUserMessages(id, username);
   pollTimers[id] = setInterval(() => fetchUserMessages(id, username), 3000);
+  // New tab → start pinned to bottom (latest messages visible)
+  followBottom[id] = true;
+  nextTick(() => scrollActiveListToBottom(id, true));
 }
 
 function addBrowseFiles(username: string) {
@@ -910,6 +950,7 @@ async function closeTab(tabId: string) {
   delete browseInfo.value[tabId];
   delete browseTree.value[tabId];
   delete loadingBrowse.value[tabId];
+  delete followBottom[tabId];
   if (pollTimers[tabId]) {
     clearInterval(pollTimers[tabId]);
     delete pollTimers[tabId];
@@ -932,12 +973,7 @@ async function fetchRoomData(tabId: string, roomName: string) {
     ]);
     if (messages) roomMessages.value[tabId] = messages;
     if (users) roomUsers.value[tabId] = users;
-    nextTick(() => {
-      const el = getActiveMsgList();
-      if (el && isNearBottom(el)) {
-        scrollToBottom(el);
-      }
-    });
+    nextTick(() => scrollActiveListToBottom(tabId));
   } catch {
     /* silent */
   }
@@ -953,7 +989,10 @@ async function sendRoomMessage(roomName: string) {
       body: { message: text },
     });
     const tabId = nextTabId("room", roomName);
+    // Own message sent → always jump to bottom
+    followBottom[tabId] = true;
     await fetchRoomData(tabId, roomName);
+    nextTick(() => scrollActiveListToBottom(tabId, true));
   } catch {
     /* silent */
   }
@@ -987,12 +1026,7 @@ async function fetchUserMessages(tabId: string, username: string) {
       `/api/slskd/conversations/${encodeURIComponent(username)}/messages`,
     );
     if (msgs) userMessages.value[tabId] = msgs;
-    nextTick(() => {
-      const el = getActiveMsgList();
-      if (el && isNearBottom(el)) {
-        scrollToBottom(el);
-      }
-    });
+    nextTick(() => scrollActiveListToBottom(tabId));
   } catch {
     /* silent */
   }
@@ -1007,7 +1041,10 @@ async function sendUserMessage(tabId: string, username: string) {
       method: "POST",
       body: { message: text },
     });
+    // Own message sent → always jump to bottom
+    followBottom[tabId] = true;
     await fetchUserMessages(tabId, username);
+    nextTick(() => scrollActiveListToBottom(tabId, true));
   } catch {
     /* silent */
   }
@@ -1465,6 +1502,15 @@ watch(activeTabId, (id) => {
 onUnmounted(() => {
   Object.values(pollTimers).forEach(clearInterval);
 });
+
+// Track scroll intent on message lists (delegated — lists come and go with tabs)
+onMounted(() => {
+  document.addEventListener("scroll", onMsgListScroll, true);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("scroll", onMsgListScroll, true);
+});
 </script>
 
 <style scoped>
@@ -1473,6 +1519,7 @@ onUnmounted(() => {
   border-radius: var(--s-radius);
   flex: 1;
   min-height: calc(100vh - 240px);
+  min-height: calc(100dvh - 240px);
 }
 
 .room-users-panel {
@@ -1480,6 +1527,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
 }
 
 .room-users-header {
@@ -1589,6 +1637,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
 }
 
 .room-messages-list {
@@ -1870,6 +1919,7 @@ onUnmounted(() => {
   border-radius: 0 0 var(--s-radius) var(--s-radius);
   min-height: 300px;
   max-height: calc(100vh - 330px);
+  max-height: calc(100dvh - 330px);
   overflow-y: auto;
 }
 
@@ -1913,6 +1963,7 @@ onUnmounted(() => {
 }
 #page-slskd-rooms .rooms-scroll :deep(.s-table-wrap) {
   max-height: calc(100vh - 240px);
+  max-height: calc(100dvh - 240px);
 }
 #page-slskd-rooms :deep(.s-table tbody tr) {
   cursor: pointer;

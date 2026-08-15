@@ -907,6 +907,7 @@ onMounted(loadData);
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 25rem);
+  max-height: calc(100dvh - 25rem);
   overflow-y: auto;
 }
 

@@ -129,9 +129,8 @@ interface PackagesCacheEntry {
 let _packagesCache: PackagesCacheEntry | null = null;
 const PACKAGES_CACHE_TTL_MS = 5000; // 5 seconds
 
-export default defineEventHandler(async (event) => {
-  requireUser(event);
-
+/** Shared payload builder — also used by the unified downloads snapshot. */
+export async function getPyloadPackagesPayload() {
   // Return cached response if still fresh
   if (_packagesCache && Date.now() - _packagesCache.ts < PACKAGES_CACHE_TTL_MS) {
     return _packagesCache.data;
@@ -173,4 +172,9 @@ export default defineEventHandler(async (event) => {
   _packagesCache = { data: result, ts: Date.now() };
 
   return result;
+}
+
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+  return await getPyloadPackagesPayload();
 });

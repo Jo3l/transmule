@@ -151,7 +151,7 @@
         <span class="mdi mdi-tray-alert icon-lg" />
         <p>{{ $t("downloads.noDownloads") }}</p>
       </div>
-      <div v-else class="mobile-cards">
+      <div v-else class="mobile-cards mobile-cards-scroll">
         <div
           v-for="row in filteredFiles"
           :key="row._uid"
@@ -444,7 +444,7 @@
     </div>
 
     <!-- Desktop table + action buttons (≥769px) -->
-    <div class="is-hidden-mobile" @click.stop>
+    <div class="is-hidden-mobile downloads-table-scroll" @click.stop>
       <!-- Unified downloads table -->
       <STable
         :data="filteredFiles"
@@ -1961,61 +1961,65 @@ const totalSelected = computed(() =>
 
 async function doSlskdAction(action: 'retry' | 'cancel') {
   let hadError = false;
-  // Collect ALL valid files from ALL selected rows first
-  const allValidFiles: { username: string; id: string | number; fullFilename: string; size: number }[] = [];
-  for (const uid of selectedItems) {
-    const row = allFiles.value.find((r: any) => r._uid === uid);
-    if (!row || row._type !== 'slskd') continue;
-    for (const f of (row._files ?? [])) {
-      if (f.username && f.id) {
-        allValidFiles.push({ username: f.username, id: f.id, fullFilename: f.fullFilename, size: f.size });
-      }
-    }
-  }
-  if (allValidFiles.length === 0) {
+  // Collect selected slskd groups (each row = one directory group)
+  const selectedGroups = allFiles.value.filter(
+    (r: any) => selectedItems.has(r._uid) && r._type === 'slskd',
+  );
+  if (selectedGroups.length === 0) {
     addToast(t('downloads.slskd.noValidFiles', 'No valid files to cancel'), 'error');
     return;
   }
+  const totalFileCount = selectedGroups.reduce(
+    (s: number, g: any) => s + (g._files?.length ?? 0), 0,
+  );
   try {
     if (action === 'cancel') {
-      // Cancel in parallel chunks of 5 to avoid overwhelming slskd
-      const CHUNK = 5;
-      for (let i = 0; i < allValidFiles.length; i += CHUNK) {
-        const chunk = allValidFiles.slice(i, i + CHUNK);
-        const results = await Promise.allSettled(
-          chunk.map((f) =>
-            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-              method: 'DELETE',
-            }).then(() => true).catch(() => false),
-          ),
-        );
-        const ok = results.filter((r) => r.status === 'fulfilled' && r.value).length;
-        if (ok < chunk.length) hadError = true;
-      }
-    } else if (action === 'retry') {
-      const CHUNK = 5;
-      for (let i = 0; i < allValidFiles.length; i += CHUNK) {
-        const chunk = allValidFiles.slice(i, i + CHUNK);
-        const results = await Promise.allSettled(
-          chunk.map((f) =>
-            apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-              method: 'DELETE',
-            }).then(() => true).catch(() => false),
-          ),
-        );
-        if (results.some((r) => r.status === 'rejected' || !r.value)) hadError = true;
-      }
-      const fileList = allValidFiles.map((f) => ({ filename: f.fullFilename, size: f.size }));
-      await apiFetch('/api/slskd/transfers', {
+      // Single unified call — the middleware fans out the per-file slskd
+      // DELETEs server-side instead of the frontend firing hundreds of calls.
+      await apiFetch('/api/downloads/cancel', {
         method: 'POST',
-        body: { username: allValidFiles[0].username, files: fileList },
+        body: {
+          slskd: {
+            groups: selectedGroups.map((g: any) => ({
+              username: g.username,
+              directory: g.folder,
+            })),
+          },
+        },
       }).catch(() => { hadError = true; });
+    } else if (action === 'retry') {
+      // Cancel groups server-side, then re-enqueue the full file list.
+      await apiFetch('/api/downloads/cancel', {
+        method: 'POST',
+        body: {
+          slskd: {
+            groups: selectedGroups.map((g: any) => ({
+              username: g.username,
+              directory: g.folder,
+            })),
+          },
+        },
+      }).catch(() => { hadError = true; });
+      const allValidFiles = selectedGroups.flatMap((g: any) =>
+        (g._files ?? []).filter((f: any) => f.username && f.fullFilename),
+      );
+      const byUser = new Map<string, { filename: string; size: number }[]>();
+      for (const f of allValidFiles) {
+        if (!byUser.has(f.username)) byUser.set(f.username, []);
+        byUser.get(f.username)!.push({ filename: f.fullFilename, size: f.size });
+      }
+      for (const [uname, files] of byUser) {
+        await apiFetch('/api/slskd/transfers', {
+          method: 'POST',
+          body: { username: uname, files },
+        }).catch(() => { hadError = true; });
+      }
     }
   } catch { hadError = true; }
   if (hadError) {
     addToast(t('downloads.slskd.actionError', 'Some transfers could not be processed'), 'warning');
   } else {
-    addToast(t('downloads.slskd.cancelledN', '{n} files cancelled').replace('{n}', String(allValidFiles.length)), 'success');
+    addToast(t('downloads.slskd.cancelledN', '{n} files cancelled').replace('{n}', String(totalFileCount)), 'success');
   }
   // Small delay so slskd has time to process removals before we refresh
   await new Promise((r) => setTimeout(r, 500));
@@ -2355,10 +2359,11 @@ async function fetchAllChunks() {
   }
 }
 
-async function refreshAmule() {
+async function refreshAmule(payload?: any) {
   if (amuleStopped.value) return;
   try {
-    const res = await apiFetch<any>("/api/amule/downloads");
+    const res = payload !== undefined ? payload : await apiFetch<any>("/api/amule/downloads");
+    if (!res || res.error) return;
     amuleData.value = res;
     const raw = res?.downloads?.files || [];
     amuleFiles.value = raw.map((f: any) => ({
@@ -2373,10 +2378,11 @@ async function refreshAmule() {
   }
 }
 
-async function refreshTorrents() {
+async function refreshTorrents(payload?: any) {
   if (transmissionStopped.value) return;
   try {
-    const res = await apiFetch<any>("/api/transmission/torrents");
+    const res = payload !== undefined ? payload : await apiFetch<any>("/api/transmission/torrents");
+    if (!res || res.error) return;
     torrentData.value = res;
     const raw = res?.torrents?.files || [];
     torrentFiles.value = raw.map((t: any) => ({
@@ -2391,10 +2397,11 @@ async function refreshTorrents() {
   }
 }
 
-async function refreshPyload() {
+async function refreshPyload(payload?: any) {
   if (pyloadStopped.value) return;
   try {
-    const res = await apiFetch<any>("/api/pyload/packages");
+    const res = payload !== undefined ? payload : await apiFetch<any>("/api/pyload/packages");
+    if (!res || res.error) return;
     const raw = res?.packages ?? [];
     pyloadFiles.value = raw.map((p: any) => ({
       ...p,
@@ -2409,11 +2416,14 @@ async function refreshPyload() {
   }
 }
 
-async function refreshSlskd() {
+async function refreshSlskd(payload?: any) {
   if (slskdStopped.value) return;
   try {
-    // Fetch grouped transfers
-    const res = await apiFetch<any>("/api/slskd/transfers?direction=download&grouped=true");
+    // Grouped transfers (from snapshot or individual endpoint)
+    const res = payload !== undefined
+      ? payload
+      : await apiFetch<any>("/api/slskd/transfers?direction=download&grouped=true");
+    if (!res || (!Array.isArray(res) && res.error)) return;
     const raw = Array.isArray(res) ? res : [];
     const groups: any[] = [];
     let totalFiles = 0;
@@ -2591,12 +2601,13 @@ async function pushSpeedHistory() {
   // history is now accumulated server-side; fetch it from the API
 }
 
-async function fetchSpeedHistory() {
+async function fetchSpeedHistory(payload?: any) {
   try {
-    const data =
-      await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]>(
-        "/api/speed-history",
-      );
+    const data = payload !== undefined
+      ? payload
+      : await apiFetch<{ t: number; amule: number; torrent: number; pyload: number; slskd: number; up: number }[]>(
+          "/api/speed-history",
+        );
     speedHistory.value = data ?? [];
   } catch {
     /* silent */
@@ -2605,7 +2616,19 @@ async function fetchSpeedHistory() {
 }
 
 async function refresh() {
-  await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload(), refreshSlskd(), fetchSpeedHistory()]);
+  // Single unified round-trip — the middleware fans out to every service
+  // server-side. Fallback: if the snapshot itself fails, use the individual
+  // per-service endpoints (they keep working independently).
+  try {
+    const snap = await apiFetch<any>("/api/downloads/snapshot");
+    refreshAmule(snap?.amule);
+    refreshTorrents(snap?.torrent);
+    refreshPyload(snap?.pyload);
+    refreshSlskd(snap?.slskd);
+    fetchSpeedHistory(snap?.speedHistory);
+  } catch {
+    await Promise.all([refreshAmule(), refreshTorrents(), refreshPyload(), refreshSlskd(), fetchSpeedHistory()]);
+  }
   applySortAndFilter();
 }
 
@@ -2616,78 +2639,9 @@ const clearingDownloaded = ref(false);
 async function clearDownloaded() {
   clearingDownloaded.value = true;
   try {
-    const done = allFiles.value;
-
-    const amuleDone = done
-      .filter((r) => r._type === "amule" && r.status === "Complete")
-      .map((r) => r.hash);
-
-    const torrentDone = done
-      .filter((r) => r._type === "torrent" && r.percentDone >= 1)
-      .map((r) => r._torrentId);
-
-    const pyloadDone = done
-      .filter((r) => r._type === "pyload" && r.finishedLinks === r.linkCount && r.linkCount > 0)
-      .map((r) => r.pid);
-
-    const ops: Promise<any>[] = [];
-
-    if (amuleDone.length) {
-      ops.push(
-        apiFetch("/api/amule/downloads", {
-          method: "POST",
-          body: { action: "cancel", hashes: amuleDone },
-        }).catch(() => {}),
-      );
-    }
-
-    if (torrentDone.length) {
-      ops.push(
-        apiFetch("/api/transmission/torrents", {
-          method: "POST",
-          body: { action: "remove", ids: torrentDone },
-        }).catch(() => {}),
-      );
-    }
-
-    if (pyloadDone.length) {
-      ops.push(
-        apiFetch("/api/pyload/packages", {
-          method: "POST",
-          body: { action: "delete", pids: pyloadDone },
-        }).catch(() => {}),
-      );
-    }
-
-    // slskd completed — collect all valid files across all groups
-    const slskdDone = done
-      .filter((r) => r._type === "slskd" && r.status === "Complete");
-    const slskdFiles: { username: string; id: string | number }[] = [];
-    for (const group of slskdDone) {
-      for (const f of (group._files ?? [])) {
-        if (f.username && f.id) {
-          slskdFiles.push({ username: f.username, id: f.id });
-        }
-      }
-    }
-    // Cancel in parallel chunks of 5 to avoid overwhelming slskd
-    const CHUNK = 5;
-    for (let i = 0; i < slskdFiles.length; i += CHUNK) {
-      const chunk = slskdFiles.slice(i, i + CHUNK);
-      ops.push(
-        ...chunk.map((f) =>
-          apiFetch(`/api/slskd/transfers/${encodeURIComponent(f.username)}/${encodeURIComponent(f.id)}?remove=true`, {
-            method: "DELETE",
-          }).catch(() => {}),
-        ),
-      );
-      if (i + CHUNK < slskdFiles.length) {
-        // Small delay between chunks to let slskd breathe
-        await new Promise((r) => setTimeout(r, 200));
-      }
-    }
-
-    await Promise.all(ops);
+    // Single unified call — the middleware queries each service, decides what
+    // counts as finished, and clears it (amule/torrent/pyload/slskd).
+    await apiFetch("/api/downloads/clear-finished", { method: "POST" }).catch(() => {});
     selectedItems.clear();
     await refresh();
   } finally {
@@ -2757,39 +2711,24 @@ function confirmCancel() {
 async function doCancel() {
   cancelling.value = true;
   try {
-    const ops: Promise<any>[] = [];
     const targets = cancelTargets.value;
+    // slskd groups selected at confirm time
+    const slskdGroups = allFiles.value
+      .filter((r: any) => selectedItems.has(r._uid) && r._type === "slskd")
+      .map((g: any) => ({ username: g.username, directory: g.folder }));
 
-    if (targets.amule.length) {
-      ops.push(
-        apiFetch("/api/amule/downloads", {
-          method: "POST",
-          body: { action: "cancel", hashes: targets.amule },
-        }),
-      );
-    }
+    // Single unified call — middleware dispatches each service internally
+    await apiFetch("/api/downloads/cancel", {
+      method: "POST",
+      body: {
+        removeData: true,
+        amule: { hashes: targets.amule },
+        torrent: { ids: targets.torrent },
+        pyload: { pids: targets.pyload },
+        slskd: { groups: slskdGroups },
+      },
+    });
 
-    if (targets.torrent.length) {
-      ops.push(
-        apiFetch("/api/transmission/torrents", {
-          method: "POST",
-          body: { action: "remove_data", ids: targets.torrent },
-        }),
-      );
-    }
-
-    if (targets.pyload.length) {
-      for (const pid of targets.pyload) {
-        ops.push(
-          apiFetch("/api/pyload/packages", {
-            method: "POST",
-            body: { action: "delete", pids: [pid] },
-          }),
-        );
-      }
-    }
-
-    await Promise.all(ops);
     selectedItems.clear();
     showCancelDialog.value = false;
     await refresh();
@@ -2916,6 +2855,24 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Downloads table: scroll inside the table wrapper (sticky thead),
+   page itself stays put so topbar/sidebar remain visible.
+   350px ≈ topbar + app-content padding + action bar + totals box + filters.
+   dvh = dynamic viewport height (iOS Safari toolbar-safe), vh = fallback. */
+.downloads-table-scroll {
+  /* Let STable's s-table-wrap handle scrolling so thead stays sticky */
+}
+.downloads-table-scroll :deep(.s-table-wrap) {
+  max-height: calc(100vh - 350px);
+  max-height: calc(100dvh - 350px);
+  overflow-y: auto;
+}
+/* Mobile cards list: same bounded scroll (offset is smaller — no action bar) */
+.mobile-cards-scroll {
+  max-height: calc(100vh - 290px);
+  max-height: calc(100dvh - 290px);
+  overflow-y: auto;
+}
 .type-icon {
   font-size: 1.1rem;
 }
