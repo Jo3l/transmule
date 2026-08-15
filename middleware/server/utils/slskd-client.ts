@@ -597,6 +597,14 @@ export class SlskdClient {
     return res.status === 200 || res.status === 204;
   }
 
+  /** Remove all completed downloads in one call (slskd native bulk endpoint). */
+  async clearCompletedDownloads(): Promise<boolean> {
+    const res = await this.fetch("/transfers/downloads/all/completed", {
+      method: "DELETE",
+    });
+    return res.status === 200 || res.status === 204;
+  }
+
   // ── Config helpers (private transforms, chained by connect()) ──────────────
 
   private _credentialsTransform(dbUser: string, dbPass: string): (yaml: string) => string {

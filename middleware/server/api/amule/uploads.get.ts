@@ -13,9 +13,8 @@ defineRouteMeta({
   },
 });
 
-export default defineEventHandler(async (event) => {
-  requireUser(event);
-
+/** Shared payload builder — also used by the unified uploads snapshot. */
+export async function getUnifiedUploadsPayload() {
   // Fetch aMule upload queue and Transmission upload peers in parallel
   const amuleClient = useAmuleClient();
   const trClient = useTransmissionClient();
@@ -89,4 +88,9 @@ export default defineEventHandler(async (event) => {
       clients: all,
     },
   };
+}
+
+export default defineEventHandler(async (event) => {
+  requireUser(event);
+  return await getUnifiedUploadsPayload();
 });

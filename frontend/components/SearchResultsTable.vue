@@ -323,6 +323,7 @@ const extraSlotColumns = computed(() => {
 }
 .search-results-table :deep(.s-table-wrap) {
   max-height: calc(100vh - 400px);
+  max-height: calc(100dvh - 400px);
 }
 .source-header-wrap {
   display: flex;

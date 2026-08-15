@@ -10,50 +10,55 @@ defineRouteMeta({
   },
 });
 
+/** Shared payload builder — also used by the unified downloads snapshot. */
+export async function getTransmissionTorrentsPayload() {
+  const client = useTransmissionClient();
+
+  const [torrents, stats] = await Promise.all([
+    client.getTorrents(),
+    client.getSessionStats(),
+  ]);
+
+  // Compute totals
+  let totalDown = 0;
+  let totalUp = 0;
+  let totalSize = 0;
+  let totalDone = 0;
+
+  for (const t of torrents) {
+    totalDown += t.rateDownload;
+    totalUp += t.rateUpload;
+    totalSize += t.sizeWhenDone;
+    totalDone += t.sizeWhenDone - t.leftUntilDone;
+  }
+
+  updateServiceSpeed("torrent", totalDown);
+  updateServiceUploadSpeed("torrent", totalUp);
+
+  return {
+    torrents: {
+      count: torrents.length,
+      files: torrents,
+      totals: {
+        speed_down: totalDown,
+        speed_down_fmt: fmtSpeed(totalDown),
+        speed_up: totalUp,
+        speed_up_fmt: fmtSpeed(totalUp),
+        size: totalSize,
+        size_fmt: fmtBytes(totalSize),
+        size_done: totalDone,
+        size_done_fmt: fmtBytes(totalDone),
+      },
+    },
+    session: stats,
+  };
+}
+
 export default defineEventHandler(async (event) => {
   requireUser(event);
 
   try {
-    const client = useTransmissionClient();
-
-    const [torrents, stats] = await Promise.all([
-      client.getTorrents(),
-      client.getSessionStats(),
-    ]);
-
-    // Compute totals
-    let totalDown = 0;
-    let totalUp = 0;
-    let totalSize = 0;
-    let totalDone = 0;
-
-    for (const t of torrents) {
-      totalDown += t.rateDownload;
-      totalUp += t.rateUpload;
-      totalSize += t.sizeWhenDone;
-      totalDone += t.sizeWhenDone - t.leftUntilDone;
-    }
-
-    updateServiceSpeed("torrent", totalDown);
-    updateServiceUploadSpeed("torrent", totalUp);
-
-    return {
-      torrents: {
-        count: torrents.length,
-        files: torrents,
-        totals: {
-          speed_down: totalDown,
-          speed_down_fmt: fmtSpeed(totalDown),
-          speed_up: totalUp,
-          speed_up_fmt: fmtSpeed(totalUp),
-          size: totalSize,
-          size_fmt: fmtBytes(totalSize),
-          size_done: totalDone,
-          size_done_fmt: fmtBytes(totalDone),
-        },
-      },
-      session: stats,
-    };
+    return await getTransmissionTorrentsPayload();
   } catch (err: any) {
     throw createError({
       statusCode: 503,

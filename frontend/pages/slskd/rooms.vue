@@ -121,6 +121,7 @@ async function onRoomClick(row: any) {
 }
 .rooms-scroll :deep(.s-table-wrap) {
   max-height: calc(100vh - 200px);
+  max-height: calc(100dvh - 200px);
 }
 .icon-lg {
   font-size: 2rem;
