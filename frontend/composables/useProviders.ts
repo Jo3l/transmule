@@ -128,6 +128,15 @@ export function useProviders() {
     return _searchSources.value;
   }
 
+  /**
+   * Invalidate the cached search-source list so the next loadSearchSources()
+   * re-fetches. Call this after a plugin's sub-sources change (e.g. enabling
+   * an Indexerr instance) so search dropdowns pick it up without a full reload.
+   */
+  function invalidateSearchSources(): void {
+    _searchSources.value = null;
+  }
+
   /** Flat torrent-search sources (enabled plugins + their sub-sources). */
   const torrentSearchSources = computed(() => _searchSources.value ?? []);
 
@@ -225,6 +234,7 @@ export function useProviders() {
     hasTorrentSearchProviders,
     loadProviders,
     loadSearchSources,
+    invalidateSearchSources,
     getProviders,
     toggleProvider,
     uploadPlugin,
