@@ -46,10 +46,13 @@ Pushing the tag triggers the GitHub Actions workflow (`.github/workflows/docker-
 After each `git push --tags`, clean up old tags to keep only the latest 2:
 
 ```bash
-# Delete all tags except the two most recent, locally
-git tag -l | sort -V | head -n -2 | xargs -r git tag -d
-# Push deletions to remote
-git push origin --delete $(git tag -l | sort -V | head -n -2)
+# Capture the tags to delete (all but the two most recent) BEFORE deleting,
+# so the same list can be pushed for remote deletion afterwards.
+TAGS_TO_DELETE=$(git tag -l | sort -V | head -n -2)
+# Delete them locally
+[ -n "$TAGS_TO_DELETE" ] && echo "$TAGS_TO_DELETE" | xargs -r git tag -d
+# Delete them on the remote
+[ -n "$TAGS_TO_DELETE" ] && git push origin --delete $TAGS_TO_DELETE
 ```
 
 This prevents tag bloat on the repository and keeps the tag list useful. The two most recent tags are always retained so the Docker CI can still build from the previous tag if needed.
