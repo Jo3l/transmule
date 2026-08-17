@@ -6,20 +6,35 @@
  * locally during development.
  */
 
-import type { MediaProvider, TorrentSearchPlugin, AnyPlugin } from "./types";
+import type {
+  MediaProvider,
+  TorrentSearchPlugin,
+  AnyPlugin,
+  PluginApiRoute,
+} from "./types";
 import { readdir } from "node:fs/promises";
 import { resolve, join, dirname, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { existsSync, mkdirSync, watch as fsWatch } from "node:fs";
+import { createPluginContext, clearPluginIntervals } from "../utils/plugin-context";
+import { resolveCapabilities } from "../utils/plugin-capabilities";
 
 const _providers = new Map<string, AnyPlugin>();
 const _pluginFilenames = new Map<string, string>(); // id → filename (or virtual id for bundled)
+const _routes = new Map<string, Map<string, PluginApiRoute>>(); // pluginId → ("METHOD path" → handler)
 
 let _loaded = false;
 
 /** Get a provider by id. */
 export function getProvider(id: string): AnyPlugin | undefined {
   return _providers.get(id);
+}
+
+/** Routes installed by a plugin, keyed by `"METHOD path"`. */
+export function getPluginRoutes(
+  id: string,
+): Map<string, PluginApiRoute> | undefined {
+  return _routes.get(id);
 }
 
 /** Get all registered plugins (both media and torrent-search). */
@@ -61,8 +76,10 @@ export function getPluginsDir(): string {
 
 /** Clear all providers from memory and mark for full reload. */
 export function resetPlugins(): void {
+  for (const id of _routes.keys()) clearPluginIntervals(id);
   _providers.clear();
   _pluginFilenames.clear();
+  _routes.clear();
   _loaded = false;
   _watcher?.close();
   _watcher = null;
@@ -130,10 +147,35 @@ export async function loadPlugin(fullPath: string): Promise<string | null> {
     const p = plugin as AnyPlugin;
     _providers.set(p.meta.id, p);
     _pluginFilenames.set(p.meta.id, filename);
+    await _installPlugin(p);
     return p.meta.id;
   } catch (err) {
     console.error(`[plugins] Failed to load ${filename}:`, err);
     return null;
+  }
+}
+
+/**
+ * Run a plugin's `install(ctx)` lifecycle hook and register its API routes.
+ * Errors are non-fatal: a broken install should not take down the whole app.
+ */
+async function _installPlugin(p: AnyPlugin): Promise<void> {
+  const id = p.meta.id;
+  try {
+    if (typeof p.install === "function") {
+      const capabilities = resolveCapabilities(p.meta.capability);
+      await p.install(createPluginContext(id, capabilities));
+    }
+  } catch (err) {
+    console.error(`[plugins] install failed for ${id}:`, err);
+  }
+
+  if (p.routes && typeof p.routes === "object") {
+    const table = new Map<string, PluginApiRoute>();
+    for (const [key, handler] of Object.entries(p.routes)) {
+      if (typeof handler === "function") table.set(key, handler);
+    }
+    _routes.set(id, table);
   }
 }
 

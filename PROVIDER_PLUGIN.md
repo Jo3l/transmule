@@ -213,6 +213,41 @@ module.exports = { meta: { ... }, async list(...) { ... } };
 
 ---
 
+## Plugin Installation SPI (advanced)
+
+Beyond data providers, a plugin can **install its own middleware API routes** and **declare a settings section** for the frontend. The core is fully generic and never references a plugin by id.
+
+```js
+export default {
+  meta: { id, name, icon, pluginType, capability: "cardigann" },
+
+  // (optional) receive injected core services
+  install(ctx) {
+    ctx.storage.set("key", value);        // persisted JSON, scoped to this plugin
+    ctx.interval(() => sync(), 86400000); // recurring task (returns a cancel fn)
+    ctx.log("hello");                     // scoped logger
+  },
+
+  // data methods (media: list/detail/cover; torrent-search: search)
+  async search(query, limit, extraTrackers) { ... },
+
+  // (optional) API routes installed by the plugin
+  routes: {
+    "GET /definitions": (ctx) => ({ ... }),
+    "POST /instances": (ctx) => ({ ... }),
+  },
+
+  // (optional) settings-section descriptor (rendered generically)
+  settings: { type: "collection-manager", ... },
+};
+```
+
+- **`routes`** — keys are `"METHOD /path/:param"`, dispatched under `/api/plugins/:pluginId/...`. Handlers receive `{ params, query, body, method }` and return JSON (or throw `ctx.httpError(code, msg)`).
+- **`settings`** — a `collection-manager` descriptor (toolbar + catalog list + per-item dynamic form) rendered by the generic `CollectionManager` component.
+- **`capability`** — declares core capabilities the plugin needs (e.g. `"cardigann"`, a generic Jackett/Cardigann indexer engine) which are injected into `install(ctx)`.
+
+---
+
 ## Lifecycle
 
 1. Upload the `.js` file via Settings → Providers → Upload Plugin.
