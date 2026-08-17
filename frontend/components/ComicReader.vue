@@ -655,9 +655,6 @@ watch(currentPage, (p) => { if (images.value.length > 0) emit("pageChange", p + 
 .cr-menu-text { flex: 1; }
 .cr-menu-key { color: #666; font-size: 0.75rem; font-family: monospace; }
 .cr-menu-sep { border: none; border-top: 1px solid #333; margin: 0.25rem 0.5rem; }
-.cr-menu-progress { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem 0.5rem; }
-.cr-menu-progress-track { flex: 1; height: 3px; }
-.cr-menu-progress-text { font-size: 0.75rem; color: #888; min-width: 2.5rem; text-align: right; }
 
 .cr-btn { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.35rem 0.75rem; border: 1px solid #444; border-radius: 4px; background: #222; color: #ddd; font-size: 0.8rem; cursor: pointer; transition: background 0.15s; }
 .cr-btn:hover:not(:disabled) { background: #333; }

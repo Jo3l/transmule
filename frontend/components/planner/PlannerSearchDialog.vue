@@ -1,0 +1,231 @@
+<template>
+  <SDialog
+    :model-value="modelValue"
+    :title="dialogTitle"
+    width="920px"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
+  >
+    <div v-if="searching" class="has-text-centered py-6">
+      <span class="mdi mdi-loading mdi-spin is-size-2 has-text-grey" />
+      <p class="has-text-grey is-size-7 mt-2">{{ $t("planner.searchingReleases") }}</p>
+    </div>
+
+    <SAlert v-else-if="errorMsg" variant="error" size="sm" class="mb-3">
+      {{ errorMsg }}
+    </SAlert>
+
+    <template v-else>
+      <!-- Filtro por red -->
+      <div class="psd-toolbar mb-3">
+        <SSelect v-model="networkFilter" style="min-width: 180px">
+          <option value="all">{{ $t("planner.allNetworks") }}</option>
+          <option value="direct-plugin">Torrent</option>
+          <option value="slskd">Soulseek</option>
+          <option value="amule">ED2K</option>
+        </SSelect>
+        <span class="has-text-grey is-size-7">{{ filtered.length }} {{ $t("planner.results") }}</span>
+      </div>
+
+      <div v-if="filtered.length === 0" class="box has-text-centered">
+        <p><span class="mdi mdi-magnify-close is-size-2 has-text-grey-light" /></p>
+        <p class="has-text-grey">{{ $t("planner.noResults") }}</p>
+      </div>
+
+      <STable
+        v-else
+        :data="filtered"
+        :columns="columns"
+        row-key="url"
+        :stripe="true"
+      >
+        <template #cell-service="{ row }">
+          <span class="mdi psd-net-icon" :class="serviceIcon(row.service)" />
+        </template>
+        <template #cell-name="{ row }">
+          <div class="psd-name" :title="row.rawName">
+            {{ row.rawName }}
+          </div>
+          <div v-if="row.rejectedReason" class="has-text-danger is-size-7">
+            {{ $t("planner.rejected") }}: {{ row.rejectedReason }}
+          </div>
+        </template>
+        <template #cell-quality="{ row }">
+          <STag>{{ qualityLabel(row.quality) }}</STag>
+        </template>
+        <template #cell-size="{ row }">
+          {{ formatSize(row.sizeMb) }}
+        </template>
+        <template #cell-seeds="{ row }">
+          <span v-if="row.seeds != null" class="has-text-success">
+            <span class="mdi mdi-arrow-up-bold" /> {{ row.seeds }}
+          </span>
+          <span v-else class="has-text-grey">—</span>
+        </template>
+        <template #cell-languages="{ row }">
+          <span v-if="row.languages.length" class="has-text-grey is-size-7">
+            {{ row.languages.join(" / ") }}
+          </span>
+          <span v-else class="has-text-grey">—</span>
+        </template>
+        <template #cell-actions="{ row }">
+          <SButton
+            size="sm"
+            variant="primary"
+            icon="mdi-download"
+            :loading="grabbingId === row.url"
+            @click="download(row)"
+          >
+            {{ $t("planner.download") }}
+          </SButton>
+        </template>
+      </STable>
+    </template>
+  </SDialog>
+</template>
+
+<script setup lang="ts">
+import type { ReleaseCandidate } from "~/composables/usePlanner";
+
+const props = defineProps<{
+  modelValue: boolean;
+  mediaType: "series" | "movie";
+  title: string;
+  season?: number;
+  episode?: number;
+  year?: number;
+  subscriptionId: number;
+  episodeId?: number | null;
+  movieId?: number | null;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:modelValue", v: boolean): void;
+  (e: "grabbed"): void;
+}>();
+
+const { t } = useI18n();
+const { searchReleases, grabRelease } = usePlanner();
+const { showToast } = useApi();
+
+const searching = ref(false);
+const errorMsg = ref("");
+const candidates = ref<ReleaseCandidate[]>([]);
+const grabbingId = ref<string | null>(null);
+const networkFilter = ref("all");
+
+const columns = [
+  { prop: "service", label: "", width: "40px" },
+  { prop: "name", label: "Release" },
+  { prop: "quality", label: "Calidad", width: "110px" },
+  { prop: "size", label: "Tamaño", width: "100px" },
+  { prop: "seeds", label: "Seeds", width: "80px" },
+  { prop: "languages", label: "Idioma", width: "130px" },
+  { prop: "actions", label: "", width: "110px" },
+];
+
+const dialogTitle = computed(() =>
+  props.mediaType === "series"
+    ? `${t("planner.searchResults")} — S${String(props.season ?? 0).padStart(2, "0")}E${String(props.episode ?? 0).padStart(2, "0")}`
+    : `${t("planner.searchResults")} — ${props.title}`,
+);
+
+const filtered = computed(() => {
+  if (networkFilter.value === "all") return candidates.value;
+  return candidates.value.filter((c) => c.service === networkFilter.value);
+});
+
+function serviceIcon(service: string | null): string {
+  if (service === "slskd") return "mdi-account-music";
+  if (service === "amule") return "mdi-lan";
+  return "mdi-cloud-outline";
+}
+
+function qualityLabel(q: string): string {
+  const map: Record<string, string> = {
+    uhd: "4K",
+    fullhd: "1080p",
+    hd: "720p",
+    sd: "SD",
+  };
+  return map[q] ?? (q || "—").toUpperCase();
+}
+
+function formatSize(mb: number | null): string {
+  if (mb == null || !Number.isFinite(mb)) return "—";
+  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`;
+  return `${Math.round(mb)} MB`;
+}
+
+async function runSearch() {
+  searching.value = true;
+  errorMsg.value = "";
+  candidates.value = [];
+  networkFilter.value = "all";
+  try {
+    const res = await searchReleases({
+      type: props.mediaType === "series" ? "episode" : "movie",
+      title: props.title,
+      ...(props.mediaType === "series"
+        ? { season: props.season, episode: props.episode }
+        : { year: props.year }),
+    });
+    candidates.value = res.candidates ?? [];
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    searching.value = false;
+  }
+}
+
+async function download(c: ReleaseCandidate) {
+  grabbingId.value = c.url;
+  errorMsg.value = "";
+  try {
+    await grabRelease({
+      subscription_id: props.subscriptionId,
+      episode_id: props.episodeId ?? null,
+      movie_id: props.movieId ?? null,
+      release_title: c.rawName,
+      release_url: c.url,
+      release_hash: c.hash,
+      release_quality: c.quality,
+      release_size_mb: c.sizeMb,
+      release_seeds: c.seeds,
+      service: c.service,
+    });
+    showToast(t("planner.grabQueued"), "success", 3000);
+    emit("grabbed");
+    emit("update:modelValue", false);
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    grabbingId.value = null;
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) runSearch();
+  },
+);
+</script>
+
+<style scoped>
+.psd-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.psd-name {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+.psd-net-icon {
+  font-size: 1.1rem;
+  color: var(--s-text-secondary, #888);
+}
+</style>

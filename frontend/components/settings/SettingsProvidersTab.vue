@@ -69,7 +69,7 @@ export default {
     return [];
   }
 };</code></pre>
-        <p class="is-size-7 mt-2 has-text-muted">
+        <p class="is-size-7 mt-2 has-text-grey">
           {{ $t("settings.pluginDocNote") }}
         </p>
         <p class="is-size-7 mt-1">
@@ -192,7 +192,7 @@ export default {
 
       <p
         v-if="!mediaProviderList.length && !torrentSearchProviderList.length"
-        class="has-text-muted is-size-7"
+        class="has-text-grey is-size-7"
       >
         {{ $t("settings.providersEmpty") }}
       </p>
@@ -272,7 +272,7 @@ export default {
               {{ repoPluginsError[repo.id] }}
             </p>
             <template v-else-if="repoPluginsData[repo.id]">
-              <p v-if="!repoPluginsData[repo.id]?.plugins.length" class="has-text-muted is-size-7 p-2">
+              <p v-if="!repoPluginsData[repo.id]?.plugins.length" class="has-text-grey is-size-7 p-2">
                 {{ $t("settings.reposEmpty") }}
               </p>
               <div
@@ -320,7 +320,7 @@ export default {
         </div>
       </template>
 
-      <p v-else class="has-text-muted is-size-7">
+      <p v-else class="has-text-grey is-size-7">
         {{ $t("settings.reposNone") }}
       </p>
 

@@ -69,7 +69,7 @@
         <p v-if="tab.error" class="has-text-danger mt-3 mb-3">{{ tab.error }}</p>
 
         <SLoading v-if="tab.status === 'searching' && !tab.results.length" />
-        <p v-else-if="tab.status === 'complete' && !tab.results.length" class="has-text-muted">
+        <p v-else-if="tab.status === 'complete' && !tab.results.length" class="has-text-grey">
           {{ $t("media.empty") }}
         </p>
 

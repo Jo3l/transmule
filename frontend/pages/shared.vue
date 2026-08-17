@@ -218,11 +218,6 @@ onMounted(refresh);
 </script>
 
 <style scoped>
-.share-block {
-  border: 1px solid var(--s-border, #333);
-  border-radius: 6px;
-  overflow: hidden;
-}
 .tree-row {
   padding: 0.15rem 0.5rem;
 }

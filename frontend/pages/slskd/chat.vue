@@ -83,7 +83,7 @@
         :name="tab.id"
         :active="activeTabId === tab.id"
       >
-        <div class="columns is-gapless room-view">
+        <div class="columns room-view">
           <div class="column is-3 room-users-panel">
             <div class="room-users-header">
               <span class="is-size-7 has-text-grey">{{ $t("slskd.roomUsers", "Usuarios") }}</span>
@@ -156,7 +156,7 @@
                   "
                   >{{ msg.username ?? msg.user }}:</span
                 >
-                <span class="message-text" v-html="linkify(msg.message)"></span>
+                <span v-html="linkify(msg.message)"></span>
               </div>
               <div
                 v-if="!roomMessages[tab.id]?.length"
@@ -208,7 +208,7 @@
         :name="tab.id"
         :active="activeTabId === tab.id"
       >
-        <div class="columns is-gapless room-view">
+        <div class="columns room-view">
           <div class="column is-3 room-users-panel">
             <div class="room-users-header">
               <span class="is-size-7 has-text-grey">{{ $t("slskd.userInfo", "Info") }}</span>
@@ -298,7 +298,7 @@
                   @contextmenu.prevent.stop="onUserContextmenu($event, tab.label, tab.id)"
                   >{{ tab.label }}:</span
                 >
-                <span class="message-text" v-html="linkify(msg.message)"></span>
+                <span v-html="linkify(msg.message)"></span>
               </div>
               <div
                 v-if="!userMessages[tab.id]?.length"
@@ -1846,9 +1846,6 @@ onUnmounted(() => {
   font-size: 1.1rem;
   line-height: 1;
 }
-.user-info-presence {
-  font-size: 0.7rem;
-}
 
 .user-info-item {
   display: flex;
@@ -1929,31 +1926,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.browse-file {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0.4rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-  border-radius: 3px;
-}
-.browse-file:hover {
-  background: var(--s-bg-hover);
-}
-
-.browse-file-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.browse-file-size {
-  font-size: 0.7rem;
-  color: var(--s-text-secondary);
-  flex-shrink: 0;
-}
 
 /* ── Rooms list inside chat ────────────────────────── */
 #page-slskd-rooms {

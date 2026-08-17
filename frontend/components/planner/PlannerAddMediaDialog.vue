@@ -1,0 +1,426 @@
+<template>
+  <SDialog
+    :model-value="modelValue"
+    :title="mediaType === 'series' ? $t('planner.addSeries') : $t('planner.addMovie')"
+    width="760px"
+    @update:model-value="(v: boolean) => emit('update:modelValue', v)"
+  >
+    <!-- Búsqueda -->
+    <div class="planner-search-bar mb-2">
+      <SInput
+        v-model="query"
+        size="md"
+        :placeholder="$t('planner.searchPlaceholder')"
+        @keyup.enter="doSearch"
+      >
+        <template #prefix>
+          <span class="mdi mdi-magnify" />
+        </template>
+      </SInput>
+      <SButton variant="primary" :loading="isSearching" @click="doSearch">
+        {{ $t("planner.search") }}
+      </SButton>
+    </div>
+    <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.searchHint") }}</p>
+
+    <!-- Advanced Settings (colapsable, como MediaManager) -->
+    <div class="planner-advanced mb-3">
+      <button class="planner-advanced-toggle" @click="showAdvanced = !showAdvanced">
+        <span class="mdi" :class="showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'" />
+        {{ $t("planner.advancedSettings") }}
+      </button>
+      <div v-show="showAdvanced" class="planner-advanced-body">
+        <SFormItem v-if="mediaType === 'series'" :label="$t('planner.monitorScope')">
+          <SSelect v-model="monitorScope">
+            <option value="all">{{ $t("planner.scopeAll") }}</option>
+            <option value="future">{{ $t("planner.scopeFuture") }}</option>
+            <option value="next">{{ $t("planner.scopeNext") }}</option>
+            <option value="manual">{{ $t("planner.scopeManual") }}</option>
+          </SSelect>
+        </SFormItem>
+        <SFormItem :label="$t('planner.minQuality')">
+          <SSelect v-model="minQuality">
+            <option value="uhd">4K (Ultra HD)</option>
+            <option value="fullhd">1080p (Full HD)</option>
+            <option value="hd">720p (HD)</option>
+            <option value="sd">480p (SD)</option>
+          </SSelect>
+        </SFormItem>
+        <SFormItem :label="$t('planner.rootFolder')">
+          <SInput v-model="rootFolder" />
+        </SFormItem>
+      </div>
+    </div>
+
+    <SAlert v-if="errorMsg" variant="error" size="sm" class="mb-3">{{ errorMsg }}</SAlert>
+
+    <!-- Objetivo directo (click en calendario): sin buscador, card única -->
+    <div v-if="targetResult" class="planner-target">
+      <div class="planner-card planner-card--target">
+        <div class="planner-card-media">
+          <figure class="image is-2by3">
+            <img v-if="rPoster(targetResult)" :src="rPoster(targetResult)" :alt="rName(targetResult)" />
+            <div v-else class="planner-card-fallback">
+              <span
+                class="mdi"
+                :class="props.mediaType === 'series' ? 'mdi-television-play' : 'mdi-movie-open'"
+              />
+            </div>
+          </figure>
+        </div>
+        <div>
+          <p class="title is-6 mb-1">
+            {{ rName(targetResult) }}
+            <span v-if="rYear(targetResult)" class="has-text-grey-light is-size-7">({{ rYear(targetResult) }})</span>
+          </p>
+          <p class="subtitle is-7 mb-2 has-text-grey planner-overview">
+            {{ rOverview(targetResult) || $t("planner.noOverview") }}
+          </p>
+          <div class="planner-card-actions">
+            <SButton
+              variant="primary"
+              size="sm"
+              icon="mdi-plus"
+              block
+              :loading="addingId === targetResult.id"
+              @click="addMedia(targetResult)"
+            >
+              {{ $t("planner.add") }}
+            </SButton>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados: scroll interno, grid compacto -->
+    <div v-else class="planner-results">
+      <div v-if="results.length === 0 && !isSearching" class="has-text-centered py-5">
+        <p><span class="mdi mdi-magnify-close is-size-2 has-text-grey-light" /></p>
+        <p class="has-text-grey is-size-7">{{ $t("planner.searchEmpty") }}</p>
+      </div>
+      <div v-else class="columns is-multiline">
+        <div
+          v-for="r in results"
+          :key="`${r.id}-${rName(r)}`"
+          class="column"
+        >
+          <div class="planner-card">
+            <div class="planner-card-media">
+              <figure class="image is-2by3">
+                <img v-if="rPoster(r)" :src="rPoster(r)" :alt="rName(r)" loading="lazy" />
+                <div v-else class="planner-card-fallback">
+                  <span
+                    class="mdi"
+                    :class="mediaType === 'series' ? 'mdi-television-play' : 'mdi-movie-open'"
+                  />
+                </div>
+              </figure>
+            </div>
+            <div>
+              <p class="title is-6 mb-1">
+                {{ rName(r) }}
+                <span v-if="rYear(r)" class="has-text-grey-light is-size-7">({{ rYear(r) }})</span>
+              </p>
+              <p class="subtitle is-7 mb-2 has-text-grey planner-overview">
+                {{ rOverview(r) || $t("planner.noOverview") }}
+              </p>
+              <div class="planner-card-actions">
+                <SButton
+                  v-if="!isAdded(r)"
+                  variant="primary"
+                  size="sm"
+                  icon="mdi-plus"
+                  block
+                  :loading="addingId === r.id"
+                  @click="addMedia(r)"
+                >
+                  {{ $t("planner.add") }}
+                </SButton>
+                <SButton
+                  v-else
+                  variant="success"
+                  size="sm"
+                  icon="mdi-check"
+                  block
+                  @click="emit('added', existingId(r))"
+                >
+                  {{ $t("planner.addedAlready") }}
+                </SButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </SDialog>
+</template>
+
+<script setup lang="ts">
+import type { TvdbSearchResult, TmdbSearchResult } from "~/composables/usePlanner";
+
+const props = withDefaults(
+  defineProps<{
+    modelValue?: boolean;
+    mediaType?: "series" | "movie";
+    /** Evento del calendario (discover) → se muestra como objetivo directo sin buscador */
+    initialResult?: any;
+  }>(),
+  { modelValue: false, mediaType: "series", initialResult: null },
+);
+
+const emit = defineEmits<{
+  "update:modelValue": [val: boolean];
+  /** Se emite con el id de la suscripción cuando el usuario abre una ya añadida */
+  added: [subId: number];
+}>();
+
+const { t } = useI18n();
+const { searchTvdb, searchTmdb, createSubscription, refreshSubscription, listSubscriptions } = usePlanner();
+const { showToast } = useApi();
+
+const query = ref("");
+const isSearching = ref(false);
+const errorMsg = ref("");
+const results = ref<(TvdbSearchResult | TmdbSearchResult)[]>([]);
+
+const showAdvanced = ref(false);
+const monitorScope = ref("all");
+const minQuality = ref("fullhd");
+const rootFolder = ref("/downloads");
+
+const addingId = ref<number | null>(null);
+const existing = ref<Map<number, number>>(new Map()); // externalId → subId
+
+// ── Acceso genérico a campos según mediaType ────────────────────────────────
+
+function rName(r: TvdbSearchResult | TmdbSearchResult): string {
+  return "name" in r ? r.name : r.title;
+}
+function rPoster(r: TvdbSearchResult | TmdbSearchResult): string | null {
+  return "image_url" in r ? r.image_url : r.poster_url;
+}
+function rYear(r: TvdbSearchResult | TmdbSearchResult): string | null {
+  if ("year" in r && r.year) return r.year;
+  if ("release_date" in r && r.release_date) return r.release_date.slice(0, 4);
+  return null;
+}
+function rOverview(r: TvdbSearchResult | TmdbSearchResult): string | null {
+  return r.overview;
+}
+
+/**
+ * Normaliza el initialResult (evento del calendario) a shape de búsqueda:
+ * { id, title/name, year, image_url/poster_url, overview }
+ */
+const targetResult = computed<TvdbSearchResult | TmdbSearchResult | null>(() => {
+  const ir = props.initialResult;
+  if (!ir) return null;
+
+  const year = ir.date ? ir.date.slice(0, 4) : null;
+  const base = {
+    id: ir.external_id ?? ir.id,
+    year,
+    poster_url: ir.poster_url ?? null,
+    image_url: ir.poster_url ?? null,
+    overview: ir.overview ?? null,
+    vote_average: ir.vote_average ?? null,
+  };
+  if (props.mediaType === "series") {
+    return { ...base, name: ir.title ?? "", first_air_time: ir.date ?? null, status: null } as any;
+  }
+  return { ...base, title: ir.title ?? "", release_date: ir.date ?? null } as any;
+});
+
+// ── Carga de suscripciones existentes ───────────────────────────────────────
+
+async function loadExisting() {
+  try {
+    const subs = await listSubscriptions({ type: props.mediaType });
+    const m = new Map<number, number>();
+    for (const s of subs) {
+      const ext = props.mediaType === "series" ? s.tvdb_id : s.tmdb_id;
+      if (ext) m.set(ext, s.id);
+    }
+    existing.value = m;
+  } catch {
+    // silencioso
+  }
+}
+
+function isAdded(r: TvdbSearchResult | TmdbSearchResult): boolean {
+  return existing.value.has(r.id);
+}
+function existingId(r: TvdbSearchResult | TmdbSearchResult): number {
+  return existing.value.get(r.id) ?? 0;
+}
+
+// ── Búsqueda ────────────────────────────────────────────────────────────────
+
+async function doSearch() {
+  const q = query.value.trim();
+  if (!q) return;
+  isSearching.value = true;
+  errorMsg.value = "";
+  try {
+    if (props.mediaType === "series") {
+      results.value = await searchTvdb(q);
+    } else {
+      results.value = await searchTmdb(q, { type: "movie" });
+    }
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    isSearching.value = false;
+  }
+}
+
+// ── Añadir ──────────────────────────────────────────────────────────────────
+
+async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
+  addingId.value = r.id;
+  errorMsg.value = "";
+  try {
+    // Serie desde calendario: TVmaze → external_id es tvdb_id; TMDB → tmdb_id
+    const ir = props.initialResult;
+    const useTvdbId = props.mediaType === "series" && (!ir || ir.source === "tvmaze");
+    const body =
+      props.mediaType === "series"
+        ? {
+            type: "series",
+            title: rName(r),
+            ...(useTvdbId ? { tvdb_id: r.id } : { tmdb_id: r.id }),
+            year: rYear(r) ? Number(rYear(r)) : null,
+            poster_url: rPoster(r),
+            overview: rOverview(r),
+            min_quality: minQuality.value,
+            root_folder: rootFolder.value,
+            monitored: true,
+            search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
+          }
+        : {
+            type: "movie",
+            title: rName(r),
+            tmdb_id: r.id,
+            year: rYear(r) ? Number(rYear(r)) : null,
+            poster_url: rPoster(r),
+            overview: rOverview(r),
+            min_quality: minQuality.value,
+            root_folder: rootFolder.value,
+            monitored: true,
+            search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
+          };
+
+    const sub = await createSubscription(body);
+    await refreshSubscription(sub.id);
+    showToast(t("planner.added"), "success", 3000);
+    existing.value.set(r.id, sub.id);
+    emit("added", sub.id);
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    addingId.value = null;
+  }
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) {
+      // Reset por apertura
+      query.value = "";
+      results.value = [];
+      errorMsg.value = "";
+      loadExisting();
+    }
+  },
+);
+</script>
+
+<style scoped>
+.planner-search-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.planner-search-bar .s-input-wrap {
+  flex: 1;
+}
+.planner-advanced {
+  border: 1px solid var(--s-border, #2a2a4a);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.planner-advanced-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--s-text, #d0d0f0);
+}
+.planner-advanced-toggle:hover {
+  background: var(--s-bg-hover, #1a1a30);
+}
+.planner-advanced-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--s-border, #2a2a4a);
+}
+.planner-results {
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.planner-card {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow: hidden;
+  height: 100%;
+}
+.planner-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+.planner-card-media {
+  padding: 8px;
+  background: var(--s-bg-hover, #1a1a30);
+}
+figure.image.is-2by3 {
+  border-radius: 4px;
+  overflow: hidden;
+}
+figure.image.is-2by3 img {
+  max-width: 12rem;
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+}
+.planner-card-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--s-bg-hover, #1a1a30);
+  color: var(--s-text-muted, #999);
+  font-size: 2rem;
+}
+.planner-overview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.4em;
+}
+.planner-card-actions {
+  margin-top: auto;
+}
+</style>
