@@ -36,6 +36,15 @@ export interface ProviderFilter {
   defaultValue?: string;
 }
 
+/** A flat torrent-search source entry (a plugin, or a plugin's sub-source). */
+export interface TorrentSearchSource {
+  id: string;
+  name: string;
+  icon: string;
+  pluginId: string;
+  subSource?: string;
+}
+
 export interface MediaTag {
   label: string;
   variant?: string;
@@ -97,6 +106,10 @@ export interface ProviderListResult {
 export function useProviders() {
   const { apiFetch } = useApi();
   const _providers = useState<ProviderMeta[] | null>("_providers", () => null);
+  const _searchSources = useState<TorrentSearchSource[] | null>(
+    "_searchSources",
+    () => null,
+  );
 
   async function loadProviders(force = false): Promise<ProviderMeta[]> {
     if (_providers.value && !force) return _providers.value;
@@ -104,6 +117,19 @@ export function useProviders() {
     _providers.value = data ?? [];
     return _providers.value;
   }
+
+  /** Load the flat torrent-search source list (plugins + sub-sources). */
+  async function loadSearchSources(force = false): Promise<TorrentSearchSource[]> {
+    if (_searchSources.value && !force) return _searchSources.value;
+    const data = await apiFetch<{ sources: TorrentSearchSource[] }>(
+      "/api/providers/search-sources",
+    );
+    _searchSources.value = data?.sources ?? [];
+    return _searchSources.value;
+  }
+
+  /** Flat torrent-search sources (enabled plugins + their sub-sources). */
+  const torrentSearchSources = computed(() => _searchSources.value ?? []);
 
   function getProviders(mediaType?: string): ProviderMeta[] {
     if (!_providers.value) return [];
@@ -166,6 +192,7 @@ export function useProviders() {
     await apiFetch("/api/providers/upload", { method: "POST", body: form });
     // Force full reload on next call
     _providers.value = null;
+    _searchSources.value = null;
   }
 
   async function deletePlugin(id: string): Promise<void> {
@@ -173,6 +200,7 @@ export function useProviders() {
     if (_providers.value) {
       _providers.value = _providers.value.filter((p) => p.id !== id);
     }
+    _searchSources.value = null;
   }
 
   async function installFromUrl(url: string): Promise<{ id: string; filename: string }> {
@@ -181,6 +209,7 @@ export function useProviders() {
       body: { url },
     });
     _providers.value = null;
+    _searchSources.value = null;
     return result;
   }
 
@@ -191,9 +220,11 @@ export function useProviders() {
   return {
     providers: _providers,
     torrentSearchProviders,
+    torrentSearchSources,
     mediaProviders,
     hasTorrentSearchProviders,
     loadProviders,
+    loadSearchSources,
     getProviders,
     toggleProvider,
     uploadPlugin,

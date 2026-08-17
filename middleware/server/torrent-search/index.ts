@@ -12,6 +12,7 @@ import {
   getTorrentSearchProviders,
 } from "../providers/loader";
 import { parseTorrentName } from "./parse-name";
+import { splitSource } from "./source";
 
 export type { TorrentSearchResult };
 
@@ -45,10 +46,14 @@ export async function searchTorrents(
   const plugins = getTorrentSearchProviders();
 
   const targets =
-    source === "all" ? plugins : plugins.filter((p) => p.meta.id === source);
+    source === "all"
+      ? plugins
+      : plugins.filter((p) => p.meta.id === splitSource(source).pluginId);
+
+  const subSource = source === "all" ? undefined : splitSource(source).subSource;
 
   const tasks = targets.map((p) =>
-    safeSearch(() => p.search(query, limit, extraTrackers)),
+    safeSearch(() => p.search(query, limit, extraTrackers, subSource)),
   );
 
   const all = (await Promise.all(tasks)).flat();

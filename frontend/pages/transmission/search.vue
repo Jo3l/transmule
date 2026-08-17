@@ -134,7 +134,7 @@
 const { t } = useI18n();
 const { addToast } = useToast();
 import { loadDownloadHistory } from "~/stores/downloadHistory";
-const { torrentSearchProviders, loadProviders } = useProviders();
+const { torrentSearchProviders, torrentSearchSources, loadProviders, loadSearchSources } = useProviders();
 const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } = useSearchTabs();
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
@@ -148,9 +148,9 @@ const myActiveTab = computed(
 
 const sourceOptions = computed(() => [
   { label: t("torrentSearch.sources.all"), value: "all" },
-  ...torrentSearchProviders.value.map((p) => ({
-    label: p.name,
-    value: p.id,
+  ...torrentSearchSources.value.map((s) => ({
+    label: s.name,
+    value: s.id,
   })),
 ]);
 
@@ -231,16 +231,16 @@ watch(filteredResults, () => {
 const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
 
 const providerLabelMap = computed(() =>
-  Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.name])),
+  Object.fromEntries(torrentSearchSources.value.map((s) => [s.id, s.name])),
 );
 
 const providerIconMap = computed(() =>
-  Object.fromEntries(torrentSearchProviders.value.map((p) => [p.id, p.icon])),
+  Object.fromEntries(torrentSearchSources.value.map((s) => [s.id, s.icon])),
 );
 
 const providerVariantMap = computed(() =>
   Object.fromEntries(
-    torrentSearchProviders.value.map((p, i) => [p.id, VARIANT_PALETTE[i % VARIANT_PALETTE.length]]),
+    torrentSearchSources.value.map((s, i) => [s.id, VARIANT_PALETTE[i % VARIANT_PALETTE.length]]),
   ),
 );
 
@@ -295,6 +295,7 @@ async function saveAndClose() {
 onMounted(async () => {
   await loadDownloadHistory();
   await loadProviders();
+  await loadSearchSources();
   // If activeTabId doesn't belong to a torrent tab, switch to the latest one
   if (torrentTabs.value.length > 0 && !torrentTabs.value.some((t) => t.id === activeTabId.value)) {
     switchTab(torrentTabs.value[torrentTabs.value.length - 1].id);

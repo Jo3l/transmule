@@ -9,7 +9,7 @@
       </div>
       <div class="pcm-toolbar">
         <SButton
-          v-for="action in descriptor.toolbar ?? []"
+          v-for="action in visibleToolbar"
           :key="action.key"
           variant="default"
           size="sm"
@@ -139,6 +139,12 @@ const items = ref<Record<string, any>[]>([]);
 const configured = ref<Record<string, any>>({});
 const toolbarLoading = ref<Record<string, boolean>>({});
 
+const visibleToolbar = computed(() =>
+  (descriptor.value.toolbar ?? []).filter(
+    (a) => !a.hideWhenEmpty || items.value.length > 0,
+  ),
+);
+
 const modalOpen = ref(false);
 const modalLoading = ref(false);
 const saving = ref(false);
@@ -185,6 +191,11 @@ async function runToolbar(action: PluginSettingsAction) {
     if (typeof res?.synced === "number") {
       addToast(
         t("settings.pluginCollection.refreshed", { count: res.synced }),
+        "success",
+      );
+    } else if (typeof res?.added === "number") {
+      addToast(
+        t("settings.pluginCollection.enabled", { count: res.added }),
         "success",
       );
     }

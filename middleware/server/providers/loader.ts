@@ -11,6 +11,7 @@ import type {
   TorrentSearchPlugin,
   AnyPlugin,
   PluginApiRoute,
+  PluginInstallable,
 } from "./types";
 import { readdir } from "node:fs/promises";
 import { resolve, join, dirname, basename } from "node:path";
@@ -42,17 +43,20 @@ export function getAllProviders(): AnyPlugin[] {
   return [..._providers.values()];
 }
 
-/** Get only torrent-search plugins. */
-export function getTorrentSearchProviders(): TorrentSearchPlugin[] {
+/** Get only torrent-search plugins (with their installable surface). */
+export function getTorrentSearchProviders(): (TorrentSearchPlugin &
+  PluginInstallable)[] {
   return [..._providers.values()].filter(
-    (p): p is TorrentSearchPlugin => p.meta.pluginType === "torrent-search",
+    (p): p is TorrentSearchPlugin & PluginInstallable =>
+      p.meta.pluginType === "torrent-search",
   );
 }
 
-/** Get only media (content) providers. */
-export function getMediaProviders(): MediaProvider[] {
+/** Get only media (content) providers (with their installable surface). */
+export function getMediaProviders(): (MediaProvider & PluginInstallable)[] {
   return [..._providers.values()].filter(
-    (p): p is MediaProvider => p.meta.pluginType !== "torrent-search",
+    (p): p is MediaProvider & PluginInstallable =>
+      p.meta.pluginType !== "torrent-search",
   );
 }
 

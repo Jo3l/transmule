@@ -175,28 +175,28 @@ const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 const { addToast } = useToast();
-const { torrentSearchProviders, mediaProviders, loadProviders } = useProviders();
+const { torrentSearchSources, mediaProviders, loadProviders, loadSearchSources } = useProviders();
 const { apiFetch } = useApi();
 
 const providerLabelMap = computed(() => {
   const map: Record<string, string> = { amule: "aMule", slskd: "Soulseek" };
-  for (const p of torrentSearchProviders.value) {
-    map[p.id] = p.name;
+  for (const s of torrentSearchSources.value) {
+    map[s.id] = s.name;
   }
   return map;
 });
 const providerIconMap = computed(() => {
   const map: Record<string, string> = { amule: "mdi-server-network", slskd: "mdi-bird" };
-  for (const p of torrentSearchProviders.value) {
-    map[p.id] = p.icon;
+  for (const s of torrentSearchSources.value) {
+    map[s.id] = s.icon;
   }
   return map;
 });
 const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
 const providerVariantMap = computed(() => {
   const map: Record<string, string> = { amule: "accent", slskd: "primary" };
-  torrentSearchProviders.value.forEach((p, i) => {
-    map[p.id] = VARIANT_PALETTE[i % VARIANT_PALETTE.length];
+  torrentSearchSources.value.forEach((s, i) => {
+    map[s.id] = VARIANT_PALETTE[i % VARIANT_PALETTE.length];
   });
   return map;
 });
@@ -221,8 +221,8 @@ const sourceOptions = computed(() => {
     { label: t("downloads.sources.amule"), value: "amule" },
     { label: "Soulseek", value: "slskd" },
   ];
-  for (const p of torrentSearchProviders.value) {
-    opts.push({ label: p.name, value: p.id });
+  for (const s of torrentSearchSources.value) {
+    opts.push({ label: s.name, value: s.id });
   }
   // Add media providers that can appear in global search
   for (const p of mediaProviders.value) {
@@ -503,6 +503,7 @@ async function loadCover(tabId: string, row: any) {
 
 onMounted(() => {
   loadProviders();
+  loadSearchSources();
 
   // Close source filter on outside click
   document.addEventListener("click", closeSourceFilter);
