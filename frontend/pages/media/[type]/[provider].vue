@@ -99,7 +99,7 @@
       </SButton>
     </div>
 
-    <p v-else-if="!loading" class="has-text-muted">
+    <p v-else-if="!loading" class="has-text-grey">
       {{ $t("media.empty") }}
     </p>
 
@@ -964,11 +964,6 @@ onUnmounted(() => observer?.disconnect());
 
   &.is-odd {
     background: var(--s-bg-muted);
-  }
-
-  &.is-loading {
-    opacity: 0.6;
-    pointer-events: none;
   }
 }
 

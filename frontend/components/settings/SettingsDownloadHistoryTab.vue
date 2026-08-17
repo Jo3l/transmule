@@ -11,7 +11,7 @@
 
     <SLoading v-if="historyLoading" />
 
-    <p v-else-if="!historyEntries.length" class="has-text-muted is-size-7">
+    <p v-else-if="!historyEntries.length" class="has-text-grey is-size-7">
       {{ $t("settings.downloadHistoryEmpty") }}
     </p>
 

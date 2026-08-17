@@ -279,7 +279,7 @@
       >
         <div class="box">
           <div class="table-container">
-            <table class="table is-fullwidth is-striped is-hoverable">
+            <table class="table is-fullwidth">
               <thead>
                 <tr>
                   <th>{{ $t("pyloadSettings.accountsFields.plugin") }}</th>

@@ -20,3 +20,6 @@ middleware/server/providers/plugins/*
 
 # Dev session PID file
 .dev.pid
+
+# Hermes agent internal files (plans, etc.)
+.hermes/

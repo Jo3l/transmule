@@ -5,14 +5,14 @@
     </p>
 
     <div class="fm-sr-table-wrap">
-      <table class="table is-fullwidth is-hoverable fm-sr-table">
+      <table class="table is-fullwidth fm-sr-table">
         <tbody>
           <tr v-for="item in smartRenameItems" :key="item.originalPath">
             <td class="fm-sr-item-cell">
               <div class="fm-sr-original-row">
                 <span class="fm-sr-label">{{ t("fileManager.srOriginal") }}</span>
                 <div class="fm-sr-original" :title="item.original">
-                  <span class="icon mr-1"><i :class="srIcon(item.type)"></i></span>
+                  <span class="mr-1"><i :class="srIcon(item.type)"></i></span>
                   <span class="fm-sr-original-text">{{ item.original }}</span>
                 </div>
               </div>

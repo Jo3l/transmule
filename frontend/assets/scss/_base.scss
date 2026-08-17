@@ -100,6 +100,9 @@ a {
 .has-text-centered {
   text-align: center !important;
 }
+.has-text-right {
+  text-align: right !important;
+}
 .has-text-grey {
   color: var(--s-text-muted) !important;
 }
@@ -130,8 +133,17 @@ a {
 .has-text-warning {
   color: var(--s-warning) !important;
 }
+.has-text-accent {
+  color: var(--s-accent) !important;
+}
 .is-size-7 {
   font-size: 0.75rem !important;
+}
+.is-size-2 {
+  font-size: 2.5rem !important;
+}
+.is-size-1 {
+  font-size: 3rem !important;
 }
 .is-family-monospace {
   font-family: "Fira Code", "Cascadia Code", monospace !important;
@@ -146,6 +158,15 @@ a {
 }
 .is-align-items-flex-end {
   align-items: flex-end !important;
+}
+.is-justify-content-center {
+  justify-content: center !important;
+}
+.is-align-self-center {
+  align-self: center !important;
+}
+.is-align-self-flex-end {
+  align-self: flex-end !important;
 }
 .is-hidden-tablet {
   @media (min-width: 769px) {
@@ -315,4 +336,14 @@ a {
     font-size: 0.65rem;
     height: 1.5em;
   }
+}
+
+
+/* ── Poster figure (planner cards) ───────────────────────────────────────── */
+figure.image.is-2by3 {
+  display: flex;
+  justify-content: center;
+}
+figure.image.is-2by3 img {
+  max-width: 16rem;
 }

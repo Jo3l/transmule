@@ -69,7 +69,189 @@ function _initSchema(db: DatabaseSync): void {
       repo_id    INTEGER NOT NULL,
       FOREIGN KEY (repo_id) REFERENCES plugin_repositories(id) ON DELETE CASCADE
     );
+
+    -- ─── Planner schema ─────────────────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS planner_subscriptions (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      type                TEXT    NOT NULL CHECK(type IN ('series', 'movie')),
+      tmdb_id             INTEGER,
+      tvdb_id             INTEGER,
+      imdb_id             TEXT,
+      title               TEXT    NOT NULL,
+      year                INTEGER,
+      poster_url          TEXT,
+      overview            TEXT,
+      genres_json         TEXT,
+      status              TEXT    NOT NULL,                  -- 'continuing' | 'ended' | 'released'
+      monitored           INTEGER DEFAULT 1,
+      min_quality         TEXT    NOT NULL DEFAULT 'fullhd', -- 'uhd' | 'fullhd' | 'hd' | 'sd'
+      root_folder         TEXT    NOT NULL,
+      search_services_json TEXT,                             -- JSON array of provider ids
+      language            TEXT,                             -- código ISO de idioma preferido (NULL = cualquiera)
+      parent_subscription_id INTEGER,
+      season_filter       INTEGER,                          -- NULL = all seasons
+      added_at            TEXT    DEFAULT (datetime('now')),
+      ended_at            TEXT,
+      metadata_synced_at  TEXT,
+      metadata_json       TEXT,
+      FOREIGN KEY (parent_subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_subs_type ON planner_subscriptions(type);
+    CREATE INDEX IF NOT EXISTS idx_planner_subs_tmdb ON planner_subscriptions(tmdb_id);
+    CREATE INDEX IF NOT EXISTS idx_planner_subs_tvdb ON planner_subscriptions(tvdb_id);
+    CREATE INDEX IF NOT EXISTS idx_planner_subs_parent ON planner_subscriptions(parent_subscription_id);
+
+    CREATE TABLE IF NOT EXISTS planner_seasons (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id INTEGER NOT NULL,
+      season_number   INTEGER NOT NULL,
+      monitored       INTEGER DEFAULT 1,
+      episode_count   INTEGER,
+      aired_count     INTEGER,
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE,
+      UNIQUE(subscription_id, season_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS planner_episodes (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id  INTEGER NOT NULL,
+      season_id        INTEGER NOT NULL,
+      season_number    INTEGER NOT NULL,
+      episode_number   INTEGER NOT NULL,
+      absolute_number  INTEGER,
+      title            TEXT,
+      air_date         TEXT,
+      runtime          INTEGER,
+      monitored        INTEGER DEFAULT 1,
+      status           TEXT    NOT NULL DEFAULT 'unreleased',
+      file_path        TEXT,
+      downloaded_quality TEXT,
+      grabbed_at       TEXT,
+      downloaded_at    TEXT,
+      last_search_at   TEXT,
+      search_attempts  INTEGER DEFAULT 0,
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE,
+      FOREIGN KEY (season_id) REFERENCES planner_seasons(id) ON DELETE CASCADE,
+      UNIQUE(subscription_id, season_number, episode_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_ep_status ON planner_episodes(status);
+    CREATE INDEX IF NOT EXISTS idx_planner_ep_air_date ON planner_episodes(air_date);
+    CREATE INDEX IF NOT EXISTS idx_planner_ep_sub ON planner_episodes(subscription_id);
+
+    CREATE TABLE IF NOT EXISTS planner_movies (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id    INTEGER NOT NULL UNIQUE,
+      tmdb_id            INTEGER,
+      imdb_id            TEXT,
+      digital_release_date TEXT,
+      status             TEXT    NOT NULL DEFAULT 'unreleased',
+      file_path          TEXT,
+      downloaded_quality TEXT,
+      grabbed_at         TEXT,
+      downloaded_at      TEXT,
+      last_discovery_at  TEXT,
+      discovery_attempts INTEGER DEFAULT 0,
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS planner_quality_profiles (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      name          TEXT    UNIQUE NOT NULL,
+      is_default    INTEGER DEFAULT 0,
+      qualities_json TEXT   NOT NULL,
+      cutoff        TEXT    NOT NULL,
+      upgrade_until TEXT,
+      min_size_mb   INTEGER,
+      max_size_mb   INTEGER,
+      created_at    TEXT    DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS planner_language_profiles (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT    UNIQUE NOT NULL,
+      is_default      INTEGER DEFAULT 0,
+      must_have_json  TEXT,
+      must_not_have_json TEXT,
+      created_at      TEXT    DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS planner_search_history (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id INTEGER NOT NULL,
+      episode_id      INTEGER,
+      movie_id        INTEGER,
+      service         TEXT    NOT NULL,
+      search_kind     TEXT    NOT NULL,
+      query           TEXT,
+      results_count   INTEGER,
+      picked_release  TEXT,
+      picked_title    TEXT,
+      picked_quality  TEXT,
+      picked_size_mb  INTEGER,
+      picked_hash     TEXT,
+      picked_seeds    INTEGER,
+      picked_at       TEXT    DEFAULT (datetime('now')),
+      status          TEXT    NOT NULL,
+      error_message   TEXT,
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_search_history_sub ON planner_search_history(subscription_id);
+    CREATE INDEX IF NOT EXISTS idx_planner_search_history_at ON planner_search_history(picked_at);
+
+    CREATE TABLE IF NOT EXISTS planner_grab_queue (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id INTEGER NOT NULL,
+      episode_id      INTEGER,
+      movie_id        INTEGER,
+      release_title   TEXT,
+      release_url     TEXT    NOT NULL,
+      release_hash    TEXT,
+      release_quality TEXT,
+      release_size_mb INTEGER,
+      release_seeds   INTEGER,
+      service         TEXT    NOT NULL,
+      state           TEXT    NOT NULL DEFAULT 'pending',
+      attempts        INTEGER DEFAULT 0,
+      last_error      TEXT,
+      priority        TEXT    NOT NULL DEFAULT 'normal',
+      created_at      TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_grab_queue_state ON planner_grab_queue(state);
+
+    CREATE TABLE IF NOT EXISTS planner_indexers (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT    UNIQUE NOT NULL,
+      kind            TEXT    NOT NULL,
+      base_url        TEXT    NOT NULL,
+      api_key         TEXT,
+      enabled         INTEGER DEFAULT 1,
+      priority        INTEGER DEFAULT 25,
+      last_sync_at    TEXT,
+      last_sync_status TEXT,
+      added_at        TEXT    DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS planner_metadata_cache (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      source       TEXT    NOT NULL,
+      external_id  TEXT    NOT NULL,
+      endpoint     TEXT    NOT NULL,
+      payload_json TEXT    NOT NULL,
+      fetched_at   TEXT    NOT NULL,
+      expires_at   TEXT    NOT NULL,
+      UNIQUE (source, external_id, endpoint)
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_metadata_cache_expires ON planner_metadata_cache(expires_at);
   `);
+
+  // Migration (Fase 15): añadir columna `language` a subscriptions existentes.
+  const subsCols = db
+    .prepare("PRAGMA table_info(planner_subscriptions)")
+    .all() as { name: string }[];
+  if (!subsCols.some((c) => c.name === "language")) {
+    db.exec("ALTER TABLE planner_subscriptions ADD COLUMN language TEXT");
+  }
 }
 
 // ─── Plugin repository helpers ───────────────────────────────────────────────
