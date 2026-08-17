@@ -25,6 +25,8 @@ export interface PluginSettingsAction {
   icon?: string;
   method: string;
   path: string;
+  /** When true, hide this toolbar button until the list has items. */
+  hideWhenEmpty?: boolean;
 }
 
 /** How to list the catalog items and read which are configured. */

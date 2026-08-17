@@ -221,6 +221,8 @@ export interface TorrentSearchPlugin {
     query: string,
     limit: number,
     extraTrackers: string,
+    /** Optional sub-source id (for plugins that expose multiple sources). */
+    subSource?: string,
   ): Promise<TorrentSearchResult[]>;
 }
 
@@ -279,11 +281,27 @@ export interface PluginSettingsDescriptor {
   [key: string]: unknown;
 }
 
+/** How a plugin enumerates its search sub-sources (e.g. indexerr's instances). */
+export interface PluginSourcesDescriptor {
+  /** Route returning the sub-sources list. */
+  list: { method: string; path: string };
+  /** Response key holding the array of sub-source entries. */
+  itemsKey: string;
+  /** Field in each entry that is the unique sub-source id. */
+  idField: string;
+  /** Field in each entry that is the display label. */
+  labelField: string;
+  /** Optional boolean field; entries where it is `false` are skipped. */
+  enabledField?: string;
+}
+
 /** Optional plugin-extension surface added on top of the data methods. */
 export interface PluginInstallable {
   install?(ctx: PluginContext): void | Promise<void>;
   routes?: PluginRoutes;
   settings?: PluginSettingsDescriptor;
+  /** Search sub-sources (makes the plugin appear as N sources). */
+  sources?: PluginSourcesDescriptor;
 }
 
 /** Union of all supported plugin shapes (+ installation SPI). */

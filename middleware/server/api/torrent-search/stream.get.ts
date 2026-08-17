@@ -36,7 +36,8 @@ export default defineEventHandler(async (event) => {
 
   const src =
     source === "all" ||
-    (typeof source === "string" && validIds.includes(source))
+    (typeof source === "string" &&
+      validIds.includes(source.split(":")[0] ?? ""))
       ? (source as string)
       : "all";
 

@@ -10,6 +10,7 @@ import {
   getTorrentSearchProviders,
 } from "../providers/loader";
 import { enrichWithParsedTags } from "./parse-name";
+import { splitSource } from "./source";
 
 export type { TorrentSearchResult };
 
@@ -50,34 +51,38 @@ export async function searchTorrentsStreamed(
   const targets =
     source === "all"
       ? plugins
-      : plugins.filter((p) => p.meta.id === source);
+      : plugins.filter((p) => p.meta.id === splitSource(source).pluginId);
 
   if (targets.length === 0) {
     onResult("_none", []);
     return;
   }
 
+  const subSource = source === "all" ? undefined : splitSource(source).subSource;
+
   const tasks = targets.map((p) =>
-    safeSearch(() => p.search(query, limit, extraTrackers)).then((results) => {
-      const enriched = results.map(enrichWithParsedTags);
-      // De-duplicate within this source
-      const map = new Map<string, TorrentSearchResult>();
-      for (const item of enriched) {
-        const key = item.infoHash.toLowerCase();
-        if (!key) {
-          map.set(Math.random().toString(), item);
-          continue;
+    safeSearch(() => p.search(query, limit, extraTrackers, subSource)).then(
+      (results) => {
+        const enriched = results.map(enrichWithParsedTags);
+        // De-duplicate within this source
+        const map = new Map<string, TorrentSearchResult>();
+        for (const item of enriched) {
+          const key = item.infoHash.toLowerCase();
+          if (!key) {
+            map.set(Math.random().toString(), item);
+            continue;
+          }
+          const existing = map.get(key);
+          if (!existing || item.seeders > existing.seeders) {
+            map.set(key, item);
+          }
         }
-        const existing = map.get(key);
-        if (!existing || item.seeders > existing.seeders) {
-          map.set(key, item);
-        }
-      }
-      const deduped = [...map.values()].sort(
-        (a, b) => b.seeders - a.seeders,
-      );
-      onResult(p.meta.id, deduped);
-    }),
+        const deduped = [...map.values()].sort(
+          (a, b) => b.seeders - a.seeders,
+        );
+        onResult(p.meta.id, deduped);
+      },
+    ),
   );
 
   await Promise.allSettled(tasks);

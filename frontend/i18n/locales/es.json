@@ -657,7 +657,8 @@
       "testOk": "Conexión correcta — {count} resultados",
       "testFailed": "Error de conexión",
       "saved": "Guardado",
-      "refreshed": "Definiciones actualizadas: {count}"
+      "refreshed": "Definiciones actualizadas: {count}",
+      "enabled": "Habilitados: {count} indexadores"
     },
     "pluginDocTitle": "Cómo crear un plugin",
     "pluginDocIntro": "Crea un archivo .js que exporte un objeto MediaProvider por defecto. Súbelo aquí y estará disponible tras recargar la página.",

@@ -657,7 +657,8 @@
       "testOk": "Connection OK — {count} results",
       "testFailed": "Connection error",
       "saved": "Saved",
-      "refreshed": "Definitions updated: {count}"
+      "refreshed": "Definitions updated: {count}",
+      "enabled": "Enabled: {count} indexers"
     },
     "pluginDocTitle": "How to build a plugin",
     "pluginDocIntro": "Create a .js file that exports a default MediaProvider object. Upload it here and it will be available after the page reloads.",
