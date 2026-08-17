@@ -96,6 +96,8 @@ export interface ProviderMeta {
   pluginType?: PluginType;
   /** Short description for the settings panel */
   description?: string;
+  /** Requested core capabilities (e.g. "cardigann"), injected via install(ctx). */
+  capability?: string | string[];
 }
 
 export interface ProviderSearchParams {
@@ -222,5 +224,68 @@ export interface TorrentSearchPlugin {
   ): Promise<TorrentSearchResult[]>;
 }
 
-/** Union of all supported plugin shapes */
-export type AnyPlugin = MediaProvider | TorrentSearchPlugin;
+// ── Plugin installation SPI (v2) ────────────────────────────────────────────
+//
+// A plugin is no longer just a data provider: it can also INSTALL its own
+// middleware API routes and declare a settings section for the frontend.
+// The core is fully generic — it knows nothing about a plugin's internals.
+
+/** Generic persisted JSON key/value store, scoped to a single plugin. */
+export interface PluginStorage {
+  get<T = unknown>(key: string): T | undefined;
+  set(key: string, value: unknown): void;
+  remove(key: string): void;
+  /** All keys stored by this plugin. */
+  list(): string[];
+}
+
+/** Services injected into a plugin's `install(ctx)`. */
+export interface PluginContext {
+  /** Persisted JSON storage scoped to this plugin. */
+  storage: PluginStorage;
+  /** Scoped logger (prefixed with the plugin id). */
+  log(...args: unknown[]): void;
+  /** Register a recurring task; returns a cancel function. */
+  interval(fn: () => void | Promise<void>, ms: number): () => void;
+  /** Build an HTTP error the dispatch layer understands. */
+  httpError(statusCode: number, statusMessage: string): Error;
+  /** Injected core capabilities (e.g. `cardigann`), keyed by capability name. */
+  [capability: string]: unknown;
+}
+
+/** Normalized request context passed to plugin route handlers. */
+export interface PluginRouteContext {
+  /** Path parameters extracted from `:name` segments. */
+  params: Record<string, string>;
+  /** Query-string parameters. */
+  query: Record<string, string>;
+  /** Parsed JSON body (undefined for body-less requests). */
+  body: unknown;
+  /** Uppercase HTTP method. */
+  method: string;
+}
+
+/** A plugin-installed API route handler. Returns JSON-serializable data. */
+export type PluginApiRoute = (
+  ctx: PluginRouteContext,
+) => unknown | Promise<unknown>;
+
+/** Route table: `"METHOD /path/:param"` → handler. */
+export type PluginRoutes = Record<string, PluginApiRoute>;
+
+/** Settings-section descriptor rendered generically by the frontend. */
+export interface PluginSettingsDescriptor {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** Optional plugin-extension surface added on top of the data methods. */
+export interface PluginInstallable {
+  install?(ctx: PluginContext): void | Promise<void>;
+  routes?: PluginRoutes;
+  settings?: PluginSettingsDescriptor;
+}
+
+/** Union of all supported plugin shapes (+ installation SPI). */
+export type AnyPlugin = (MediaProvider | TorrentSearchPlugin) &
+  PluginInstallable;

@@ -31,6 +31,9 @@ export default defineEventHandler(async (event) => {
       version: (p.meta as any).version ?? null,
       repository: (p.meta as any).repository ?? null,
       sourceRepoId: getPluginRepoSource(p.meta.id),
+      // Plugin-installed settings section (rendered generically by the frontend).
+      hasSettings: !!p.settings,
+      settings: p.settings ?? null,
     };
   });
 });

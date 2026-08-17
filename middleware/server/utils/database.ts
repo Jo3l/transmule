@@ -69,6 +69,13 @@ function _initSchema(db: DatabaseSync): void {
       repo_id    INTEGER NOT NULL,
       FOREIGN KEY (repo_id) REFERENCES plugin_repositories(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS plugin_kv (
+      plugin_id  TEXT NOT NULL,
+      key        TEXT NOT NULL,
+      value      TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (plugin_id, key)
+    );
 
     -- ─── Planner schema ─────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS planner_subscriptions (

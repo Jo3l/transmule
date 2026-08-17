@@ -324,48 +324,12 @@ export default {
         {{ $t("settings.reposNone") }}
       </p>
 
-      <!-- Plugins installed from repositories -->
-      <template v-if="repoInstalledProviderList.length">
+      <!-- Plugin-installed settings sections (rendered generically) -->
+      <template v-for="sp in settingsPlugins" :key="sp.id">
         <SDivider class="my-4" />
-        <h6 class="title is-6 mb-2">{{ $t("settings.reposInstalledTitle") }}</h6>
-        <p class="has-text-grey is-size-7 mb-3">
-          {{ $t("settings.reposInstalledDescription") }}
-        </p>
-        <div class="providers-list">
-          <div
-            v-for="p in repoInstalledProviderList"
-            :key="p.id"
-            class="provider-item"
-            :class="{ 'is-disabled': !p.enabled }"
-          >
-            <span class="provider-icon mdi" :class="p.icon" />
-            <div class="provider-details">
-              <div class="provider-name">
-                {{ p.name }}
-                <STag v-if="p.version" size="sm" variant="default" class="ml-1">v{{ p.version }}</STag>
-                <STag v-if="p.pluginType === 'torrent-search'" size="sm" variant="warning" class="ml-1">torrent-search</STag>
-                <STag v-else-if="p.mediaType" size="sm" variant="info" class="ml-1">{{ p.mediaType }}</STag>
-              </div>
-              <div class="provider-desc">
-                {{ p.description }}
-                <STag v-if="p.sourceRepoId && repoNameById[p.sourceRepoId]" size="sm" variant="default" class="ml-2">
-                  <span class="mdi mdi-source-repository mr-1" />{{ repoNameById[p.sourceRepoId] }}
-                </STag>
-              </div>
-            </div>
-            <SSwitch :model-value="p.enabled" @update:model-value="onToggleProvider(p.id, $event)" />
-            <SButton
-              v-if="isAdmin && pluginUpdates[p.id]"
-              variant="primary" size="sm"
-              :loading="pluginUpdating === p.id"
-              :title="$t('settings.pluginUpdateAvailable', { version: pluginUpdates[p.id]?.latestVersion })"
-              @click="onUpdatePlugin(p.id, pluginUpdates[p.id]!.url)"
-            >
-              <span class="mdi mdi-arrow-up-circle mr-1" />
-              {{ $t("settings.pluginUpdate") }}
-            </SButton>
-          </div>
-        </div>
+        <CollectionManager
+          :plugin="{ id: sp.id, name: sp.name, icon: sp.icon, settings: sp.settings }"
+        />
       </template>
     </template>
   </div>
@@ -374,6 +338,8 @@ export default {
 <script setup lang="ts">
 import type { ProviderMeta, UpdateInfo } from "~/composables/useProviders";
 import type { RepoPluginEntry, RepoPluginsResult } from "~/composables/usePluginRepos";
+import CollectionManager from "~/components/settings/plugin/CollectionManager.vue";
+import type { PluginSettingsDescriptor } from "~/composables/usePluginSettings";
 
 const { t } = useI18n();
 const { apiFetch } = useApi();
@@ -400,14 +366,20 @@ const mediaProviderList = computed(() =>
 const torrentSearchProviderList = computed(() =>
   providerList.value.filter((p) => p.pluginType === "torrent-search" && !p.sourceRepoId),
 );
-const repoInstalledProviderList = computed(() =>
-  providerList.value.filter((p) => p.sourceRepoId != null),
-);
-const repoNameById = computed(() =>
-  Object.fromEntries(repos.value.map((r) => [r.id, r.name || r.url])),
-);
 const hasOfficialRepo = computed(() =>
   repos.value.some((r) => r.url === OFFICIAL_REPO_URL),
+);
+
+// Plugins that declare their own settings section (rendered generically).
+const settingsPlugins = computed(() =>
+  providerList.value
+    .filter((p) => p.hasSettings && p.settings?.type === "collection-manager")
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      icon: p.icon,
+      settings: p.settings as PluginSettingsDescriptor,
+    })),
 );
 
 async function loadProviderList() {

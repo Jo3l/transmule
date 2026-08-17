@@ -22,6 +22,10 @@ export interface ProviderMeta {
   repository?: string | null;
   /** ID of the plugin_repositories row that installed this plugin, if any */
   sourceRepoId?: number | null;
+  /** Whether the plugin declares a settings section (rendered generically). */
+  hasSettings?: boolean;
+  /** The plugin's settings descriptor (opaque to the core frontend). */
+  settings?: Record<string, any> | null;
 }
 
 export interface ProviderFilter {
