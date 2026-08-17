@@ -116,6 +116,7 @@ import type {
   PluginSettingsDescriptor,
 } from "~/composables/usePluginSettings";
 import { usePluginApi } from "~/composables/usePluginSettings";
+import { useProviders } from "~/composables/useProviders";
 
 const props = defineProps<{
   plugin: {
@@ -129,6 +130,7 @@ const props = defineProps<{
 const { t } = useI18n();
 const { addToast } = useToast();
 const { fetch: pluginFetch } = usePluginApi(props.plugin.id);
+const { invalidateSearchSources } = useProviders();
 
 const descriptor = computed(() => props.plugin.settings);
 const list = computed(() => descriptor.value.list);
@@ -181,6 +183,7 @@ async function reload() {
   } finally {
     loading.value = false;
   }
+  invalidateSearchSources();
 }
 
 async function runToolbar(action: PluginSettingsAction) {
@@ -258,6 +261,7 @@ async function toggle(item: Record<string, any>, enabled: boolean) {
         { enabled },
       );
       configured.value = { ...configured.value, [id]: { ...inst, enabled } };
+      invalidateSearchSources();
     }
   } catch (err: any) {
     addToast(
