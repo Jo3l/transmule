@@ -193,17 +193,18 @@ function getPath(data: TemplateData, path: string): unknown {
   return cur;
 }
 
-function evaluate(expr: Expr, data: TemplateData): unknown {
+function evaluate(expr: Expr, data: TemplateData, dot?: unknown): unknown {
   switch (expr.k) {
     case "literal":
       return expr.v;
     case "var": {
       if (expr.path === ".True") return true;
       if (expr.path === ".False") return false;
+      if (expr.path === ".") return dot !== undefined ? dot : data;
       return getPath(data, expr.path);
     }
     case "call": {
-      const args = expr.args.map((a) => evaluate(a, data));
+      const args = expr.args.map((a) => evaluate(a, data, dot));
       return callFunction(expr.fn, args);
     }
   }
@@ -280,7 +281,8 @@ function tokenizeTemplate(tpl: string): Token[] {
 type Node =
   | { kind: "text"; value: string }
   | { kind: "expr"; expr: Expr }
-  | { kind: "if"; cond: Expr; then: Node[]; else: Node[] };
+  | { kind: "if"; cond: Expr; then: Node[]; else: Node[] }
+  | { kind: "range"; coll: Expr; body: Node[]; else: Node[] };
 
 function firstWord(s: string): string {
   const m = /^\s*([A-Za-z]+)/.exec(s);
@@ -319,6 +321,22 @@ function parseNodes(tokens: Token[], idx: { v: number }, stop: Set<string>): Nod
       nodes.push({ kind: "if", cond, then, else: els });
       continue;
     }
+    if (w === "range") {
+      const collSrc = tok.content.slice(5).trim();
+      const coll = parseExpression(collSrc);
+      idx.v++;
+      const body = parseNodes(tokens, idx, new Set(["else", "end"]));
+      let els: Node[] = [];
+      if (actionWord(tokens[idx.v], "else")) {
+        idx.v++;
+        els = parseNodes(tokens, idx, new Set(["end"]));
+      }
+      if (actionWord(tokens[idx.v], "end")) {
+        idx.v++;
+      }
+      nodes.push({ kind: "range", coll, body, else: els });
+      continue;
+    }
     // Expresión simple
     nodes.push({ kind: "expr", expr: parseExpression(tok.content) });
     idx.v++;
@@ -326,16 +344,25 @@ function parseNodes(tokens: Token[], idx: { v: number }, stop: Set<string>): Nod
   return nodes;
 }
 
-function renderNodes(nodes: Node[], data: TemplateData): string {
+function renderNodes(nodes: Node[], data: TemplateData, dot?: unknown): string {
   let out = "";
   for (const n of nodes) {
     if (n.kind === "text") out += n.value;
     else if (n.kind === "expr") {
-      const v = evaluate(n.expr, data);
+      const v = evaluate(n.expr, data, dot);
       out += v === undefined || v === null ? "" : String(v);
     } else if (n.kind === "if") {
-      if (truthy(evaluate(n.cond, data))) out += renderNodes(n.then, data);
-      else out += renderNodes(n.else, data);
+      if (truthy(evaluate(n.cond, data, dot))) out += renderNodes(n.then, data, dot);
+      else out += renderNodes(n.else, data, dot);
+    } else if (n.kind === "range") {
+      const coll = evaluate(n.coll, data, dot);
+      const items: unknown[] = Array.isArray(coll)
+        ? coll
+        : coll && typeof coll === "object"
+          ? Object.values(coll as object)
+          : [];
+      if (items.length === 0) out += renderNodes(n.else, data, dot);
+      else for (const item of items) out += renderNodes(n.body, data, item);
     }
   }
   return out;

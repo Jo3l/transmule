@@ -19,6 +19,7 @@ interface PlannerSubscription {
   min_quality: "uhd" | "fullhd" | "hd" | "sd";
   root_folder: string;
   search_services_json: string | null;
+  language: string | null;
   parent_subscription_id: number | null;
   season_filter: number | null;
   added_at: string;
@@ -74,6 +75,12 @@ export interface TvdbSearchResult {
   image_url: string | null;
   overview: string | null;
   status: string | null;
+}
+
+export interface TvdbLanguage {
+  code: string;
+  tvdb: string;
+  name: string;
 }
 
 export interface ReleaseCandidate {
@@ -183,6 +190,14 @@ export function usePlanner() {
     return res.results;
   }
 
+  /** Idiomas en los que TVDB tiene el nombre de la serie traducido. */
+  async function getTvdbTranslations(id: number) {
+    const res = await apiFetch<{ languages: TvdbLanguage[] }>(
+      `/api/planner/metadata/tvdb/series/${id}/translations`,
+    );
+    return res.languages ?? [];
+  }
+
   // ── Búsqueda interactiva unificada (Fase 14) ──────────────────────────────
 
   async function searchReleases(body: Record<string, unknown>) {
@@ -220,6 +235,7 @@ export function usePlanner() {
     updateEpisode,
     searchTmdb,
     searchTvdb,
+    getTvdbTranslations,
     searchReleases,
     grabRelease,
     autoDownload,

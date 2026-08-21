@@ -202,4 +202,57 @@ export async function getTvdbSeriesEpisodes(
     }));
 }
 
+// ─── Translations (idiomas disponibles del nombre de la serie) ─────────────
+
+export interface TvdbLanguage {
+  /** Código ISO-639-1 (2 letras) que entiende el motor (es, en, it, ...). */
+  code: string;
+  /** Código de idioma TVDB (3 letras, p.ej. "spa"). */
+  tvdb: string;
+  /** Nombre legible del idioma (endónimo). */
+  name: string;
+}
+
+/** TVDB usa códigos de 3 letras (ISO 639-2/B); el motor usa 2 (ISO 639-1). */
+const TVDB_LANG_TO_ISO: Record<string, string> = {
+  eng: "en", spa: "es", ita: "it", por: "pt", fra: "fr", fre: "fr",
+  deu: "de", ger: "de", rus: "ru", jpn: "ja", kor: "ko", zho: "zh", chi: "zh",
+  nld: "nl", dut: "nl", pol: "pl", swe: "sv", dan: "da", nor: "no",
+  fin: "fi", ces: "cs", cze: "cs", hun: "hu", ron: "ro", rum: "ro",
+  ukr: "uk", ell: "el", gre: "el", tur: "tr", tha: "th", vie: "vi",
+  hin: "hi", cat: "ca", eus: "eu", baq: "eu", glg: "gl", lat: "la",
+};
+
+const ISO_LANG_NAMES: Record<string, string> = {
+  en: "English", es: "Español", it: "Italiano", pt: "Português",
+  fr: "Français", de: "Deutsch", ru: "Русский", ja: "日本語",
+  ko: "한국어", zh: "中文", nl: "Nederlands", pl: "Polski",
+  sv: "Svenska", da: "Dansk", no: "Norsk", fi: "Suomi",
+  cs: "Čeština", hu: "Magyar", ro: "Română", uk: "Українська",
+  el: "Ελληνικά", tr: "Türkçe", th: "ไทย", vi: "Tiếng Việt",
+  hi: "हिन्दी", ca: "Català", eu: "Euskara", gl: "Galego", la: "Latina",
+};
+
+/**
+ * Devuelve los idiomas en los que TVDB tiene traducido el NOMBRE de la serie
+ * (nameTranslations), normalizados al código ISO-2 que usa el motor. Útil para
+ * poblar el selector de idioma del planificador al añadir una serie.
+ */
+export async function getTvdbSeriesTranslations(id: number): Promise<TvdbLanguage[]> {
+  const data = await tvdbFetch<any>(`/series/${id}/translations/eng`, {
+    ttlSeconds: 24 * 60 * 60,
+  });
+  if (!data?.nameTranslations) return [];
+  const seen = new Set<string>();
+  const out: TvdbLanguage[] = [];
+  for (const t of data.nameTranslations) {
+    const tvdb = String(t.language ?? "").toLowerCase();
+    const code = TVDB_LANG_TO_ISO[tvdb];
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    out.push({ code, tvdb, name: ISO_LANG_NAMES[code] ?? code });
+  }
+  return out;
+}
+
 export { getTvdbKey };

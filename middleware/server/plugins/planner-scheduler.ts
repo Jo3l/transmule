@@ -301,7 +301,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
 
     searched++;
     try {
-      const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services);
+      const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, sub.language ?? undefined);
       const parsed = items.map((i) => i.parsed);
       const decision = pickBest({
         releases: parsed,
@@ -309,6 +309,9 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
         season: ep.season_number,
         episode: ep.episode_number,
         minQuality: (sub.min_quality ?? "fullhd") as any,
+        ...(sub.language
+          ? { languageProfile: { mustHave: [sub.language], allowUnknownLang: true } }
+          : {}),
       });
 
       recordSearchHistory({
@@ -365,7 +368,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
   const db = useDatabase();
   const movieRows = db
     .prepare(
-      `SELECT m.*, s.title, s.min_quality, s.search_services_json, s.id AS sub_id,
+      `SELECT m.*, s.title, s.min_quality, s.search_services_json, s.language, s.id AS sub_id,
               s.added_at AS sub_added_at
        FROM planner_movies m
        JOIN planner_subscriptions s ON s.id = m.subscription_id
@@ -389,12 +392,15 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     searched++;
 
     try {
-      const items = await searchMovie(movie.title, movie.year, services);
+      const items = await searchMovie(movie.title, movie.year, services, movie.language ?? undefined);
       const parsed = items.map((i) => i.parsed);
       const decision = pickBest({
         releases: parsed,
         expectedTitle: movie.title,
         minQuality: (movie.min_quality ?? "fullhd") as any,
+        ...(movie.language
+          ? { languageProfile: { mustHave: [movie.language], allowUnknownLang: true } }
+          : {}),
       });
 
       recordSearchHistory({

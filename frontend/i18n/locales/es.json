@@ -29,7 +29,7 @@
     "downloads": "Descargas",
     "uploads": "Subidas",
     "settings": "Configuración",
-    "planner": "Planificador",
+    "planner": "Planificadorr",
     "amule": "aMule",
     "search": "Buscar",
     "servers": "Servidores",
@@ -1440,7 +1440,7 @@
     "sortByFiles": "Ordenar por archivos"
   },
   "planner": {
-    "title": "Planificador",
+    "title": "Planificadorr",
     "dashboard": "Dashboard",
     "series": "Series",
     "movies": "Películas",
@@ -1521,6 +1521,9 @@
     "download": "Descargar",
     "grabQueued": "Descarga encolada",
     "language": "Idioma",
-    "languageAny": "Cualquiera"
+    "languageAny": "Cualquiera",
+    "chooseLanguage": "Elige el idioma de búsqueda del episodio",
+    "loadingLanguages": "Cargando idiomas…",
+    "cancel": "Cancelar"
   }
 }

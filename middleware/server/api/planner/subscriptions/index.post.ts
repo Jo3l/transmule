@@ -35,6 +35,7 @@ defineRouteMeta({
               search_services_json: { type: "string", nullable: true },
               parent_subscription_id: { type: "integer", nullable: true },
               season_filter: { type: "integer", nullable: true },
+              language: { type: "string", nullable: true },
             },
           } as any,
         },
@@ -83,5 +84,6 @@ export default defineEventHandler(async (event) => {
     search_services_json: body.search_services_json ?? null,
     parent_subscription_id: body.parent_subscription_id ?? null,
     season_filter: body.season_filter ?? null,
+    language: body.language ?? null,
   });
 });

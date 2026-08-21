@@ -54,8 +54,40 @@
 
     <SAlert v-if="errorMsg" variant="error" size="sm" class="mb-3">{{ errorMsg }}</SAlert>
 
+    <!-- Confirmación de idioma (series): cargar traducciones TVDB -->
+    <div v-if="confirming" class="planner-confirm">
+      <p class="title is-6 mb-1">
+        {{ rName(confirming.result) }}
+        <span v-if="rYear(confirming.result)" class="has-text-grey-light is-size-7">({{ rYear(confirming.result) }})</span>
+      </p>
+      <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.chooseLanguage") }}</p>
+      <p v-if="confirming.loading" class="has-text-grey is-size-7 py-2">{{ $t("planner.loadingLanguages") }}</p>
+      <template v-else>
+        <SFormItem :label="$t('planner.language')">
+          <SSelect v-model="confirming.selectedLanguage">
+            <option value="">{{ $t("planner.languageAny") }}</option>
+            <option v-for="lang in confirming.languages" :key="lang.code" :value="lang.code">
+              {{ lang.name }} ({{ lang.code }})
+            </option>
+          </SSelect>
+        </SFormItem>
+        <div class="planner-confirm-actions">
+          <SButton
+            variant="primary"
+            :loading="addingId === confirming.result.id"
+            @click="confirmAdd"
+          >
+            {{ $t("planner.add") }}
+          </SButton>
+          <SButton variant="default" @click="confirming = null">
+            {{ $t("planner.cancel") }}
+          </SButton>
+        </div>
+      </template>
+    </div>
+
     <!-- Objetivo directo (click en calendario): sin buscador, card única -->
-    <div v-if="targetResult" class="planner-target">
+    <div v-else-if="targetResult" class="planner-target">
       <div class="planner-card planner-card--target">
         <div class="planner-card-media">
           <figure class="image is-2by3">
@@ -156,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TvdbSearchResult, TmdbSearchResult } from "~/composables/usePlanner";
+import type { TvdbSearchResult, TmdbSearchResult, TvdbLanguage } from "~/composables/usePlanner";
 
 const props = withDefaults(
   defineProps<{
@@ -175,7 +207,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { searchTvdb, searchTmdb, createSubscription, refreshSubscription, listSubscriptions } = usePlanner();
+const { searchTvdb, searchTmdb, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations } = usePlanner();
 const { showToast } = useApi();
 
 const query = ref("");
@@ -183,13 +215,20 @@ const isSearching = ref(false);
 const errorMsg = ref("");
 const results = ref<(TvdbSearchResult | TmdbSearchResult)[]>([]);
 
-const showAdvanced = ref(false);
+const showAdvanced = ref(true);
 const monitorScope = ref("all");
 const minQuality = ref("fullhd");
 const rootFolder = ref("/downloads");
 
 const addingId = ref<number | null>(null);
 const existing = ref<Map<number, number>>(new Map()); // externalId → subId
+
+const confirming = ref<null | {
+  result: TvdbSearchResult | TmdbSearchResult;
+  languages: TvdbLanguage[];
+  selectedLanguage: string;
+  loading: boolean;
+}>(null);
 
 // ── Acceso genérico a campos según mediaType ────────────────────────────────
 
@@ -277,6 +316,29 @@ async function doSearch() {
 // ── Añadir ──────────────────────────────────────────────────────────────────
 
 async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
+  errorMsg.value = "";
+  if (props.mediaType === "series") {
+    // Pedir idioma: cargar las traducciones de TVDB de esta serie.
+    confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
+    try {
+      confirming.value.languages = await getTvdbTranslations(r.id);
+    } catch {
+      confirming.value.languages = [];
+    }
+    confirming.value.loading = false;
+  } else {
+    await doCreate(r, null);
+  }
+}
+
+async function confirmAdd() {
+  const c = confirming.value;
+  if (!c) return;
+  await doCreate(c.result, c.selectedLanguage || null);
+  confirming.value = null;
+}
+
+async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string | null) {
   addingId.value = r.id;
   errorMsg.value = "";
   try {
@@ -296,6 +358,7 @@ async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
             root_folder: rootFolder.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
+            language,
           }
         : {
             type: "movie",
@@ -330,6 +393,7 @@ watch(
       query.value = "";
       results.value = [];
       errorMsg.value = "";
+      confirming.value = null;
       loadExisting();
     }
   },
@@ -422,5 +486,17 @@ figure.image.is-2by3 img {
 }
 .planner-card-actions {
   margin-top: auto;
+}
+.planner-confirm {
+  border: 1px solid var(--s-border, #2a2a4a);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.planner-confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
 }
 </style>
