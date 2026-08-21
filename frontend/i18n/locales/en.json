@@ -29,7 +29,7 @@
     "downloads": "Downloads",
     "uploads": "Uploads",
     "settings": "Settings",
-    "planner": "Planner",
+    "planner": "Plannerr",
     "amule": "aMule",
     "search": "Search",
     "servers": "Servers",
@@ -1440,7 +1440,7 @@
     "sortByFiles": "Sort by files"
   },
   "planner": {
-    "title": "Planner",
+    "title": "Plannerr",
     "dashboard": "Dashboard",
     "series": "Series",
     "movies": "Movies",
@@ -1521,6 +1521,9 @@
     "download": "Download",
     "grabQueued": "Download queued",
     "language": "Language",
-    "languageAny": "Any"
+    "languageAny": "Any",
+    "chooseLanguage": "Choose the episode search language",
+    "loadingLanguages": "Loading languages…",
+    "cancel": "Cancel"
   }
 }

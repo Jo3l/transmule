@@ -16,24 +16,49 @@ import { HttpClient } from "./http.ts";
 
 function buildQueryData(query: SearchQuery): Record<string, unknown> {
   const q: Record<string, unknown> = {};
-  if (query.imdbId) q.IMDBID = query.imdbId;
+  const imdb = query.imdbId ?? "";
+  if (imdb) {
+    q.IMDBID = imdb;
+    q.IMDBIDShort = imdb.replace(/^tt/i, "");
+  }
   if (query.tvdbId) q.TVDBID = query.tvdbId;
   if (query.tmdbId) q.TMDBID = query.tmdbId;
-  if (query.season != null) {
-    q.SEASON = query.season;
-    q.SEASONNUMBER = query.season;
-  }
-  if (query.episode != null) {
-    q.EPISODE = query.episode;
-    q.EPISODENUMBER = query.episode;
-  }
+  if (query.season != null) q.Season = query.season;
+  if (query.episode != null) q.Ep = query.episode;
+  if (query.keywords) q.Keywords = query.keywords;
   return q;
 }
 
-function renderInputs(inputs: Record<string, string>, tpl: TemplateData): Record<string, string> {
+function renderInputs(
+  inputs: Record<string, string> | undefined,
+  tpl: TemplateData,
+): { inputs?: Record<string, string>; raw: string } {
+  if (!inputs) return { inputs: undefined, raw: "" };
   const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(inputs)) out[k] = renderTemplate(v, tpl);
-  return out;
+  let raw = "";
+  for (const [k, v] of Object.entries(inputs)) {
+    const rendered = renderTemplate(String(v), tpl);
+    // `$raw` es un fragmento de query string que Jackett añade tal cual (p.ej.
+    // el bucle `{{ range .Categories }}&categories[]={{.}}{{end}}` de UNIT3D).
+    if (k === "$raw") raw += rendered;
+    else out[k] = rendered;
+  }
+  return { inputs: Object.keys(out).length ? out : undefined, raw };
+}
+
+function renderHeaders(
+  headers: Record<string, string | string[]> | undefined,
+  tpl: TemplateData,
+): Record<string, string[]> | undefined {
+  if (!headers) return undefined;
+  const out: Record<string, string[]> = {};
+  for (const [name, raw] of Object.entries(headers)) {
+    const vals = (Array.isArray(raw) ? raw : [raw])
+      .map((v) => renderTemplate(String(v), tpl))
+      .filter((v) => v !== "");
+    if (vals.length) out[name] = vals;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function extractInfoHash(magnet: string): string {
@@ -272,7 +297,13 @@ async function extractJsonResults(
         if (res) out.push(res);
       }
     } else {
-      const result = extractFields(def, makeJsonExtractor(container, undefined), tpl);
+      // `attribute` sin `multiple`: los campos viven bajo `row[attribute]`
+      // (p.ej. UNIT3D devuelve cada torrent con sus datos bajo `attributes`).
+      const base = attribute
+        ? (container as Record<string, unknown>)?.[attribute]
+        : container;
+      if (base == null) continue;
+      const result = extractFields(def, makeJsonExtractor(base, container), tpl);
       const res = await composeResult(def, result, baseUrl, tpl, http);
       if (res) out.push(res);
     }
@@ -293,9 +324,10 @@ async function doLogin(
   const path = renderTemplate(login.path, tpl);
   if (!path) return;
   const url = path.startsWith("http") ? path : new URL(path, baseUrl).toString();
-  const inputs = login.inputs ? renderInputs(login.inputs, tpl) : undefined;
+  const { inputs } = renderInputs(login.inputs, tpl);
+  const headers = renderHeaders(login.headers, tpl);
   try {
-    await http.fetch(url, { method: login.method ?? "POST", inputs, responseType: "html" });
+    await http.fetch(url, { method: login.method ?? "POST", inputs, headers, responseType: "html" });
   } catch {
     // login fallido se tolera: la búsqueda posterior puede devolver vacío
   }
@@ -330,23 +362,36 @@ export async function runSearch(
     Keywords: keywords,
     Config: { ...config, sitelink: def.links?.[0] ?? "" },
     Query: buildQueryData(query),
+    Categories: query.categories ?? [],
   };
 
   const baseUrl = String(config.baseUrl || config.sitelink || def.links?.[0] || "");
 
   await doLogin(def, tpl, baseUrl, http);
 
+  const searchHeaders = renderHeaders(def.search?.headers, tpl);
+
   for (const sp of def.search?.paths ?? []) {
     if (results.length >= limit) break;
     const path = renderTemplate(sp.path, tpl);
     if (!path) continue;
-    const fullUrl = path.startsWith("http") ? path : new URL(path, baseUrl).toString();
+    let fullUrl = path.startsWith("http") ? path : new URL(path, baseUrl).toString();
     const responseType = sp.response?.type ?? "html";
-    const inputs = sp.inputs ? renderInputs(sp.inputs, tpl) : undefined;
+    const mergedInputs = { ...(def.search?.inputs ?? {}), ...(sp.inputs ?? {}) };
+    const { inputs, raw } = renderInputs(
+      Object.keys(mergedInputs).length ? mergedInputs : undefined,
+      tpl,
+    );
+    const rawQuery = raw.replace(/^&+/, "");
+    if (rawQuery) fullUrl += (fullUrl.includes("?") ? "&" : "?") + rawQuery;
+    const pathHeaders = renderHeaders(sp.headers, tpl);
+    const headers = searchHeaders
+      ? { ...searchHeaders, ...(pathHeaders ?? {}) }
+      : pathHeaders;
 
     let page;
     try {
-      page = await http.fetch(fullUrl, { method: sp.method ?? "GET", responseType, inputs });
+      page = await http.fetch(fullUrl, { method: sp.method ?? "GET", responseType, inputs, headers });
     } catch {
       continue;
     }

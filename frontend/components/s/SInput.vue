@@ -38,7 +38,7 @@ const props = withDefaults(
     rows?: number;
     disabled?: boolean;
     readonly?: boolean;
-    size?: "sm" | "md";
+    size?: "sm" | "md" | "lg";
   }>(),
   {
     modelValue: "",

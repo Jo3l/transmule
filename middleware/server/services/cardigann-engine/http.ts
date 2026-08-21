@@ -7,6 +7,7 @@ export interface FetchOptions {
   method?: string;
   responseType?: "html" | "json";
   inputs?: Record<string, string>;
+  headers?: Record<string, string | string[]>;
   timeoutMs?: number;
 }
 
@@ -49,10 +50,17 @@ export class HttpClient {
   }
 
   async fetch(url: string, opts: FetchOptions = {}): Promise<PageResult> {
-    const { method = "GET", responseType = "html", inputs, timeoutMs = 15_000 } = opts;
-    const headers: Record<string, string> = { "User-Agent": DEFAULT_UA };
+    const { method = "GET", responseType = "html", inputs, headers: customHeaders, timeoutMs = 15_000 } = opts;
+    const headers = new Headers({ "User-Agent": DEFAULT_UA });
     const cookie = this.cookieHeader();
-    if (cookie) headers["Cookie"] = cookie;
+    if (cookie) headers.set("Cookie", cookie);
+    if (customHeaders) {
+      for (const [name, raw] of Object.entries(customHeaders)) {
+        for (const v of Array.isArray(raw) ? raw : [raw]) {
+          if (v !== "") headers.append(name, v);
+        }
+      }
+    }
 
     let finalUrl = url;
     let body: string | undefined;
@@ -60,7 +68,7 @@ export class HttpClient {
     if (inputs && Object.keys(inputs).length > 0) {
       const qs = new URLSearchParams(inputs);
       if (method === "POST") {
-        headers["Content-Type"] = "application/x-www-form-urlencoded";
+        headers.set("Content-Type", "application/x-www-form-urlencoded");
         body = qs.toString();
       } else {
         const u = new URL(url);

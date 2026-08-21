@@ -57,7 +57,32 @@ export function selectJsonPath(value: unknown, path: string, parent?: unknown): 
     p = p.slice(2);
   }
   if (!p) return cur;
-  for (const part of p.split(".")) {
+  // Tokeniza el path soportando índices de array (`[0]`) y claves entre corchetes (`["k"]`).
+  const parts: string[] = [];
+  let buf = "";
+  let i = 0;
+  while (i < p.length) {
+    const c = p[i];
+    if (c === ".") {
+      if (buf) { parts.push(buf); buf = ""; }
+      i++;
+    } else if (c === "[") {
+      if (buf) { parts.push(buf); buf = ""; }
+      const close = p.indexOf("]", i);
+      if (close < 0) { parts.push(p.slice(i + 1)); break; }
+      let key = p.slice(i + 1, close);
+      if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
+        key = key.slice(1, -1);
+      }
+      parts.push(key);
+      i = close + 1;
+    } else {
+      buf += c;
+      i++;
+    }
+  }
+  if (buf) parts.push(buf);
+  for (const part of parts) {
     if (part === "") continue;
     if (cur == null) return undefined;
     if (typeof cur !== "object") return undefined;

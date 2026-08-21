@@ -57,7 +57,7 @@
     "shows": "Serie TV",
     "files": "File",
     "portStatus": "Stato Porte Pubbliche",
-    "planner": "Planner"
+    "planner": "Plannerr"
   },
   "connection": {
     "amule": "aMule",
@@ -1439,7 +1439,7 @@
     "emptyFolder": "Empty folder"
   },
   "planner": {
-    "title": "Planner",
+    "title": "Plannerr",
     "dashboard": "Dashboard",
     "series": "Series",
     "movies": "Movies",

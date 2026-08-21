@@ -237,5 +237,25 @@ const strictLangDecision = pickBest({
 expectEq(strictLangDecision.rejected.length, 1, "StrictLang: rejected (no allowUnknownLang)");
 expectEq(strictLangDecision.picked, null, "StrictLang: nothing picked");
 
+// ── Caso 13: must_have en código ISO ("es") vs parser ("spanish") ──────────
+// El perfil guarda "es" (ISO-2); el parser emite "spanish". Sin normalizar no
+// coincidirían y el release se rechazaría (bug Fase 15).
+const isoLangReleases = [
+  "Breaking.Bad.S01E01.1080p.WEB-DL.x264-ESPAÑOL-GROUP",
+].map(parseReleaseName);
+
+const isoLangDecision = pickBest({
+  releases: isoLangReleases,
+  expectedTitle: "Breaking Bad",
+  season: 1,
+  episode: 1,
+  minQuality: "hd",
+  languageProfile: { mustHave: ["es"], allowUnknownLang: true },
+});
+
+expectEq(isoLangDecision.rejected.length, 0, "IsoLang: 'es' matchea release 'spanish'");
+assert(isoLangDecision.picked !== null, "IsoLang: picked");
+expectEq(isoLangDecision.picked?.languageScore, 10, "IsoLang: +10 por match normalizado");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

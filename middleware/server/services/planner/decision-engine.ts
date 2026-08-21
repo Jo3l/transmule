@@ -12,6 +12,7 @@
  */
 
 import type { ParsedRelease } from "./release-parser";
+import { mapLanguageToIso } from "./release-parser.ts";
 
 export type QualityTier = "uhd" | "fullhd" | "hd" | "sd" | "unknown";
 
@@ -117,12 +118,15 @@ function languageScore(
 ): { score: number; rejected?: string } {
   if (!profile) return { score: 0 };
 
-  const mustNot = (profile.mustNotHave ?? []).map((l) => l.toLowerCase());
-  const mustHave = (profile.mustHave ?? []).map((l) => l.toLowerCase());
+  // Normalizar a ISO-2: el parser emite nombres ("spanish") y el perfil guarda
+  // códigos ISO ("es"). Comparar sin normalizar hace que nunca coincidan.
+  const relLangs = (releaseLangs ?? []).map((l) => mapLanguageToIso(l));
+  const mustNot = (profile.mustNotHave ?? []).map((l) => mapLanguageToIso(l));
+  const mustHave = (profile.mustHave ?? []).map((l) => mapLanguageToIso(l));
 
   // must_not_have: rechaza si el release contiene ese idioma
   for (const forbidden of mustNot) {
-    if (releaseLangs.some((l) => l.toLowerCase() === forbidden)) {
+    if (relLangs.includes(forbidden)) {
       return { score: -1000, rejected: `language "${forbidden}" forbidden` };
     }
   }
@@ -130,19 +134,17 @@ function languageScore(
   // must_have: puntúa si coincide, rechaza si ninguno
   if (mustHave.length > 0) {
     const unknownOnly =
-      releaseLangs.length === 0 ||
-      releaseLangs.every((l) => l.toLowerCase() === "unknown" || l.toLowerCase() === "subs");
+      relLangs.length === 0 ||
+      relLangs.every((l) => l === "unknown" || l === "subs");
     if (unknownOnly && profile.allowUnknownLang) {
-      // Sin idioma detectado: no rechazar, penalización leve (release sin etiqueta).
+      // Sin idioma detectado: no rechazar, penalización leve.
       return { score: -10 };
     }
-    const matched = mustHave.filter((m) =>
-      releaseLangs.some((l) => l.toLowerCase() === m),
-    );
+    const matched = mustHave.filter((m) => relLangs.includes(m));
     if (matched.length === 0) {
       return {
         score: -500,
-        rejected: `no required language (need ${mustHave.join("|")}, got ${releaseLangs.join(",") || "none"})`,
+        rejected: `no required language (need ${mustHave.join("|")}, got ${relLangs.join(",") || "none"})`,
       };
     }
     return { score: matched.length * 10 };
@@ -150,7 +152,6 @@ function languageScore(
 
   return { score: 0 };
 }
-
 // ─── Main pickBest ──────────────────────────────────────────────────────────
 
 export function pickBest(req: DecisionRequest): DecisionResult {

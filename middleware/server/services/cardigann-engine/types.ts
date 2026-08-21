@@ -42,6 +42,7 @@ export interface SearchPath {
   method?: string;
   response?: { type: "html" | "json" };
   inputs?: Record<string, string>;
+  headers?: Record<string, string | string[]>;
   followredirect?: boolean;
 }
 
@@ -76,6 +77,7 @@ export interface LoginSpec {
   path?: string;
   method?: string;
   inputs?: Record<string, string>;
+  headers?: Record<string, string | string[]>;
   error?: { selector: string; message?: string }[];
   test?: { path: string; selector: string };
 }
@@ -98,6 +100,7 @@ export interface IndexerDefinition {
   search?: {
     paths: SearchPath[];
     inputs?: Record<string, string>;
+    headers?: Record<string, string | string[]>;
     keywordsfilters?: Filter[];
     rows: RowsSpec;
     fields: Record<string, FieldSpec>;
