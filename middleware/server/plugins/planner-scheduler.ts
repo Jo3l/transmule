@@ -16,6 +16,7 @@ import { getTvdbSeriesEpisodes } from "../services/planner/tvdb";
 import {
   getTmdbMovieDetail,
   getTmdbMovieReleaseDates,
+  getAllTmdbTvEpisodes,
 } from "../services/planner/tmdb";
 import {
   listSubscriptions,
@@ -108,14 +109,38 @@ async function updateCalendar(): Promise<void> {
   const staleThreshold = Date.now() - 12 * 60 * 60 * 1000;
 
   for (const sub of series) {
-    if (!sub.tvdb_id) continue;
+    if (!sub.tvdb_id && !sub.tmdb_id) continue;
     // Skip if synced < 12h ago
     if (sub.metadata_synced_at) {
       const synced = new Date(sub.metadata_synced_at).getTime();
       if (!Number.isNaN(synced) && synced > staleThreshold) continue;
     }
 
-    const episodes = await getTvdbSeriesEpisodes(sub.tvdb_id);
+    // TVDB primero; si la serie no tiene tvdb_id (añadida desde TMDB),
+    // usa TMDB como fuente de episodios.
+    let episodes: Array<{
+      seasonNumber: number;
+      number: number;
+      absoluteNumber: number | null;
+      name: string | null;
+      airDate: string | null;
+      runtime: number | null;
+      overview: string | null;
+    }>;
+    if (sub.tvdb_id) {
+      episodes = await getTvdbSeriesEpisodes(sub.tvdb_id);
+    } else {
+      const tmdbEps = await getAllTmdbTvEpisodes(sub.tmdb_id!);
+      episodes = tmdbEps.map((e) => ({
+        seasonNumber: e.season_number,
+        number: e.episode_number,
+        absoluteNumber: null,
+        name: e.name,
+        airDate: e.air_date,
+        runtime: e.runtime,
+        overview: e.overview,
+      }));
+    }
     if (episodes.length === 0) continue;
 
     const bySeason = new Map<number, typeof episodes>();

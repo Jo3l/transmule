@@ -38,6 +38,7 @@
     </div>
 
     <LazySToastContainer />
+    <PlannerSetupDialog />
 
     <!-- ── Webamp — mounted here so it persists across route changes ── -->
     <ClientOnly>

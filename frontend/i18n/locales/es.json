@@ -1524,6 +1524,11 @@
     "languageAny": "Cualquiera",
     "chooseLanguage": "Elige el idioma de búsqueda del episodio",
     "loadingLanguages": "Cargando idiomas…",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "setupTitle": "Configurar Planificadorr",
+    "setupNoIntegration": "El Planificadorr necesita una integración de metadata (TVDB o TMDB) para buscar series y películas.",
+    "setupHint": "Configúrala en Configuración → Integraciones.",
+    "setupNoPlugins": "Recomendamos instalar plugins de búsqueda de torrents; sin ellos, el Planificadorr solo buscaría en aMule o Soulseek (si están en marcha).",
+    "setupGoSettings": "Ir a Configuración"
   }
 }
