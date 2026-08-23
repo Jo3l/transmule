@@ -54,17 +54,22 @@
         <!-- Planificador collapsible section (tras Configuración) -->
         <div
           class="sidebar-section"
-          :class="{ 'is-expanded': plannerOpen }"
+          :class="{ 'is-expanded': plannerOpen, 'is-disabled': plannerDisabled }"
         >
-          <a class="sidebar-section-header" @click="plannerOpen = !plannerOpen">
+          <a
+            class="sidebar-section-header"
+            @click="plannerDisabled ? openSetup() : (plannerOpen = !plannerOpen)"
+          >
             <span class="mdi mdi-calendar-clock"></span>
             {{ $t("nav.planner") }}
+            <span v-if="plannerDisabled" class="sidebar-section-badge">{{ $t("nav.disabled") }}</span>
             <span
+              v-else
               class="mdi sidebar-section-chevron"
               :class="plannerOpen ? 'mdi-chevron-down' : 'mdi-chevron-right'"
             />
           </a>
-          <ul v-show="plannerOpen" class="menu-list sidebar-section-list">
+          <ul v-show="plannerOpen && !plannerDisabled" class="menu-list sidebar-section-list">
             <li>
               <NuxtLink to="/planner" @click="$emit('close')">
                 <span class="mdi mdi-view-dashboard-outline"></span>
@@ -342,6 +347,9 @@ const { services, loaded } = useServices();
 // Provider-driven sidebar
 const { loadProviders, providers, hasTorrentSearchProviders } = useProviders();
 
+// Estado de integraciones del planificador (disabled + modal de setup)
+const { plannerDisabled, openSetup, loadStatus } = usePlannerStatus();
+
 // Group enabled media providers by mediaType (torrent-search plugins excluded)
 const mediaGroups = computed(() => {
   const groups = new Map<string, ProviderMeta[]>();
@@ -404,6 +412,13 @@ onMounted(async () => {
     await loadProviders();
   } catch {
     // Fallback: show nothing, user hasn't logged in yet
+  }
+
+  // Planner integration status (para el estado disabled)
+  try {
+    await loadStatus();
+  } catch {
+    // silencioso
   }
 
   // Expand the section matching the current route

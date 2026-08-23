@@ -207,13 +207,14 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { searchTvdb, searchTmdb, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations } = usePlanner();
+const { searchTmdb, searchSeries, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations } = usePlanner();
 const { showToast } = useApi();
 
 const query = ref("");
 const isSearching = ref(false);
 const errorMsg = ref("");
 const results = ref<(TvdbSearchResult | TmdbSearchResult)[]>([]);
+const seriesSource = ref<"tvdb" | "tmdb">("tvdb");
 
 const showAdvanced = ref(true);
 const monitorScope = ref("all");
@@ -302,7 +303,9 @@ async function doSearch() {
   errorMsg.value = "";
   try {
     if (props.mediaType === "series") {
-      results.value = await searchTvdb(q);
+      const res = await searchSeries(q);
+      seriesSource.value = res.source;
+      results.value = res.results;
     } else {
       results.value = await searchTmdb(q, { type: "movie" });
     }
@@ -315,10 +318,17 @@ async function doSearch() {
 
 // ── Añadir ──────────────────────────────────────────────────────────────────
 
+/** ¿La serie que se añade usa tvdb_id (vs tmdb_id)? */
+function seriesUsesTvdb(): boolean {
+  const ir = props.initialResult;
+  if (ir) return ir.source === "tvmaze";
+  return seriesSource.value === "tvdb";
+}
+
 async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
   errorMsg.value = "";
-  if (props.mediaType === "series") {
-    // Pedir idioma: cargar las traducciones de TVDB de esta serie.
+  if (props.mediaType === "series" && seriesUsesTvdb()) {
+    // Pedir idioma (solo series TVDB): cargar las traducciones de TVDB.
     confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
     try {
       confirming.value.languages = await getTvdbTranslations(r.id);
@@ -343,8 +353,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
   errorMsg.value = "";
   try {
     // Serie desde calendario: TVmaze → external_id es tvdb_id; TMDB → tmdb_id
-    const ir = props.initialResult;
-    const useTvdbId = props.mediaType === "series" && (!ir || ir.source === "tvmaze");
+    const useTvdbId = props.mediaType === "series" && seriesUsesTvdb();
     const body =
       props.mediaType === "series"
         ? {

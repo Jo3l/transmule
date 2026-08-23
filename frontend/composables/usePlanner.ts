@@ -83,6 +83,14 @@ export interface TvdbLanguage {
   name: string;
 }
 
+export interface PlannerStatus {
+  hasTvdb: boolean;
+  hasTmdb: boolean;
+  hasMetadataIntegration: boolean;
+  searchPluginCount: number;
+  hasSearchPlugins: boolean;
+}
+
 export interface ReleaseCandidate {
   url: string;
   hash: string | null;
@@ -190,6 +198,21 @@ export function usePlanner() {
     return res.results;
   }
 
+  /** Búsqueda de series con fallback TVDB→TMDB; devuelve la fuente usada. */
+  async function searchSeries(query: string, opts: { year?: number } = {}) {
+    const params = new URLSearchParams({ q: query });
+    if (opts.year) params.set("year", String(opts.year));
+    return apiFetch<{
+      source: "tvdb" | "tmdb";
+      results: (TvdbSearchResult | TmdbSearchResult)[];
+    }>(`/api/planner/search/series?${params.toString()}`);
+  }
+
+  /** Estado de integraciones (TVDB/TMDB) y plugins de búsqueda. */
+  async function getPlannerStatus() {
+    return apiFetch<PlannerStatus>("/api/planner/status");
+  }
+
   /** Idiomas en los que TVDB tiene el nombre de la serie traducido. */
   async function getTvdbTranslations(id: number) {
     const res = await apiFetch<{ languages: TvdbLanguage[] }>(
@@ -235,6 +258,8 @@ export function usePlanner() {
     updateEpisode,
     searchTmdb,
     searchTvdb,
+    searchSeries,
+    getPlannerStatus,
     getTvdbTranslations,
     searchReleases,
     grabRelease,

@@ -1524,6 +1524,11 @@
     "languageAny": "Any",
     "chooseLanguage": "Choose the episode search language",
     "loadingLanguages": "Loading languages…",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "setupTitle": "Configure Plannerr",
+    "setupNoIntegration": "Plannerr needs a metadata integration (TVDB or TMDB) to search for series and movies.",
+    "setupHint": "Configure it under Settings → Integrations.",
+    "setupNoPlugins": "We recommend installing torrent-search plugins; without them Plannerr can only search aMule or Soulseek (if running).",
+    "setupGoSettings": "Go to Settings"
   }
 }
