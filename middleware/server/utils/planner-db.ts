@@ -27,16 +27,16 @@ export type PlannerSubscriptionStatus = "continuing" | "ended" | "released";
 export type PlannerMinQuality = "uhd" | "fullhd" | "hd" | "sd";
 export type PlannerEpisodeStatus =
   | "unreleased"
-  | "wanted"
+  | "released"
+  | "waiting"
   | "grabbed"
   | "downloaded"
   | "cutoff_unmet"
   | "failed";
 export type PlannerMovieStatus =
   | "unreleased"
+  | "waiting"
   | "released"
-  | "available"
-  | "wanted"
   | "grabbed"
   | "downloaded"
   | "cutoff_unmet"
@@ -109,6 +109,7 @@ export interface PlannerMovie {
   tmdb_id: number | null;
   imdb_id: string | null;
   digital_release_date: string | null;
+  theatrical_release_date: string | null;
   status: PlannerMovieStatus;
   file_path: string | null;
   downloaded_quality: string | null;
@@ -283,6 +284,7 @@ export function createSubscription(input: CreateSubscriptionInput): PlannerSubsc
 }
 
 export interface UpdateSubscriptionInput {
+  title?: string | null;
   monitored?: boolean;
   min_quality?: PlannerMinQuality;
   root_folder?: string;
@@ -461,14 +463,15 @@ export function upsertMovie(input: PlannerMovie): PlannerMovie {
   const db = useDatabase();
   db.prepare(
     `INSERT INTO planner_movies
-      (subscription_id, tmdb_id, imdb_id, digital_release_date, status,
+      (subscription_id, tmdb_id, imdb_id, digital_release_date, theatrical_release_date, status,
        file_path, downloaded_quality, grabbed_at, downloaded_at,
        last_discovery_at, discovery_attempts)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(subscription_id) DO UPDATE SET
        tmdb_id = excluded.tmdb_id,
        imdb_id = excluded.imdb_id,
        digital_release_date = excluded.digital_release_date,
+       theatrical_release_date = excluded.theatrical_release_date,
        status = excluded.status,
        file_path = excluded.file_path,
        downloaded_quality = excluded.downloaded_quality,
@@ -481,6 +484,7 @@ export function upsertMovie(input: PlannerMovie): PlannerMovie {
     input.tmdb_id,
     input.imdb_id,
     input.digital_release_date,
+    input.theatrical_release_date,
     input.status,
     input.file_path,
     input.downloaded_quality,
@@ -501,7 +505,7 @@ export function listQualityProfiles(): PlannerQualityProfile[] {
     .all() as unknown as PlannerQualityProfile[];
 }
 
-export function getQualityProfile(id: number): PlannerQualityProfile | undefined {
+function getQualityProfile(id: number): PlannerQualityProfile | undefined {
   const db = useDatabase();
   return db
     .prepare("SELECT * FROM planner_quality_profiles WHERE id = ?")
@@ -556,7 +560,7 @@ export function listLanguageProfiles(): PlannerLanguageProfile[] {
     .all() as unknown as PlannerLanguageProfile[];
 }
 
-export function getLanguageProfile(id: number): PlannerLanguageProfile | undefined {
+function getLanguageProfile(id: number): PlannerLanguageProfile | undefined {
   const db = useDatabase();
   return db
     .prepare("SELECT * FROM planner_language_profiles WHERE id = ?")
@@ -609,7 +613,7 @@ export function listIndexers(opts: { enabled?: boolean } = {}): PlannerIndexer[]
   return db.prepare(sql).all(...(params as any)) as unknown as PlannerIndexer[];
 }
 
-export function getIndexer(id: number): PlannerIndexer | undefined {
+function getIndexer(id: number): PlannerIndexer | undefined {
   const db = useDatabase();
   return db
     .prepare("SELECT * FROM planner_indexers WHERE id = ?")
@@ -851,19 +855,91 @@ export function getEpisodesByAirDateRange(
   return rows;
 }
 
-/** Episodios wanted (emitidos, sin archivo, monitored). */
-export function getWantedEpisodes(): PlannerEpisode[] {
+/**
+ * Episodios listos para la búsqueda automática:
+ *   - sin `force`: solo `waiting` que ya han emitido (air_date <= cutoff, regla 18:00).
+ *   - con `force`: también `released` (emitidos, descarga manual) — "descarga automática".
+ */
+export function getEpisodesReadyForDownload(cutoff: string, force = false): PlannerEpisode[] {
+  const db = useDatabase();
+  const statusClause = force ? "e.status IN ('waiting', 'released')" : "e.status = 'waiting'";
+  return db
+    .prepare(
+      `SELECT e.*, s.title AS subscription_title, s.poster_url AS subscription_poster
+       FROM planner_episodes e
+       JOIN planner_subscriptions s ON s.id = e.subscription_id
+       WHERE ${statusClause}
+         AND e.monitored = 1
+         AND s.monitored = 1
+         AND e.air_date IS NOT NULL
+         AND e.air_date <= ?
+         AND e.file_path IS NULL
+       ORDER BY e.air_date ASC`,
+    )
+    .all(cutoff) as unknown as PlannerEpisode[];
+}
+
+/** Episodios emitidos (`released`) sin descargar — para la vista "Pendientes". */
+export function getMissingEpisodes(): PlannerEpisode[] {
   const db = useDatabase();
   return db
     .prepare(
       `SELECT e.*, s.title AS subscription_title, s.poster_url AS subscription_poster
        FROM planner_episodes e
        JOIN planner_subscriptions s ON s.id = e.subscription_id
-       WHERE e.status = 'wanted'
-         AND e.monitored = 1
+       WHERE e.status = 'released'
          AND s.monitored = 1
        ORDER BY e.air_date ASC`,
     )
     .all() as unknown as PlannerEpisode[];
 }
 
+// ─── Fecha local ─────────────────────────────────────────────────────────────
+
+/** Fecha local YYYY-MM-DD (no UTC) — base para la regla de las 18:00 del estreno. */
+export function localDateString(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Estado "pre-descarga" de un episodio según su fecha de aire:
+ *   - air_date >= hoy  → 'waiting'  (en espera, se auto-descarga a las 18:00)
+ *   - air_date <  hoy  → 'released' (emitido, descarga manual)
+ *   - air_date null    → 'unreleased' (sin fecha anunciada)
+ * Los estados de ciclo de vida (grabbed/downloaded/failed/cutoff_unmet) se
+ * preservan. `wanted` (estado legacy, ya no se usa) también se recalcula para
+ * migrar episodios antiguos que quedaron en ese estado.
+ */
+export function computeEpisodeStatus(
+  existingStatus: PlannerEpisodeStatus | undefined,
+  airDate: string | null,
+  today: string,
+): PlannerEpisodeStatus {
+  const PRE = new Set<string>(["unreleased", "released", "waiting", "wanted"]);
+  if (existingStatus && !PRE.has(existingStatus)) return existingStatus;
+  if (airDate == null) return "unreleased";
+  return airDate >= today ? "waiting" : "released";
+}
+
+/**
+ * Estado "pre-descarga" de una película según su fecha de estreno:
+ *   - releaseDate null   → 'unreleased' (sin fecha anunciada)
+ *   - releaseDate >= hoy → 'waiting'   (en espera del estreno)
+ *   - releaseDate <  hoy → 'released'  (emitida, descarga manual)
+ * Los estados de ciclo de vida (grabbed/downloaded/failed/cutoff_unmet) se
+ * preservan. `available`/`wanted` (estados legacy) también se recalculan para
+ * migrar películas antiguas que quedaron en ese estado.
+ */
+export function computeMovieStatus(
+  existingStatus: PlannerMovieStatus | undefined,
+  releaseDate: string | null,
+  today: string,
+): PlannerMovieStatus {
+  const PRE = new Set<string>(["unreleased", "waiting", "released", "available", "wanted"]);
+  if (existingStatus && !PRE.has(existingStatus)) return existingStatus;
+  if (releaseDate == null) return "unreleased";
+  return releaseDate >= today ? "waiting" : "released";
+}

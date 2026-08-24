@@ -178,16 +178,28 @@ export async function getTvdbSeriesDetail(id: number): Promise<TvdbSeriesDetail 
 export async function getTvdbSeriesEpisodes(
   id: number,
   seasonNumber?: number,
+  language?: string,
 ): Promise<TvdbEpisode[]> {
   // TVDB v4 exige el segmento de ruta {season-type} (p. ej. "default").
   // Sin él, /series/{id}/episodes devuelve 400 Bad Request.
-  const path = seasonNumber !== undefined
-    ? `/series/${id}/episodes/default?season=${seasonNumber}`
-    : `/series/${id}/episodes/default`;
+  // Con idioma: /series/{id}/episodes/{season-type}/{lang} devuelve los
+  // episodios con el nombre traducido (fallback a inglés si no hay traducción).
+  const tvdbLang = language && language !== "en" ? ISO_TO_TVDB_LANG[language] : undefined;
+  const season = seasonNumber !== undefined ? `?season=${seasonNumber}` : "";
+  const path = tvdbLang
+    ? `/series/${id}/episodes/default/${tvdbLang}${season}`
+    : `/series/${id}/episodes/default${season}`;
   const data = await tvdbFetch<any>(path, { ttlSeconds: 6 * 60 * 60 });
-  if (!data?.episodes) return [];
+  // El endpoint traducido (/…/{lang}) devuelve { series: { episodes: [...] } };
+  // el normal devuelve { episodes: [...] }.
+  const episodes: any[] = Array.isArray(data?.episodes)
+    ? data.episodes
+    : Array.isArray(data?.series?.episodes)
+      ? data.series.episodes
+      : [];
+  if (episodes.length === 0) return [];
 
-  return data.episodes
+  return episodes
     .filter((e: any) => e.seasonNumber !== 0) // skip specials
     .map((e: any) => ({
       id: e.id,
@@ -201,6 +213,17 @@ export async function getTvdbSeriesEpisodes(
       absoluteNumber: e.absoluteNumber ?? null,
     }));
 }
+
+/** Mapa ISO-639-1 (2 letras) → código TVDB (3 letras) para el endpoint de traducciones. */
+const ISO_TO_TVDB_LANG: Record<string, string> = {
+  en: "eng", es: "spa", it: "ita", pt: "por", fr: "fra", de: "deu",
+  ru: "rus", ja: "jpn", ko: "kor", zh: "zho", nl: "nld", pl: "pol",
+  sv: "swe", da: "dan", no: "nor", fi: "fin", cs: "ces", hu: "hun",
+  ro: "ron", uk: "ukr", el: "ell", tr: "tur", th: "tha", vi: "vie",
+  hi: "hin", ca: "cat", eu: "eus", gl: "glg", he: "heb", ar: "ara",
+  fa: "fas", sr: "srp", hr: "hrv", bg: "bul", sl: "slv", sk: "slk",
+  lt: "lit", lv: "lav", et: "est", is: "isl",
+};
 
 // ─── Translations (idiomas disponibles del nombre de la serie) ─────────────
 

@@ -151,6 +151,7 @@ function _initSchema(db: DatabaseSync): void {
       tmdb_id            INTEGER,
       imdb_id            TEXT,
       digital_release_date TEXT,
+      theatrical_release_date TEXT,
       status             TEXT    NOT NULL DEFAULT 'unreleased',
       file_path          TEXT,
       downloaded_quality TEXT,
@@ -258,6 +259,15 @@ function _initSchema(db: DatabaseSync): void {
     .all() as { name: string }[];
   if (!subsCols.some((c) => c.name === "language")) {
     db.exec("ALTER TABLE planner_subscriptions ADD COLUMN language TEXT");
+  }
+
+  // Migration (estado películas): columna de estreno en cines (type 3),
+  // usada como fecha de referencia cuando no hay estreno digital (type 4).
+  const movieCols = db
+    .prepare("PRAGMA table_info(planner_movies)")
+    .all() as { name: string }[];
+  if (!movieCols.some((c) => c.name === "theatrical_release_date")) {
+    db.exec("ALTER TABLE planner_movies ADD COLUMN theatrical_release_date TEXT");
   }
 }
 

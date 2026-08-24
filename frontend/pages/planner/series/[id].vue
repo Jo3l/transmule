@@ -76,6 +76,16 @@
                   :model-value="Boolean(season.monitored)"
                   @update:model-value="(v: boolean) => toggleSeasonMonitored(season, v)"
                 />
+                <SButton
+                  variant="primary"
+                  size="sm"
+                  icon="mdi-download"
+                  class="ml-3"
+                  :loading="downloadingSeasonId === season.id"
+                  @click="downloadSeasonNow(season)"
+                >
+                  {{ $t("planner.downloadSeason") }}
+                </SButton>
               </div>
             </div>
 
@@ -83,22 +93,38 @@
               :data="season.episodes ?? []"
               :columns="episodeColumns"
               row-key="id"
-              :pagination="false"
-              :bordered="false"
             >
               <template #cell-number="{ row }">
-                <span class="has-text-weight-medium">{{ pad(row.episode_number) }}</span>
+                <span class="has-text-weight-medium">{{ padEpisode(row.episode_number) }}</span>
               </template>
               <template #cell-title="{ row }">
                 {{ row.title ?? "—" }}
               </template>
               <template #cell-air_date="{ row }">
-                {{ row.air_date ?? "—" }}
+                {{ formatDate(row.air_date) }}
               </template>
               <template #cell-status="{ row }">
                 <STag :variant="statusClass(row.status)">
                   {{ statusLabel(row.status) }}
                 </STag>
+              </template>
+              <template #cell-actions="{ row }">
+                <!-- Emitido: botón de descarga manual (búsqueda interactiva).
+                     Futuro: switch para monitorizar (auto-descarga al emitir). -->
+                <SButton
+                  v-if="isAired(row)"
+                  size="sm"
+                  variant="primary"
+                  icon="mdi-download"
+                  @click="openEpisodeSearch(row)"
+                >
+                  {{ $t("planner.download") }}
+                </SButton>
+                <SSwitch
+                  v-else
+                  :model-value="Boolean(row.monitored)"
+                  @update:model-value="(v: boolean) => toggleEpisodeMonitored(row, v)"
+                />
               </template>
             </STable>
           </div>
@@ -130,14 +156,29 @@
           </div>
         </template>
       </SDialog>
+
+      <!-- Descarga manual de un episodio (búsqueda interactiva) -->
+      <PlannerSearchDialog
+        v-model="showDownloadDialog"
+        media-type="series"
+        :title="sub.title"
+        :season="downloadTarget?.season_number ?? 0"
+        :episode="downloadTarget?.episode_number ?? 0"
+        :subscription-id="id"
+        :episode-id="downloadTarget?.id ?? null"
+        @grabbed="onGrabbed"
+      />
     </div>
   </SLoading>
 </template>
 
 <script setup lang="ts">
+import { usePlannerStatusDisplay, padEpisode, formatPlannerDate } from "~/composables/usePlannerUi";
+
 const route = useRoute();
 const { t } = useI18n();
-const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode } = usePlanner();
+const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, downloadSeason } = usePlanner();
+const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const { showToast } = useApi();
 
 const id = Number(route.params.id);
@@ -148,37 +189,35 @@ const seasons = ref<any[]>([]);
 const refreshing = ref(false);
 const searching = ref(false);
 const showDeleteModal = ref(false);
+const showDownloadDialog = ref(false);
+const downloadTarget = ref<any>(null);
+const downloadingSeasonId = ref<number | null>(null);
 
-const episodeColumns = [
+const episodeColumns = computed(() => [
   { prop: "number", label: "#", width: "60px" },
-  { prop: "title", label: "Episodio" },
-  { prop: "air_date", label: "Emisión" },
-  { prop: "status", label: "Estado", width: "130px" },
-];
+  { prop: "title", label: t("planner.episodeTitle") },
+  { prop: "air_date", label: t("planner.airDate"), width: "130px" },
+  { prop: "status", label: t("planner.status"), width: "130px" },
+  { prop: "actions", label: "", width: "110px" },
+]);
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
 function downloadedCount(season: any): number {
   return (season.episodes ?? []).filter((e: any) => e.status === "downloaded").length;
 }
-const STATUS_LABELS: Record<string, string> = {
-  unreleased: "planner.statusUnreleased",
-  wanted: "planner.statusWanted",
-  grabbed: "planner.statusGrabbed",
-  downloaded: "planner.statusDownloaded",
-  cutoff_unmet: "planner.statusCutoff",
-  failed: "planner.statusFailed",
-};
-function statusLabel(s: string): string {
-  return t(STATUS_LABELS[s] ?? "planner.statusUnknown");
+function localToday(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
-function statusClass(s: string): "default" | "success" | "warning" | "danger" | "info" {
-  if (s === "wanted") return "warning";
-  if (s === "grabbed") return "info";
-  if (s === "downloaded") return "success";
-  if (s === "failed") return "danger";
-  return "default";
+/** Emitido (fecha actual >= fecha de aire) → botón de descarga. */
+function isAired(ep: any): boolean {
+  return !!ep.air_date && ep.air_date <= localToday();
+}
+/** Formatea la fecha de aire según el idioma de la suscripción (default inglés). */
+function formatDate(dateStr: string | null): string {
+  return formatPlannerDate(dateStr, sub.value?.language || "en");
 }
 
 async function load() {
@@ -244,6 +283,38 @@ async function toggleSeasonMonitored(season: any, v: boolean) {
     await updateEpisode(id, ep.id, { monitored: v ? 1 : 0 }).catch(() => {});
   }
   season.monitored = v ? 1 : 0;
+}
+
+async function toggleEpisodeMonitored(ep: any, v: boolean) {
+  try {
+    await updateEpisode(id, ep.id, { monitored: v ? 1 : 0 });
+    ep.monitored = v ? 1 : 0;
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  }
+}
+
+async function downloadSeasonNow(season: any) {
+  downloadingSeasonId.value = season.id;
+  try {
+    await downloadSeason(id, season.id);
+    showToast(t("planner.seasonDownloadQueued"), "success", 3000);
+    // Los grabs se encolan en background; refrescamos para ver los estados.
+    setTimeout(load, 1500);
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    downloadingSeasonId.value = null;
+  }
+}
+
+function openEpisodeSearch(ep: any) {
+  downloadTarget.value = ep;
+  showDownloadDialog.value = true;
+}
+
+function onGrabbed() {
+  load();
 }
 
 onMounted(load);

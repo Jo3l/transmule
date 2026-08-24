@@ -43,7 +43,7 @@
           </NuxtLink>
         </template>
         <template #cell-episode="{ row }">
-          <STag variant="info">S{{ pad(row.season_number) }}E{{ pad(row.episode_number) }}</STag>
+          <STag variant="info">S{{ padEpisode(row.season_number) }}E{{ padEpisode(row.episode_number) }}</STag>
         </template>
         <template #cell-title="{ row }">
           {{ row.title ?? "—" }}
@@ -83,6 +83,8 @@
 </template>
 
 <script setup lang="ts">
+import { padEpisode } from "~/composables/usePlannerUi";
+
 const { t } = useI18n();
 const { autoDownload } = usePlanner();
 const { apiFetch } = useApi();
@@ -96,23 +98,20 @@ const filterType = ref("missing");
 const showSearchDialog = ref(false);
 const searchTarget = ref<any>(null);
 
-const columns = [
-  { prop: "subscription_title", label: "Serie" },
-  { prop: "episode", label: "Episodio", width: "110px" },
-  { prop: "title", label: "Título" },
-  { prop: "air_date", label: "Emisión", width: "110px" },
-  { prop: "status", label: "Estado", width: "230px" },
+const columns = computed(() => [
+  { prop: "subscription_title", label: t("planner.show") },
+  { prop: "episode", label: t("planner.episode"), width: "110px" },
+  { prop: "title", label: t("planner.episodeTitle") },
+  { prop: "air_date", label: t("planner.airDate"), width: "110px" },
+  { prop: "status", label: t("planner.status"), width: "230px" },
   { prop: "actions", label: "", width: "100px" },
-];
+]);
 
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
 function statusLabel(s: string): string {
-  return t(s === "wanted" ? "planner.statusWanted" : "planner.statusCutoff");
+  return t(s === "cutoff_unmet" ? "planner.statusCutoff" : "planner.statusReleased");
 }
-function statusClass(s: string): "warning" | "info" {
-  return s === "wanted" ? "warning" : "info";
+function statusClass(s: string): "warning" | "info" | "default" {
+  return s === "cutoff_unmet" ? "info" : "default";
 }
 
 async function load() {

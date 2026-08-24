@@ -8,7 +8,7 @@
  * los search providers habilitados.
  */
 import { getSubscription, recordSearchHistory } from "~/utils/planner-db";
-import { useDatabase } from "~/utils/database";
+import { searchAndGrabSubscription, searchAndGrabMovie } from "~/plugins/planner-scheduler";
 
 defineRouteMeta({
   openAPI: {
@@ -76,22 +76,16 @@ export default defineEventHandler(async (event) => {
     error_message: null,
   });
 
-  const db = useDatabase();
-  // Marcar episodios wanted si kind=missing (los que no tienen file_path)
+  // Buscar y descargar (en background): series → episodios emitidos; película → mejor release.
   if (sub.type === "series" && kind !== "episode") {
-    db.prepare(
-      `UPDATE planner_episodes
-       SET status = 'wanted', last_search_at = ?
-       WHERE subscription_id = ? AND monitored = 1
-         AND status NOT IN ('downloaded', 'grabbed')
-         AND file_path IS NULL`,
-    ).run(now, id);
+    searchAndGrabSubscription(id).catch((err: any) => {
+      console.error("[planner] subscription search error:", err?.message ?? err);
+    });
+  } else if (sub.type === "movie") {
+    searchAndGrabMovie(id).catch((err: any) => {
+      console.error("[planner] movie search error:", err?.message ?? err);
+    });
   }
 
-  return {
-    ok: true,
-    queued: true,
-    kind,
-    note: "Search execution arrives in Fase 7 (Search & grab). History entry recorded as pending.",
-  };
+  return { ok: true, queued: true, kind };
 });

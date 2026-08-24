@@ -113,15 +113,15 @@ const candidates = ref<ReleaseCandidate[]>([]);
 const grabbingId = ref<string | null>(null);
 const networkFilter = ref("all");
 
-const columns = [
+const columns = computed(() => [
   { prop: "service", label: "", width: "40px" },
-  { prop: "name", label: "Release" },
-  { prop: "quality", label: "Calidad", width: "110px" },
-  { prop: "size", label: "Tamaño", width: "100px" },
-  { prop: "seeds", label: "Seeds", width: "80px" },
-  { prop: "languages", label: "Idioma", width: "130px" },
+  { prop: "name", label: t("planner.release") },
+  { prop: "quality", label: t("planner.quality"), width: "110px" },
+  { prop: "size", label: t("planner.size"), width: "100px" },
+  { prop: "seeds", label: t("planner.seeds"), width: "80px" },
+  { prop: "languages", label: t("planner.language"), width: "130px" },
   { prop: "actions", label: "", width: "110px" },
-];
+]);
 
 const dialogTitle = computed(() =>
   props.mediaType === "series"

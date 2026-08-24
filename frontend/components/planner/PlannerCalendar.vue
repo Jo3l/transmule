@@ -212,13 +212,14 @@
  */
 import { computed } from "vue";
 
+const { t } = useI18n();
+
 const props = withDefaults(
   defineProps<{
     events?: any[];
     loading?: boolean;
     /** { year, month } — month 1-12 */
     month?: { year: number; month: number };
-    views?: { id: string; label: string; icon: string }[];
   }>(),
   {
     events: () => [],
@@ -227,10 +228,6 @@ const props = withDefaults(
       const n = new Date();
       return { year: n.getFullYear(), month: n.getMonth() + 1 };
     },
-    views: () => [
-      { id: "week", label: "Semana", icon: "mdi-calendar-week" },
-      { id: "month", label: "Mes", icon: "mdi-calendar-month-outline" },
-    ],
   },
 );
 
@@ -239,6 +236,11 @@ const emit = defineEmits<{
   "event-click": [event: any];
   "cell-click": [cell: any];
 }>();
+
+const views = computed(() => [
+  { id: "week", label: t("planner.week"), icon: "mdi-calendar-week" },
+  { id: "month", label: t("planner.month"), icon: "mdi-calendar-month-outline" },
+]);
 
 const view = ref("week");
 
@@ -399,11 +401,12 @@ function eventIcon(ev: any): string {
 function eventVariant(ev: any): any {
   if (!ev.is_subscribed) return "default";
   switch (ev.status) {
-    case "wanted": return "warning";
     case "grabbed": return "info";
     case "downloaded": return "success";
     case "failed": return "danger";
-    default: return "primary"; // unreleased / released / available
+    case "waiting": return "default";
+    case "released": return "default";
+    default: return "primary"; // unreleased / available
   }
 }
 

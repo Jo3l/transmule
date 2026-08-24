@@ -4,7 +4,7 @@
  * Episodios wanted (emitidos, sin descargar, monitored).
  * type=missing → status='wanted'; type=cutoff_unmet → status='cutoff_unmet'.
  */
-import { getWantedEpisodes } from "~/utils/planner-db";
+import { getMissingEpisodes } from "~/utils/planner-db";
 import { useDatabase } from "~/utils/database";
 
 defineRouteMeta({
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const type = q.type === "cutoff_unmet" ? "cutoff_unmet" : "wanted";
 
   if (type === "wanted") {
-    return { episodes: getWantedEpisodes(), type };
+    return { episodes: getMissingEpisodes(), type };
   }
 
   const db = useDatabase();

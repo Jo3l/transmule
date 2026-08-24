@@ -177,6 +177,13 @@ export function usePlanner() {
     );
   }
 
+  async function downloadSeason(subId: number, seasonId: number) {
+    return apiFetch<{ ok: boolean; started: boolean }>(
+      `/api/planner/subscriptions/${subId}/seasons/${seasonId}/download`,
+      { method: "POST" },
+    );
+  }
+
   // ── Search TMDB / TVDB ────────────────────────────────────────────────────
 
   async function searchTmdb(query: string, opts: { type?: string; year?: number } = {}) {
@@ -221,6 +228,14 @@ export function usePlanner() {
     return res.languages ?? [];
   }
 
+  /** Idiomas en los que TMDB tiene la película traducida (título/sinopsis). */
+  async function getTmdbTranslations(id: number) {
+    const res = await apiFetch<{ languages: { code: string; name: string }[] }>(
+      `/api/planner/metadata/tmdb/movie/${id}/translations`,
+    );
+    return res.languages ?? [];
+  }
+
   // ── Búsqueda interactiva unificada (Fase 14) ──────────────────────────────
 
   async function searchReleases(body: Record<string, unknown>) {
@@ -256,11 +271,13 @@ export function usePlanner() {
     searchSubscription,
     getSubscriptionHistory,
     updateEpisode,
+    downloadSeason,
     searchTmdb,
     searchTvdb,
     searchSeries,
     getPlannerStatus,
     getTvdbTranslations,
+    getTmdbTranslations,
     searchReleases,
     grabRelease,
     autoDownload,

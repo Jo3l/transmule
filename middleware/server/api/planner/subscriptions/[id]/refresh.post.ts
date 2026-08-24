@@ -19,11 +19,15 @@ import {
 } from "~/services/planner/tmdb";
 import {
   listSeasons,
+  listEpisodes,
   upsertSeason,
   upsertEpisode,
   getMovieBySubscription,
   upsertMovie,
   updateSubscription,
+  localDateString,
+  computeEpisodeStatus,
+  computeMovieStatus,
 } from "~/utils/planner-db";
 
 defineRouteMeta({
@@ -62,10 +66,13 @@ export default defineEventHandler(async (event) => {
 
     if (sub.tvdb_id) {
       detail = await getTvdbSeriesDetail(sub.tvdb_id);
-      episodes = await getTvdbSeriesEpisodes(sub.tvdb_id);
+      // El título de episodio se localiza según el idioma de la suscripción
+      // (TVDB devuelve el nombre traducido; fallback a inglés si no hay).
+      episodes = await getTvdbSeriesEpisodes(sub.tvdb_id, undefined, sub.language ?? undefined);
     } else if (sub.tmdb_id) {
-      // Serie añadida desde TMDB (sin tvdb_id): usar TMDB como fuente
-      const tmdbEpisodes = await getAllTmdbTvEpisodes(sub.tmdb_id);
+      // Serie añadida desde TMDB (sin tvdb_id): usar TMDB como fuente,
+      // con el idioma de la suscripción.
+      const tmdbEpisodes = await getAllTmdbTvEpisodes(sub.tmdb_id, sub.language ?? undefined);
       episodes = tmdbEpisodes.map((e) => ({
         seasonNumber: e.season_number,
         number: e.episode_number,
@@ -90,6 +97,7 @@ export default defineEventHandler(async (event) => {
 
     const existingSeasons = listSeasons(id);
     const existingByNum = new Map(existingSeasons.map((s) => [s.season_number, s]));
+    const today = localDateString();
 
     for (const [seasonNum, eps] of bySeason) {
       const existing = existingByNum.get(seasonNum);
@@ -99,12 +107,11 @@ export default defineEventHandler(async (event) => {
         season_number: seasonNum,
         monitored: existing?.monitored ?? 1,
         episode_count: eps.length,
-        aired_count: eps.filter((e) => e.airDate && e.airDate <= now.slice(0, 10)).length,
+        aired_count: eps.filter((e) => e.airDate && e.airDate <= today).length,
       });
+      const existingEps = listEpisodes(id, { seasonNumber: seasonNum });
       for (const ep of eps) {
-        const existingEp = (await import("~/utils/planner-db")).listEpisodes(id, {
-          seasonNumber: seasonNum,
-        }).find((e) => e.episode_number === ep.number);
+        const existingEp = existingEps.find((e) => e.episode_number === ep.number);
         upsertEpisode({
           id: existingEp?.id ?? 0,
           subscription_id: id,
@@ -116,7 +123,7 @@ export default defineEventHandler(async (event) => {
           air_date: ep.airDate,
           runtime: ep.runtime,
           monitored: existingEp?.monitored ?? 1,
-          status: existingEp?.status ?? "unreleased",
+          status: computeEpisodeStatus(existingEp?.status, ep.airDate, today),
           file_path: existingEp?.file_path ?? null,
           downloaded_quality: existingEp?.downloaded_quality ?? null,
           grabbed_at: existingEp?.grabbed_at ?? null,
@@ -150,8 +157,8 @@ export default defineEventHandler(async (event) => {
   }
 
   if (sub.type === "movie" && sub.tmdb_id) {
-    // ── Movie: sync detail + release dates ──
-    const movie = await getTmdbMovieDetail(sub.tmdb_id);
+    // ── Movie: sync detail + release dates (con el idioma de la suscripción) ──
+    const movie = await getTmdbMovieDetail(sub.tmdb_id, sub.language ?? undefined);
     if (!movie) {
       setResponseStatus(event, 404);
       return { error: "Movie not found on TMDB" };
@@ -162,13 +169,20 @@ export default defineEventHandler(async (event) => {
     }));
 
     const existingMovie = getMovieBySubscription(id);
+    const today = localDateString();
+    // Fecha de referencia: digital (type 4) si existe; si no, estreno en cines
+    // (type 3) o la fecha principal de TMDB. Para películas antiguas (sin
+    // estreno digital) esto evita que queden en "No emitido".
+    const effectiveDate = releaseDates.digital ?? releaseDates.theatrical ?? movie.release_date;
+
     upsertMovie({
       id: existingMovie?.id ?? 0,
       subscription_id: id,
       tmdb_id: sub.tmdb_id,
       imdb_id: movie.imdb_id,
       digital_release_date: releaseDates.digital,
-      status: existingMovie?.status ?? "unreleased",
+      theatrical_release_date: releaseDates.theatrical,
+      status: computeMovieStatus(existingMovie?.status, effectiveDate, today),
       file_path: existingMovie?.file_path ?? null,
       downloaded_quality: existingMovie?.downloaded_quality ?? null,
       grabbed_at: existingMovie?.grabbed_at ?? null,
@@ -176,6 +190,12 @@ export default defineEventHandler(async (event) => {
       last_discovery_at: existingMovie?.last_discovery_at ?? null,
       discovery_attempts: existingMovie?.discovery_attempts ?? 0,
     });
+
+    // Localizar el título de la película según el idioma de la suscripción.
+    if (movie.title && movie.title !== sub.title) {
+      updateSubscription(id, { title: movie.title });
+      sub.title = movie.title;
+    }
 
     updateSubscription(id, {
       metadata_synced_at: now,

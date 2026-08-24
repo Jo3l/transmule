@@ -89,7 +89,7 @@
           </NuxtLink>
         </template>
         <template #cell-episode="{ row }">
-          <STag variant="info">S{{ pad(row.season_number) }}E{{ pad(row.episode_number) }}</STag>
+          <STag variant="info">S{{ padEpisode(row.season_number) }}E{{ padEpisode(row.episode_number) }}</STag>
         </template>
         <template #cell-status="{ row }">
           <STag :variant="statusClass(row.status)">
@@ -114,8 +114,11 @@
 </template>
 
 <script setup lang="ts">
+import { usePlannerStatusDisplay, padEpisode, formatPlannerDate } from "~/composables/usePlannerUi";
+
 const { t } = useI18n();
 const { listSubscriptions } = usePlanner();
+const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const { apiFetch } = useApi();
 
 const loading = ref(true);
@@ -129,40 +132,17 @@ const showAddMovie = ref(false);
 const counts = reactive({ series: 0, movies: 0, wanted: 0, grabbed: 0 });
 
 function formatDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d + (d.length === 10 ? "T00:00:00" : "")).toLocaleDateString();
-}
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
+  return formatPlannerDate(d);
 }
 function titleFor(subId: number): string {
   return series.value.find((s) => s.id === subId)?.title ?? movies.value.find((m) => m.id === subId)?.title ?? `#${subId}`;
 }
-const upcomingColumns = [
-  { prop: "air_date", label: "Fecha", width: "110px" },
-  { prop: "subscription_id", label: "Serie" },
-  { prop: "episode", label: "Episodio", width: "110px" },
-  { prop: "status", label: "Estado", width: "130px" },
-];
-const STATUS_LABELS: Record<string, string> = {
-  unreleased: "planner.statusUnreleased",
-  wanted: "planner.statusWanted",
-  grabbed: "planner.statusGrabbed",
-  downloaded: "planner.statusDownloaded",
-  cutoff_unmet: "planner.statusCutoff",
-  failed: "planner.statusFailed",
-};
-function statusLabel(s: string): string {
-  return t(STATUS_LABELS[s] ?? "planner.statusUnknown");
-}
-function statusClass(s: string): "default" | "success" | "warning" | "danger" | "info" {
-  if (s === "wanted") return "warning";
-  if (s === "grabbed") return "info";
-  if (s === "downloaded") return "success";
-  if (s === "failed") return "danger";
-  return "default";
-}
-
+const upcomingColumns = computed(() => [
+  { prop: "air_date", label: t("planner.date"), width: "110px" },
+  { prop: "subscription_id", label: t("planner.show") },
+  { prop: "episode", label: t("planner.episode"), width: "110px" },
+  { prop: "status", label: t("planner.status"), width: "130px" },
+]);
 function onAddedSeries(subId: number) {
   showAddSeries.value = false;
   navigateTo(`/planner/series/${subId}`);
