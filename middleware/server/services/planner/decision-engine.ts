@@ -261,18 +261,3 @@ export function pickBest(req: DecisionRequest): DecisionResult {
 
   return { picked, evaluated, rejected, note };
 }
-
-// ─── Helpers de utilidad ────────────────────────────────────────────────────
-
-/** Filtra releases de una búsqueda ya parseados contra un episodio. */
-export function filterReleasesForEpisode(
-  parsedReleases: ParsedRelease[],
-  season: number,
-  episode: number,
-): ParsedRelease[] {
-  return parsedReleases.filter((r) => {
-    if (r.type !== "series") return false;
-    if (r.season !== season) return false;
-    return r.episode === episode || (r.episodes?.includes(episode) ?? false);
-  });
-}

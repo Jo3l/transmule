@@ -46,15 +46,6 @@ const VIDEO_EXT_RE = /\.(mkv|mp4|avi|ts|m2ts|webm)$/i;
 
 // ─── Query builders (multi-variante) ────────────────────────────────────────
 
-/** Query canónica de episodio (compatibilidad con llamadas previas). */
-export function buildEpisodeQuery(
-  title: string,
-  season: number,
-  episode: number,
-): string {
-  return `${title} S${String(season).padStart(2, "0")}E${String(episode).padStart(2, "0")}`;
-}
-
 /** Variantes de query para un episodio: `S01E01` + `1x01` (+ sufijos de idioma). */
 export function buildEpisodeQueries(
   title: string,

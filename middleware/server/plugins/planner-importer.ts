@@ -53,22 +53,23 @@ async function recoverStuckGrabs(): Promise<void> {
   for (const grab of stuck) {
     const attempts = Number(grab.attempts ?? 0);
     if (attempts >= 1) {
-      // Ya se reintentó una vez — marcar failed y liberar el episode/movie
+      // Ya se reintentó una vez — marcar failed y liberar el episode/movie a
+      // 'released' (emitido, descarga manual). El estado 'wanted' ya no existe.
       db.prepare(
         "UPDATE planner_grab_queue SET state = 'failed', last_error = 'stuck after dispatch (recovery)' WHERE id = ?",
       ).run(grab.id);
       if (grab.episode_id) {
         db.prepare(
-          "UPDATE planner_episodes SET status = 'wanted' WHERE id = ? AND status = 'grabbed'",
+          "UPDATE planner_episodes SET status = 'released' WHERE id = ? AND status = 'grabbed'",
         ).run(grab.episode_id);
       }
       if (grab.movie_id) {
         db.prepare(
-          "UPDATE planner_movies SET status = 'wanted' WHERE id = ? AND status = 'grabbed'",
+          "UPDATE planner_movies SET status = 'released' WHERE id = ? AND status = 'grabbed'",
         ).run(grab.movie_id);
       }
       console.warn(
-        `[planner] grab #${grab.id} marked failed after ${attempts + 1} attempts (stuck ${stuckHours}h); episode/movie released back to wanted`,
+        `[planner] grab #${grab.id} marked failed after ${attempts + 1} attempts (stuck ${stuckHours}h); episode/movie released back to 'released' (manual download)`,
       );
     } else {
       // Primer stuck: re-encolar (state=pending) + incrementar attempts

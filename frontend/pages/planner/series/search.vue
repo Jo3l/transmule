@@ -40,14 +40,6 @@
               <option value="tmdb">TMDB</option>
             </SSelect>
           </SFormItem>
-          <SFormItem :label="$t('planner.monitorScope')">
-            <SSelect v-model="monitorScope">
-              <option value="all">{{ $t("planner.scopeAll") }}</option>
-              <option value="future">{{ $t("planner.scopeFuture") }}</option>
-              <option value="next">{{ $t("planner.scopeNext") }}</option>
-              <option value="manual">{{ $t("planner.scopeManual") }}</option>
-            </SSelect>
-          </SFormItem>
           <SFormItem :label="$t('planner.minQuality')">
             <SSelect v-model="minQuality">
               <option value="uhd">4K (Ultra HD)</option>
@@ -139,7 +131,6 @@ const results = ref<TvdbSearchResult[]>([]);
 
 const showAdvanced = ref(false);
 const metadataProvider = ref("tvdb");
-const monitorScope = ref("all");
 const minQuality = ref("fullhd");
 const rootFolder = ref("/downloads");
 

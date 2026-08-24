@@ -17,10 +17,10 @@
             variant="primary"
             icon="mdi-magnify"
             :loading="searching"
-            @click="discoverNow"
+            @click="manualSearch"
             class="ml-3"
           >
-            {{ $t("planner.discoverNow") }}
+            {{ $t("planner.searchNow") }}
           </SButton>
           <SButton
             variant="default"
@@ -72,15 +72,30 @@
               {{ $t("planner.digitalRelease") }}:
               <strong>{{ formatDate(movie.digital_release_date) }}</strong>
             </div>
+            <div v-if="movie?.theatrical_release_date" class="mt-2 is-size-7 has-text-grey">
+              <span class="mdi mdi-calendar-star mr-1" />
+              {{ $t("planner.theatricalRelease") }}:
+              <strong>{{ formatDate(movie.theatrical_release_date) }}</strong>
+            </div>
             <div v-if="movie?.downloaded_quality" class="mt-2 is-size-7">
               <span class="mdi mdi-check-circle text-success mr-1" />
               {{ $t("planner.downloadedQuality") }}:
               <strong>{{ movie.downloaded_quality }}</strong>
             </div>
+            <div v-if="canDownload" class="mt-3">
+              <SButton
+                variant="primary"
+                icon="mdi-download"
+                @click="openSearch"
+              >
+                {{ $t("planner.download") }}
+              </SButton>
+            </div>
           </div>
 
           <div class="box">
-            <h4 class="title is-6 mb-3">{{ $t("planner.searchHistory") }}</h4>
+            <h4 class="title is-6 mb-1">{{ $t("planner.searchHistory") }}</h4>
+            <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.searchHistoryHint") }}</p>
             <div v-if="history.length === 0" class="has-text-grey is-size-7">
               {{ $t("planner.noHistory") }}
             </div>
@@ -129,14 +144,28 @@
           </div>
         </template>
       </SDialog>
+
+      <!-- Búsqueda interactiva (elegir release) -->
+      <PlannerSearchDialog
+        v-model="showSearchDialog"
+        media-type="movie"
+        :title="sub.title"
+        :year="sub.year ?? undefined"
+        :subscription-id="id"
+        :movie-id="movie?.id ?? null"
+        @grabbed="onGrabbed"
+      />
     </div>
   </SLoading>
 </template>
 
 <script setup lang="ts">
+import { usePlannerStatusDisplay, formatPlannerDate } from "~/composables/usePlannerUi";
+
 const route = useRoute();
 const { t } = useI18n();
 const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, getSubscriptionHistory, updateSubscription } = usePlanner();
+const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const { showToast } = useApi();
 
 const id = Number(route.params.id);
@@ -148,36 +177,21 @@ const history = ref<any[]>([]);
 const refreshing = ref(false);
 const searching = ref(false);
 const showDeleteModal = ref(false);
+const showSearchDialog = ref(false);
 
-const historyColumns = [
-  { prop: "picked_at", label: "Fecha" },
-  { prop: "search_kind", label: "Tipo", width: "100px" },
-  { prop: "status", label: "Estado", width: "120px" },
-  { prop: "picked_title", label: "Elegido" },
-];
+/** ¿Se puede descargar? Película estrenada (emitida) o reintento tras fallo. */
+const canDownload = computed(() => {
+  const s = movie.value?.status;
+  return s === "released" || s === "waiting" || s === "failed";
+});
 
-const STATUS_LABELS: Record<string, string> = {
-  unreleased: "planner.statusUnreleased",
-  released: "planner.statusReleased",
-  available: "planner.statusAvailable",
-  wanted: "planner.statusWanted",
-  grabbed: "planner.statusGrabbed",
-  downloaded: "planner.statusDownloaded",
-  cutoff_unmet: "planner.statusCutoff",
-  failed: "planner.statusFailed",
-};
-function statusLabel(s: string): string {
-  return t(STATUS_LABELS[s] ?? "planner.statusUnknown");
-}
-function statusClass(s: string): "default" | "success" | "warning" | "danger" | "info" {
-  if (s === "wanted") return "warning";
-  if (s === "grabbed") return "info";
-  if (s === "downloaded") return "success";
-  if (s === "failed") return "danger";
-  if (s === "available") return "success";
-  if (s === "released") return "info";
-  return "default";
-}
+const historyColumns = computed(() => [
+  { prop: "picked_at", label: t("planner.date") },
+  { prop: "search_kind", label: t("planner.searchKind"), width: "100px" },
+  { prop: "status", label: t("planner.status"), width: "120px" },
+  { prop: "picked_title", label: t("planner.picked") },
+]);
+
 function historyStatusClass(s: string): "default" | "success" | "warning" | "danger" {
   if (s === "grabbed") return "success";
   if (s === "no_results") return "warning";
@@ -185,8 +199,7 @@ function historyStatusClass(s: string): "default" | "success" | "warning" | "dan
   return "default";
 }
 function formatDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString();
+  return formatPlannerDate(d);
 }
 
 async function load() {
@@ -217,16 +230,27 @@ async function refresh() {
   }
 }
 
-async function discoverNow() {
+async function manualSearch() {
   searching.value = true;
   try {
     await searchSubscription(id, { kind: "missing" });
     showToast(t("planner.searchQueued"), "success", 3000);
+    await load();
   } catch (err: any) {
     errorMsg.value = err?.message ?? String(err);
   } finally {
     searching.value = false;
   }
+}
+
+/** Abre la búsqueda interactiva (el usuario elige el release). */
+function openSearch() {
+  showSearchDialog.value = true;
+}
+
+/** Tras descargar un release desde el diálogo. */
+function onGrabbed() {
+  load();
 }
 
 async function toggleMonitored(v: boolean) {

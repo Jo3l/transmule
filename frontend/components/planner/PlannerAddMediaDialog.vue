@@ -30,14 +30,6 @@
         {{ $t("planner.advancedSettings") }}
       </button>
       <div v-show="showAdvanced" class="planner-advanced-body">
-        <SFormItem v-if="mediaType === 'series'" :label="$t('planner.monitorScope')">
-          <SSelect v-model="monitorScope">
-            <option value="all">{{ $t("planner.scopeAll") }}</option>
-            <option value="future">{{ $t("planner.scopeFuture") }}</option>
-            <option value="next">{{ $t("planner.scopeNext") }}</option>
-            <option value="manual">{{ $t("planner.scopeManual") }}</option>
-          </SSelect>
-        </SFormItem>
         <SFormItem :label="$t('planner.minQuality')">
           <SSelect v-model="minQuality">
             <option value="uhd">4K (Ultra HD)</option>
@@ -188,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import type { TvdbSearchResult, TmdbSearchResult, TvdbLanguage } from "~/composables/usePlanner";
+import type { TvdbSearchResult, TmdbSearchResult } from "~/composables/usePlanner";
 
 const props = withDefaults(
   defineProps<{
@@ -207,7 +199,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { searchTmdb, searchSeries, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations } = usePlanner();
+const { searchTmdb, searchSeries, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations, getTmdbTranslations } = usePlanner();
 const { showToast } = useApi();
 
 const query = ref("");
@@ -217,7 +209,6 @@ const results = ref<(TvdbSearchResult | TmdbSearchResult)[]>([]);
 const seriesSource = ref<"tvdb" | "tmdb">("tvdb");
 
 const showAdvanced = ref(true);
-const monitorScope = ref("all");
 const minQuality = ref("fullhd");
 const rootFolder = ref("/downloads");
 
@@ -226,7 +217,7 @@ const existing = ref<Map<number, number>>(new Map()); // externalId → subId
 
 const confirming = ref<null | {
   result: TvdbSearchResult | TmdbSearchResult;
-  languages: TvdbLanguage[];
+  languages: { code: string; name: string }[];
   selectedLanguage: string;
   loading: boolean;
 }>(null);
@@ -236,8 +227,8 @@ const confirming = ref<null | {
 function rName(r: TvdbSearchResult | TmdbSearchResult): string {
   return "name" in r ? r.name : r.title;
 }
-function rPoster(r: TvdbSearchResult | TmdbSearchResult): string | null {
-  return "image_url" in r ? r.image_url : r.poster_url;
+function rPoster(r: TvdbSearchResult | TmdbSearchResult): string | undefined {
+  return ("image_url" in r ? r.image_url : r.poster_url) ?? undefined;
 }
 function rYear(r: TvdbSearchResult | TmdbSearchResult): string | null {
   if ("year" in r && r.year) return r.year;
@@ -328,10 +319,19 @@ function seriesUsesTvdb(): boolean {
 async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
   errorMsg.value = "";
   if (props.mediaType === "series" && seriesUsesTvdb()) {
-    // Pedir idioma (solo series TVDB): cargar las traducciones de TVDB.
+    // Pedir idioma (series TVDB): cargar las traducciones de TVDB.
     confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
     try {
       confirming.value.languages = await getTvdbTranslations(r.id);
+    } catch {
+      confirming.value.languages = [];
+    }
+    confirming.value.loading = false;
+  } else if (props.mediaType === "movie") {
+    // Pedir idioma (películas): cargar las traducciones de TMDB.
+    confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
+    try {
+      confirming.value.languages = await getTmdbTranslations(r.id);
     } catch {
       confirming.value.languages = [];
     }
@@ -380,6 +380,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             root_folder: rootFolder.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
+            language,
           };
 
     const sub = await createSubscription(body);

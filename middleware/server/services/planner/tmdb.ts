@@ -87,20 +87,23 @@ function tmdbLocale(): string {
 
 async function tmdbFetch<T>(
   path: string,
-  opts: { ttlSeconds?: number; noCache?: boolean } = {},
+  opts: { ttlSeconds?: number; noCache?: boolean; language?: string } = {},
 ): Promise<T | null> {
   const apiKey = getTmdbKey();
   if (!apiKey) throw new Error("TMDB API key not configured");
 
-  const { ttlSeconds = 12 * 60 * 60, noCache = false } = opts;
+  const { ttlSeconds = 12 * 60 * 60, noCache = false, language } = opts;
+  const lang = language ?? tmdbLocale();
+  // La clave de caché incluye el idioma para no colisionar entre idiomas.
+  const cachePath = `${path}&__lang=${lang}`;
 
   // Cache hit
   if (!noCache) {
-    const cached = getMetadataCache("tmdb", path, "fetch");
+    const cached = getMetadataCache("tmdb", cachePath, "fetch");
     if (cached) return JSON.parse(cached.payload_json) as T;
   }
 
-  const url = `${TMDB_BASE}${path}${path.includes("?") ? "&" : "?"}api_key=${apiKey}&language=${tmdbLocale()}`;
+  const url = `${TMDB_BASE}${path}${path.includes("?") ? "&" : "?"}api_key=${apiKey}&language=${lang}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!res.ok) {
     if (res.status === 401) throw new Error("TMDB API key rejected (401)");
@@ -110,7 +113,7 @@ async function tmdbFetch<T>(
   }
   const data = (await res.json()) as T;
   if (!noCache) {
-    setMetadataCache("tmdb", path, "fetch", JSON.stringify(data), ttlSeconds);
+    setMetadataCache("tmdb", cachePath, "fetch", JSON.stringify(data), ttlSeconds);
   }
   return data;
 }
@@ -150,8 +153,8 @@ export async function searchTmdb(
 
 // ─── Detail ─────────────────────────────────────────────────────────────────
 
-export async function getTmdbMovieDetail(id: number): Promise<TmdbMovieDetail | null> {
-  const data = await tmdbFetch<any>(`/movie/${id}`);
+export async function getTmdbMovieDetail(id: number, language?: string): Promise<TmdbMovieDetail | null> {
+  const data = await tmdbFetch<any>(`/movie/${id}`, { language });
   if (!data) return null;
   return {
     id: data.id,
@@ -166,6 +169,23 @@ export async function getTmdbMovieDetail(id: number): Promise<TmdbMovieDetail | 
     poster_url: posterUrl(data.poster_path),
     imdb_id: data.imdb_id ?? null,
   };
+}
+
+/**
+ * Idiomas en los que TMDB tiene la película traducida (título/sinopsis).
+ * Alimenta el selector de idioma al añadir una película.
+ */
+export async function getTmdbMovieTranslations(
+  id: number,
+): Promise<{ code: string; name: string }[]> {
+  const data = await tmdbFetch<any>(`/movie/${id}/translations`);
+  if (!Array.isArray(data?.translations)) return [];
+  return data.translations
+    .filter((t: any) => t?.iso_639_1)
+    .map((t: any) => ({
+      code: t.iso_639_1,
+      name: t.english_name ?? t.name ?? t.iso_639_1,
+    }));
 }
 
 export async function getTmdbTvDetail(
@@ -216,8 +236,9 @@ export async function getTmdbMovieReleaseDates(id: number): Promise<TmdbReleaseD
 export async function getTmdbTvEpisodes(
   id: number,
   seasonNumber: number,
+  language?: string,
 ): Promise<TmdbSeasonEpisode[]> {
-  const data = await tmdbFetch<any>(`/tv/${id}/season/${seasonNumber}`);
+  const data = await tmdbFetch<any>(`/tv/${id}/season/${seasonNumber}`, { language });
   if (!data?.episodes) return [];
   return data.episodes.map((e: any) => ({
     season_number: e.season_number,
@@ -233,13 +254,16 @@ export async function getTmdbTvEpisodes(
  * Todos los episodios de una serie TMDB (todas las temporadas).
  * Usado cuando una serie se añade desde TMDB (sin tvdb_id).
  */
-export async function getAllTmdbTvEpisodes(id: number): Promise<TmdbSeasonEpisode[]> {
+export async function getAllTmdbTvEpisodes(
+  id: number,
+  language?: string,
+): Promise<TmdbSeasonEpisode[]> {
   const detail = await getTmdbTvDetail(id);
   if (!detail) return [];
 
   // Número de temporadas (excluir season 0 = especiales si no hay episodios)
   const seasons: number[] = [];
-  const data = await tmdbFetch<any>(`/tv/${id}`, { ttlSeconds: 12 * 60 * 60 });
+  const data = await tmdbFetch<any>(`/tv/${id}`, { ttlSeconds: 12 * 60 * 60, language });
   const seasonList = (data?.seasons ?? []) as any[];
   for (const s of seasonList) {
     if (s.season_number > 0 && s.episode_count > 0) seasons.push(s.season_number);
@@ -247,7 +271,7 @@ export async function getAllTmdbTvEpisodes(id: number): Promise<TmdbSeasonEpisod
 
   const all: TmdbSeasonEpisode[] = [];
   for (const seasonNumber of seasons) {
-    const eps = await getTmdbTvEpisodes(id, seasonNumber);
+    const eps = await getTmdbTvEpisodes(id, seasonNumber, language);
     all.push(...eps);
   }
   return all;
