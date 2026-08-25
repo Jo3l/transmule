@@ -342,7 +342,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
   const movieStatus = force ? "('waiting', 'released')" : "('waiting')";
   const movieRows = db
     .prepare(
-      `SELECT m.*, s.title, s.year, s.min_quality, s.search_services_json, s.language,
+      `SELECT m.*, s.title, s.year, s.min_quality, s.max_size_mb, s.search_services_json, s.language,
               s.id AS sub_id, s.added_at AS sub_added_at
        FROM planner_movies m
        JOIN planner_subscriptions s ON s.id = m.subscription_id
@@ -374,13 +374,14 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
         title: movie.title,
       });
       const items = await searchMovie(movie.title, movie.year ?? null, services, movie.language ?? undefined);
-      const parsed = items.map((i) => i.parsed);
+      const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
       const decision = pickBest({
         releases: parsed,
         expectedTitle: movie.title,
         ...(altTitles.length ? { altTitles } : {}),
         ...(movie.year ? { expectedYear: movie.year } : {}),
         minQuality: (movie.min_quality ?? "fullhd") as any,
+        ...(movie.max_size_mb != null ? { maxSizeMb: movie.max_size_mb } : {}),
         ...(movie.language
           ? { languageProfile: { mustHave: [movie.language], allowUnknownLang: true } }
           : {}),
@@ -460,7 +461,7 @@ async function grabEpisode(
       title: sub.title,
     });
     const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, sub.language ?? undefined);
-    const parsed = items.map((i) => i.parsed);
+    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,
@@ -469,6 +470,7 @@ async function grabEpisode(
       season: ep.season_number,
       episode: ep.episode_number,
       minQuality: (sub.min_quality ?? "fullhd") as any,
+      ...(sub.max_size_mb != null ? { maxSizeMb: sub.max_size_mb } : {}),
       ...(sub.language
         ? { languageProfile: { mustHave: [sub.language], allowUnknownLang: true } }
         : {}),
@@ -589,12 +591,13 @@ export async function searchAndGrabMovie(subscriptionId: number): Promise<{ queu
 
   try {
     const items = await searchMovie(sub.title, sub.year ?? null, services, sub.language ?? undefined);
-    const parsed = items.map((i) => i.parsed);
+    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,
       ...(sub.year ? { expectedYear: sub.year } : {}),
       minQuality: (sub.min_quality ?? "fullhd") as any,
+      ...(sub.max_size_mb != null ? { maxSizeMb: sub.max_size_mb } : {}),
       ...(sub.language
         ? { languageProfile: { mustHave: [sub.language], allowUnknownLang: true } }
         : {}),

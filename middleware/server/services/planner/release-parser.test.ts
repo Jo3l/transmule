@@ -230,6 +230,30 @@ const cases: Array<{
       assert(r.languages.includes("latino"), `Pobres lang "${r.languages}"`);
     },
   },
+  {
+    // Regression: "WEBDL" contiene "bd" como substring y antes se mapeaba a
+    // "bluray" por el check `includes("bd")`.
+    input: "Silo 2023- S01E01 - Freedom Day WEBDL-2160p.mkv",
+    check: (r) => {
+      expectEq(r.source, "webdl", "WEBDL source = webdl (no bluray)");
+      expectEq(r.quality, "uhd", "WEBDL 2160p = uhd");
+    },
+  },
+  {
+    // Regression: título limpio de junk (ATVP/DoVi/HDR/ESP/ENG/DDP5.1/Atmos/
+    // SUBS/x265/grupo) para que la similitud de título no rechace el release.
+    input: "Silo.S01E01.2160p.ATVP.WEB-DL.DoVi.HDR.ESP.ENG.DDP5.1.Atmos.SUBS.x265-Whisky135.mkv",
+    check: (r) => {
+      expectEq(r.source, "webdl", "SiloESP source = webdl");
+      expectEq(r.quality, "uhd", "SiloESP 2160p = uhd");
+      assert(r.languages.includes("spanish"), `SiloESP lang "${r.languages}"`);
+      const t = r.title.toLowerCase();
+      assert(t.includes("silo"), `SiloESP title "${r.title}"`);
+      for (const junk of ["atvp", "dovi", "hdr", "esp", "eng", "atmos", "whisky"]) {
+        assert(!t.includes(junk), `SiloESP sin junk "${junk}" en "${r.title}"`);
+      }
+    },
+  },
 ];
 
 for (const c of cases) {

@@ -17,6 +17,7 @@ interface PlannerSubscription {
   status: string;
   monitored: number;
   min_quality: "uhd" | "fullhd" | "hd" | "sd";
+  max_size_mb: number | null;
   root_folder: string;
   search_services_json: string | null;
   language: string | null;

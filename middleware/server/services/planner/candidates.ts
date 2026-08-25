@@ -33,6 +33,7 @@ export interface CandidateContext {
   episode?: number;
   year?: number;
   language?: string;
+  maxSizeMb?: number | null;
   minQuality: string;
 }
 
@@ -46,7 +47,7 @@ export function scoreCandidates(
   ctx: CandidateContext,
 ): ReleaseCandidate[] {
   const decision = pickBest({
-    releases: items.map((i) => i.parsed),
+    releases: items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb })),
     expectedTitle: ctx.title,
     ...(ctx.altTitles?.length ? { altTitles: ctx.altTitles } : {}),
     ...(ctx.expectedEpisodeTitle
@@ -60,6 +61,7 @@ export function scoreCandidates(
     ...(ctx.language
       ? { languageProfile: { mustHave: [ctx.language], allowUnknownLang: true } }
       : {}),
+    ...(ctx.maxSizeMb != null ? { maxSizeMb: ctx.maxSizeMb } : {}),
   });
 
   const byRaw = new Map(items.map((i) => [i.parsed.raw, i]));

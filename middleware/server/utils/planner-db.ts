@@ -63,6 +63,7 @@ export interface PlannerSubscription {
   status: PlannerSubscriptionStatus;
   monitored: number;
   min_quality: PlannerMinQuality;
+  max_size_mb: number | null;
   root_folder: string;
   search_services_json: string | null;
   language: string | null;
@@ -237,6 +238,7 @@ export interface CreateSubscriptionInput {
   status: PlannerSubscriptionStatus;
   root_folder: string;
   min_quality?: PlannerMinQuality;
+  max_size_mb?: number | null;
   monitored?: boolean;
   tmdb_id?: number | null;
   tvdb_id?: number | null;
@@ -257,9 +259,9 @@ export function createSubscription(input: CreateSubscriptionInput): PlannerSubsc
     .prepare(
       `INSERT INTO planner_subscriptions
         (type, tmdb_id, tvdb_id, imdb_id, title, year, poster_url, overview, genres_json,
-         status, monitored, min_quality, root_folder, search_services_json, language,
+         status, monitored, min_quality, max_size_mb, root_folder, search_services_json, language,
          parent_subscription_id, season_filter)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.type,
@@ -274,6 +276,7 @@ export function createSubscription(input: CreateSubscriptionInput): PlannerSubsc
       input.status,
       input.monitored === false ? 0 : 1,
       input.min_quality ?? "fullhd",
+      input.max_size_mb ?? null,
       input.root_folder,
       input.search_services_json ?? null,
       input.language ?? null,
@@ -287,6 +290,7 @@ export interface UpdateSubscriptionInput {
   title?: string | null;
   monitored?: boolean;
   min_quality?: PlannerMinQuality;
+  max_size_mb?: number | null;
   root_folder?: string;
   search_services_json?: string | null;
   language?: string | null;

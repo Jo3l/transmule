@@ -14,6 +14,14 @@
 const QUALITY_RE = /\b(2160p|4[kK]|1080p|720p|480p|360p|240p)\b/i;
 const SOURCE_RE = /\b(BLURAY|BluRay|WEB[-.]?DL|WEB[-.]?Rip|WEB|HDRip|BRRip|DVDRip|DVD[Rr]ip|BDRip|HDTV|PDTV|DSR|SAT[Rr]ip|REMUX|CAM|TS|TC|R5)\b/i;
 const CODEC_RE = /\b(x265|x264|h[.\s]?265|h[.\s]?264|HEVC|AV1|DivX|XviD|AVC|MPEG-?4|MPEG-?2)\b/i;
+const AUDIO_CODEC_RE = /\b(EAC3|E[-.]?AC[-.]?3|AC3|AAC|FLAC|DTS[-.]?HD(?:[-.]?MA)?|DTS|TRUEHD|ATMOS|DDP\d*(?:\.\d)?|DD\d+(?:\.\d)?|MP3|OPUS|VORBIS|PCM)\b/gi;
+const VIDEO_EXT_RE = /\b(MKV|MP4|AVI|M2TS|WEBM|MOV|WMV|FLV|M4V)\b/gi;
+// HDR / rango dinámico, profundidad de bit y fuente de streaming (junk del título)
+const HDR_RE = /\b(HDR10\+?|HDR|DOVI|DOLBY[-\s]?VISION|SDR|HLG)\b/gi;
+const BITDEPTH_RE = /\b(10[-\s]?BIT|8[-\s]?BIT)\b/gi;
+const STREAM_SRC_RE = /\b(ATVP|AMZN|DSNP|HMAX|DPLUS|AAPL|PEACOCK|CRAV|NF|HULU)\b/gi;
+// Códigos de idioma (3 letras) para limpiar del título — sin romper palabras
+const LANG_CODE_RE = /\b(ESP|SPA|CAST|ENG|ITA|FRE|FRA|GER|JPN|KOR|CHI|RUS|POR|DUT|SWE|DAN|NOR|FIN|POL|CZE|HUN|RUM|GRE|TUR|THA|VIE|HIN)\b/gi;
 const YEAR_RE = /\b(19\d{2}|20\d{2})\b/;
 const PROPER_RE = /\b(PROPER|REPACK|REMASTERED|EXTENDED|DIRECTORS?\s*CUT|UNCUT|UNRATED|IMAX)\b/i;
 
@@ -86,6 +94,8 @@ export interface ParsedRelease {
   multi: boolean;
   /** Nombre crudo */
   raw: string;
+  /** Tamaño en MB (lo adjunta el search provider; el parser no lo conoce) */
+  sizeMb?: number;
 }
 
 // ─── Mapping helpers ────────────────────────────────────────────────────────
@@ -102,7 +112,8 @@ function mapQuality(raw: string): QualityTier {
 function mapSource(raw: string): ReleaseSource {
   const s = raw.toLowerCase();
   if (s.includes("remux")) return "remux";
-  if (s.includes("bluray") || s.includes("bd")) return "bluray";
+  // "bd" solo como token suelto o "bdrip": "webdl" contiene "bd" como substring.
+  if (s.includes("bluray") || s.includes("bdrip") || /\bbd\b/.test(s)) return "bluray";
   if (s.includes("web-dl") || s.includes("webdl") || s.includes("web.dl") || s.includes("web dl")) return "webdl";
   if (s.includes("webrip") || s.includes("web-rip") || s.includes("web rip")) return "webrip";
   if (s.includes("hdtv")) return "hdtv";
@@ -245,11 +256,16 @@ export function parseReleaseName(name: string): ParsedRelease {
     .replace(QUALITY_RE, " ")
     .replace(SOURCE_RE, " ")
     .replace(CODEC_RE, " ")
+    .replace(AUDIO_CODEC_RE, " ")
+    .replace(VIDEO_EXT_RE, " ")
+    .replace(HDR_RE, " ")
+    .replace(BITDEPTH_RE, " ")
+    .replace(STREAM_SRC_RE, " ")
     .replace(YEAR_RE, " ")
     .replace(PROPER_RE, " ")
     .replace(/\b(MULTI|MULT)\b/gi, " ")
-    .replace(/\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|LATINO|ENGLISH|GERMAN|FRENCH|JAPANESE|VOSE|VOS)\b/gi, " ")
-    .replace(/\b\[?ES\]?/gi, " ")
+    .replace(/\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|LATINO|ENGLISH|GERMAN|FRENCH|JAPANESE|VOSE|VOS|SUBS?|SUBTITLES?|SUBTITULADOS?)\b/gi, " ")
+    .replace(LANG_CODE_RE, " ")
     .replace(/\s+/g, " ")
     .trim();
   // Quitar grupo al final (-GROUP)

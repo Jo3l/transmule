@@ -38,6 +38,14 @@
             <option value="sd">480p (SD)</option>
           </SSelect>
         </SFormItem>
+        <SFormItem :label="$t('planner.maxSize')">
+          <SSelect v-model="maxSize">
+            <option value="">{{ $t("planner.sizeNoLimit") }}</option>
+            <option value="256">~256 MB</option>
+            <option value="600">~600 MB</option>
+            <option value="1024">~1 GB</option>
+          </SSelect>
+        </SFormItem>
         <SFormItem :label="$t('planner.rootFolder')">
           <SInput v-model="rootFolder" />
         </SFormItem>
@@ -210,6 +218,7 @@ const seriesSource = ref<"tvdb" | "tmdb">("tvdb");
 
 const showAdvanced = ref(true);
 const minQuality = ref("fullhd");
+const maxSize = ref(""); // "" = sin límite
 const rootFolder = ref("/downloads");
 
 const addingId = ref<number | null>(null);
@@ -364,6 +373,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             poster_url: rPoster(r),
             overview: rOverview(r),
             min_quality: minQuality.value,
+            max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
@@ -377,6 +387,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             poster_url: rPoster(r),
             overview: rOverview(r),
             min_quality: minQuality.value,
+            max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),

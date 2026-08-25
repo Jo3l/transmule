@@ -69,6 +69,10 @@
         </span>
         <span v-else class="has-text-grey">—</span>
       </template>
+      <template #cell-score="{ row }">
+        <span v-if="row.rejectedReason" class="has-text-grey">—</span>
+        <span v-else class="psd-score">{{ row.score }}</span>
+      </template>
       <template #cell-actions="{ row }">
         <SButton
           size="sm"
@@ -125,14 +129,21 @@ const columns = computed(() => [
   { prop: "size", label: t("planner.size"), width: "100px" },
   { prop: "seeds", label: t("planner.seeds"), width: "80px" },
   { prop: "languages", label: t("planner.language"), width: "130px" },
+  { prop: "score", label: t("planner.score"), width: "70px", align: "right" as const },
   { prop: "actions", label: "", width: "110px" },
 ]);
 
-const dialogTitle = computed(() =>
-  props.mediaType === "series"
-    ? `${t("planner.searchResults")} — S${String(props.season ?? 0).padStart(2, "0")}E${String(props.episode ?? 0).padStart(2, "0")}`
-    : `${t("planner.searchResults")} — ${props.title}`,
-);
+// String de búsqueda usado en las redes (multi-nomenclatura SxxExx / 1x01).
+const searchQuery = computed(() => {
+  if (props.mediaType === "series") {
+    const s = String(props.season ?? 0).padStart(2, "0");
+    const e = String(props.episode ?? 0).padStart(2, "0");
+    return `${props.title} S${s}E${e} OR ${props.title} ${props.season}x${e}`;
+  }
+  return props.year ? `${props.title} ${props.year}` : props.title;
+});
+
+const dialogTitle = computed(() => `${t("planner.searchResults")} — ${searchQuery.value}`);
 
 const filtered = computed(() => {
   if (networkFilter.value === "all") return candidates.value;
@@ -176,6 +187,8 @@ function appendCandidates(incoming: ReleaseCandidate[]) {
     seenKeys.add(key);
     candidates.value.push(c);
   }
+  // Mantener ordenados por score desc (los rechazados, score -1, quedan al final).
+  candidates.value.sort((a, b) => b.score - a.score);
 }
 
 async function runSearch() {
@@ -268,5 +281,10 @@ onUnmounted(() => abortCtrl.value?.abort());
 .psd-net-icon {
   font-size: 1.1rem;
   color: var(--s-text-secondary, #888);
+}
+.psd-score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--s-accent, #22d3ee);
 }
 </style>

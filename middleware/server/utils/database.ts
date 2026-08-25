@@ -92,6 +92,7 @@ function _initSchema(db: DatabaseSync): void {
       status              TEXT    NOT NULL,                  -- 'continuing' | 'ended' | 'released'
       monitored           INTEGER DEFAULT 1,
       min_quality         TEXT    NOT NULL DEFAULT 'fullhd', -- 'uhd' | 'fullhd' | 'hd' | 'sd'
+      max_size_mb         INTEGER,                           -- tamaño objetivo en MB (NULL = sin límite)
       root_folder         TEXT    NOT NULL,
       search_services_json TEXT,                             -- JSON array of provider ids
       language            TEXT,                             -- código ISO de idioma preferido (NULL = cualquiera)
@@ -259,6 +260,9 @@ function _initSchema(db: DatabaseSync): void {
     .all() as { name: string }[];
   if (!subsCols.some((c) => c.name === "language")) {
     db.exec("ALTER TABLE planner_subscriptions ADD COLUMN language TEXT");
+  }
+  if (!subsCols.some((c) => c.name === "max_size_mb")) {
+    db.exec("ALTER TABLE planner_subscriptions ADD COLUMN max_size_mb INTEGER");
   }
 
   // Migration (estado películas): columna de estreno en cines (type 3),
