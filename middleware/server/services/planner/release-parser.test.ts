@@ -137,6 +137,20 @@ const cases: Array<{
       assert(r.languages.length > 0, `Dark lang "${r.languages}"`);
     },
   },
+  {
+    input: "Silo.S01E01.ESPAÑA.1080p.WEB-DL",
+    check: (r) => {
+      expectEq(r.type, "series", "Silo-españa type");
+      assert(r.languages.includes("spanish"), `Silo-españa lang "${r.languages}"`);
+    },
+  },
+  {
+    input: "Silo.S01E01.LATAM.1080p.WEB-DL",
+    check: (r) => {
+      expectEq(r.type, "series", "Silo-latam type");
+      assert(r.languages.includes("latino"), `Silo-latam lang "${r.languages}"`);
+    },
+  },
   // ── Casos movies ──────────────────────────────────────────────────────────
   {
     input: "Dune.Part.Two.2024.1080p.BluRay.x264-AMIABLE",

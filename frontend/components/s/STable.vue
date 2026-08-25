@@ -23,7 +23,7 @@
               </template>
               <template v-else>
                 {{ col.label }}
-                <span v-if="col.sortable && sortProp === (col.prop || col.key)" class="sort-icon">
+                <span v-if="col.sortable && sortProp === (col.sortProp || col.prop || col.key)" class="sort-icon">
                   {{ sortDir === "asc" ? "▲" : "▼" }}
                 </span>
               </template>

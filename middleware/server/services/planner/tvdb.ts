@@ -289,6 +289,25 @@ export async function getTvdbSeriesTranslations(id: number): Promise<TvdbLanguag
   return out;
 }
 
+/**
+ * Devuelve el NOMBRE localizado de la serie en el idioma dado (o null si no hay
+ * traducción). TVDB v4: /series/{id}/translations/{lang} → { name, ... }.
+ * Usado por el scoring de búsqueda para no penalizar títulos localizados
+ * (p.ej. "Juego de Tronos" para Game of Thrones).
+ */
+export async function getTvdbSeriesLocalizedName(
+  id: number,
+  isoLang: string,
+): Promise<string | null> {
+  const tvdbLang = ISO_TO_TVDB_LANG[isoLang];
+  if (!tvdbLang) return null;
+  const data = await tvdbFetch<any>(`/series/${id}/translations/${tvdbLang}`, {
+    ttlSeconds: 24 * 60 * 60,
+  }).catch(() => null);
+  if (!data) return null;
+  return typeof data?.name === "string" && data.name.trim() ? data.name : null;
+}
+
 /** Convierte un codigo de idioma TVDB (ISO 639-2/B de 3 letras, o 2 letras) a ISO-2. */
 function tvdbCodeToIso(tvdb: string): string | null {
   if (tvdb.length === 2 && ISO_LANG_NAMES[tvdb]) return tvdb; // ya es ISO-2

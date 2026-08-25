@@ -75,6 +75,7 @@
       :title="searchTarget?.subscription_title ?? ''"
       :season="searchTarget?.season_number ?? 0"
       :episode="searchTarget?.episode_number ?? 0"
+      :episode-title="searchTarget?.title ?? undefined"
       :subscription-id="searchTarget?.subscription_id ?? 0"
       :episode-id="searchTarget?.id ?? null"
       @grabbed="onGrabbed"

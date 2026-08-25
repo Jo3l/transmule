@@ -29,13 +29,18 @@ const SEASON_PACK_RE = /\b(?:Complete\s+)?(?:Season|Seasons?|S)\s*(\d{1,2})\b/i;
 const GROUP_RE = /-([A-Za-z0-9]{2,15})$/;
 
 // Language flags (audio): MULTi, ESP, SPANISH, CASTELLANO, LATINO, GERMAN, etc.
-const LANG_MULTI_RE = /\b(MULTI|MULTi|MULT)\b/i;
-const LANG_SPANISH_RE = /\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|\[ES\]|\.ES\.|CAST|ESP)\b/i;
-const LANG_LATINO_RE = /\b(LATINO|LAT|LATIN|\[LAT\])\b/i;
+const LANG_MULTI_RE = /\b(MULTI|MULTi|MULT|MULTILANGUAGE)\b/i;
+const LANG_SPANISH_RE = /\b(?:ESPA[ÑN]OL|ESPA[ÑN]A|CASTELLANO|SPANISH|\[ES\]|\.ES\.|CAST|ESP|DUAL)\b/i;
+const LANG_LATINO_RE = /\b(LATINO|LATINOAMERICANO|LATAM|DUBLADO|LAT|LATIN|\[LAT\])\b/i;
 const LANG_ENGLISH_RE = /\b(?:ENGLISH|INGL[ÉE]S|\[EN\]|\.EN\.)\b/i;
 const LANG_GERMAN_RE = /\b(GERMAN|DEUTSCH|\[DE\]|\.DE\.|GER)\b/i;
-const LANG_FRENCH_RE = /\b(FRENCH|\[FR\]|\.FR\.|FRE)\b/i;
-const LANG_JAPANESE_RE = /\b(JAPANESE|\[JP\]|\.JP\.|JPN)\b/i;
+const LANG_FRENCH_RE = /\b(FRENCH|FRAN[ÇC]AIS|TRUEFRENCH|VFF|\[FR\]|\.FR\.|FRE)\b/i;
+const LANG_ITALIAN_RE = /\b(ITALIANO|ITALIAN|ITA|\[IT\]|\.IT\.)\b/i;
+const LANG_PORTUGUESE_RE = /\b(PORTUGU[ÊE]S|PORTUGUESE|PT[.-]?BR|\[PT\]|\.PT\.)\b/i;
+const LANG_RUSSIAN_RE = /\b(RUSSIAN|RUS|\[RU\]|\.RU\.)\b/i;
+const LANG_KOREAN_RE = /\b(KOREAN|KOR|\[KO\]|\.KO\.)\b/i;
+const LANG_CHINESE_RE = /\b(CHINESE|CHI|MANDARIN|CANTONESE|CHS|CHT|\[ZH\]|\.ZH\.)\b/i;
+const LANG_JAPANESE_RE = /\b(JAPANESE|JAP|JPN|\[JP\]|\.JP\.)\b/i;
 
 // Spanish-specific markers
 const SUB_RE = /\b(VOSE|VOS|SUBS?\s*(?:ESP|SPA|ES)|SUB[. ]?ESP[AÑOL]*)\b/i;
@@ -173,6 +178,11 @@ export function parseReleaseName(name: string): ParsedRelease {
   if (LANG_ENGLISH_RE.test(clean)) languages.push("english");
   if (LANG_GERMAN_RE.test(clean)) languages.push("german");
   if (LANG_FRENCH_RE.test(clean)) languages.push("french");
+  if (LANG_ITALIAN_RE.test(clean)) languages.push("italian");
+  if (LANG_PORTUGUESE_RE.test(clean)) languages.push("portuguese");
+  if (LANG_RUSSIAN_RE.test(clean)) languages.push("russian");
+  if (LANG_KOREAN_RE.test(clean)) languages.push("korean");
+  if (LANG_CHINESE_RE.test(clean)) languages.push("chinese");
   if (LANG_JAPANESE_RE.test(clean)) languages.push("japanese");
   if (SUB_RE.test(clean)) {
     if (!languages.includes("subs")) languages.push("subs");
@@ -309,17 +319,17 @@ export function mapLanguageToIso(lang: string): string {
 }
 
 const LANGUAGE_QUERY_MARKERS: Record<string, string[]> = {
-  es: ["ESPAÑOL", "CASTELLANO", "ESP"],
-  latino: ["LATINO", "LAT"],
+  es: ["ESPAÑOL", "CASTELLANO", "SPANISH", "ESPAÑA", "ESP", "DUAL"],
+  latino: ["LATINO", "LAT", "LATAM", "DUBLADO"],
   en: ["ENGLISH"],
-  it: ["ITALIANO"],
-  pt: ["PORTUGUÊS"],
-  fr: ["FRENCH"],
-  de: ["GERMAN"],
-  ru: ["RUSSIAN"],
-  ja: ["JAPANESE"],
-  ko: ["KOREAN"],
-  zh: ["CHINESE"],
+  it: ["ITALIANO", "ITALIAN", "ITA", "[IT]"],
+  pt: ["PORTUGUÊS", "PORTUGUES", "PORTUGUESE", "PT-BR", "LEGENDADO"],
+  fr: ["FRENCH", "FRANÇAIS", "FRANCAIS", "TRUEFRENCH", "VFF", "FRE"],
+  de: ["GERMAN", "DEUTSCH", "GER", "[DE]"],
+  ru: ["RUSSIAN", "RUS", "РУССКИЙ", "ДУБЛЯЖ"],
+  ja: ["JAPANESE", "JAP", "JPN", "RAW", "[JA]"],
+  ko: ["KOREAN", "KOR", "[KO]"],
+  zh: ["CHINESE", "CHI", "MANDARIN", "CANTONESE", "CHS", "CHT", "[ZH]"],
 };
 
 /**
