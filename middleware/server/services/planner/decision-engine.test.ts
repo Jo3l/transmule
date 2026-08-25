@@ -280,5 +280,26 @@ assert(withTitle !== undefined, "EpTitle: found release with episode title");
 expectEq(withTitle?.episodeTitleScore, 20, "EpTitle: +20 por coincidir con el título del episodio");
 expectEq(withoutTitle?.episodeTitleScore, 0, "EpTitle: 0 sin título de episodio");
 
+// ── Caso 15: tamaño objetivo — bonus si dentro, penaliza el exceso ──────────
+const smallSize = parseReleaseName("Silo.S01E01.1080p.WEB-DL.x264-GROUP");
+smallSize.sizeMb = 900; // ~900 MB, dentro del objetivo de 1 GB
+const bigSize = parseReleaseName("Silo.S01E01.1080p.WEB-DL.x264-GROUP2");
+bigSize.sizeMb = 10240; // 10 GB, muy por encima
+
+const sizeDecision = pickBest({
+  releases: [smallSize, bigSize],
+  expectedTitle: "Silo",
+  season: 1,
+  episode: 1,
+  minQuality: "hd",
+  maxSizeMb: 1024,
+});
+
+expectEq(sizeDecision.picked?.release.sizeMb, 900, "Size: elige el release dentro del objetivo");
+const smallEval = sizeDecision.evaluated.find((e) => e.release.sizeMb === 900);
+const bigEval = sizeDecision.evaluated.find((e) => e.release.sizeMb === 10240);
+expectEq(smallEval?.sizeScore, 15, "Size: +15 por estar dentro del objetivo");
+expectEq(bigEval?.sizeScore, -92, "Size: -92 por exceder 10GB vs 1GB");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

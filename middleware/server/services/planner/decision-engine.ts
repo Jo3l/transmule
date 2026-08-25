@@ -62,6 +62,8 @@ export interface DecisionRequest {
   /** Año esperado (películas) — señal de matching, no de rechazo */
   expectedYear?: number;
   languageProfile?: LanguageProfile;
+  /** Tamaño objetivo en MB (NULL = sin límite) — penaliza releases mucho mayores. */
+  maxSizeMb?: number | null;
   /** ¿Multi-idioma aceptable? (por defecto sí) */
   preferMulti?: boolean;
 }
@@ -80,6 +82,8 @@ export interface ReleaseScore {
   yearScore: number;
   /** Puntos por match del título del episodio (localizado) */
   episodeTitleScore: number;
+  /** Puntos por tamaño (penaliza exceder maxSizeMb) */
+  sizeScore: number;
   total: number;
   /** Razón de descarte (si no fue elegible) */
   rejectedReason?: string;
@@ -142,6 +146,27 @@ function episodeTitleMatch(releaseRaw: string, episodeTitle: string): boolean {
   const tokens = title.split(" ").filter((w) => w.length >= 3);
   if (tokens.length >= 2) return tokens.every((t) => raw.includes(t));
   return false;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Elimina los tokens del título del episodio (si el release lo contiene) del
+ * título del release, para que no diluyan la similitud con el título de la
+ * serie (p.ej. "Lanterns 1x01 Piloto ..." → "Lanterns ...").
+ */
+function stripEpisodeTitle(releaseTitle: string, episodeTitle: string): string {
+  const et = normalizeForMatch(episodeTitle);
+  if (!et || et.length < 3) return releaseTitle;
+  const tokens = et.split(" ").filter((w) => w.length >= 3);
+  if (tokens.length === 0) return releaseTitle;
+  let out = releaseTitle;
+  for (const t of tokens) {
+    out = out.replace(new RegExp("\\b" + escapeRegExp(t) + "\\b", "gi"), " ");
+  }
+  return out.replace(/\s+/g, " ").trim();
 }
 
 // ─── Language scoring ───────────────────────────────────────────────────────
@@ -236,10 +261,16 @@ export function pickBest(req: DecisionRequest): DecisionResult {
 
     // 4. Title similarity (penaliza, no rechaza salvo mismatch grave).
     // Con títulos alternativos localizados se toma la máxima similitud.
-    let sim = titleSimilarity(release.title, req.expectedTitle);
+    // Quitar el título del episodio (si se conoce y aparece) del título del
+    // release antes de comparar, para que no diluya la similitud con la serie.
+    let releaseTitleForSim = release.title;
+    if (req.expectedEpisodeTitle && episodeTitleMatch(release.raw, req.expectedEpisodeTitle)) {
+      releaseTitleForSim = stripEpisodeTitle(release.title, req.expectedEpisodeTitle);
+    }
+    let sim = titleSimilarity(releaseTitleForSim, req.expectedTitle);
     if (req.altTitles?.length) {
       for (const alt of req.altTitles) {
-        sim = Math.max(sim, titleSimilarity(release.title, alt));
+        sim = Math.max(sim, titleSimilarity(releaseTitleForSim, alt));
       }
     }
     // Refinar: si el release es de otra serie claramente (sim muy baja), rechazar
@@ -270,6 +301,16 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       episodeTitleScore = 20;
     }
 
+    // 4d. Tamaño: bonus si está dentro del objetivo; penaliza el exceso.
+    let sizeScore = 0;
+    if (req.maxSizeMb != null && release.sizeMb != null) {
+      if (release.sizeMb <= req.maxSizeMb) {
+        sizeScore = 15;
+      } else {
+        sizeScore = -Math.round((release.sizeMb - req.maxSizeMb) / 100);
+      }
+    }
+
     // 5. Score
     const qualityScore = qLevel;
     const sourceScore = SOURCE_ORDER[release.source] ?? 0;
@@ -281,7 +322,8 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       sourceScore * 10 +
       languageScoreVal +
       yearScore +
-      episodeTitleScore -
+      episodeTitleScore +
+      sizeScore -
       titlePenalty;
 
     evaluated.push({
@@ -292,6 +334,7 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       languageScore: languageScoreVal,
       yearScore,
       episodeTitleScore,
+      sizeScore,
       total,
     });
   }

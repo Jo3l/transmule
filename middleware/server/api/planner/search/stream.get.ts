@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
   const sub = subscriptionId ? getSubscription(subscriptionId) : undefined;
   const language = q.language ? String(q.language) : (sub?.language ?? undefined);
   const minQuality = String(q.minQuality ?? sub?.min_quality ?? "fullhd");
+  const maxSizeMb = q.maxSizeMb != null ? Number(q.maxSizeMb) : (sub?.max_size_mb ?? undefined);
   const episodeTitle = q.episodeTitle ? String(q.episodeTitle) : undefined;
   const altTitles = sub
     ? await resolveAltTitles({
@@ -88,6 +89,7 @@ export default defineEventHandler(async (event) => {
     ...(type === "episode" ? { season, episode } : {}),
     ...(year ? { year } : {}),
     ...(language ? { language } : {}),
+    ...(maxSizeMb != null ? { maxSizeMb } : {}),
     minQuality,
   };
 

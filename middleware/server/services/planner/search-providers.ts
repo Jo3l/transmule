@@ -14,8 +14,13 @@
  *   - Cada provider ejecuta sus variantes de query en PARALELO y deduplica.
  *   - `amule` usa una única query booleana con OR (`S01E01 OR 1x01`), porque
  *     su API solo retiene la última búsqueda.
- *   - `slskd` sondea el estado de la búsqueda hasta que termina (no un sleep
- *     fijo), porque las respuestas llegan lentas desde la red Soulseek.
+ *
+ * Fase 14 — streaming sin límites:
+ *   - Modo INTERACTIVO: sin timeout. `searchEpisodeStreamed`/`searchMovieStreamed`
+ *     emiten resultados NUEVOS a medida que llegan (sondeando aMule/slskd hasta
+ *     que la búsqueda termina). No se recorta el número de resultados.
+ *   - Modo AUTOMÁTICO: `searchEpisode`/`searchMovie` recogen resultados durante
+ *     `timeoutMs` (default 60 s) y luego el scheduler decide (pickBest).
  */
 
 import { searchTorrents } from "../../torrent-search/index";
@@ -47,6 +52,10 @@ const VALID_PROVIDERS: SearchProviderId[] = ["direct-plugin", "slskd", "amule"];
 
 const VIDEO_EXT_RE = /\.(mkv|mp4|avi|ts|m2ts|webm)$/i;
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 // ─── Query builders (multi-variante) ────────────────────────────────────────
 
 /** Variantes de query para un episodio: `S01E01` + `1x01` (+ sufijos de idioma). */
@@ -60,7 +69,7 @@ export function buildEpisodeQueries(
   const e = String(episode).padStart(2, "0");
   const bases = [
     `${title} S${s}E${e}`,
-    `${title} ${season}x${episode}`,
+    `${title} ${season}x${e}`,
   ];
   return withLanguageVariants(bases, language);
 }
@@ -79,7 +88,7 @@ export function buildMovieQueries(
 function buildAmuleEpisodeQuery(title: string, season: number, episode: number): string {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
-  return `${title} S${s}E${e} OR ${title} ${season}x${episode}`;
+  return `${title} S${s}E${e} OR ${title} ${season}x${e}`;
 }
 
 function withLanguageVariants(bases: string[], language?: string): string[] {
@@ -96,9 +105,10 @@ function withLanguageVariants(bases: string[], language?: string): string[] {
 
 async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[]> {
   // Ejecuta TODAS las variantes de query en paralelo (S01E01, 1x01, idioma).
+  // Límite alto (100 por variante) para no recortar resultados artificialmente.
   const batches = await Promise.all(
     queries.map((query) =>
-      searchTorrents({ query, source: "all", limit: 30 }).catch(() => []),
+      searchTorrents({ query, source: "all", limit: 100 }).catch(() => []),
     ),
   );
 
@@ -119,7 +129,7 @@ async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[
   return dedupe(items);
 }
 
-// ─── slskd provider ─────────────────────────────────────────────────────────
+// ─── slskd provider (streaming) ─────────────────────────────────────────────
 
 /** True si una búsqueda slskd ya terminó (Completada/Cancelada/Error). */
 function isSearchDone(s: { state?: string; isComplete?: boolean }): boolean {
@@ -133,80 +143,117 @@ function isSearchDone(s: { state?: string; isComplete?: boolean }): boolean {
   );
 }
 
-async function searchSlskd(queries: string[]): Promise<SearchResultItem[]> {
+function slskdToItem(f: any): SearchResultItem {
+  return {
+    url: `slskd://${f.username}/${f.filename}`,
+    sizeMb: f.size ? Math.round(f.size / 1024 / 1024) : undefined,
+    service: "slskd" as const,
+    parsed: parseReleaseName(f.filename),
+    rawName: f.filename,
+  };
+}
+
+/**
+ * Búsqueda slskd en streaming: lanza todas las variantes en paralelo y emite
+ * los resultados NUEVOS a medida que llegan. Sin timeout fijo en modo
+ * interactivo; en modo automático se acota con `timeoutMs`.
+ */
+async function streamSlskd(
+  queries: string[],
+  onResult: (items: SearchResultItem[]) => void,
+  timeoutMs?: number,
+): Promise<void> {
   const client = useSlskdClient();
   const ids = queries.map(() => crypto.randomUUID());
 
-  // Lanza todas las búsquedas en paralelo (cada una con su id).
   await Promise.all(
     ids.map((id, i) => client.createSearch(id, queries[i]).catch(() => false)),
   );
 
-  // slskd tarda en recibir respuestas (la búsqueda viaja por la red Soulseek).
-  // En lugar de esperar un tiempo fijo corto, sondeamos el estado de cada
-  // búsqueda hasta que termine (o se alcance el timeout).
-  const POLL_MS = 2000;
-  const MAX_WAIT_MS = 30000;
-  const started = Date.now();
+  const seen = new Set<string>();
   const pending = new Set(ids);
-  while (pending.size > 0 && Date.now() - started < MAX_WAIT_MS) {
-    await new Promise((r) => setTimeout(r, POLL_MS));
+  const started = Date.now();
+  while (pending.size > 0) {
+    if (timeoutMs && Date.now() - started >= timeoutMs) break;
+    await sleep(2000);
+
     const searches = await client.getSearches().catch(() => []);
     for (const id of [...pending]) {
       const s = searches.find((x) => x.id === id);
       if (s && isSearchDone(s)) pending.delete(id);
     }
-  }
 
-  const items: SearchResultItem[] = [];
-  for (const id of ids) {
-    const files = await client.getSearchResponses(id).catch(() => []);
-    for (const f of files) {
-      // Solo extensiones de vídeo
-      if (!VIDEO_EXT_RE.test(f.filename)) continue;
-      items.push({
-        url: `slskd://${f.username}/${f.filename}`,
-        sizeMb: f.size ? Math.round(f.size / 1024 / 1024) : undefined,
-        service: "slskd" as const,
-        parsed: parseReleaseName(f.filename),
-        rawName: f.filename,
-      });
+    const fresh: SearchResultItem[] = [];
+    for (const id of ids) {
+      const files = await client.getSearchResponses(id).catch(() => []);
+      for (const f of files) {
+        if (!VIDEO_EXT_RE.test(f.filename)) continue;
+        const key = f.filename.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        fresh.push(slskdToItem(f));
+      }
     }
+    if (fresh.length > 0) onResult(fresh);
   }
-  return dedupe(items);
 }
 
-// ─── aMule provider ─────────────────────────────────────────────────────────
+// ─── aMule provider (streaming) ─────────────────────────────────────────────
 
-async function searchAmule(query: string): Promise<SearchResultItem[]> {
+function amuleToItem(r: any): SearchResultItem {
+  const name = r.fileName ?? "";
+  const hash =
+    r.hash instanceof Buffer
+      ? Buffer.from(r.hash).toString("hex")
+      : String(r.hash ?? "");
+  return {
+    url: `ed2k://|file|${encodeURIComponent(name)}|${r.sizeFull ?? 0}|${hash}|/`,
+    hash: hash || undefined,
+    sizeMb: r.sizeFull ? Math.round(r.sizeFull / 1024 / 1024) : undefined,
+    service: "amule" as const,
+    parsed: parseReleaseName(name),
+    rawName: name,
+  };
+}
+
+/**
+ * Búsqueda aMule en streaming: lanza la búsqueda (query booleana con OR, porque
+ * aMule solo retiene la última) y emite los resultados NUEVOS a medida que
+ * llegan, hasta que aMule marca la búsqueda completa (progress >= 1).
+ * Sin timeout fijo en modo interactivo; en modo automático se acota con `timeoutMs`.
+ */
+async function streamAmule(
+  query: string,
+  onResult: (items: SearchResultItem[]) => void,
+  timeoutMs?: number,
+): Promise<void> {
   const client = useAmuleClient();
-  // Búsqueda asíncrona en aMule (ED2K) — sin tipo ni filtros (default global).
-  // aMule solo retiene la última búsqueda, por eso se le pasa UNA query
-  // booleana con OR (p. ej. `S01E01 OR 1x01`) en vez de lanzar varias.
   const searchId = await client.searchAsync(query).catch(() => null);
-  if (!searchId) return [];
+  if (!searchId) return;
 
-  await new Promise((r) => setTimeout(r, 8000));
-  const resp = await client.searchResults().catch(() => null);
-  if (!resp?.files) return [];
+  const seen = new Set<string>();
+  const started = Date.now();
+  while (true) {
+    if (timeoutMs && Date.now() - started >= timeoutMs) break;
+    await sleep(2000);
 
-  return dedupe(
-    resp.files.map((r: any) => {
-      const name = r.fileName ?? "";
-      const hash =
-        r.hash instanceof Buffer
-          ? Buffer.from(r.hash).toString("hex")
-          : String(r.hash ?? "");
-      return {
-        url: `ed2k://|file|${encodeURIComponent(name)}|${r.sizeFull ?? 0}|${hash}|/`,
-        hash: hash || undefined,
-        sizeMb: r.sizeFull ? Math.round(r.sizeFull / 1024 / 1024) : undefined,
-        service: "amule" as const,
-        parsed: parseReleaseName(name),
-        rawName: name,
-      };
-    }),
-  );
+    const [resp, progress] = await Promise.all([
+      client.searchResults().catch(() => null),
+      client.searchStatus().catch(() => 1),
+    ]);
+
+    const files = resp?.files ?? [];
+    const fresh = files.map(amuleToItem).filter((it) => {
+      const key = it.hash ?? it.rawName.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (fresh.length > 0) onResult(fresh);
+
+    // progress >= 1 → búsqueda completa.
+    if (progress >= 1) break;
+  }
 }
 
 // ─── Orchestrator ───────────────────────────────────────────────────────────
@@ -220,10 +267,8 @@ function normalizeProviders(ids: string[]): SearchProviderId[] {
 
 /**
  * Busca un episodio en los servicios habilitados para la subscription.
- *
- * @param searchServices lista de provider ids habilitados.
- * @param language código ISO de idioma preferido (opcional) — añade sufijos
- *                 de idioma a las queries y se propaga al parseo/candidatos.
+ * Modo AUTOMÁTICO: recoge resultados durante `timeoutMs` (default 60 s) y
+ * devuelve todos los encontrados para que el scheduler decida después.
  */
 export async function searchEpisode(
   title: string,
@@ -231,54 +276,56 @@ export async function searchEpisode(
   episode: number,
   searchServices: string[],
   language?: string,
+  timeoutMs = 60_000,
 ): Promise<SearchResultItem[]> {
-  const providers = normalizeProviders(searchServices);
-  const queries = buildEpisodeQueries(title, season, episode, language);
-
-  const tasks: Promise<SearchResultItem[]>[] = [];
-  if (providers.includes("direct-plugin")) tasks.push(searchDirectPlugins(queries));
-  if (providers.includes("slskd")) tasks.push(searchSlskd(queries));
-  if (providers.includes("amule")) tasks.push(searchAmule(buildAmuleEpisodeQuery(title, season, episode)));
-
-  const settled = await Promise.allSettled(tasks);
-  const results = settled
-    .filter((r): r is PromiseFulfilledResult<SearchResultItem[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value);
-
-  return dedupe(results);
+  const collected: SearchResultItem[] = [];
+  const done = searchEpisodeStreamed(
+    title,
+    season,
+    episode,
+    searchServices,
+    language,
+    (_svc, items) => {
+      collected.push(...items);
+    },
+    timeoutMs,
+  );
+  // Espera a que TODAS las búsquedas terminen o al timeout, lo que ocurra antes.
+  await Promise.race([done, sleep(timeoutMs)]);
+  return dedupe(collected);
 }
 
 /**
- * Busca una película en los servicios habilitados.
+ * Busca una película en los servicios habilitados (modo automático, timeoutMs).
  */
 export async function searchMovie(
   title: string,
   year: number | undefined,
   searchServices: string[],
   language?: string,
+  timeoutMs = 60_000,
 ): Promise<SearchResultItem[]> {
-  const providers = normalizeProviders(searchServices);
-  const queries = buildMovieQueries(title, year, language);
-
-  const tasks: Promise<SearchResultItem[]>[] = [];
-  if (providers.includes("direct-plugin")) tasks.push(searchDirectPlugins(queries));
-  if (providers.includes("slskd")) tasks.push(searchSlskd(queries));
-  if (providers.includes("amule")) tasks.push(searchAmule(queries[0]));
-
-  const settled = await Promise.allSettled(tasks);
-  const results = settled
-    .filter((r): r is PromiseFulfilledResult<SearchResultItem[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value);
-
-  return dedupe(results);
+  const collected: SearchResultItem[] = [];
+  const done = searchMovieStreamed(
+    title,
+    year,
+    searchServices,
+    language,
+    (_svc, items) => {
+      collected.push(...items);
+    },
+    timeoutMs,
+  );
+  await Promise.race([done, sleep(timeoutMs)]);
+  return dedupe(collected);
 }
 
 // ─── Streaming (resultados incrementales por proveedor) ─────────────────────
 
 /**
- * Busca un episodio en streaming: invoca `onResult(service, items)` en cuanto
- * CADA proveedor termina, sin esperar a los demás. Usado por el endpoint SSE
- * para mostrar resultados a medida que llegan (las búsquedas pueden ser lentas).
+ * Busca un episodio en streaming: invoca `onResult(service, items)` con los
+ * resultados NUEVOS de cada proveedor a medida que llegan (sin esperar a los
+ * demás ni a que la búsqueda termine). Sin timeout salvo que se pase `timeoutMs`.
  */
 export async function searchEpisodeStreamed(
   title: string,
@@ -287,6 +334,7 @@ export async function searchEpisodeStreamed(
   searchServices: string[],
   language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
+  timeoutMs?: number,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   const queries = buildEpisodeQueries(title, season, episode, language);
@@ -297,10 +345,10 @@ export async function searchEpisodeStreamed(
     tasks.push(searchDirectPlugins(queries).then((r) => onResult("direct-plugin", r)));
   }
   if (providers.includes("slskd")) {
-    tasks.push(searchSlskd(queries).then((r) => onResult("slskd", r)));
+    tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    tasks.push(searchAmule(amuleQuery).then((r) => onResult("amule", r)));
+    tasks.push(streamAmule(amuleQuery, (r) => onResult("amule", r), timeoutMs));
   }
 
   await Promise.allSettled(tasks);
@@ -315,6 +363,7 @@ export async function searchMovieStreamed(
   searchServices: string[],
   language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
+  timeoutMs?: number,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   const queries = buildMovieQueries(title, year, language);
@@ -324,10 +373,10 @@ export async function searchMovieStreamed(
     tasks.push(searchDirectPlugins(queries).then((r) => onResult("direct-plugin", r)));
   }
   if (providers.includes("slskd")) {
-    tasks.push(searchSlskd(queries).then((r) => onResult("slskd", r)));
+    tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    tasks.push(searchAmule(queries[0]).then((r) => onResult("amule", r)));
+    tasks.push(streamAmule(queries[0], (r) => onResult("amule", r), timeoutMs));
   }
 
   await Promise.allSettled(tasks);
