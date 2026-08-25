@@ -111,6 +111,7 @@ export interface ReleaseCandidate {
 
 export function usePlanner() {
   const { apiFetch } = useApi();
+  const config = useRuntimeConfig();
 
   // ── Subscriptions ─────────────────────────────────────────────────────────
 
@@ -245,6 +246,55 @@ export function usePlanner() {
     );
   }
 
+  /**
+   * Búsqueda de releases en STREAMING (SSE): invoca onBatch(service, candidates)
+   * en cuanto cada red termina, sin esperar a las demás. Devuelve al cerrar el
+   * stream (evento `complete`).
+   */
+  async function searchReleasesStreamed(
+    body: Record<string, unknown>,
+    onBatch: (service: string, candidates: ReleaseCandidate[]) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(body)) {
+      if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+    }
+    const base = config.public?.apiBase ?? "";
+    const res = await fetch(`${base}/api/planner/search/stream?${params.toString()}`, {
+      credentials: "include",
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      throw new Error(`search stream failed (${res.status})`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    // El patrón de buffer preserva eventos parciales entre chunks TCP.
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const ev of parts) {
+        const lines = ev.split("\n");
+        let type = "", data = "";
+        for (const l of lines) {
+          if (l.startsWith("event: ")) type = l.slice(7);
+          else if (l.startsWith("data: ")) data = l.slice(6);
+        }
+        if (!type || !data) continue;
+        try {
+          const d = JSON.parse(data);
+          if (type === "result") onBatch(d.service, d.candidates ?? []);
+        } catch { /* skip */ }
+      }
+    }
+  }
+
   async function grabRelease(body: Record<string, unknown>) {
     return apiFetch<{ ok: boolean; queued: boolean; grab: number }>(
       "/api/planner/grabs",
@@ -279,6 +329,7 @@ export function usePlanner() {
     getTvdbTranslations,
     getTmdbTranslations,
     searchReleases,
+    searchReleasesStreamed,
     grabRelease,
     autoDownload,
   };

@@ -257,5 +257,28 @@ expectEq(isoLangDecision.rejected.length, 0, "IsoLang: 'es' matchea release 'spa
 assert(isoLangDecision.picked !== null, "IsoLang: picked");
 expectEq(isoLangDecision.picked?.languageScore, 10, "IsoLang: +10 por match normalizado");
 
+// ── Caso 14: bonus por título del episodio localizado ────────────────────────
+// Un release que incluye el título del episodio suma +20; uno sin él no penaliza
+// (p.ej. "Silo 1x01 spanish" sin título de episodio).
+const epTitleReleases = [
+  "Silo.S01E01.Freedom.Day.1080p.WEB-DL.x264-GROUP",
+  "Silo.S01E01.1080p.WEB-DL.x264-SPANISH",
+].map(parseReleaseName);
+
+const epTitleDecision = pickBest({
+  releases: epTitleReleases,
+  expectedTitle: "Silo",
+  season: 1,
+  episode: 1,
+  minQuality: "hd",
+  expectedEpisodeTitle: "Freedom Day",
+});
+
+const withTitle = epTitleDecision.evaluated.find((e) => e.release.raw.includes("Freedom"));
+const withoutTitle = epTitleDecision.evaluated.find((e) => e.release.raw.includes("SPANISH"));
+assert(withTitle !== undefined, "EpTitle: found release with episode title");
+expectEq(withTitle?.episodeTitleScore, 20, "EpTitle: +20 por coincidir con el título del episodio");
+expectEq(withoutTitle?.episodeTitleScore, 0, "EpTitle: 0 sin título de episodio");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

@@ -24,6 +24,9 @@ export interface SlskdSearch {
   state: string;
   fileCount: number;
   startedAt: string;
+  isComplete?: boolean;
+  endedAt?: string | null;
+  responseCount?: number;
 }
 
 export interface SlskdSearchResponse {

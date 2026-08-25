@@ -188,6 +188,24 @@ export async function getTmdbMovieTranslations(
     }));
 }
 
+/**
+ * Título localizado de la película en el idioma dado (o null si es igual al
+ * original / no hay traducción). Usado por el scoring de búsqueda.
+ */
+export async function getTmdbMovieLocalizedTitle(
+  id: number,
+  isoLang: string,
+): Promise<string | null> {
+  if (!isoLang || isoLang === "en") return null;
+  const detail = await getTmdbMovieDetail(id, isoLang).catch(() => null);
+  if (!detail) return null;
+  const localized = detail.title?.trim();
+  const original = detail.original_title?.trim();
+  if (!localized) return null;
+  if (original && localized.toLowerCase() === original.toLowerCase()) return null;
+  return localized;
+}
+
 export async function getTmdbTvDetail(
   id: number,
 ): Promise<{ id: number; name: string; overview: string | null; first_air_date: string | null; poster_url: string | null; status: string | null } | null> {

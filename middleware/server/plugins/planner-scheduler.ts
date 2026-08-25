@@ -44,6 +44,7 @@ import {
 import { getConfig, useDatabase } from "../utils/database";
 import { searchEpisode, searchMovie, parseSearchServices } from "../services/planner/search-providers";
 import { pickBest } from "../services/planner/decision-engine";
+import { resolveAltTitles } from "../services/planner/localized-titles";
 import type { ParsedRelease } from "../services/planner/release-parser";
 
 const GUARD_KEY = "__transmule_planner_scheduler_started__";
@@ -367,11 +368,17 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     searched++;
 
     try {
+      const altTitles = await resolveAltTitles({
+        tmdb_id: movie.tmdb_id ?? null,
+        language: movie.language,
+        title: movie.title,
+      });
       const items = await searchMovie(movie.title, movie.year ?? null, services, movie.language ?? undefined);
       const parsed = items.map((i) => i.parsed);
       const decision = pickBest({
         releases: parsed,
         expectedTitle: movie.title,
+        ...(altTitles.length ? { altTitles } : {}),
         ...(movie.year ? { expectedYear: movie.year } : {}),
         minQuality: (movie.min_quality ?? "fullhd") as any,
         ...(movie.language
@@ -445,11 +452,20 @@ async function grabEpisode(
 ): Promise<void> {
   const services = parseSearchServices(sub.search_services_json);
   try {
+    // Títulos localizados (idioma elegido) para el scoring.
+    const altTitles = await resolveAltTitles({
+      tvdb_id: sub.tvdb_id,
+      tmdb_id: sub.tmdb_id,
+      language: sub.language,
+      title: sub.title,
+    });
     const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, sub.language ?? undefined);
     const parsed = items.map((i) => i.parsed);
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,
+      ...(altTitles.length ? { altTitles } : {}),
+      ...(ep.title ? { expectedEpisodeTitle: ep.title } : {}),
       season: ep.season_number,
       episode: ep.episode_number,
       minQuality: (sub.min_quality ?? "fullhd") as any,

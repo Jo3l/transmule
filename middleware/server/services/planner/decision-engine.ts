@@ -47,6 +47,13 @@ export interface DecisionRequest {
   releases: ParsedRelease[];
   /** Título esperado (serie o película) */
   expectedTitle: string;
+  /** Títulos alternativos localizados (idioma elegido) — se puntúa con la
+   *  máxima similitud entre expectedTitle y estos, para no penalizar releases
+   *  titulados en el idioma de la suscripción (p.ej. "Juego de Tronos"). */
+  altTitles?: string[];
+  /** Título del episodio localizado (idioma elegido) — bonus si el nombre del
+   *  release lo incluye. No penaliza si falta (p.ej. "Silo 1x01 spanish"). */
+  expectedEpisodeTitle?: string;
   /** Season+episode si es serie */
   season?: number;
   episode?: number;
@@ -71,6 +78,8 @@ export interface ReleaseScore {
   languageScore: number;
   /** Puntos por match de año */
   yearScore: number;
+  /** Puntos por match del título del episodio (localizado) */
+  episodeTitleScore: number;
   total: number;
   /** Razón de descarte (si no fue elegible) */
   rejectedReason?: string;
@@ -108,6 +117,31 @@ function titleSimilarity(a: string, b: string): number {
   for (const t of tokensA) if (tokensB.has(t)) inter++;
   const union = tokensA.size + tokensB.size - inter;
   return union > 0 ? inter / union : 0;
+}
+
+/** Normaliza un texto para comparación: minúsculas, sin acentos ni puntuación. */
+function normalizeForMatch(s: string): string {
+  return (s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * True si el nombre del release incluye el título del episodio (localizado).
+ * Coincidencia por frase completa o por todos los tokens significativos (≥3).
+ */
+function episodeTitleMatch(releaseRaw: string, episodeTitle: string): boolean {
+  const raw = normalizeForMatch(releaseRaw).replace(/ /g, "");
+  const title = normalizeForMatch(episodeTitle);
+  if (!title || title.length < 3) return false;
+  if (raw.includes(title.replace(/ /g, ""))) return true;
+  const tokens = title.split(" ").filter((w) => w.length >= 3);
+  if (tokens.length >= 2) return tokens.every((t) => raw.includes(t));
+  return false;
 }
 
 // ─── Language scoring ───────────────────────────────────────────────────────
@@ -200,8 +234,14 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       continue;
     }
 
-    // 4. Title similarity (penaliza, no rechaza salvo mismatch grave)
+    // 4. Title similarity (penaliza, no rechaza salvo mismatch grave).
+    // Con títulos alternativos localizados se toma la máxima similitud.
     let sim = titleSimilarity(release.title, req.expectedTitle);
+    if (req.altTitles?.length) {
+      for (const alt of req.altTitles) {
+        sim = Math.max(sim, titleSimilarity(release.title, alt));
+      }
+    }
     // Refinar: si el release es de otra serie claramente (sim muy baja), rechazar
     if (sim < 0.25 && req.expectedTitle.length > 3) {
       rejected.push({
@@ -220,6 +260,16 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       else yearScore = -2;
     }
 
+    // 4c. Título del episodio (localizado): bonus si el release lo incluye.
+    // No penaliza si falta (p.ej. "Silo 1x01 spanish" sin título de episodio).
+    let episodeTitleScore = 0;
+    if (
+      req.expectedEpisodeTitle &&
+      episodeTitleMatch(release.raw, req.expectedEpisodeTitle)
+    ) {
+      episodeTitleScore = 20;
+    }
+
     // 5. Score
     const qualityScore = qLevel;
     const sourceScore = SOURCE_ORDER[release.source] ?? 0;
@@ -227,7 +277,12 @@ export function pickBest(req: DecisionRequest): DecisionResult {
     const languageScoreVal = lang.score;
 
     const total =
-      qualityScore * 100 + sourceScore * 10 + languageScoreVal + yearScore - titlePenalty;
+      qualityScore * 100 +
+      sourceScore * 10 +
+      languageScoreVal +
+      yearScore +
+      episodeTitleScore -
+      titlePenalty;
 
     evaluated.push({
       release,
@@ -236,6 +291,7 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       titlePenalty,
       languageScore: languageScoreVal,
       yearScore,
+      episodeTitleScore,
       total,
     });
   }

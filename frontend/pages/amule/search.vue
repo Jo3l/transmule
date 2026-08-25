@@ -100,6 +100,7 @@
           @update:page="currentPage = $event"
           @update:name-filter="nameFilter = $event"
           @load-cover="loadCover($event)"
+          @sort="onSort"
         />
       </STabPane>
     </STabs>
@@ -135,7 +136,7 @@ const sizeUnits = computed(() => [
 const columns = computed(() => [
   { key: "cover", label: "", width: 60, align: "center" as const },
   { prop: "name", label: t("search.columns.name"), sortable: true },
-  { prop: "size_fmt", label: t("search.columns.size"), width: 85, sortable: true },
+  { prop: "size_fmt", sortProp: "size", label: t("search.columns.size"), width: 85, sortable: true },
   {
     key: "seeds",
     prop: "sources",
@@ -185,11 +186,37 @@ const filteredResults = computed(() => {
 const PAGE_SIZE = 50;
 const currentPage = ref(1);
 
+// ── Client-side sorting (full list, before pagination) ─────────────────────
+
+const sortField = ref("");
+const sortDir = ref<"asc" | "desc">("asc");
+
+const sortedResults = computed(() => {
+  const data = filteredResults.value;
+  if (!sortField.value || !data.length) return data;
+  const dir = sortDir.value === "asc" ? 1 : -1;
+  const p = sortField.value;
+  return [...data].sort((a: any, b: any) => {
+    const va = a[p];
+    const vb = b[p];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+    return String(va).localeCompare(String(vb)) * dir;
+  });
+});
+
 const pagedResults = computed(() => {
-  const all = filteredResults.value;
+  const all = sortedResults.value;
   const start = (currentPage.value - 1) * PAGE_SIZE;
   return all.slice(start, start + PAGE_SIZE);
 });
+
+function onSort(field: string, dir: "asc" | "desc") {
+  sortField.value = field;
+  sortDir.value = dir;
+}
 
 watch(filteredResults, () => {
   currentPage.value = 1;

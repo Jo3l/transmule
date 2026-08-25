@@ -16,7 +16,9 @@
  *   minQuality?: string        (default: "fullhd")
  */
 import { searchEpisode, searchMovie } from "~/services/planner/search-providers";
-import { pickBest } from "~/services/planner/decision-engine";
+import { scoreCandidates } from "~/services/planner/candidates";
+import { getSubscription } from "~/utils/planner-db";
+import { resolveAltTitles } from "~/services/planner/localized-titles";
 
 defineRouteMeta({
   openAPI: {
@@ -37,6 +39,8 @@ defineRouteMeta({
               year: { type: "integer", nullable: true },
               season: { type: "integer", nullable: true },
               episode: { type: "integer", nullable: true },
+              subscriptionId: { type: "integer", nullable: true },
+              episodeTitle: { type: "string", nullable: true },
               searchServices: { type: "array", items: { type: "string" } },
               language: { type: "string", nullable: true },
               minQuality: { type: "string", nullable: true },
@@ -72,13 +76,26 @@ export default defineEventHandler(async (event) => {
   }
 
   const year = body?.year != null ? Number(body.year) : undefined;
-  const language: string | undefined = body?.language || undefined;
-  const minQuality: string = body?.minQuality ?? "fullhd";
+  const subscriptionId = body?.subscriptionId != null ? Number(body.subscriptionId) : undefined;
   const searchServices: string[] = Array.isArray(body?.searchServices)
     ? body.searchServices.filter((s: unknown) => typeof s === "string")
     : ["direct-plugin", "slskd", "amule"];
 
-  // Busca en paralelo en las redes habilitadas (multi-query + idioma).
+  // Idioma, calidad mínima, título del episodio y títulos localizados.
+  const sub = subscriptionId ? getSubscription(subscriptionId) : undefined;
+  const language: string | undefined = body?.language || sub?.language || undefined;
+  const minQuality: string = body?.minQuality ?? sub?.min_quality ?? "fullhd";
+  const episodeTitle: string | undefined = body?.episodeTitle || undefined;
+  const altTitles = sub
+    ? await resolveAltTitles({
+        tvdb_id: sub.tvdb_id,
+        tmdb_id: sub.tmdb_id,
+        language,
+        title: sub.title,
+      })
+    : [];
+
+  // Busca en paralelo en las redes habilitadas (numeración + idioma).
   const items =
     type === "episode"
       ? await searchEpisode(title, season!, episode!, searchServices, language)
@@ -86,46 +103,15 @@ export default defineEventHandler(async (event) => {
 
   // Score SIN decidir: evaluamos todos y devolvemos candidatos (los válidos
   // primero, los rechazados con su motivo al final) para que el usuario elija.
-  const decision = pickBest({
-    releases: items.map((i) => i.parsed),
-    expectedTitle: title,
+  const candidates = scoreCandidates(items, {
+    title,
+    ...(altTitles.length ? { altTitles } : {}),
+    ...(episodeTitle ? { expectedEpisodeTitle: episodeTitle } : {}),
     ...(type === "episode" ? { season, episode } : {}),
-    ...(year ? { expectedYear: year } : {}),
-    minQuality: minQuality as any,
-    ...(language
-      ? { languageProfile: { mustHave: [language], allowUnknownLang: true } }
-      : {}),
+    ...(year ? { year } : {}),
+    ...(language ? { language } : {}),
+    minQuality,
   });
-
-  const byRaw = new Map(items.map((i) => [i.parsed.raw, i]));
-
-  const toCandidate = (parsed: any, extra: { score: number; rejectedReason?: string }) => {
-    const it = byRaw.get(parsed.raw);
-    return {
-      url: it?.url ?? "",
-      hash: it?.hash ?? null,
-      sizeMb: it?.sizeMb ?? null,
-      seeds: it?.seeds ?? null,
-      service: it?.service ?? null,
-      rawName: it?.rawName ?? parsed.raw,
-      title: parsed.title,
-      quality: parsed.quality,
-      source: parsed.source,
-      languages: parsed.languages ?? [],
-      season: parsed.season ?? null,
-      episode: parsed.episode ?? null,
-      year: parsed.year ?? null,
-      score: extra.score,
-      rejectedReason: extra.rejectedReason ?? null,
-    };
-  };
-
-  const candidates = [
-    ...decision.evaluated.map((s) => toCandidate(s.release, { score: s.total })),
-    ...decision.rejected.map((r) =>
-      toCandidate(r.release, { score: -1, rejectedReason: r.reason }),
-    ),
-  ];
 
   return { candidates, count: candidates.length };
 });

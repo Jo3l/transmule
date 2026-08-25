@@ -164,6 +164,7 @@
         :title="sub.title"
         :season="downloadTarget?.season_number ?? 0"
         :episode="downloadTarget?.episode_number ?? 0"
+        :episode-title="downloadTarget?.title ?? undefined"
         :subscription-id="id"
         :episode-id="downloadTarget?.id ?? null"
         @grabbed="onGrabbed"
