@@ -21,6 +21,7 @@ interface PlannerSubscription {
   root_folder: string;
   search_services_json: string | null;
   language: string | null;
+  smart_rename: number;
   parent_subscription_id: number | null;
   season_filter: number | null;
   added_at: string;

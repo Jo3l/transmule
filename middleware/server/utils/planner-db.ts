@@ -67,6 +67,7 @@ export interface PlannerSubscription {
   root_folder: string;
   search_services_json: string | null;
   language: string | null;
+  smart_rename: number;
   parent_subscription_id: number | null;
   season_filter: number | null;
   added_at: string;
@@ -189,6 +190,8 @@ export interface PlannerGrabQueueEntry {
   state: PlannerGrabState;
   attempts: number;
   last_error: string | null;
+  /** Carpeta destino de la subscription (JOIN en nextPendingGrabs). */
+  root_folder?: string | null;
   priority: PlannerGrabPriority;
   created_at: string;
 }
@@ -248,43 +251,45 @@ export interface CreateSubscriptionInput {
   overview?: string | null;
   genres_json?: string | null;
   search_services_json?: string | null;
-  language?: string | null;
-  parent_subscription_id?: number | null;
-  season_filter?: number | null;
-}
+    language?: string | null;
+    smart_rename?: boolean;
+    parent_subscription_id?: number | null;
+    season_filter?: number | null;
+  }
 
-export function createSubscription(input: CreateSubscriptionInput): PlannerSubscription {
-  const db = useDatabase();
-  const result = db
-    .prepare(
-      `INSERT INTO planner_subscriptions
-        (type, tmdb_id, tvdb_id, imdb_id, title, year, poster_url, overview, genres_json,
-         status, monitored, min_quality, max_size_mb, root_folder, search_services_json, language,
-         parent_subscription_id, season_filter)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      input.type,
-      input.tmdb_id ?? null,
-      input.tvdb_id ?? null,
-      input.imdb_id ?? null,
-      input.title,
-      input.year ?? null,
-      input.poster_url ?? null,
-      input.overview ?? null,
-      input.genres_json ?? null,
-      input.status,
-      input.monitored === false ? 0 : 1,
-      input.min_quality ?? "fullhd",
-      input.max_size_mb ?? null,
-      input.root_folder,
-      input.search_services_json ?? null,
-      input.language ?? null,
-      input.parent_subscription_id ?? null,
-      input.season_filter ?? null,
-    );
-  return getSubscription(Number(result.lastInsertRowid))!;
-}
+  export function createSubscription(input: CreateSubscriptionInput): PlannerSubscription {
+    const db = useDatabase();
+    const result = db
+      .prepare(
+        `INSERT INTO planner_subscriptions
+         (type, tmdb_id, tvdb_id, imdb_id, title, year, poster_url, overview, genres_json,
+          status, monitored, min_quality, max_size_mb, root_folder, search_services_json, language,
+          smart_rename, parent_subscription_id, season_filter)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.type,
+        input.tmdb_id ?? null,
+        input.tvdb_id ?? null,
+        input.imdb_id ?? null,
+        input.title,
+        input.year ?? null,
+        input.poster_url ?? null,
+        input.overview ?? null,
+        input.genres_json ?? null,
+        input.status,
+        input.monitored === false ? 0 : 1,
+        input.min_quality ?? "fullhd",
+        input.max_size_mb ?? null,
+        input.root_folder,
+        input.search_services_json ?? null,
+        input.language ?? null,
+        input.smart_rename ? 1 : 0,
+        input.parent_subscription_id ?? null,
+        input.season_filter ?? null,
+      );
+    return getSubscription(Number(result.lastInsertRowid))!;
+  }
 
 export interface UpdateSubscriptionInput {
   title?: string | null;
@@ -294,6 +299,7 @@ export interface UpdateSubscriptionInput {
   root_folder?: string;
   search_services_json?: string | null;
   language?: string | null;
+  smart_rename?: boolean;
   ended_at?: string | null;
   metadata_synced_at?: string | null;
   metadata_json?: string | null;
@@ -764,12 +770,16 @@ export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | 
 export function nextPendingGrabs(limit: number = 5): PlannerGrabQueueEntry[] {
   const db = useDatabase();
   // Higher priority first: 'manual' > 'high' > 'normal'
+  // JOIN con la subscription para traer root_folder (carpeta destino).
   return db
     .prepare(
-      `SELECT * FROM planner_grab_queue WHERE state = 'pending'
+      `SELECT q.*, s.root_folder AS root_folder
+       FROM planner_grab_queue q
+       JOIN planner_subscriptions s ON s.id = q.subscription_id
+       WHERE q.state = 'pending'
        ORDER BY
-         CASE priority WHEN 'manual' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,
-         created_at ASC
+         CASE q.priority WHEN 'manual' THEN 0 WHEN 'high' THEN 1 ELSE 2 END,
+         q.created_at ASC
        LIMIT ?`,
     )
     .all(limit) as unknown as PlannerGrabQueueEntry[];

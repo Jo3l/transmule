@@ -16,6 +16,7 @@ import { useTransmissionClient } from "../utils/transmission-client";
 import { useAmuleClient } from "../utils/amule-client";
 import { useSlskdClient } from "../utils/slskd-client";
 import { usePyLoadClient } from "../utils/pyload-client";
+import { resolveVirtualPath } from "~/utils/remoteMounts";
 
 const GUARD_KEY = "__transmule_planner_grab_worker_started__";
 const INTERVAL_MS = 30_000;
@@ -50,7 +51,15 @@ async function dispatch(grab: any): Promise<void> {
     case "transmission":
     case "direct-plugin": {
       const client = useTransmissionClient();
-      const added = await client.addTorrent({ filename: url });
+      // Carpeta destino de la subscription (root_folder). Transmission la
+      // crea si no existe. undefined → directorio por defecto del cliente.
+      const downloadDir = resolvePlannerDest(grab.root_folder);
+      if (downloadDir && grab.root_folder?.startsWith("home") === false && grab.root_folder?.startsWith("/") === false) {
+        console.warn(
+          `[planner] grab #${grab.id}: destino SMB '${grab.root_folder}' — el cliente debe tener el montaje visible en '${downloadDir}'`,
+        );
+      }
+      const added = await client.addTorrent({ filename: url, downloadDir });
       if (!added) throw new Error("transmission addTorrent returned false");
       return;
     }
@@ -81,6 +90,35 @@ async function dispatch(grab: any): Promise<void> {
     default:
       throw new Error(`unknown service: ${grab.service}`);
   }
+}
+
+/**
+ * Convierte el root_folder virtual de la subscription a un directorio real
+ * dentro del contenedor del cliente de descarga.
+ *
+ *   - "home" / "home/…"        → ruta local del volumen compartido (/downloads)
+ *   - "/downloads/…" (legacy)   → passthrough (mismo volumen)
+ *   - "<share>/…" (SMB)         → "/<share>/…" best-effort: solo funciona si el
+ *                                contenedor del cliente tiene ese share montado
+ *                                en esa ruta (la arquitectura smbclient no puede
+ *                                escribir en SMB directamente).
+ *
+ * undefined → el cliente usa su directorio por defecto.
+ */
+function resolvePlannerDest(rootFolder: string | null | undefined): string | undefined {
+  if (!rootFolder) return undefined;
+  const clean = String(rootFolder)
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+  if (!clean || clean === "downloads" || clean === "home") return undefined;
+  if (clean.startsWith("home/")) {
+    const r = resolveVirtualPath(clean);
+    return r?.type === "local" ? r.absPath : undefined;
+  }
+  if (clean.startsWith("downloads/")) return "/" + clean;
+  // share SMB u otra ruta → passthrough (montaje requerido en el cliente)
+  return "/" + clean;
 }
 
 function parseSlskdUrl(url: string): { username: string; filename: string } | null {
