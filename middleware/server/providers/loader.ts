@@ -139,7 +139,11 @@ async function _loadPluginsFromDisk(): Promise<void> {
 export async function loadPlugin(fullPath: string): Promise<string | null> {
   const filename = basename(fullPath);
   try {
-    const url = pathToFileURL(fullPath).href + `?v=${Date.now()}`;
+    // Cache-buster ÚNICO: Date.now() solo puede colisionar en el mismo ms
+    // (p. ej. loadPlugin repetido tras un rollback) y devolvería el módulo
+    // anterior cachead. El sufijo aleatorio garantiza evaluación fresca.
+    const bust = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const url = pathToFileURL(fullPath).href + `?v=${bust}`;
     const mod = await import(url);
     const plugin: unknown = mod.default ?? mod;
     if (!_isValidPlugin(plugin)) {

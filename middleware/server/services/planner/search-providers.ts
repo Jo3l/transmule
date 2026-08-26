@@ -27,7 +27,7 @@ import { searchTorrents } from "../../torrent-search/index";
 import type { ParsedRelease } from "./release-parser";
 import { parseReleaseName, languageQueryMarkers } from "./release-parser";
 import { useSlskdClient } from "../../utils/slskd-client";
-import { useAmuleClient } from "../../utils/amule-client";
+import { useAmuleClient, SearchType } from "../../utils/amule-client";
 
 export interface SearchResultItem {
   /** URL / magnet / ed2k que se enviará al download client */
@@ -228,7 +228,10 @@ async function streamAmule(
   timeoutMs?: number,
 ): Promise<void> {
   const client = useAmuleClient();
-  const searchId = await client.searchAsync(query).catch(() => null);
+  // IMPORTANTE: pasar SearchType.GLOBAL explícito. El default de la librería
+  // amule-ec-client es LOCAL (0), que solo busca ficheros compartidos localmente
+  // y devuelve un listado distinto (vacío) al del buscador directo, que usa GLOBAL.
+  const searchId = await client.searchAsync(query, SearchType.GLOBAL).catch(() => null);
   if (!searchId) return;
 
   const seen = new Set<string>();
