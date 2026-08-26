@@ -12,18 +12,24 @@
 // ─── Regex (compartidas con parse-name.ts) ──────────────────────────────────
 
 const QUALITY_RE = /\b(2160p|4[kK]|1080p|720p|480p|360p|240p)\b/i;
-const SOURCE_RE = /\b(BLURAY|BluRay|WEB[-.]?DL|WEB[-.]?Rip|WEB|HDRip|BRRip|DVDRip|DVD[Rr]ip|BDRip|HDTV|PDTV|DSR|SAT[Rr]ip|REMUX|CAM|TS|TC|R5)\b/i;
-const CODEC_RE = /\b(x265|x264|h[.\s]?265|h[.\s]?264|HEVC|AV1|DivX|XviD|AVC|MPEG-?4|MPEG-?2)\b/i;
-const AUDIO_CODEC_RE = /\b(EAC3|E[-.]?AC[-.]?3|AC3|AAC|FLAC|DTS[-.]?HD(?:[-.]?MA)?|DTS|TRUEHD|ATMOS|DDP\d*(?:\.\d)?|DD\d+(?:\.\d)?|MP3|OPUS|VORBIS|PCM)\b/gi;
+const SOURCE_RE =
+  /\b(BLURAY|BluRay|WEB[-.]?DL|WEB[-.]?Rip|WEB|HDRip|BRRip|DVDRip|DVD[Rr]ip|BDRip|HDTV|PDTV|DSR|SAT[Rr]ip|REMUX|CAM|TS|TC|R5)\b/i;
+const CODEC_RE =
+  /\b(x265|x264|h[.\s]?265|h[.\s]?264|HEVC|AV1|DivX|XviD|AVC|MPEG-?4|MPEG-?2)\b/i;
+const AUDIO_CODEC_RE =
+  /\b(EAC3|E[-.]?AC[-.]?3|AC3|AAC|FLAC|DTS[-.]?HD(?:[-.]?MA)?|DTS|TRUEHD|ATMOS|DDP\d*(?:\.\d)?|DD\d+(?:\.\d)?|MP3|OPUS|VORBIS|PCM)\b/gi;
 const VIDEO_EXT_RE = /\b(MKV|MP4|AVI|M2TS|WEBM|MOV|WMV|FLV|M4V)\b/gi;
 // HDR / rango dinámico, profundidad de bit y fuente de streaming (junk del título)
 const HDR_RE = /\b(HDR10\+?|HDR|DOVI|DOLBY[-\s]?VISION|SDR|HLG)\b/gi;
 const BITDEPTH_RE = /\b(10[-\s]?BIT|8[-\s]?BIT)\b/gi;
-const STREAM_SRC_RE = /\b(ATVP|AMZN|DSNP|HMAX|DPLUS|AAPL|PEACOCK|CRAV|NF|HULU)\b/gi;
+const STREAM_SRC_RE =
+  /\b(ATVP|AMZN|DSNP|HMAX|DPLUS|AAPL|PEACOCK|CRAV|NF|HULU)\b/gi;
 // Códigos de idioma (3 letras) para limpiar del título — sin romper palabras
-const LANG_CODE_RE = /\b(ESP|SPA|CAST|ENG|ITA|FRE|FRA|GER|JPN|KOR|CHI|RUS|POR|DUT|SWE|DAN|NOR|FIN|POL|CZE|HUN|RUM|GRE|TUR|THA|VIE|HIN)\b/gi;
+const LANG_CODE_RE =
+  /\b(ESP|SPA|CAST|ENG|ITA|FRE|FRA|GER|JPN|KOR|CHI|RUS|POR|DUT|SWE|DAN|NOR|FIN|POL|CZE|HUN|RUM|GRE|TUR|THA|VIE|HIN)\b/gi;
 const YEAR_RE = /\b(19\d{2}|20\d{2})\b/;
-const PROPER_RE = /\b(PROPER|REPACK|REMASTERED|EXTENDED|DIRECTORS?\s*CUT|UNCUT|UNRATED|IMAX)\b/i;
+const PROPER_RE =
+  /\b(PROPER|REPACK|REMASTERED|EXTENDED|DIRECTORS?\s*CUT|UNCUT|UNRATED|IMAX)\b/i;
 
 // S01E02, S01E02E03, S01E02-E03, 1x02
 const SEASON_EP_RE = /\bS(\d{1,2})E(\d{1,3})(?:E(\d{1,3}))?\b/i;
@@ -38,16 +44,21 @@ const GROUP_RE = /-([A-Za-z0-9]{2,15})$/;
 
 // Language flags (audio): MULTi, ESP, SPANISH, CASTELLANO, LATINO, GERMAN, etc.
 const LANG_MULTI_RE = /\b(MULTI|MULTi|MULT|MULTILANGUAGE)\b/i;
-const LANG_SPANISH_RE = /\b(?:ESPA[ÑN]OL|ESPA[ÑN]A|CASTELLANO|SPANISH|\[ES\]|\.ES\.|CAST|ESP|DUAL)\b/i;
-const LANG_LATINO_RE = /\b(LATINO|LATINOAMERICANO|LATAM|DUBLADO|LAT|LATIN|\[LAT\])\b/i;
+const LANG_SPANISH_RE =
+  /\b(?:ESPA[ÑN]OL|ESPA[ÑN]A|CASTELLANO|SPANISH|\[ES\]|\.ES\.|CAST|ESP|DUAL)\b/i;
+const LANG_LATINO_RE =
+  /\b(LATINO|LATINOAMERICANO|LATAM|DUBLADO|LAT|LATIN|\[LAT\])\b/i;
 const LANG_ENGLISH_RE = /\b(?:ENGLISH|INGL[ÉE]S|\[EN\]|\.EN\.)\b/i;
 const LANG_GERMAN_RE = /\b(GERMAN|DEUTSCH|\[DE\]|\.DE\.|GER)\b/i;
-const LANG_FRENCH_RE = /\b(FRENCH|FRAN[ÇC]AIS|TRUEFRENCH|VFF|\[FR\]|\.FR\.|FRE)\b/i;
+const LANG_FRENCH_RE =
+  /\b(FRENCH|FRAN[ÇC]AIS|TRUEFRENCH|VFF|\[FR\]|\.FR\.|FRE)\b/i;
 const LANG_ITALIAN_RE = /\b(ITALIANO|ITALIAN|ITA|\[IT\]|\.IT\.)\b/i;
-const LANG_PORTUGUESE_RE = /\b(PORTUGU[ÊE]S|PORTUGUESE|PT[.-]?BR|\[PT\]|\.PT\.)\b/i;
+const LANG_PORTUGUESE_RE =
+  /\b(PORTUGU[ÊE]S|PORTUGUESE|PT[.-]?BR|\[PT\]|\.PT\.)\b/i;
 const LANG_RUSSIAN_RE = /\b(RUSSIAN|RUS|\[RU\]|\.RU\.)\b/i;
 const LANG_KOREAN_RE = /\b(KOREAN|KOR|\[KO\]|\.KO\.)\b/i;
-const LANG_CHINESE_RE = /\b(CHINESE|CHI|MANDARIN|CANTONESE|CHS|CHT|\[ZH\]|\.ZH\.)\b/i;
+const LANG_CHINESE_RE =
+  /\b(CHINESE|CHI|MANDARIN|CANTONESE|CHS|CHT|\[ZH\]|\.ZH\.)\b/i;
 const LANG_JAPANESE_RE = /\b(JAPANESE|JAP|JPN|\[JP\]|\.JP\.)\b/i;
 
 // Spanish-specific markers
@@ -113,12 +124,21 @@ function mapSource(raw: string): ReleaseSource {
   const s = raw.toLowerCase();
   if (s.includes("remux")) return "remux";
   // "bd" solo como token suelto o "bdrip": "webdl" contiene "bd" como substring.
-  if (s.includes("bluray") || s.includes("bdrip") || /\bbd\b/.test(s)) return "bluray";
-  if (s.includes("web-dl") || s.includes("webdl") || s.includes("web.dl") || s.includes("web dl")) return "webdl";
-  if (s.includes("webrip") || s.includes("web-rip") || s.includes("web rip")) return "webrip";
+  if (s.includes("bluray") || s.includes("bdrip") || /\bbd\b/.test(s))
+    return "bluray";
+  if (
+    s.includes("web-dl") ||
+    s.includes("webdl") ||
+    s.includes("web.dl") ||
+    s.includes("web dl")
+  )
+    return "webdl";
+  if (s.includes("webrip") || s.includes("web-rip") || s.includes("web rip"))
+    return "webrip";
   if (s.includes("hdtv")) return "hdtv";
   if (s.includes("sat")) return "sat";
-  if (s.includes("dvd") || s.includes("brrip") || s.includes("bdrrip")) return "dvd";
+  if (s.includes("dvd") || s.includes("brrip") || s.includes("bdrrip"))
+    return "dvd";
   if (s.includes("cam") || s.includes("hdcam")) return "cam";
   return "unknown";
 }
@@ -154,7 +174,10 @@ export function parseReleaseName(name: string): ParsedRelease {
     season = Number(xn[1]);
     episode = Number(xn[2]);
     type = "series";
-  } else if (seasonPack && !YEAR_RE.test(clean.split(" ").slice(0, 2).join(" "))) {
+  } else if (
+    seasonPack &&
+    !YEAR_RE.test(clean.split(" ").slice(0, 2).join(" "))
+  ) {
     season = Number(seasonPack[1]);
     episode = undefined;
     type = "series";
@@ -170,7 +193,9 @@ export function parseReleaseName(name: string): ParsedRelease {
   // REMUX tiene prioridad sobre BLURAY (Oppenheimer.2023.2160p.UHD.BluRay.REMUX...)
   const remuxMatch = clean.match(/\bREMUX\b/i);
   const srcMatch = remuxMatch ? ["REMUX"] : clean.match(SOURCE_RE);
-  const source: ReleaseSource = srcMatch ? mapSource(srcMatch[0] ?? srcMatch[1] ?? "") : "unknown";
+  const source: ReleaseSource = srcMatch
+    ? mapSource(srcMatch[0] ?? srcMatch[1] ?? "")
+    : "unknown";
 
   // 4. Codec
   const codecMatch = clean.match(CODEC_RE);
@@ -201,7 +226,9 @@ export function parseReleaseName(name: string): ParsedRelease {
   // Fallback: ISO codes del parser existente (EN, ES, FR...) — incluye
   // códigos sueltos al final del nombre (antes del group): "...-ES", "...-NL"
   if (languages.length === 0) {
-    const isoMatch = clean.match(/\b(?:EN|ES|SP|FR|DE|IT|PT|RU|JA|KO|ZH|NL|PL|SV|DA|NO|FI|CS|HU|RO|UK|EL|TR|TH|VI|HI)\b/g);
+    const isoMatch = clean.match(
+      /\b(?:EN|ES|SP|FR|DE|IT|PT|RU|JA|KO|ZH|NL|PL|SV|DA|NO|FI|CS|HU|RO|UK|EL|TR|TH|VI|HI)\b/g,
+    );
     if (isoMatch) {
       const map: Record<string, string> = {
         EN: "english",
@@ -264,14 +291,20 @@ export function parseReleaseName(name: string): ParsedRelease {
     .replace(YEAR_RE, " ")
     .replace(PROPER_RE, " ")
     .replace(/\b(MULTI|MULT)\b/gi, " ")
-    .replace(/\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|LATINO|ENGLISH|GERMAN|FRENCH|JAPANESE|VOSE|VOS|SUBS?|SUBTITLES?|SUBTITULADOS?)\b/gi, " ")
+    .replace(
+      /\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|LATINO|ENGLISH|GERMAN|FRENCH|JAPANESE|VOSE|VOS|SUBS?|SUBTITLES?|SUBTITULADOS?)\b/gi,
+      " ",
+    )
     .replace(LANG_CODE_RE, " ")
     .replace(/\s+/g, " ")
     .trim();
   // Quitar grupo al final (-GROUP)
   title = title.replace(/-[A-Za-z0-9]{2,15}$/, "").trim();
   // Quitar puntuación residual
-  title = title.replace(/[()[\]{}]/g, "").replace(/^[-_\s]+|[-_\s]+$/g, "").trim();
+  title = title
+    .replace(/[()[\]{}]/g, "")
+    .replace(/^[-_\s]+|[-_\s]+$/g, "")
+    .trim();
 
   return {
     title,
@@ -301,31 +334,64 @@ export function parseReleaseName(name: string): ParsedRelease {
 export function mapLanguageToIso(lang: string): string {
   const l = (lang ?? "").toLowerCase().trim();
   const map: Record<string, string> = {
-    spanish: "es", español: "es", castellano: "es", cast: "es", esp: "es", sp: "es",
-    latino: "latino", latin: "latino", lat: "latino",
-    english: "en", inglés: "en", ingles: "en",
-    italian: "it", italiano: "it",
-    portuguese: "pt", portugués: "pt",
-    french: "fr", francés: "fr", français: "fr",
-    german: "de", deutsch: "de", alemán: "de",
-    russian: "ru", ruso: "ru",
-    japanese: "ja", japonés: "ja",
-    korean: "ko", coreano: "ko",
-    chinese: "zh", chino: "zh",
-    dutch: "nl", neerlandés: "nl",
-    polish: "pl", polaco: "pl",
-    swedish: "sv", sueco: "sv",
-    danish: "da", danés: "da",
-    norwegian: "no", noruego: "no",
-    finnish: "fi", finés: "fi",
-    czech: "cs", checo: "cs",
-    hungarian: "hu", húngaro: "hu",
-    romanian: "ro", rumano: "ro",
-    ukrainian: "uk", ucraniano: "uk",
-    greek: "el", griego: "el",
-    turkish: "tr", turco: "tr",
-    thai: "th", tailandés: "th",
-    vietnamese: "vi", vietnamita: "vi",
+    spanish: "es",
+    español: "es",
+    castellano: "es",
+    cast: "es",
+    esp: "es",
+    sp: "es",
+    latino: "latino",
+    latin: "latino",
+    lat: "latino",
+    english: "en",
+    inglés: "en",
+    ingles: "en",
+    italian: "it",
+    italiano: "it",
+    portuguese: "pt",
+    portugués: "pt",
+    french: "fr",
+    francés: "fr",
+    français: "fr",
+    german: "de",
+    deutsch: "de",
+    alemán: "de",
+    russian: "ru",
+    ruso: "ru",
+    japanese: "ja",
+    japonés: "ja",
+    korean: "ko",
+    coreano: "ko",
+    chinese: "zh",
+    chino: "zh",
+    dutch: "nl",
+    neerlandés: "nl",
+    polish: "pl",
+    polaco: "pl",
+    swedish: "sv",
+    sueco: "sv",
+    danish: "da",
+    danés: "da",
+    norwegian: "no",
+    noruego: "no",
+    finnish: "fi",
+    finés: "fi",
+    czech: "cs",
+    checo: "cs",
+    hungarian: "hu",
+    húngaro: "hu",
+    romanian: "ro",
+    rumano: "ro",
+    ukrainian: "uk",
+    ucraniano: "uk",
+    greek: "el",
+    griego: "el",
+    turkish: "tr",
+    turco: "tr",
+    thai: "th",
+    tailandés: "th",
+    vietnamese: "vi",
+    vietnamita: "vi",
     hindi: "hi",
     multi: "multi",
     subs: "subs",
@@ -335,7 +401,16 @@ export function mapLanguageToIso(lang: string): string {
 }
 
 const LANGUAGE_QUERY_MARKERS: Record<string, string[]> = {
-  es: ["ESPAÑOL", "CASTELLANO", "SPANISH", "ESPAÑA", "ESP", "DUAL"],
+  es: [
+    "ESPAÑOL",
+    "ESPANOL",
+    "CASTELLANO",
+    "SPANISH",
+    "ESPAÑA",
+    "ESPANA",
+    "ESP",
+    "DUAL",
+  ],
   latino: ["LATINO", "LAT", "LATAM", "DUBLADO"],
   en: ["ENGLISH"],
   it: ["ITALIANO", "ITALIAN", "ITA", "[IT]"],
