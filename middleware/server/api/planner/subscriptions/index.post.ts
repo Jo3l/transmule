@@ -85,5 +85,6 @@ export default defineEventHandler(async (event) => {
     parent_subscription_id: body.parent_subscription_id ?? null,
     season_filter: body.season_filter ?? null,
     language: body.language ?? null,
+    smart_rename: body.smart_rename === true,
   });
 });

@@ -46,7 +46,7 @@
     <!-- Selected path indicator -->
     <div class="fp-selected-bar">
       <span class="mdi mdi-folder-check mr-1 has-text-accent" />
-      <span class="fp-selected-path is-size-7">{{ selected || "/" }}</span>
+      <span class="fp-selected-path is-size-7">{{ selectedDisplay }}</span>
     </div>
   </div>
 </template>
@@ -69,7 +69,7 @@ const { apiFetch } = useApi();
 const { t } = useI18n();
 
 function displaySeg(seg: string): string {
-  if (seg === "home") return t("fileManager.homeFolder");
+  if (seg === "home" || seg === "downloads") return t("fileManager.homeFolder");
   return seg;
 }
 
@@ -85,6 +85,14 @@ const selected = computed({
 const segments = computed(() =>
   currentPath.value ? currentPath.value.split("/").filter(Boolean) : [],
 );
+
+/** Ruta seleccionada con segmentos traducidos (p. ej. "home" → "Descargas"); raíz = "/". */
+const selectedDisplay = computed(() => {
+  if (!props.modelValue) return "/";
+  const segs = props.modelValue.split("/").filter(Boolean);
+  if (segs.length === 0) return "/";
+  return segs.map(displaySeg).join("/");
+});
 
 function fullPath(name: string) {
   return currentPath.value ? `${currentPath.value}/${name}` : name;

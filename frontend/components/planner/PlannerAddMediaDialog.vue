@@ -47,7 +47,18 @@
           </SSelect>
         </SFormItem>
         <SFormItem :label="$t('planner.rootFolder')">
-          <SInput v-model="rootFolder" />
+          <div class="planner-folder-row">
+            <SInput v-model="rootFolder" class="planner-folder-input" />
+            <SButton
+              variant="default"
+              icon="mdi-folder-open"
+              :title="$t('planner.chooseFolder')"
+              @click="openFolderPicker"
+            />
+          </div>
+        </SFormItem>
+        <SFormItem :label="$t('planner.smartRename')">
+          <SSwitch v-model="smartRename" />
         </SFormItem>
       </div>
     </div>
@@ -185,6 +196,20 @@
       </div>
     </div>
   </SDialog>
+
+  <!-- Selector de carpeta de destino (mismo componente que el file manager:
+       incluye 'home' (descargas) y las carpetas SMB montadas) -->
+  <SDialog v-model="showFolderPicker" :title="$t('planner.chooseFolder')" width="480px">
+    <FolderPicker v-model="pickerPath" :key="'fp-planner-' + showFolderPicker" />
+    <template #footer>
+      <div class="flex-end gap-sm">
+        <SButton @click="showFolderPicker = false">{{ $t("planner.cancel") }}</SButton>
+        <SButton variant="primary" @click="confirmFolder">
+          {{ $t("planner.useFolder") }}
+        </SButton>
+      </div>
+    </template>
+  </SDialog>
 </template>
 
 <script setup lang="ts">
@@ -219,7 +244,35 @@ const seriesSource = ref<"tvdb" | "tmdb">("tvdb");
 const showAdvanced = ref(true);
 const minQuality = ref("fullhd");
 const maxSize = ref(""); // "" = sin límite
-const rootFolder = ref("/downloads");
+// Carpeta por defecto = raíz de descargas ("downloads", visible y estable);
+// nunca "/" ni "home" (jerga interna del virtual FS).
+const rootFolder = ref("downloads");
+const smartRename = ref(false);
+
+// ── Selector de carpeta de destino (FolderPicker, como el file manager) ────
+const showFolderPicker = ref(false);
+const pickerPath = ref("");
+
+function openFolderPicker() {
+  let cur = rootFolder.value.replace(/^\/+/, "").replace(/\/+$/, "");
+  // Abrir el picker en jerga interna del virtual FS: "downloads" (default) y
+  // valores antiguos ("", "/", "home", "home/x") → "home[/x]". Así la fila
+  // "Descargas" queda seleccionada y el listado arranca en la raíz.
+  if (!cur || cur === "home" || cur === "downloads") cur = "home";
+  else cur = cur.replace(/^downloads\//, "home/");
+  pickerPath.value = cur;
+  showFolderPicker.value = true;
+}
+
+function confirmFolder() {
+  let p = pickerPath.value.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  // La raíz de descargas se representa como "downloads" (visible y estable);
+  // "downloads" (por defecto) y "home" (jerga interna) se normalizan a ella.
+  if (!p || p === "home" || p === "downloads") p = "downloads";
+  else if (p.startsWith("home/")) p = "downloads/" + p.slice(5);
+  rootFolder.value = p;
+  showFolderPicker.value = false;
+}
 
 const addingId = ref<number | null>(null);
 const existing = ref<Map<number, number>>(new Map()); // externalId → subId
@@ -375,6 +428,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             min_quality: minQuality.value,
             max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
+            smart_rename: smartRename.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
             language,
@@ -389,6 +443,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             min_quality: minQuality.value,
             max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
+            smart_rename: smartRename.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
             language,
@@ -422,6 +477,15 @@ watch(
 </script>
 
 <style scoped>
+.planner-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.planner-folder-input {
+  flex: 1;
+  min-width: 0;
+}
 .planner-search-bar {
   display: flex;
   gap: 8px;

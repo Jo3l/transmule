@@ -53,6 +53,8 @@ export default defineEventHandler(async (event) => {
     root_folder: body.root_folder,
     search_services_json:
       body.search_services_json !== undefined ? body.search_services_json : undefined,
+    smart_rename:
+      body.smart_rename !== undefined ? body.smart_rename === true : undefined,
   });
   if (!updated) {
     setResponseStatus(event, 404);

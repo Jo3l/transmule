@@ -362,7 +362,7 @@ export function resolveVirtualPath(relPath: string): ResolvedPath | null {
   const first = slashIdx === -1 ? clean : clean.slice(0, slashIdx);
   const rest = slashIdx === -1 ? "" : clean.slice(slashIdx + 1);
 
-  if (first === "home") {
+  if (first === "home" || first === "downloads") {
     const root = getDownloadsRoot();
     return { type: "local", absPath: rest ? join(root, rest) : root };
   }

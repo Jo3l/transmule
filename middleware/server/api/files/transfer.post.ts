@@ -1,16 +1,12 @@
 /**
  * POST /api/files/transfer — background move/copy across local and SMB.
  */
-import { rename, rm, stat, readdir, mkdir } from "node:fs/promises";
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from "node:fs";
-import { pipeline } from "node:stream/promises";
-import { join, basename, dirname } from "node:path";
+import { stat, readdir } from "node:fs/promises";
+import { existsSync, mkdirSync } from "node:fs";
+import { join, basename } from "node:path";
 import { randomUUID } from "node:crypto";
-import { Readable } from "node:stream";
-import {
-  resolveVirtualPath, smbDownloadStream, smbUploadStream,
-  smbRmRecursive, smbStat, smbMkdir, smbRename, smbListDir,
-} from "~/utils/remoteMounts";
+import { resolveVirtualPath, smbStat } from "~/utils/remoteMounts";
+import { movePath, copyPath } from "~/utils/transfer-engine";
 
 defineRouteMeta({
   openAPI: { tags: ["File Manager"], summary: "Move or copy (background)",
@@ -18,33 +14,6 @@ defineRouteMeta({
 });
 
 initJobStore();
-
-/* ── SMB error helper ──────────────────────────────────────────────────────── */
-
-/** Characters that are invalid in Windows/SMB filenames */
-const SMB_INVALID_CHARS = /[\\\/:*?"<>|]/;
-
-/**
- * Check if an error message indicates an SMB invalid-character issue.
- * Returns a user-friendly message if so, otherwise returns null.
- */
-function smbFriendlyError(err: any, filename: string): string | null {
-  const msg = String(err?.message ?? err ?? '');
-  if (
-    msg.includes('NT_STATUS_FILE_SYSTEM_LIMITATION') ||
-    msg.includes('NT_STATUS_INVALID_NETWORK_RESPONSE') ||
-    msg.includes('NT_STATUS_OBJECT_NAME_INVALID') ||
-    msg.includes('NT_STATUS_OBJECT_PATH_NOT_FOUND')
-  ) {
-    // Check if the filename has invalid characters
-    const base = filename.replace(/^.*[\\\/]/, '');
-    if (SMB_INVALID_CHARS.test(base)) {
-      return `El archivo "${base}" contiene caracteres no válidos para SMB/Windows (\\ / : * ? " < > |). Renómbralo e inténtalo de nuevo.`;
-    }
-    return `Error de SMB al escribir "${base}": ${msg.split('\n')[0].trim()}`;
-  }
-  return null;
-}
 
 /* ── Handler ─────────────────────────────────────────────────────────────── */
 
@@ -132,91 +101,7 @@ async function measureBytes(paths: string[]): Promise<number> {
   return total;
 }
 
-/* ── Copy logic ──────────────────────────────────────────────────────────── */
-
-type JobRef = { bytesDone: number; bytesTotal?: number };
-
-async function copyAnyPath(
-  srcRel: string, destRel: string, job: JobRef, signal?: AbortSignal,
-): Promise<void> {
-  if (signal?.aborted) throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
-
-  const src = resolveVirtualPath(srcRel);
-  const dest = resolveVirtualPath(destRel);
-  if (!src || !dest) throw new Error("Invalid path");
-
-  let srcIsDir = false;
-  if (src.type === "local") {
-    try { srcIsDir = (await stat(src.absPath)).isDirectory(); }
-    catch { throw new Error("Source not found: " + srcRel); }
-  } else {
-    const st = await smbStat(src.config, src.subPath);
-    if (!st) throw new Error("Source not found: " + srcRel);
-    srcIsDir = st.type === "directory";
-  }
-
-  if (srcIsDir) {
-    if (dest.type === "local") await mkdir(dest.absPath, { recursive: true });
-    else {
-      try {
-        await smbMkdir(dest.config, dest.subPath);
-      } catch (err: any) {
-        const friendly = smbFriendlyError(err, dest.subPath);
-        if (friendly) throw new Error(friendly);
-        // Directory might already exist, don't fail for that
-      }
-    }
-
-    let children: { name: string; type: "file" | "directory" }[];
-    if (src.type === "local") {
-      const ents = await readdir(src.absPath, { withFileTypes: true }).catch(() => []);
-      children = ents.map((e) => ({ name: e.name, type: e.isDirectory() ? "directory" : "file" }));
-    } else {
-      const ents = await smbListDir(src.config, src.subPath).catch(() => []);
-      children = ents.map((e: any) => ({ name: e.name, type: e.type }));
-    }
-
-    for (const child of children) {
-      if (signal?.aborted) throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
-      await copyAnyPath(join(srcRel, child.name), join(destRel, child.name), job, signal);
-    }
-  } else {
-    if (dest.type === "local") {
-      const parent = dirname(dest.absPath);
-      if (!existsSync(parent)) await mkdir(parent, { recursive: true });
-    }
-
-    let readable: Readable;
-    if (src.type === "local") {
-      readable = createReadStream(src.absPath);
-    } else {
-      const { stream } = smbDownloadStream(src.config, src.subPath);
-      readable = stream;
-    }
-
-    readable.on("data", (chunk: Buffer) => { job.bytesDone += chunk.length; });
-
-    if (dest.type === "local") {
-      const writable = createWriteStream(dest.absPath);
-      await pipeline(readable as any, writable as any, { signal } as any);
-    } else {
-      try {
-        await smbUploadStream(dest.config, dest.subPath, readable);
-      } catch (err: any) {
-        const friendly = smbFriendlyError(err, dest.subPath);
-        if (friendly) throw new Error(friendly);
-        throw err;
-      }
-    }
-  }
-}
-
-async function rmAnyPath(rel: string): Promise<void> {
-  const r = resolveVirtualPath(rel);
-  if (!r) return;
-  if (r.type === "local") await rm(r.absPath, { recursive: true, force: true }).catch(() => {});
-  else { try { await smbRmRecursive(r.config, r.subPath); } catch { /* ignore */ } }
-}
+/* ── Queue runner (usa el motor compartido transfer-engine) ────────────────── */
 
 async function runTransfer(
   jobId: string, sources: string[], destRel: string,
@@ -226,26 +111,14 @@ async function runTransfer(
   if (!job) return;
   let hasError = false, lastError = "";
 
+  const opts = { signal, onBytes: (n: number) => { job.bytesDone += n; } };
+
   for (const srcRel of sources) {
     if (signal?.aborted) throw Object.assign(new Error("Cancelled"), { name: "AbortError" });
     try {
       const targetRel = join(destRel, basename(srcRel));
-      if (mode === "move") {
-        const s = resolveVirtualPath(srcRel);
-        const d = resolveVirtualPath(targetRel);
-        if (s && d && s.type === "smb" && d.type === "smb" && s.config.id === d.config.id) {
-          try { await smbRename(s.config, s.subPath, d.subPath); }
-          catch { await copyAnyPath(srcRel, targetRel, job as JobRef, signal); await rmAnyPath(srcRel); }
-        } else if (s && d && s.type === "local" && d.type === "local") {
-          try { await rename(s.absPath, d.absPath); }
-          catch { await copyAnyPath(srcRel, targetRel, job as JobRef, signal); await rmAnyPath(srcRel); }
-        } else {
-          await copyAnyPath(srcRel, targetRel, job as JobRef, signal);
-          await rmAnyPath(srcRel);
-        }
-      } else {
-        await copyAnyPath(srcRel, targetRel, job as JobRef, signal);
-      }
+      if (mode === "move") await movePath(srcRel, targetRel, opts);
+      else await copyPath(srcRel, targetRel, opts);
     } catch (err) {
       if ((err as any)?.name === "AbortError") throw err;
       hasError = true; lastError = String((err as any)?.message ?? err);

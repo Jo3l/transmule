@@ -18,6 +18,7 @@ import { useDatabase } from "../utils/database";
 import { useTransmissionClient } from "../utils/transmission-client";
 import { useSlskdClient } from "../utils/slskd-client";
 import { useAmuleClient } from "../utils/amule-client";
+import { postProcessGrab } from "../utils/planner-postprocess";
 
 const GUARD_KEY = "__transmule_planner_importer_started__";
 const INTERVAL_MS = 60_000;
@@ -90,8 +91,13 @@ async function checkCompleted(): Promise<void> {
   // Grabs dispatched que aún no han completado
   const grabs = db
     .prepare(
-      `SELECT g.*, e.subscription_id AS ep_sub_id, m.subscription_id AS mv_sub_id
+      `SELECT g.*,
+              s.title AS sub_title, s.root_folder, s.smart_rename,
+              e.season_number, e.episode_number, e.title AS episode_title,
+              m.theatrical_release_date AS movie_theatrical,
+              m.digital_release_date AS movie_digital
        FROM planner_grab_queue g
+       LEFT JOIN planner_subscriptions s ON s.id = g.subscription_id
        LEFT JOIN planner_episodes e ON e.id = g.episode_id
        LEFT JOIN planner_movies m ON m.id = g.movie_id
        WHERE g.state = 'dispatched'`,
@@ -152,6 +158,28 @@ async function checkCompleted(): Promise<void> {
         ).run(now, grab.movie_id);
         console.log(`[planner] movie #${grab.movie_id} completed (grab #${grab.id})`);
       }
+
+      // Post-proceso: mover a la carpeta destino (root_folder) + smart rename.
+      // Se ejecuta en background — el contenido YA está descargado; el movimiento
+      // (posiblemente a un share SMB) no debe bloquear el ciclo del importer.
+      const thDate = (d: any) => (d ? String(d).slice(0, 4) : null);
+      void postProcessGrab({
+        id: grab.id,
+        service: grab.service,
+        release_hash: grab.release_hash ?? null,
+        release_title: grab.release_title ?? null,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        sub_title: grab.sub_title ?? null,
+        root_folder: grab.root_folder ?? null,
+        smart_rename: grab.smart_rename ?? 0,
+        season_number: grab.season_number ?? null,
+        episode_number: grab.episode_number ?? null,
+        episode_title: grab.episode_title ?? null,
+        movie_year: Number(thDate(grab.movie_theatrical) ?? thDate(grab.movie_digital) ?? 0) || null,
+      }).catch((err: any) => {
+        console.error(`[planner] post-proceso grab #${grab.id}: ${err?.message ?? err}`);
+      });
     }
   }
 }

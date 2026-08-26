@@ -264,6 +264,9 @@ function _initSchema(db: DatabaseSync): void {
   if (!subsCols.some((c) => c.name === "max_size_mb")) {
     db.exec("ALTER TABLE planner_subscriptions ADD COLUMN max_size_mb INTEGER");
   }
+  if (!subsCols.some((c) => c.name === "smart_rename")) {
+    db.exec("ALTER TABLE planner_subscriptions ADD COLUMN smart_rename INTEGER NOT NULL DEFAULT 0");
+  }
 
   // Migration (estado películas): columna de estreno en cines (type 3),
   // usada como fecha de referencia cuando no hay estreno digital (type 4).
