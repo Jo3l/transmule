@@ -4,6 +4,7 @@
       <div class="level mb-4">
         <div class="level-left">
           <h2 class="title is-4 mb-0">{{ sub.title }}</h2>
+          <STag v-if="plexTag" class="ml-3 plex-tag" :title="$t('planner.inPlex')">Plex</STag>
           <STag class="ml-3" :variant="sub.monitored ? 'success' : 'default'">
             {{ sub.monitored ? $t("planner.monitored") : $t("planner.paused") }}
           </STag>
@@ -47,13 +48,71 @@
       <div class="columns detail-columns">
         <!-- Poster column -->
         <div class="column is-3">
-          <figure class="image is-2by3 mb-3">
-            <img v-if="sub.poster_url" :src="sub.poster_url" :alt="sub.title" />
-            <div v-else class="planner-card-fallback is-flex is-align-items-center is-justify-content-center">
-              <span class="mdi mdi-television-play is-size-1" />
+          <div class="box mb-3">
+            <figure class="image is-2by3 mb-3">
+              <img v-if="sub.poster_url" :src="sub.poster_url" :alt="sub.title" />
+              <div v-else class="planner-card-fallback is-flex is-align-items-center is-justify-content-center">
+                <span class="mdi mdi-television-play is-size-1" />
+              </div>
+            </figure>
+            <p class="has-text-grey is-size-7">{{ sub.overview }}</p>
+          </div>
+
+          <!-- Configuración editable (la misma que se introduce al añadir) -->
+          <div class="box">
+            <h4 class="title is-6 mb-3">{{ $t("planner.settings") }}</h4>
+            <SFormItem :label="$t('planner.minQuality')">
+              <SSelect v-model="cfgMinQuality">
+                <option value="uhd">4K (Ultra HD)</option>
+                <option value="fullhd">1080p (Full HD)</option>
+                <option value="hd">720p (HD)</option>
+                <option value="sd">480p (SD)</option>
+              </SSelect>
+            </SFormItem>
+            <SFormItem :label="$t('planner.maxSize')">
+              <SSelect v-model="cfgMaxSize">
+                <option value="">{{ $t("planner.sizeNoLimit") }}</option>
+                <option value="256">~256 MB</option>
+                <option value="600">~600 MB</option>
+                <option value="1024">~1 GB</option>
+              </SSelect>
+            </SFormItem>
+            <SFormItem :label="$t('planner.rootFolder')">
+              <div class="planner-folder-row">
+                <SInput v-model="cfgRootFolder" class="planner-folder-input" />
+                <SButton
+                  variant="default"
+                  icon="mdi-folder-open"
+                  :title="$t('planner.chooseFolder')"
+                  @click="openFolderPicker"
+                />
+              </div>
+            </SFormItem>
+            <div class="planner-post-tasks">
+              <p class="planner-post-tasks-title">{{ $t("planner.postDownloadTasks") }}</p>
+              <div class="planner-post-tasks-body">
+                <SFormItem :label="$t('planner.smartRename')">
+                  <SSwitch v-model="cfgSmartRename" />
+                </SFormItem>
+                <SFormItem :label="$t('planner.plexScan')">
+                  <SSwitch v-model="cfgPlexScan" />
+                </SFormItem>
+              </div>
             </div>
-          </figure>
-          <p class="has-text-grey is-size-7">{{ sub.overview }}</p>
+            <SFormItem :label="$t('planner.language')">
+              <SSelect v-model="cfgLanguage">
+                <option value="">{{ $t("planner.languageAny") }}</option>
+                <option v-for="lang in LANGUAGE_OPTIONS" :key="lang.code" :value="lang.code">
+                  {{ lang.name }}
+                </option>
+              </SSelect>
+            </SFormItem>
+            <div class="flex-end gap-sm mt-3">
+              <SButton variant="primary" icon="mdi-content-save" :loading="savingCfg" @click="saveConfig">
+                {{ $t("planner.save") }}
+              </SButton>
+            </div>
+          </div>
         </div>
 
         <!-- Seasons -->
@@ -107,6 +166,14 @@
                 <STag :variant="statusClass(row.status)">
                   {{ statusLabel(row.status) }}
                 </STag>
+              </template>
+              <template #cell-plex="{ row }">
+                <span
+                  v-if="episodeInPlex(row)"
+                  class="mdi mdi-check text-success"
+                  :title="$t('planner.inPlex')"
+                />
+                <span v-else class="has-text-grey is-size-7">&mdash;</span>
               </template>
               <template #cell-actions="{ row }">
                 <!-- Emitido: botón de descarga manual (búsqueda interactiva).
@@ -169,6 +236,19 @@
         :episode-id="downloadTarget?.id ?? null"
         @grabbed="onGrabbed"
       />
+
+      <!-- Selector de carpeta de destino (mismo componente que el file manager) -->
+      <SDialog v-model="showFolderPicker" :title="$t('planner.chooseFolder')" width="480px">
+        <FolderPicker v-model="pickerPath" :key="'fp-detail-' + showFolderPicker" />
+        <template #footer>
+          <div class="flex-end gap-sm">
+            <SButton @click="showFolderPicker = false">{{ $t("planner.cancel") }}</SButton>
+            <SButton variant="primary" @click="confirmFolder">
+              {{ $t("planner.useFolder") }}
+            </SButton>
+          </div>
+        </template>
+      </SDialog>
     </div>
   </SLoading>
 </template>
@@ -180,7 +260,7 @@ const route = useRoute();
 const { t } = useI18n();
 const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, downloadSeason } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
-const { showToast } = useApi();
+const { apiFetch, showToast } = useApi();
 
 const id = Number(route.params.id);
 const loading = ref(true);
@@ -193,14 +273,99 @@ const showDeleteModal = ref(false);
 const showDownloadDialog = ref(false);
 const downloadTarget = ref<any>(null);
 const downloadingSeasonId = ref<number | null>(null);
+const plexTag = ref(false);
+const plexConfigured = ref(false);
+const plexEpisodes = ref<Set<string>>(new Set()); // "season-episode" presentes en Plex
 
-const episodeColumns = computed(() => [
-  { prop: "number", label: "#", width: "60px" },
-  { prop: "title", label: t("planner.episodeTitle") },
-  { prop: "air_date", label: t("planner.airDate"), width: "130px" },
-  { prop: "status", label: t("planner.status"), width: "130px" },
-  { prop: "actions", label: "", width: "110px" },
-]);
+// ── Configuración editable (misma que se introduce al añadir) ───────────────
+const LANGUAGE_OPTIONS = [
+  { code: "es", name: "Español (es)" },
+  { code: "en", name: "English (en)" },
+  { code: "fr", name: "Français (fr)" },
+  { code: "de", name: "Deutsch (de)" },
+  { code: "it", name: "Italiano (it)" },
+  { code: "pt", name: "Português (pt)" },
+];
+const cfgMinQuality = ref<string>("fullhd");
+const cfgMaxSize = ref<string>(""); // "" = sin límite
+const cfgRootFolder = ref("downloads");
+const cfgSmartRename = ref(false);
+const cfgPlexScan = ref(false);
+const cfgLanguage = ref("");
+const savingCfg = ref(false);
+
+// Selector de carpeta de destino (mismo patrón que el add flow)
+const showFolderPicker = ref(false);
+const pickerPath = ref("");
+
+function openFolderPicker() {
+  let cur = cfgRootFolder.value.replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!cur || cur === "home" || cur === "downloads") cur = "home";
+  else cur = cur.replace(/^downloads\//, "home/");
+  pickerPath.value = cur;
+  showFolderPicker.value = true;
+}
+
+function confirmFolder() {
+  let p = pickerPath.value.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!p || p === "home" || p === "downloads") p = "downloads";
+  else if (p.startsWith("home/")) p = "downloads/" + p.slice(5);
+  cfgRootFolder.value = p;
+  showFolderPicker.value = false;
+}
+
+function loadConfig() {
+  const s = sub.value;
+  if (!s) return;
+  cfgMinQuality.value = s.min_quality ?? "fullhd";
+  cfgMaxSize.value = s.max_size_mb ? String(s.max_size_mb) : "";
+  cfgRootFolder.value = s.root_folder || "downloads";
+  cfgSmartRename.value = Boolean(s.smart_rename);
+  cfgPlexScan.value = Boolean(s.plex_scan);
+  cfgLanguage.value = s.language || "";
+}
+
+async function saveConfig() {
+  savingCfg.value = true;
+  errorMsg.value = "";
+  try {
+    await updateSubscription(id, {
+      min_quality: cfgMinQuality.value,
+      max_size_mb: cfgMaxSize.value ? Number(cfgMaxSize.value) : null,
+      root_folder: cfgRootFolder.value,
+      smart_rename: cfgSmartRename.value,
+      plex_scan: cfgPlexScan.value,
+      language: cfgLanguage.value || null,
+    });
+    const s = sub.value;
+    s.min_quality = cfgMinQuality.value;
+    s.max_size_mb = cfgMaxSize.value ? Number(cfgMaxSize.value) : null;
+    s.root_folder = cfgRootFolder.value;
+    s.smart_rename = cfgSmartRename.value ? 1 : 0;
+    s.plex_scan = cfgPlexScan.value ? 1 : 0;
+    s.language = cfgLanguage.value || null;
+    showToast(t("planner.configSaved"), "success", 3000);
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    savingCfg.value = false;
+  }
+}
+
+const episodeColumns = computed(() => {
+  const cols: any[] = [
+    { prop: "number", label: "#", width: "60px" },
+    { prop: "title", label: t("planner.episodeTitle") },
+    { prop: "air_date", label: t("planner.airDate"), width: "130px" },
+    { prop: "status", label: t("planner.status"), width: "130px" },
+  ];
+  // Columna "Plex" solo visible con la integración configurada
+  if (plexConfigured.value) {
+    cols.push({ prop: "plex", label: "Plex", width: "70px" });
+  }
+  cols.push({ prop: "actions", label: "", width: "110px" });
+  return cols;
+});
 
 function downloadedCount(season: any): number {
   return (season.episodes ?? []).filter((e: any) => e.status === "downloaded").length;
@@ -221,6 +386,43 @@ function formatDate(dateStr: string | null): string {
   return formatPlannerDate(dateStr, sub.value?.language || "en");
 }
 
+/** ¿La serie ya existe en Plex? → tag dorado [plex] + episodios para la columna. */
+async function initPlex() {
+  try {
+    const res = await apiFetch<{ configured: boolean; shows: string[] }>(
+      "/api/plex/library",
+    );
+    if (!res?.configured) return;
+    plexConfigured.value = true;
+
+    const title = sub.value?.title ?? "";
+    const target = title.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const list = res.shows ?? [];
+    // Igualdad normalizada; si no, "contains" (títulos tipo "01 Alien El 8º
+    // Pasajero 1979" incluyen el nombre canónico) con longitud mínima.
+    plexTag.value =
+      list.includes(target) ||
+      (target.length >= 4 && list.some((t) => t.includes(target)));
+
+    // Episodios de la serie (columna "Plex" de la tabla de temporadas)
+    if (title) {
+      apiFetch<{ configured: boolean; episodes: string[] }>(
+        `/api/plex/library/episodes?series=${encodeURIComponent(title)}`,
+      )
+        .then((ep) => {
+          if (ep?.configured) plexEpisodes.value = new Set(ep.episodes ?? []);
+        })
+        .catch(() => {});
+    }
+  } catch {
+    /* Plex caído o sin configurar → sin tag ni columna */
+  }
+}
+
+function episodeInPlex(row: any): boolean {
+  return plexEpisodes.value.has(`${row.season_number}-${row.episode_number}`);
+}
+
 async function load() {
   loading.value = true;
   errorMsg.value = "";
@@ -228,6 +430,8 @@ async function load() {
     const detail = await getSubscription(id);
     sub.value = detail;
     seasons.value = detail.seasons ?? [];
+    loadConfig();
+    void initPlex();
   } catch (err: any) {
     errorMsg.value = err?.message ?? String(err);
   } finally {
@@ -327,10 +531,51 @@ onMounted(load);
   color: var(--s-text-muted, #999);
   min-height: 200px;
 }
+/* Alinear el h2 del título con los tags (Plex / Monitorizada) */
+.level-left {
+  display: flex;
+  align-items: center;
+}
+.level-left .title {
+  line-height: 1;
+}
+.planner-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.planner-folder-input {
+  flex: 1;
+  min-width: 0;
+}
+.planner-post-tasks {
+  border-top: 1px solid var(--s-border, #2a2a4a);
+  padding-top: 12px;
+  margin: 6px 0 2px;
+}
+.planner-post-tasks-title {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--s-text-secondary, #999);
+}
+.planner-post-tasks-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
 .planner-delete-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.plex-tag {
+  background: rgba(212, 175, 55, 0.16);
+  color: #d4af37;
+  border-color: #d4af37;
+  font-weight: 600;
 }
 @media (max-width: 768px) {
   .detail-columns {

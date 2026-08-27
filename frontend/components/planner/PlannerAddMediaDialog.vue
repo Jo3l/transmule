@@ -57,9 +57,17 @@
             />
           </div>
         </SFormItem>
-        <SFormItem :label="$t('planner.smartRename')">
-          <SSwitch v-model="smartRename" />
-        </SFormItem>
+        <div class="planner-post-tasks">
+          <p class="planner-post-tasks-title">{{ $t("planner.postDownloadTasks") }}</p>
+          <div class="planner-post-tasks-body">
+            <SFormItem :label="$t('planner.smartRename')">
+              <SSwitch v-model="smartRename" />
+            </SFormItem>
+            <SFormItem :label="$t('planner.plexScan')">
+              <SSwitch v-model="plexScan" />
+            </SFormItem>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -248,6 +256,7 @@ const maxSize = ref(""); // "" = sin límite
 // nunca "/" ni "home" (jerga interna del virtual FS).
 const rootFolder = ref("downloads");
 const smartRename = ref(false);
+const plexScan = ref(false);
 
 // ── Selector de carpeta de destino (FolderPicker, como el file manager) ────
 const showFolderPicker = ref(false);
@@ -429,6 +438,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
             smart_rename: smartRename.value,
+            plex_scan: plexScan.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
             language,
@@ -444,6 +454,7 @@ async function doCreate(r: TvdbSearchResult | TmdbSearchResult, language: string
             max_size_mb: maxSize.value ? Number(maxSize.value) : null,
             root_folder: rootFolder.value,
             smart_rename: smartRename.value,
+            plex_scan: plexScan.value,
             monitored: true,
             search_services_json: JSON.stringify(["direct-plugin", "slskd", "amule"]),
             language,
@@ -521,6 +532,25 @@ watch(
   gap: 10px;
   padding: 10px 14px;
   border-top: 1px solid var(--s-border, #2a2a4a);
+}
+.planner-post-tasks {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--s-border, #2a2a4a);
+  padding-top: 12px;
+  margin-top: 6px;
+}
+.planner-post-tasks-title {
+  margin: 0 0 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--s-text-secondary, #999);
+}
+.planner-post-tasks-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 .planner-results {
   max-height: 55vh;

@@ -50,11 +50,21 @@ export default defineEventHandler(async (event) => {
     monitored:
       body.monitored !== undefined ? Boolean(body.monitored) : undefined,
     min_quality: body.min_quality,
+    max_size_mb:
+      body.max_size_mb !== undefined
+        ? body.max_size_mb === null || body.max_size_mb === ""
+          ? null
+          : Number(body.max_size_mb)
+        : undefined,
     root_folder: body.root_folder,
     search_services_json:
       body.search_services_json !== undefined ? body.search_services_json : undefined,
+    language:
+      body.language !== undefined ? (body.language || null) : undefined,
     smart_rename:
       body.smart_rename !== undefined ? body.smart_rename === true : undefined,
+    plex_scan:
+      body.plex_scan !== undefined ? body.plex_scan === true : undefined,
   });
   if (!updated) {
     setResponseStatus(event, 404);

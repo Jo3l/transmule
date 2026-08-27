@@ -21,6 +21,7 @@ import { movePath } from "./transfer-engine";
 import { useTransmissionClient } from "./transmission-client";
 import { useSlskdClient } from "./slskd-client";
 import { useAmuleClient } from "./amule-client";
+import { refreshPlexLibraries } from "~/services/plex";
 
 /** Datos del grab enriquecidos con la subscription (query del importer). */
 export interface PostProcessGrab {
@@ -33,6 +34,7 @@ export interface PostProcessGrab {
   sub_title: string | null;
   root_folder: string | null;
   smart_rename: number | boolean;
+  plex_scan: number | boolean;
   season_number?: number | null;
   episode_number?: number | null;
   episode_title?: string | null;
@@ -243,11 +245,15 @@ function rootIsDefault(rootFolder: string | null): boolean {
 export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
   const db = useDatabase();
   const smartRename = grab.smart_rename === 1 || grab.smart_rename === true;
+  const plexScan = grab.plex_scan === 1 || grab.plex_scan === true;
   const defaultRoot = rootIsDefault(grab.root_folder);
-  if (defaultRoot && !smartRename) return; // nada que hacer
+  if (defaultRoot && !smartRename && !plexScan) return; // nada que hacer
 
   const located = await locateGrabbedFile(grab);
   if (!located) {
+    // El archivo está en el volumen aunque no lo hayamos localizado para
+    // moverlo — si plex_scan está activo, refrescar Plex igualmente.
+    if (plexScan) triggerPlexRefresh(`grab #${grab.id} (no ubicado)`);
     console.warn(
       `[planner] post-proceso grab #${grab.id}: no se localizó el archivo (${grab.service}, '${grab.release_title ?? ""}')`,
     );
@@ -271,6 +277,7 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
   if (destVirtual === located.virtual) {
     // El destino no cambia (ni carpeta ni nombre) — solo registrar file_path
     setFilePath(db, grab, located.virtual);
+    if (plexScan) triggerPlexRefresh(`grab #${grab.id}`);
     return;
   }
 
@@ -283,6 +290,7 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
     db.prepare(
       "UPDATE planner_grab_queue SET last_error = NULL WHERE id = ?",
     ).run(grab.id);
+    if (plexScan) triggerPlexRefresh(`grab #${grab.id}`);
   } catch (err: any) {
     const msg = `post-process: ${err?.message ?? err}`;
     db.prepare(
@@ -290,6 +298,23 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
     ).run(msg, grab.id);
     console.error(`[planner] grab #${grab.id}: fallo al mover: ${msg}`);
   }
+}
+
+/**
+ * Dispara un rescan de Plex en background (nunca lanza; solo loguea).
+ * Se ejecuta desconectado del flujo — el rescan de Plex no debe bloquear
+ * ni romper el post-proceso si el servidor está caído o mal configurado.
+ */
+function triggerPlexRefresh(ctx: string): void {
+  void refreshPlexLibraries()
+    .then((res) => {
+      console.log(
+        `[planner] plex scan: ${res.refreshed}/${res.total} librerías re-escaneadas (${ctx})`,
+      );
+    })
+    .catch((err: any) => {
+      console.warn(`[planner] plex scan falló (${ctx}): ${err?.message ?? err}`);
+    });
 }
 
 function setFilePath(
