@@ -92,7 +92,7 @@ async function checkCompleted(): Promise<void> {
   const grabs = db
     .prepare(
       `SELECT g.*,
-              s.title AS sub_title, s.root_folder, s.smart_rename,
+              s.title AS sub_title, s.root_folder, s.smart_rename, s.plex_scan,
               e.season_number, e.episode_number, e.title AS episode_title,
               m.theatrical_release_date AS movie_theatrical,
               m.digital_release_date AS movie_digital
@@ -173,6 +173,7 @@ async function checkCompleted(): Promise<void> {
         sub_title: grab.sub_title ?? null,
         root_folder: grab.root_folder ?? null,
         smart_rename: grab.smart_rename ?? 0,
+        plex_scan: grab.plex_scan ?? 0,
         season_number: grab.season_number ?? null,
         episode_number: grab.episode_number ?? null,
         episode_title: grab.episode_title ?? null,

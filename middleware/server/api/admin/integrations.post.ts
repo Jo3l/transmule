@@ -18,6 +18,9 @@ export default defineEventHandler(async (event) => {
     tmdbApiKey?: string;
     tvdbLocale?: string;
     tmdbLocale?: string;
+    plexIp?: string;
+    plexPort?: string;
+    plexToken?: string;
   }>(event);
 
   const normalizeLocale = (value: string): string => {
@@ -66,6 +69,26 @@ export default defineEventHandler(async (event) => {
 
   if (body?.tmdbLocale !== undefined) {
     setConfig("tmdb_locale", normalizeLocale(body.tmdbLocale));
+  }
+
+  if (body?.plexIp !== undefined) {
+    setConfig("plex_ip", body.plexIp.trim());
+  }
+
+  if (body?.plexPort !== undefined) {
+    const port = body.plexPort.trim();
+    const portNum = Number(port);
+    if (port && (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535)) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: "Invalid Plex port",
+      });
+    }
+    setConfig("plex_port", port);
+  }
+
+  if (body?.plexToken !== undefined) {
+    setConfig("plex_token", body.plexToken.trim());
   }
 
   return { ok: true };

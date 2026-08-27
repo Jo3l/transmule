@@ -86,5 +86,6 @@ export default defineEventHandler(async (event) => {
     season_filter: body.season_filter ?? null,
     language: body.language ?? null,
     smart_rename: body.smart_rename === true,
+    plex_scan: body.plex_scan === true,
   });
 });

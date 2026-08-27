@@ -280,9 +280,9 @@ assert(withTitle !== undefined, "EpTitle: found release with episode title");
 expectEq(withTitle?.episodeTitleScore, 20, "EpTitle: +20 por coincidir con el título del episodio");
 expectEq(withoutTitle?.episodeTitleScore, 0, "EpTitle: 0 sin título de episodio");
 
-// ── Caso 15: tamaño objetivo — bonus si dentro, penaliza el exceso ──────────
+// ── Caso 15: tamaño objetivo — premia cercanía al objetivo, castiga el exceso ─
 const smallSize = parseReleaseName("Silo.S01E01.1080p.WEB-DL.x264-GROUP");
-smallSize.sizeMb = 900; // ~900 MB, dentro del objetivo de 1 GB
+smallSize.sizeMb = 900; // ~900 MB, cerca del objetivo de 1 GB
 const bigSize = parseReleaseName("Silo.S01E01.1080p.WEB-DL.x264-GROUP2");
 bigSize.sizeMb = 10240; // 10 GB, muy por encima
 
@@ -295,11 +295,13 @@ const sizeDecision = pickBest({
   maxSizeMb: 1024,
 });
 
-expectEq(sizeDecision.picked?.release.sizeMb, 900, "Size: elige el release dentro del objetivo");
+expectEq(sizeDecision.picked?.release.sizeMb, 900, "Size: elige el release cerca del objetivo");
 const smallEval = sizeDecision.evaluated.find((e) => e.release.sizeMb === 900);
 const bigEval = sizeDecision.evaluated.find((e) => e.release.sizeMb === 10240);
-expectEq(smallEval?.sizeScore, 15, "Size: +15 por estar dentro del objetivo");
-expectEq(bigEval?.sizeScore, -92, "Size: -92 por exceder 10GB vs 1GB");
+expectEq(smallEval?.sizeScore, 26, "Size: +26 por estar cerca (900MB vs objetivo 1GB)");
+expectEq(bigEval?.sizeScore, -559, "Size: -559 por exceder 10GB vs 1GB (castigo no lineal)");
+// Un escalón de calidad (100 pts) NO debe compensar un 10 GB frente a un 900 MB.
+expectEq(smallEval!.total > bigEval!.total, true, "Size: 900MB puntúa más que 10GB");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

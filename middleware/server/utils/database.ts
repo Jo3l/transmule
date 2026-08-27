@@ -267,6 +267,9 @@ function _initSchema(db: DatabaseSync): void {
   if (!subsCols.some((c) => c.name === "smart_rename")) {
     db.exec("ALTER TABLE planner_subscriptions ADD COLUMN smart_rename INTEGER NOT NULL DEFAULT 0");
   }
+  if (!subsCols.some((c) => c.name === "plex_scan")) {
+    db.exec("ALTER TABLE planner_subscriptions ADD COLUMN plex_scan INTEGER NOT NULL DEFAULT 0");
+  }
 
   // Migration (estado películas): columna de estreno en cines (type 3),
   // usada como fecha de referencia cuando no hay estreno digital (type 4).

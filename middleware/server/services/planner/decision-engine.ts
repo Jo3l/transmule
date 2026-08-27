@@ -301,13 +301,17 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       episodeTitleScore = 20;
     }
 
-    // 4d. Tamaño: bonus si está dentro del objetivo; penaliza el exceso.
+    // 4d. Tamaño: cuanto más cerca del objetivo (maxSizeMb) mejor — un 800 MB
+    // puntúa más que un 100 MB y MUCHO más que un 10 GB. Exceder penaliza de
+    // forma no lineal y suficientemente fuerte para contrarrestar escalones de
+    // calidad (100 pts): 10 GB vs objetivo 1 GB ≈ -559 pts.
     let sizeScore = 0;
     if (req.maxSizeMb != null && release.sizeMb != null) {
-      if (release.sizeMb <= req.maxSizeMb) {
-        sizeScore = 15;
+      const ratio = release.sizeMb / req.maxSizeMb;
+      if (ratio <= 1) {
+        sizeScore = Math.round(30 * ratio);
       } else {
-        sizeScore = -Math.round((release.sizeMb - req.maxSizeMb) / 100);
+        sizeScore = -Math.round(40 * (ratio - 1) ** 1.2);
       }
     }
 

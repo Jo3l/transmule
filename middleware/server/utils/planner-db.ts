@@ -68,6 +68,7 @@ export interface PlannerSubscription {
   search_services_json: string | null;
   language: string | null;
   smart_rename: number;
+  plex_scan: number;
   parent_subscription_id: number | null;
   season_filter: number | null;
   added_at: string;
@@ -253,6 +254,7 @@ export interface CreateSubscriptionInput {
   search_services_json?: string | null;
     language?: string | null;
     smart_rename?: boolean;
+    plex_scan?: boolean;
     parent_subscription_id?: number | null;
     season_filter?: number | null;
   }
@@ -264,8 +266,8 @@ export interface CreateSubscriptionInput {
         `INSERT INTO planner_subscriptions
          (type, tmdb_id, tvdb_id, imdb_id, title, year, poster_url, overview, genres_json,
           status, monitored, min_quality, max_size_mb, root_folder, search_services_json, language,
-          smart_rename, parent_subscription_id, season_filter)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                  smart_rename, plex_scan, parent_subscription_id, season_filter)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.type,
@@ -285,6 +287,7 @@ export interface CreateSubscriptionInput {
         input.search_services_json ?? null,
         input.language ?? null,
         input.smart_rename ? 1 : 0,
+        input.plex_scan ? 1 : 0,
         input.parent_subscription_id ?? null,
         input.season_filter ?? null,
       );
@@ -300,6 +303,7 @@ export interface UpdateSubscriptionInput {
   search_services_json?: string | null;
   language?: string | null;
   smart_rename?: boolean;
+  plex_scan?: boolean;
   ended_at?: string | null;
   metadata_synced_at?: string | null;
   metadata_json?: string | null;
