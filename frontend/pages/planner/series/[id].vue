@@ -406,11 +406,16 @@ async function initPlex() {
 
     // Episodios de la serie (columna "Plex" de la tabla de temporadas)
     if (title) {
-      apiFetch<{ configured: boolean; episodes: string[] }>(
+      apiFetch<{ configured: boolean; found: boolean; episodes: string[] }>(
         `/api/plex/library/episodes?series=${encodeURIComponent(title)}`,
       )
         .then((ep) => {
-          if (ep?.configured) plexEpisodes.value = new Set(ep.episodes ?? []);
+          if (ep?.configured) {
+            plexEpisodes.value = new Set(ep.episodes ?? []);
+            // El match por originalTitle ("Linternas" → "Lanterns") también
+            // confirma el tag [plex] aunque el título localizado no coincida.
+            if (ep.found) plexTag.value = true;
+          }
         })
         .catch(() => {});
     }
