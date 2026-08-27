@@ -48,7 +48,7 @@
 
 ---
 
-> **TransMule** is a modern, self-hosted web interface that unifies four download ecosystems — **aMule** (ED2K/Kademlia), **Transmission** (BitTorrent), **Slskd** (Soulseek) and **pyLoad NG** (direct/one-click hosting) — into a single dashboard. Deployed via Docker Compose, it works on any architecture (x86_64 and ARM64) and includes a built-in file manager with remote storage mounts, media preview, archive utilities, extensible plugin system, multi-user auth, and full i18n support. All in one container with a single `docker compose up -d`.
+> **TransMule** is a modern, self-hosted web interface that unifies four download ecosystems — **aMule** (ED2K/Kademlia), **Transmission** (BitTorrent), **Slskd** (Soulseek) and **pyLoad NG** (direct/one-click hosting) — into a single dashboard. Deployed via Docker Compose, it works on any architecture (x86_64 and ARM64) and includes a built-in file manager with remote storage mounts, media preview, archive utilities, extensible plugin system, multi-user auth, and full i18n support. All in one container with a single `docker compose up -d`. Its built-in **media planner** tracks the TV shows and movies you follow across ED2K, Soulseek and BitTorrent, with **Plex integration** to know exactly which episodes you already have.
 
 <br>
 
@@ -63,6 +63,17 @@
 | **Slskd integration** | Search the Soulseek network, download files, browse user shares, chat in rooms and private messages, manage transfers |
 | **pyLoad NG integration** | Add direct-download (DDL) packages, monitor link extraction status, stop/restart/delete packages with full queue management |
 | **Torrent search** | Search multiple torrent indexes directly from the UI with live streaming results — extensible via plugins |
+
+### Media Planner — Track Your Shows & Movies Across Every Network
+| Feature | Description |
+|---------|-------------|
+| **Follow shows & movies** | Subscribe to any TV series or movie and TransMule keeps track of it for you — new episodes and releases are detected and queued automatically, across every network at once |
+| **Multi-network tracking** | One subscription searches **ED2K (aMule), Soulseek (slskd) and BitTorrent simultaneously** — if a release exists anywhere on the three networks, the planner finds it |
+| **Plex integration** | Connect your **Plex Media Server** and the planner knows exactly which episodes you already have: existing episodes are flagged in the UI, and each download can trigger an automatic library rescan — your Plex stays in sync |
+| **Manual release review** | Candidates are scored and listed for you to review before anything downloads — pick the release you want in one click, no false positives, full control |
+| **Smart quality & size matching** | Set minimum quality and maximum size per subscription; a scoring engine ranks candidates by how close they are to your target size, not just resolution — no more 10 GB downloads when you asked for ~1 GB |
+| **Automatic organization** | After downloading, files are moved to the folder you choose and smart-renamed (no more `[www.example.com] Series.S01E02...` filenames) — ready for your media library |
+| **Rich metadata** | Covers, synopses and localized titles from **TMDB/TVDB** — find Spanish, English or any-language releases, and let the planner match them to your Plex library even when titles differ between providers |
 
 ### File Management & Storage
 | Feature | Description |

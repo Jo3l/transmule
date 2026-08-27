@@ -67,7 +67,12 @@ export class HttpClient {
 
     if (inputs && Object.keys(inputs).length > 0) {
       const qs = new URLSearchParams(inputs);
-      if (method === "POST") {
+      const declaresJson = (headers.get("Content-Type") ?? "").includes("json");
+      if (declaresJson) {
+        // API JSON (p.ej. AvistaZ /auth): body serializado, no form-urlencoded.
+        headers.set("Content-Type", "application/json");
+        body = JSON.stringify(inputs);
+      } else if (method === "POST") {
         headers.set("Content-Type", "application/x-www-form-urlencoded");
         body = qs.toString();
       } else {

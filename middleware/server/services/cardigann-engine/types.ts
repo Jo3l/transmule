@@ -80,6 +80,10 @@ export interface LoginSpec {
   headers?: Record<string, string | string[]>;
   error?: { selector: string; message?: string }[];
   test?: { path: string; selector: string };
+  /** Si el login responde JSON y queremos capturar un token de la respuesta
+   * (p.ej. AvistaZ: POST /auth → {token}), extraerlo con `tokenPath` (path
+   * JSON con puntos) y exponerlo como `{{ .Token }}` en paths/headers del search. */
+  response?: { tokenPath?: string };
 }
 
 export interface IndexerDefinition {

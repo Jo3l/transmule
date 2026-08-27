@@ -177,8 +177,8 @@ async function resolveDownload(
   tpl: TemplateData,
   http: HttpClient,
 ): Promise<{ magnet: string; infoHash: string; downloadUrl?: string }> {
-  const infoHash = String(result.infohash ?? "").toLowerCase();
   const dl = String(result.download ?? "").trim();
+  let infoHash = String(result.infohash ?? "").toLowerCase();
 
   if (dl.startsWith("magnet:")) {
     return { magnet: dl, infoHash: infoHash || extractInfoHash(dl) };
@@ -199,7 +199,11 @@ async function resolveDownload(
         const selector = renderTemplate(sel.selector, tpl);
         let val = "";
         try {
-          val = $(selector).first().attr(sel.attribute ?? "") ?? $(selector).first().text() ?? "";
+          // Sin attribute → text(); con attribute → attr() (attr("") devuelve {} y
+          // nunca caería al text()).
+          val = sel.attribute
+            ? ($(selector).first().attr(sel.attribute) ?? "")
+            : ($(selector).first().text() ?? "");
         } catch {
           val = "";
         }
@@ -207,7 +211,12 @@ async function resolveDownload(
         const v = applyFilters(val, sel.filters, { config: tpl.Config as Record<string, unknown> });
         if (v.startsWith("magnet:")) return { magnet: v, infoHash: infoHash || extractInfoHash(v) };
         if (v.startsWith("http")) return { magnet: buildMagnet(infoHash), infoHash, downloadUrl: v };
+        // Infohash plano (40 hex) en la página de detalle (p.ej. AudioBookBay) →
+        // construir el magnet a partir de él.
+        const bareHash = v.trim().toLowerCase();
+        if (/^[0-9a-f]{40}$/.test(bareHash)) infoHash = bareHash;
       }
+      if (infoHash) return { magnet: buildMagnet(infoHash), infoHash };
     } catch {
       // la página de detalle falló — seguimos con lo que tengamos
     }
@@ -278,7 +287,13 @@ async function extractJsonResults(
   limit: number,
 ): Promise<TorrentSearchResult[]> {
   const rowSelector = renderTemplate(def.search?.rows.selector ?? "", tpl);
-  const containers = selectJsonPath(json, rowSelector);
+  let containers = selectJsonPath(json, rowSelector);
+  // Algunas APIs devuelven un OBJETO en vez de array en la raíz o en la fila
+  // (p.ej. SubsPlease dict por página, GGn response keyed by groupId).
+  // Si el selector apunta a un objeto plano, iteramos sus valores.
+  if (!Array.isArray(containers) && containers != null && typeof containers === "object") {
+    containers = Object.values(containers as Record<string, unknown>);
+  }
   if (!Array.isArray(containers)) return [];
 
   const attribute = def.search?.rows.attribute;
@@ -288,7 +303,12 @@ async function extractJsonResults(
   for (const container of containers) {
     if (out.length >= limit) break;
     if (multiple && attribute) {
-      const items = (container as Record<string, unknown>)?.[attribute];
+      let items = (container as Record<string, unknown>)?.[attribute];
+      // Algunas APIs (p.ej. GGn) devuelven el nivel anidado como OBJETO
+      // keyed por id en vez de array → iteramos sus valores.
+      if (!Array.isArray(items) && items != null && typeof items === "object") {
+        items = Object.values(items as Record<string, unknown>);
+      }
       if (!Array.isArray(items)) continue;
       for (const item of items) {
         if (out.length >= limit) break;
@@ -327,7 +347,19 @@ async function doLogin(
   const { inputs } = renderInputs(login.inputs, tpl);
   const headers = renderHeaders(login.headers, tpl);
   try {
-    await http.fetch(url, { method: login.method ?? "POST", inputs, headers, responseType: "html" });
+    const wantsToken = !!login.response?.tokenPath;
+    const page = await http.fetch(url, {
+      method: login.method ?? "POST",
+      inputs,
+      headers,
+      responseType: wantsToken ? "json" : "html",
+    });
+    // Login JSON con token (p.ej. AvistaZ: POST /auth → {token}): extraer
+    // el token y exponerlo como {{ .Token }} para paths/headers del search.
+    if (wantsToken && page.json != null) {
+      const token = selectJsonPath(page.json, login.response!.tokenPath!);
+      if (token != null && token !== "") tpl.Token = String(token);
+    }
   } catch {
     // login fallido se tolera: la búsqueda posterior puede devolver vacío
   }

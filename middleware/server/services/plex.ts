@@ -210,9 +210,36 @@ async function fetchSectionAll(key: string, type: number): Promise<any[]> {
 }
 
 /**
+ * Títulos normalizados de un show de Plex: el localizado (`title`) y el
+ * original (`originalTitle`). Plex suele mostrar el título en español
+ * ("Linternas") mientras TransMule guarda el de TMDB/TVDB ("Lanterns") —
+ * comparar solo el localizado rompe el match.
+ */
+function showTitleCandidates(show: any): string[] {
+  const out: string[] = [];
+  for (const t of [show?.title, show?.originalTitle, show?.original_title]) {
+    const n = normTitle(t);
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
+function findShowByTitle(shows: any[], key: string): any | null {
+  // 1) Igualdad con cualquiera de los títulos (title / originalTitle)
+  const exact = shows.find((s) => showTitleCandidates(s).includes(key));
+  if (exact) return exact;
+  // 2) Fallback includes mutuo (≥4 chars) sobre cualquiera de los títulos
+  return (
+    shows.find((s) =>
+      showTitleCandidates(s).some((t) => key.length >= 4 && (t.includes(key) || key.includes(t))),
+    ) ?? null
+  );
+}
+
+/**
  * Episodios existentes en Plex para una serie ("season-episode" strings,
- * p.ej. "3-8"), localizando el show por título normalizado. Cache 10 min.
- * Devuelve null si Plex no está configurado.
+ * p.ej. "3-8"), localizando el show por título normalizado (localizado +
+ * originalTitle). Cache 10 min. Devuelve null si Plex no está configurado.
  */
 export async function getPlexSeriesEpisodes(
   seriesTitle: string,
@@ -237,12 +264,7 @@ export async function getPlexSeriesEpisodes(
   if (!showSection) return { found: false, episodes: [] };
 
   const shows = await fetchSectionAll(showSection.key, 2);
-  const show =
-    shows.find((s) => normTitle(s.title) === key) ??
-    shows.find((s) => {
-      const t = normTitle(s.title);
-      return t.includes(key) || key.includes(t);
-    });
+  const show = findShowByTitle(shows, key);
 
   if (!show) {
     episodesCache.set(key, { at: Date.now(), found: false, episodes: [] });

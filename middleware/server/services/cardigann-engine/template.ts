@@ -136,6 +136,8 @@ const FUNCTION_NAMES = new Set([
   "replace",
   "urlencode",
   "urldecode",
+  "base64",
+  "list",
 ]);
 
 function parseExpression(src: string): Expr {
@@ -255,6 +257,13 @@ function callFunction(fn: string, args: unknown[]): unknown {
       return encodeURIComponent(String(args[0] ?? ""));
     case "urldecode":
       return decodeURIComponent(String(args[0] ?? ""));
+    case "base64": {
+      // Codifica UTF-8 → Base64 (para cabeceras Basic auth, p.ej. Magnetico).
+      const s = String(args[0] ?? "");
+      return Buffer.from(s, "utf8").toString("base64");
+    }
+    case "list":
+      return args;
     default:
       throw new Error(`Función de plantilla no soportada: ${fn}`);
   }

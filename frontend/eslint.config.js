@@ -21,7 +21,7 @@ export default tseslint.config(
       "vue/no-v-html": "off",
       "vue/require-default-prop": "off",
       "vue/html-self-closing": ["warn", { html: { void: "always" } }],
-      "vue/component-tags-order": ["warn", { order: ["template", "script", "style"] }],
+      "vue/block-order": ["warn", { order: ["template", "script", "style"] }],
 
       // TypeScript
       "@typescript-eslint/no-explicit-any": "off",
