@@ -226,7 +226,7 @@ const unknownLangDecision = pickBest({
 
 expectEq(unknownLangDecision.rejected.length, 0, "UnknownLang: not rejected");
 assert(unknownLangDecision.picked !== null, "UnknownLang: still picked");
-expectEq(unknownLangDecision.picked?.languageScore, -10, "UnknownLang: penalized -10");
+expectEq(unknownLangDecision.picked?.languageScore, -100, "UnknownLang: penalized -100");
 
 // ── Caso 12: must_have SIN allowUnknownLang → release sin idioma SÍ se rechaza ──
 
@@ -260,7 +260,7 @@ const isoLangDecision = pickBest({
 
 expectEq(isoLangDecision.rejected.length, 0, "IsoLang: 'es' matchea release 'spanish'");
 assert(isoLangDecision.picked !== null, "IsoLang: picked");
-expectEq(isoLangDecision.picked?.languageScore, 10, "IsoLang: +10 por match normalizado");
+expectEq(isoLangDecision.picked?.languageScore, 1000, "IsoLang: +1000 por match normalizado (el idioma domina calidad/tamaño)");
 
 // ── Caso 14: bonus por título del episodio localizado ────────────────────────
 // Un release que incluye el título del episodio suma +20; uno sin él no penaliza
@@ -323,6 +323,60 @@ const only720Decision = pickBest({
 
 expectEq(only720Decision.rejected.length, 0, "Only720: 720p no rechazado (min fullhd)");
 expectEq(only720Decision.picked?.release.quality, "hd", "Only720: elige 720p como fallback");
+
+// ── Caso 17: regresión Silo S03E09 — junk en el título no debe rechazar
+// releases en español, y el idioma debe dominar calidad/tamaño. ──────────────
+const siloReleases = [
+  // sin idioma (webrip 1080p)
+  "Silo.S03E09.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA.mkv",
+  // español (WEBDL 1080p, ES+EN)
+  "Silo (2023) - S03E09 - Despedida [WEBDL-1080p] [x265] [ES eac3 5.1, EN eac3 5.1].mkv",
+  // español + junk (grupo/web/double tags)
+  "Silo 3x09 Despedida [AMZN WEB-DL 1080p EAC3 5.1 Dual][depechemode13 - www.latabernadelcangrejo.eu].mkv",
+  // sin idioma + junk (.nfo, DV, grupo)
+  "Silo S03E09 Farewell 2160p ATVP WEB-DL DDP5 1 Atmos DV HDR H 265-FLUX.mkv.nfo",
+].map(parseReleaseName);
+
+const siloDecision = pickBest({
+  releases: siloReleases,
+  expectedTitle: "Silo",
+  expectedEpisodeTitle: "Despedida",
+  season: 3,
+  episode: 9,
+  minQuality: "fullhd",
+  languageProfile: { mustHave: ["es"], allowUnknownLang: true },
+});
+
+expectEq(siloDecision.rejected.length, 0, "Silo: ningún rechazo por title mismatch (junk no diluye sim)");
+assert(siloDecision.picked !== null, "Silo: picked");
+assert(
+  siloDecision.picked!.release.languages.includes("spanish"),
+  `Silo: el ganador es español (got ${JSON.stringify(siloDecision.picked!.release.languages)})`,
+);
+
+// ── Caso 18: "multi" se trata como español latino (no como español de España) ──
+const multiRelease = ["Arcane.S01E06.1080p.WEB-DL.x264-MULTi"].map(parseReleaseName);
+
+const multiLatinoDecision = pickBest({
+  releases: multiRelease,
+  expectedTitle: "Arcane",
+  season: 1,
+  episode: 6,
+  minQuality: "hd",
+  languageProfile: { mustHave: ["latino"], allowUnknownLang: true },
+});
+expectEq(multiLatinoDecision.rejected.length, 0, "Multi: MULTi matchea 'latino' (no se rechaza)");
+expectEq(multiLatinoDecision.picked?.languageScore, 1000, "Multi: +1000 como latino");
+
+const multiEsDecision = pickBest({
+  releases: multiRelease,
+  expectedTitle: "Arcane",
+  season: 1,
+  episode: 6,
+  minQuality: "hd",
+  languageProfile: { mustHave: ["es"], allowUnknownLang: true },
+});
+expectEq(multiEsDecision.rejected.length, 1, "Multi: MULTi se rechaza para 'es' (España)");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

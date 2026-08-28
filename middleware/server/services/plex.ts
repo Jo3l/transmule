@@ -224,33 +224,41 @@ function showTitleCandidates(show: any): string[] {
   return out;
 }
 
-function findShowByTitle(shows: any[], key: string): any | null {
+function findShowByTitle(shows: any[], keys: string[]): any | null {
   // 1) Igualdad con cualquiera de los títulos (title / originalTitle)
-  const exact = shows.find((s) => showTitleCandidates(s).includes(key));
-  if (exact) return exact;
+  for (const key of keys) {
+    const exact = shows.find((s) => showTitleCandidates(s).includes(key));
+    if (exact) return exact;
+  }
   // 2) Fallback includes mutuo (≥4 chars) sobre cualquiera de los títulos
-  return (
-    shows.find((s) =>
+  for (const key of keys) {
+    const found = shows.find((s) =>
       showTitleCandidates(s).some((t) => key.length >= 4 && (t.includes(key) || key.includes(t))),
-    ) ?? null
-  );
+    );
+    if (found) return found;
+  }
+  return null;
 }
 
 /**
  * Episodios existentes en Plex para una serie ("season-episode" strings,
- * p.ej. "3-8"), localizando el show por título normalizado (localizado +
- * originalTitle). Cache 10 min. Devuelve null si Plex no está configurado.
+ * p.ej. "3-8"), localizando el show por título normalizado. Acepta VARIOS
+ * títulos candidatos (localizado + original): Plex tiene la serie localizada
+ * en unos casos y en el original en otros, así que se prueban ambos. Cache
+ * 10 min. Devuelve null si Plex no está configurado.
  */
 export async function getPlexSeriesEpisodes(
-  seriesTitle: string,
+  seriesTitle: string | string[],
   force = false,
 ): Promise<{ found: boolean; episodes: string[] } | null> {
   if (!getPlexCredentials()) return null;
 
-  const key = normTitle(seriesTitle);
-  if (!key) return { found: false, episodes: [] };
+  const titles = Array.isArray(seriesTitle) ? seriesTitle : [seriesTitle];
+  const keys = titles.map(normTitle).filter(Boolean);
+  if (keys.length === 0) return { found: false, episodes: [] };
 
-  const cached = episodesCache.get(key);
+  const cacheKey = keys.join("|");
+  const cached = episodesCache.get(cacheKey);
   if (
     !force &&
     cached &&
@@ -264,10 +272,10 @@ export async function getPlexSeriesEpisodes(
   if (!showSection) return { found: false, episodes: [] };
 
   const shows = await fetchSectionAll(showSection.key, 2);
-  const show = findShowByTitle(shows, key);
+  const show = findShowByTitle(shows, keys);
 
   if (!show) {
-    episodesCache.set(key, { at: Date.now(), found: false, episodes: [] });
+    episodesCache.set(cacheKey, { at: Date.now(), found: false, episodes: [] });
     return { found: false, episodes: [] };
   }
 
@@ -287,6 +295,6 @@ export async function getPlexSeriesEpisodes(
     }
   }
   const out = { found: true, episodes: [...new Set(episodes)] };
-  episodesCache.set(key, { at: Date.now(), ...out });
+  episodesCache.set(cacheKey, { at: Date.now(), ...out });
   return out;
 }

@@ -113,6 +113,18 @@ function titleSimilarity(a: string, b: string): number {
   const na = normalizeTitle(a);
   const nb = normalizeTitle(b);
   if (!na || !nb) return 0;
+
+  // Contención: si el título normalizado de uno (sin espacios) está contenido
+  // en el del otro, es el mismo título. Evita falsos rechazos por tokens de
+  // junk que el parser no llega a limpiar (grupo, web, .nfo, DV, canales,
+  // códigos de idioma de 2 letras…). p.ej. "Silo Farewell 1 DV FLUX nfo"
+  // contiene "silo" → sim 1.0 en vez de 0.20.
+  const compactA = na.replace(/ /g, "");
+  const compactB = nb.replace(/ /g, "");
+  if (compactA.length >= 3 && compactB.length >= 3) {
+    if (compactA.includes(compactB) || compactB.includes(compactA)) return 1;
+  }
+
   // Jaccard-style overlap de tokens (con 2+ chars)
   const tokensA = new Set(na.split(" ").filter((w) => w.length >= 2));
   const tokensB = new Set(nb.split(" ").filter((w) => w.length >= 2));
@@ -171,6 +183,13 @@ function stripEpisodeTitle(releaseTitle: string, episodeTitle: string): string {
 
 // ─── Language scoring ───────────────────────────────────────────────────────
 
+// El idioma seleccionado pesa POR ENCIMA de calidad y tamaño: un release que
+// trae el idioma pedido debe ganar siempre frente a uno sin él (la calidad
+// máxima aporta ~480 pts y el tamaño ~+30/-559). Un release sin idioma
+// detectado se penaliza para que quede por debajo de los que sí lo traen.
+const LANGUAGE_MATCH_BONUS = 1000;
+const LANGUAGE_UNKNOWN_PENALTY = -100;
+
 function languageScore(
   releaseLangs: string[],
   profile?: LanguageProfile,
@@ -196,8 +215,9 @@ function languageScore(
       relLangs.length === 0 ||
       relLangs.every((l) => l === "unknown" || l === "subs");
     if (unknownOnly && profile.allowUnknownLang) {
-      // Sin idioma detectado: no rechazar, penalización leve.
-      return { score: -10 };
+      // Sin idioma detectado: no rechazar, pero penalizar con fuerza para que
+      // no gane frente a un release con el idioma correcto.
+      return { score: LANGUAGE_UNKNOWN_PENALTY };
     }
     const matched = mustHave.filter((m) => relLangs.includes(m));
     if (matched.length === 0) {
@@ -206,7 +226,7 @@ function languageScore(
         rejected: `no required language (need ${mustHave.join("|")}, got ${relLangs.join(",") || "none"})`,
       };
     }
-    return { score: matched.length * 10 };
+    return { score: LANGUAGE_MATCH_BONUS + (matched.length - 1) * 10 };
   }
 
   return { score: 0 };

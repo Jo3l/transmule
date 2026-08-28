@@ -274,8 +274,13 @@ export async function getTmdbTvEpisodes(
   id: number,
   seasonNumber: number,
   language?: string,
+  opts: { noCache?: boolean } = {},
 ): Promise<TmdbSeasonEpisode[]> {
-  const data = await tmdbFetch<any>(`/tv/${id}/season/${seasonNumber}`, { language });
+  const data = await tmdbFetch<any>(`/tv/${id}/season/${seasonNumber}`, {
+    language,
+    ttlSeconds: 60 * 60,
+    noCache: opts.noCache,
+  });
   if (!data?.episodes) return [];
   return data.episodes.map((e: any) => ({
     season_number: e.season_number,
@@ -294,13 +299,18 @@ export async function getTmdbTvEpisodes(
 export async function getAllTmdbTvEpisodes(
   id: number,
   language?: string,
+  opts: { noCache?: boolean } = {},
 ): Promise<TmdbSeasonEpisode[]> {
   const detail = await getTmdbTvDetail(id);
   if (!detail) return [];
 
   // Número de temporadas (excluir season 0 = especiales si no hay episodios)
   const seasons: number[] = [];
-  const data = await tmdbFetch<any>(`/tv/${id}`, { ttlSeconds: 12 * 60 * 60, language });
+  const data = await tmdbFetch<any>(`/tv/${id}`, {
+    ttlSeconds: 12 * 60 * 60,
+    language,
+    noCache: opts.noCache,
+  });
   const seasonList = (data?.seasons ?? []) as any[];
   for (const s of seasonList) {
     if (s.season_number > 0 && s.episode_count > 0) seasons.push(s.season_number);
@@ -308,7 +318,9 @@ export async function getAllTmdbTvEpisodes(
 
   const all: TmdbSeasonEpisode[] = [];
   for (const seasonNumber of seasons) {
-    const eps = await getTmdbTvEpisodes(id, seasonNumber, language);
+    const eps = await getTmdbTvEpisodes(id, seasonNumber, language, {
+      noCache: opts.noCache,
+    });
     all.push(...eps);
   }
   return all;

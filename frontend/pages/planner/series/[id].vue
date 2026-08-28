@@ -435,10 +435,16 @@ async function initPlex() {
       list.includes(target) ||
       (target.length >= 4 && list.some((t) => t.includes(target)));
 
-    // Episodios de la serie (columna "Plex" de la tabla de temporadas)
+    // Episodios de la serie (columna "Plex" de la tabla de temporadas).
+    // Se pasan tvdb_id/tmdb_id/language para que el backend pruebe también el
+    // título ORIGINAL (Plex tiene la serie localizada en unos casos y no en otros).
     if (title) {
+      const params = new URLSearchParams({ series: title });
+      if (sub.value?.tvdb_id) params.set("tvdb_id", String(sub.value.tvdb_id));
+      if (sub.value?.tmdb_id) params.set("tmdb_id", String(sub.value.tmdb_id));
+      if (sub.value?.language) params.set("language", sub.value.language);
       apiFetch<{ configured: boolean; found: boolean; episodes: string[] }>(
-        `/api/plex/library/episodes?series=${encodeURIComponent(title)}`,
+        `/api/plex/library/episodes?${params.toString()}`,
       )
         .then((ep) => {
           if (ep?.configured) {

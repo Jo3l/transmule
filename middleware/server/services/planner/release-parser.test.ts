@@ -4,7 +4,7 @@
  * Ejecutar: node --experimental-strip-types middleware/server/services/planner/release-parser.test.ts
  * (o importar en un runner de test del proyecto).
  */
-import { parseReleaseName, mapLanguageToIso } from "./release-parser.ts";
+import { parseReleaseName, mapLanguageToIso, isVideoFile } from "./release-parser.ts";
 
 let passed = 0;
 let failed = 0;
@@ -254,6 +254,35 @@ const cases: Array<{
       }
     },
   },
+  {
+    // Regression: .nfo/.srt (ficheros auxiliares) no deben ensuciar el título.
+    input: "Silo.S03E09.1080p.Farewell.WEB.H264-CAKES.srt",
+    check: (r) => {
+      expectEq(r.type, "series", "Silo-srt type");
+      const t = r.title.toLowerCase();
+      assert(!t.includes("srt"), `Silo-srt sin "srt" en "${r.title}"`);
+      assert(!t.includes("cakes"), `Silo-srt sin grupo "cakes" en "${r.title}"`);
+    },
+  },
+  {
+    // Regression: "DV" (Dolby Vision) y canales "6CH" no deben quedar en el título.
+    input: "Silo.S03E09.Farewell.2160p.ATVP.WEB-DL.DV.HDR.HEVC.x265-FLUX.mkv",
+    check: (r) => {
+      expectEq(r.quality, "uhd", "Silo-DV quality");
+      const t = r.title.toLowerCase();
+      assert(!t.includes("dv"), `Silo-DV sin "dv" en "${r.title}"`);
+      assert(!t.includes("flux"), `Silo-DV sin grupo "flux" en "${r.title}"`);
+    },
+  },
+  {
+    // Regression: "6CH" (canales de audio) no debe quedar en el título.
+    input: "Silo.S03E09.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA.mkv",
+    check: (r) => {
+      expectEq(r.source, "webrip", "Silo-6CH source");
+      const t = r.title.toLowerCase();
+      assert(!t.includes("6ch"), `Silo-6CH sin "6ch" en "${r.title}"`);
+    },
+  },
 ];
 
 for (const c of cases) {
@@ -279,8 +308,20 @@ expectEq(mapLanguageToIso("french"), "fr", "iso french→fr");
 expectEq(mapLanguageToIso("japanese"), "ja", "iso japanese→ja");
 expectEq(mapLanguageToIso("korean"), "ko", "iso korean→ko");
 expectEq(mapLanguageToIso("chinese"), "zh", "iso chinese→zh");
-expectEq(mapLanguageToIso("multi"), "multi", "iso multi→multi");
+expectEq(mapLanguageToIso("multi"), "latino", "iso multi→latino (multi vale como español latino)");
 expectEq(mapLanguageToIso("zz"), "zz", "iso fallback devuelve el mismo código");
+
+// ── isVideoFile (ignorar ficheros no-vídeo) ────────────────────────────────
+
+expectEq(isVideoFile("Silo.S03E09.1080p.WEB.H264-CAKES.mkv"), true, "video .mkv");
+expectEq(isVideoFile("Silo 3x09.mp4"), true, "video .mp4");
+expectEq(isVideoFile("Silo 3x09"), true, "sin extensión → no descartar");
+expectEq(isVideoFile("Silo.S03E09.1080p.Farewell.WEB.H264-CAKES.srt"), false, "no-video .srt");
+expectEq(isVideoFile("Silo S03E09 Farewell 2160p ATVP WEB-DL FLUX.mkv.nfo"), false, "no-video .nfo");
+expectEq(isVideoFile("Silo.S03E09.1080p.HEVC.x265-MeGusta[EZTVx.to].mkv.torrent"), false, "no-video .torrent");
+expectEq(isVideoFile("Silo 3x09 thumb.jpg"), false, "no-video .jpg");
+expectEq(isVideoFile("Silo 3x09 chapters.xml"), false, "no-video .xml");
+expectEq(isVideoFile("Silo 3x09 Despedida ... by.Legan.mkv.p2p-hash"), false, "no-video .p2p-hash");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
