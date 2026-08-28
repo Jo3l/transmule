@@ -94,14 +94,15 @@ export default defineEventHandler(async (event) => {
         tmdb_id: sub.tmdb_id,
         language,
         title: sub.title,
+        media_type: type === "episode" ? "series" : "movie",
       })
     : [];
 
   // Busca en paralelo en las redes habilitadas (numeración + idioma).
   const items =
     type === "episode"
-      ? await searchEpisode(title, season!, episode!, searchServices, language)
-      : await searchMovie(title, year, searchServices, language);
+      ? await searchEpisode(title, season!, episode!, searchServices, language, undefined, altTitles)
+      : await searchMovie(title, year, searchServices, language, undefined, altTitles);
 
   // Score SIN decidir: evaluamos todos y devolvemos candidatos (los válidos
   // primero, los rechazados con su motivo al final) para que el usuario elija.

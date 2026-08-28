@@ -72,6 +72,7 @@ export default defineEventHandler(async (event) => {
         tmdb_id: sub.tmdb_id,
         language,
         title: sub.title,
+        media_type: type === "episode" ? "series" : "movie",
       })
     : [];
 
@@ -100,9 +101,9 @@ export default defineEventHandler(async (event) => {
   };
 
   if (type === "episode") {
-    await searchEpisodeStreamed(title, season!, episode!, searchServices, language, onResult);
+    await searchEpisodeStreamed(title, season!, episode!, searchServices, language, onResult, undefined, altTitles);
   } else {
-    await searchMovieStreamed(title, year, searchServices, language, onResult);
+    await searchMovieStreamed(title, year, searchServices, language, onResult, undefined, altTitles);
   }
 
   res.write(`event: complete\ndata: ${JSON.stringify({ done: true })}\n\n`);

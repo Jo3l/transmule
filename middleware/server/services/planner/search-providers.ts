@@ -58,37 +58,81 @@ function sleep(ms: number): Promise<void> {
 
 // ─── Query builders (multi-variante) ────────────────────────────────────────
 
-/** Variantes de query para un episodio: `S01E01` + `1x01` (+ sufijos de idioma). */
+/** Variantes de query para un episodio: `S01E01` + `1x01` (+ sufijos de idioma).
+ *  `altTitles` (títulos localizados en el idioma elegido) añaden variantes
+ *  adicionales para maximizar recall (p.ej. "Linternas S01E01" además de
+ *  "Lanterns S01E01"). */
 export function buildEpisodeQueries(
   title: string,
   season: number,
   episode: number,
   language?: string,
+  altTitles?: string[],
 ): string[] {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
-  const bases = [
-    `${title} S${s}E${e}`,
-    `${title} ${season}x${e}`,
-  ];
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  const bases: string[] = [];
+  for (const t of titles) {
+    bases.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`);
+  }
   return withLanguageVariants(bases, language);
 }
 
-/** Variantes de query para una película: `{title} {year}` (+ sufijos de idioma). */
+/** Variantes de query para una película: `{title} {year}` (+ sufijos de idioma
+ *  y títulos localizados). */
 export function buildMovieQueries(
   title: string,
   year?: number,
   language?: string,
+  altTitles?: string[],
 ): string[] {
-  const base = year ? `${title} ${year}` : title;
-  return withLanguageVariants([base], language);
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  const bases = titles.map((t) => (year ? `${t} ${year}` : t));
+  return withLanguageVariants(bases, language);
 }
 
-/** Query booleana para aMule: une las variantes SxxExx / 1x01 con OR. */
-function buildAmuleEpisodeQuery(title: string, season: number, episode: number): string {
+/** Query booleana para aMule: une las variantes SxxExx / 1x01 con OR
+ *  (incluyendo los títulos localizados). */
+function buildAmuleEpisodeQuery(
+  title: string,
+  season: number,
+  episode: number,
+  altTitles?: string[],
+): string {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
-  return `${title} S${s}E${e} OR ${title} ${season}x${e}`;
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  const parts: string[] = [];
+  for (const t of titles) {
+    parts.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`);
+  }
+  return parts.join(" OR ");
+}
+
+/** Query booleana para aMule (películas): `{title} {year}` OR por título localizado. */
+function buildAmuleMovieQuery(
+  title: string,
+  year?: number,
+  altTitles?: string[],
+): string {
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  return titles.map((t) => (year ? `${t} ${year}` : t)).join(" OR ");
+}
+
+/** Deduplica títulos (case-insensitive, preservando el orden). */
+function dedupeTitles(titles: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of titles) {
+    const clean = String(t ?? "").trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(clean);
+  }
+  return out;
 }
 
 function withLanguageVariants(bases: string[], language?: string): string[] {
@@ -280,6 +324,7 @@ export async function searchEpisode(
   searchServices: string[],
   language?: string,
   timeoutMs = 60_000,
+  altTitles?: string[],
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchEpisodeStreamed(
@@ -292,6 +337,7 @@ export async function searchEpisode(
       collected.push(...items);
     },
     timeoutMs,
+    altTitles,
   );
   // Espera a que TODAS las búsquedas terminen o al timeout, lo que ocurra antes.
   await Promise.race([done, sleep(timeoutMs)]);
@@ -307,6 +353,7 @@ export async function searchMovie(
   searchServices: string[],
   language?: string,
   timeoutMs = 60_000,
+  altTitles?: string[],
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchMovieStreamed(
@@ -318,6 +365,7 @@ export async function searchMovie(
       collected.push(...items);
     },
     timeoutMs,
+    altTitles,
   );
   await Promise.race([done, sleep(timeoutMs)]);
   return dedupe(collected);
@@ -338,10 +386,11 @@ export async function searchEpisodeStreamed(
   language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
+  altTitles?: string[],
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  const queries = buildEpisodeQueries(title, season, episode, language);
-  const amuleQuery = buildAmuleEpisodeQuery(title, season, episode);
+  const queries = buildEpisodeQueries(title, season, episode, language, altTitles);
+  const amuleQuery = buildAmuleEpisodeQuery(title, season, episode, altTitles);
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
@@ -367,9 +416,10 @@ export async function searchMovieStreamed(
   language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
+  altTitles?: string[],
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  const queries = buildMovieQueries(title, year, language);
+  const queries = buildMovieQueries(title, year, language, altTitles);
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
@@ -379,7 +429,8 @@ export async function searchMovieStreamed(
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    tasks.push(streamAmule(queries[0], (r) => onResult("amule", r), timeoutMs));
+    const amuleQuery = buildAmuleMovieQuery(title, year, altTitles);
+    tasks.push(streamAmule(amuleQuery, (r) => onResult("amule", r), timeoutMs));
   }
 
   await Promise.allSettled(tasks);

@@ -14,7 +14,8 @@
  * Cada 60s. Guard globalThis para HMR.
  */
 
-import { useDatabase } from "../utils/database";
+import { useDatabase, getConfig } from "../utils/database";
+import { recordGrabLog } from "../utils/planner-db";
 import { useTransmissionClient } from "../utils/transmission-client";
 import { useSlskdClient } from "../utils/slskd-client";
 import { useAmuleClient } from "../utils/amule-client";
@@ -30,6 +31,8 @@ export default defineNitroPlugin(() => {
   setInterval(checkCompleted, INTERVAL_MS);
   setInterval(recoverStuckGrabs, 5 * 60_000); // cada 5 min
   setTimeout(recoverStuckGrabs, 60_000); // 1 min tras boot
+  setInterval(recoverFailedGrabs, 60 * 60_000); // reintentos de fallos: cada hora
+  setTimeout(recoverFailedGrabs, 5 * 60_000); // 5 min tras boot
   console.log("[planner] importer started (every 60s)");
 });
 
@@ -69,6 +72,14 @@ async function recoverStuckGrabs(): Promise<void> {
           "UPDATE planner_movies SET status = 'released' WHERE id = ? AND status = 'grabbed'",
         ).run(grab.movie_id);
       }
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "gave_up",
+        message: `abandonado tras ${attempts + 1} intentos (atascado ${stuckHours}h en 'dispatched')`,
+      });
       console.warn(
         `[planner] grab #${grab.id} marked failed after ${attempts + 1} attempts (stuck ${stuckHours}h); episode/movie released back to 'released' (manual download)`,
       );
@@ -80,8 +91,91 @@ async function recoverStuckGrabs(): Promise<void> {
              last_error = 're-queued after ${stuckHours}h stuck'
          WHERE id = ?`,
       ).run(grab.id);
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "stuck_recovered",
+        message: `re-encolado tras ${stuckHours}h atascado en 'dispatched'`,
+      });
       console.warn(`[planner] grab #${grab.id} re-queued (stuck ${stuckHours}h, attempt 2)`);
     }
+  }
+}
+
+/**
+ * Reintenta descargas fallidas (errores de dispatch) cada hora.
+ *
+ * Un grab en 'failed' (p.ej. el cliente de descargas estaba caído al encolar)
+ * se re-encola a 'pending' hasta `planner.max_grab_attempts` veces, dando así
+ * varios reintentos el mismo día del estreno. Al agotar los intentos se libera
+ * el episodio/película a 'released' (descarga manual) para que no quede colgado
+ * en 'grabbed' sin descargar.
+ */
+async function recoverFailedGrabs(): Promise<void> {
+  const db = useDatabase();
+  const maxAttempts = Math.max(
+    Number(getConfig("planner.max_grab_attempts")) ||
+      Number(process.env.PLANNER_GRAB_MAX_ATTEMPTS) ||
+      5,
+    1,
+  );
+
+  // Reintentar: failed con attempts < max.
+  const retryable = db
+    .prepare(
+      `SELECT * FROM planner_grab_queue
+       WHERE state = 'failed' AND attempts < ?`,
+    )
+    .all(maxAttempts) as unknown as Array<Record<string, any>>;
+  for (const grab of retryable) {
+    const nextAttempt = Number(grab.attempts ?? 0) + 1;
+    db.prepare(
+      `UPDATE planner_grab_queue
+       SET state = 'pending', created_at = datetime('now'), last_error = NULL
+       WHERE id = ?`,
+    ).run(grab.id);
+    recordGrabLog({
+      subscription_id: grab.subscription_id,
+      episode_id: grab.episode_id ?? null,
+      movie_id: grab.movie_id ?? null,
+      grab_id: grab.id,
+      event: "requeued",
+      message: `reintento ${nextAttempt}/${maxAttempts} (último error: ${grab.last_error ?? "desconocido"})`,
+    });
+    console.warn(`[planner] grab #${grab.id} re-queued (attempt ${nextAttempt}/${maxAttempts})`);
+  }
+
+  // Rendirse: failed con attempts >= max → liberar episodio/película a 'released'.
+  const gaveUp = db
+    .prepare(
+      `SELECT * FROM planner_grab_queue WHERE state = 'failed' AND attempts >= ?`,
+    )
+    .all(maxAttempts) as unknown as Array<Record<string, any>>;
+  for (const grab of gaveUp) {
+    if (grab.episode_id) {
+      db.prepare(
+        "UPDATE planner_episodes SET status = 'released' WHERE id = ? AND status = 'grabbed'",
+      ).run(grab.episode_id);
+    }
+    if (grab.movie_id) {
+      db.prepare(
+        "UPDATE planner_movies SET status = 'released' WHERE id = ? AND status = 'grabbed'",
+      ).run(grab.movie_id);
+    }
+    db.prepare(
+      "UPDATE planner_grab_queue SET state = 'given_up' WHERE id = ?",
+    ).run(grab.id);
+    recordGrabLog({
+      subscription_id: grab.subscription_id,
+      episode_id: grab.episode_id ?? null,
+      movie_id: grab.movie_id ?? null,
+      grab_id: grab.id,
+      event: "gave_up",
+      message: `abandonado tras ${grab.attempts} intentos (último error: ${grab.last_error ?? "desconocido"})`,
+    });
+    console.warn(`[planner] grab #${grab.id} given up after ${grab.attempts} attempts`);
   }
 }
 
@@ -141,6 +235,14 @@ async function checkCompleted(): Promise<void> {
       db.prepare(
         "UPDATE planner_grab_queue SET state = 'completed' WHERE id = ?",
       ).run(grab.id);
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "completed",
+        message: `descargado (${grab.service})${grab.release_title ? ": " + grab.release_title : ""}`,
+      });
 
       if (grab.episode_id) {
         db.prepare(

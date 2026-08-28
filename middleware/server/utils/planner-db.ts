@@ -47,6 +47,7 @@ export type PlannerGrabState =
   | "pending"
   | "dispatched"
   | "failed"
+  | "given_up"
   | "completed";
 
 export interface PlannerSubscription {
@@ -191,6 +192,7 @@ export interface PlannerGrabQueueEntry {
   state: PlannerGrabState;
   attempts: number;
   last_error: string | null;
+  last_attempt_at: string | null;
   /** Carpeta destino de la subscription (JOIN en nextPendingGrabs). */
   root_folder?: string | null;
   priority: PlannerGrabPriority;
@@ -725,7 +727,7 @@ export function recordSearchHistory(input: Omit<PlannerSearchHistory, "id">): Pl
 
 // ─── Grab queue ─────────────────────────────────────────────────────────────
 
-export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | "attempts" | "last_error" | "created_at">): PlannerGrabQueueEntry {
+export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | "attempts" | "last_error" | "last_attempt_at" | "created_at">): PlannerGrabQueueEntry {
   const db = useDatabase();
 
   // Anti double-grab: si ya hay un grab pending/dispatched para el mismo
@@ -766,6 +768,14 @@ export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | 
       input.priority ?? "normal",
     );
   const id = Number(result.lastInsertRowid);
+  recordGrabLog({
+    subscription_id: input.subscription_id,
+    episode_id: input.episode_id ?? null,
+    movie_id: input.movie_id ?? null,
+    grab_id: id,
+    event: "queued",
+    message: `encolado: ${input.release_title ?? input.release_url.slice(0, 80)} (${input.service})`,
+  });
   return db
     .prepare("SELECT * FROM planner_grab_queue WHERE id = ?")
     .get(id) as unknown as PlannerGrabQueueEntry;
@@ -797,13 +807,89 @@ export function updateGrabState(
   const db = useDatabase();
   if (error !== undefined) {
     db.prepare(
-      "UPDATE planner_grab_queue SET state = ?, last_error = ?, attempts = attempts + 1 WHERE id = ?",
+      "UPDATE planner_grab_queue SET state = ?, last_error = ?, last_attempt_at = datetime('now'), attempts = attempts + 1 WHERE id = ?",
     ).run(state, error, id);
   } else {
     db.prepare(
-      "UPDATE planner_grab_queue SET state = ?, attempts = attempts + 1 WHERE id = ?",
+      "UPDATE planner_grab_queue SET state = ?, last_attempt_at = datetime('now'), attempts = attempts + 1 WHERE id = ?",
     ).run(state, id);
   }
+}
+
+// ─── Grab log (append-only) ─────────────────────────────────────────────────
+
+export type PlannerGrabLogEvent =
+  | "queued"
+  | "dispatched"
+  | "dispatch_failed"
+  | "requeued"
+  | "completed"
+  | "gave_up"
+  | "stuck_recovered";
+
+export interface PlannerGrabLogEntry {
+  id: number;
+  subscription_id: number;
+  episode_id: number | null;
+  movie_id: number | null;
+  grab_id: number | null;
+  event: string;
+  message: string | null;
+  created_at: string;
+}
+
+/**
+ * Registra un evento del ciclo de vida de una descarga (log de intentos).
+ * Append-only: sirve para responder "¿falló?, ¿por qué?, ¿cuándo se descargó?".
+ */
+export function recordGrabLog(input: {
+  subscription_id: number;
+  episode_id?: number | null;
+  movie_id?: number | null;
+  grab_id?: number | null;
+  event: string;
+  message?: string | null;
+}): void {
+  const db = useDatabase();
+  db.prepare(
+    `INSERT INTO planner_grab_log (subscription_id, episode_id, movie_id, grab_id, event, message, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    input.subscription_id,
+    input.episode_id ?? null,
+    input.movie_id ?? null,
+    input.grab_id ?? null,
+    input.event,
+    input.message ?? null,
+    new Date().toISOString(),
+  );
+}
+
+/** Últimos eventos del log, filtrables por subscription/episodio/película. */
+export function listGrabLog(opts: {
+  subscription_id?: number;
+  episode_id?: number;
+  movie_id?: number;
+  limit?: number;
+} = {}): PlannerGrabLogEntry[] {
+  const db = useDatabase();
+  let sql = "SELECT * FROM planner_grab_log WHERE 1=1";
+  const params: unknown[] = [];
+  if (opts.subscription_id !== undefined) {
+    sql += " AND subscription_id = ?";
+    params.push(opts.subscription_id);
+  }
+  if (opts.episode_id !== undefined) {
+    sql += " AND episode_id = ?";
+    params.push(opts.episode_id);
+  }
+  if (opts.movie_id !== undefined) {
+    sql += " AND movie_id = ?";
+    params.push(opts.movie_id);
+  }
+  sql += " ORDER BY id DESC LIMIT ?";
+  params.push(opts.limit ?? 100);
+  return db.prepare(sql).all(...(params as any)) as unknown as PlannerGrabLogEntry[];
 }
 
 // ─── Metadata cache ─────────────────────────────────────────────────────────

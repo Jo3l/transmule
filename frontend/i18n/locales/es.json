@@ -1556,6 +1556,21 @@
     "searchHistoryHint": "Registro de cada búsqueda (automática o manual) de esta suscripción y el release elegido o el motivo de descarte.",
     "seasonDownloadQueued": "Descarga de la temporada iniciada",
     "statusWaiting": "En espera",
-    "theatricalRelease": "Estreno en cines"
+    "theatricalRelease": "Estreno en cines",
+    "history": "Historial",
+    "historyHint": "Búsquedas y descargas de esta suscripción, con el motivo de cada fallo y cuándo se completó.",
+    "historyEmpty": "Sin actividad registrada.",
+    "historyKindSearch": "Búsqueda",
+    "historyKindGrab": "Descarga",
+    "historyEventQueued": "Encolado",
+    "historyEventDispatched": "Enviado",
+    "historyEventDispatchFailed": "Fallo al enviar",
+    "historyEventRequeued": "Reintento",
+    "historyEventCompleted": "Descargado",
+    "historyEventGaveUp": "Abandonado",
+    "historyEventStuckRecovered": "Recuperado",
+    "searchStatusNoResults": "Sin resultados",
+    "searchStatusPending": "Pendiente",
+    "detail": "Detalle"
   }
 }

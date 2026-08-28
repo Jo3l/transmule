@@ -5,7 +5,7 @@
  * y debe puntuarlos sin penalizarlos por no coincidir con el título inglés.
  */
 import { getTvdbSeriesLocalizedName } from "./tvdb";
-import { getTmdbMovieLocalizedTitle } from "./tmdb";
+import { getTmdbMovieLocalizedTitle, getTmdbTvLocalizedName } from "./tmdb";
 
 export interface AltTitleSource {
   tvdb_id?: number | null;
@@ -13,6 +13,12 @@ export interface AltTitleSource {
   language?: string | null;
   /** Título canónico (normalmente inglés) para evitar duplicarlo como alt. */
   title?: string | null;
+  /**
+   * Tipo de medio, para elegir el endpoint correcto de TMDB:
+   * una serie sin tvdb_id (añadida desde el calendario) usa /tv/{id},
+   * una película usa /movie/{id}.
+   */
+  media_type?: "series" | "movie";
 }
 
 /**
@@ -26,13 +32,19 @@ export async function resolveAltTitles(src: AltTitleSource): Promise<string[]> {
   const canonical = (src.title ?? "").trim().toLowerCase();
   const out: string[] = [];
 
-  if (src.tvdb_id) {
-    const name = await getTvdbSeriesLocalizedName(src.tvdb_id, lang).catch(() => null);
-    if (name && name.trim().toLowerCase() !== canonical) out.push(name.trim());
-  }
-  if (src.tmdb_id) {
-    const title = await getTmdbMovieLocalizedTitle(src.tmdb_id, lang).catch(() => null);
-    if (title && title.trim().toLowerCase() !== canonical) out.push(title.trim());
+  if (src.media_type === "series") {
+    if (src.tvdb_id) {
+      const name = await getTvdbSeriesLocalizedName(src.tvdb_id, lang).catch(() => null);
+      if (name && name.trim().toLowerCase() !== canonical) out.push(name.trim());
+    } else if (src.tmdb_id) {
+      const title = await getTmdbTvLocalizedName(src.tmdb_id, lang).catch(() => null);
+      if (title && title.trim().toLowerCase() !== canonical) out.push(title.trim());
+    }
+  } else {
+    if (src.tmdb_id) {
+      const title = await getTmdbMovieLocalizedTitle(src.tmdb_id, lang).catch(() => null);
+      if (title && title.trim().toLowerCase() !== canonical) out.push(title.trim());
+    }
   }
 
   return [...new Set(out)];

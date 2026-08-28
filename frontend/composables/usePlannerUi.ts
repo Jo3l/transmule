@@ -6,6 +6,7 @@
  *   - mapeo estado → variant de STag (`statusClass`)
  *   - `pad` (SxxExx)
  *   - `formatDate` (fecha YYYY-MM-DD → locale)
+ *   - historial unificado (búsquedas + descargas)
  */
 
 const PLANNER_STATUS_LABELS: Record<string, string> = {
@@ -62,4 +63,75 @@ export function usePlannerStatusDisplay() {
   const statusLabel = (s: string): string =>
     t(PLANNER_STATUS_LABELS[s] ?? "planner.statusUnknown");
   return { statusLabel, statusClass: plannerStatusClass };
+}
+
+// ─── Historial unificado (búsquedas + descargas) ─────────────────────────────
+
+const HISTORY_EVENT_LABELS: Record<string, string> = {
+  queued: "planner.historyEventQueued",
+  dispatched: "planner.historyEventDispatched",
+  dispatch_failed: "planner.historyEventDispatchFailed",
+  requeued: "planner.historyEventRequeued",
+  completed: "planner.historyEventCompleted",
+  gave_up: "planner.historyEventGaveUp",
+  stuck_recovered: "planner.historyEventStuckRecovered",
+};
+
+/**
+ * Presentación del historial unificado (search + grab) devuelto por
+ * GET /api/planner/subscriptions/:id/history. Cada entrada lleva `kind`.
+ */
+export function usePlannerHistoryDisplay() {
+  const { t } = useI18n();
+
+  const kindLabel = (kind: string): string =>
+    kind === "grab" ? t("planner.historyKindGrab") : t("planner.historyKindSearch");
+
+  const eventLabel = (row: any): string => {
+    if (row.kind === "grab") {
+      return t(HISTORY_EVENT_LABELS[row.event] ?? "planner.statusUnknown");
+    }
+    if (row.status === "grabbed") return t("planner.statusGrabbed");
+    if (row.status === "no_results") return t("planner.searchStatusNoResults");
+    if (row.status === "pending") return t("planner.searchStatusPending");
+    return String(row.status ?? "—");
+  };
+
+  const eventVariant = (row: any): PlannerTagVariant => {
+    if (row.kind === "grab") {
+      if (row.event === "completed") return "success";
+      if (row.event === "dispatch_failed" || row.event === "gave_up") return "danger";
+      if (row.event === "requeued" || row.event === "stuck_recovered") return "warning";
+      if (row.event === "dispatched") return "info";
+      return "default";
+    }
+    if (row.status === "grabbed") return "success";
+    if (row.status === "no_results" || row.status === "failed") return "warning";
+    return "default";
+  };
+
+  /** Mensaje de detalle: para descargas, el mensaje del evento; para búsquedas, el release elegido o el error. */
+  const detailText = (row: any): string => {
+    if (row.kind === "grab") return row.message ?? "—";
+    return row.picked_title ?? row.message ?? "—";
+  };
+
+  /** Timestamp ISO → "28 ago, 18:30" (fecha + hora, para saber CUÁNDO). */
+  const formatTimestamp = (ts: string | null | undefined): string => {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return String(ts);
+    try {
+      return d.toLocaleString(undefined, {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return String(ts);
+    }
+  };
+
+  return { kindLabel, eventLabel, eventVariant, detailText, formatTimestamp };
 }

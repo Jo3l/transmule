@@ -1556,6 +1556,21 @@
     "searchHistoryHint": "Log of each search (automatic or manual) for this subscription, with the release chosen or the rejection reason.",
     "seasonDownloadQueued": "Season download started",
     "statusWaiting": "Waiting",
-    "theatricalRelease": "Theatrical release"
+    "theatricalRelease": "Theatrical release",
+    "history": "History",
+    "historyHint": "Searches and downloads for this subscription, including why each failed and when it completed.",
+    "historyEmpty": "No activity recorded.",
+    "historyKindSearch": "Search",
+    "historyKindGrab": "Download",
+    "historyEventQueued": "Queued",
+    "historyEventDispatched": "Dispatched",
+    "historyEventDispatchFailed": "Dispatch failed",
+    "historyEventRequeued": "Retried",
+    "historyEventCompleted": "Downloaded",
+    "historyEventGaveUp": "Given up",
+    "historyEventStuckRecovered": "Recovered",
+    "searchStatusNoResults": "No results",
+    "searchStatusPending": "Pending",
+    "detail": "Detail"
   }
 }
