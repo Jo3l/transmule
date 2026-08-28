@@ -50,12 +50,16 @@ assert(bbDecision.picked !== null, "BB picked something");
 expectEq(bbDecision.picked?.release.season, 1, "BB picked season");
 expectEq(bbDecision.picked?.release.episode, 1, "BB picked episode");
 expectEq(bbDecision.picked?.release.quality, "fullhd", "BB picked fullhd (not hd)");
-// Rechazos: S01E02 (wrong ep), S02E01 (wrong season), The.Boys (title mismatch) = 3
-expectEq(bbDecision.rejected.length, 3, "BB rejected 3");
-expectEq(bbDecision.evaluated.length, 1, "BB evaluated 1 (the best fullhd)");
+// Rechazos: S01E02 (wrong ep), S02E01 (wrong season). El 720p ya NO se rechaza:
+// se puntúa por debajo del 1080p (calidad como preferencia suave).
+expectEq(bbDecision.rejected.length, 2, "BB rejected 2 (wrong season + wrong episode)");
+expectEq(bbDecision.evaluated.length, 2, "BB evaluated 2 (720p penalizado + 1080p)");
 expectEq(bbDecision.picked?.release.source, "webdl", "BB picked webdl");
+const bb720 = bbDecision.evaluated.find((e) => e.release.quality === "hd");
+assert(bb720 !== undefined, "BB: 720p evaluado (no rechazado)");
+expectEq(bb720!.qualityScore, 100, "BB: 720p penalizado a 100 pts (min fullhd)");
 
-// ── Caso 2: min_quality uhd excluye 1080p ───────────────────────────────────
+// ── Caso 2: min_quality uhd prefiere 4K; 1080p queda como fallback ──────────
 
 const duneReleases = [
   "Dune.Part.Two.2024.1080p.WEB-DL.x264-AMIABLE",
@@ -69,7 +73,8 @@ const duneDecision = pickBest({
 });
 
 expectEq(duneDecision.picked?.release.quality, "uhd", "Dune picks uhd (min uhd)");
-expectEq(duneDecision.rejected.length, 1, "Dune rejects 1080p");
+expectEq(duneDecision.rejected.length, 0, "Dune: 1080p ya no se rechaza (preferencia suave)");
+expectEq(duneDecision.evaluated.length, 2, "Dune: 1080p evaluado con menor score");
 
 // ── Caso 3: language profile must_have spanish ──────────────────────────────
 
@@ -302,6 +307,22 @@ expectEq(smallEval?.sizeScore, 26, "Size: +26 por estar cerca (900MB vs objetivo
 expectEq(bigEval?.sizeScore, -559, "Size: -559 por exceder 10GB vs 1GB (castigo no lineal)");
 // Un escalón de calidad (100 pts) NO debe compensar un 10 GB frente a un 900 MB.
 expectEq(smallEval!.total > bigEval!.total, true, "Size: 900MB puntúa más que 10GB");
+
+// ── Caso 16: calidad como preferencia — sin 1080p, el 720p se elige igual ──
+const only720 = [
+  "Silo.S01E06.720p.HDTV.x264-GROUP",
+].map(parseReleaseName);
+
+const only720Decision = pickBest({
+  releases: only720,
+  expectedTitle: "Silo",
+  season: 1,
+  episode: 6,
+  minQuality: "fullhd",
+});
+
+expectEq(only720Decision.rejected.length, 0, "Only720: 720p no rechazado (min fullhd)");
+expectEq(only720Decision.picked?.release.quality, "hd", "Only720: elige 720p como fallback");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

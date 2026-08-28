@@ -10,9 +10,12 @@
  *
  * Fase 13 — búsqueda unificada:
  *   - buildEpisodeQueries/buildMovieQueries generan VARIAS variantes de query
- *     (S01E01 / 1x01, + sufijos de idioma) para maximizar recall.
+ *     (S01E01 / 1x01 / 101) para maximizar recall. Solo título + episodio/año;
+ *     el idioma se añade como FALLBACK cuando no hay título de episodio que
+ *     identifique el release (las películas siempre). El título del episodio,
+ *     la calidad y el tamaño se aplican en el scoring (decision-engine).
  *   - Cada provider ejecuta sus variantes de query en PARALELO y deduplica.
- *   - `amule` usa una única query booleana con OR (`S01E01 OR 1x01`), porque
+ *   - `amule` usa una única query booleana con OR (`S01E01 OR 1x01 OR 101`), porque
  *     su API solo retiene la última búsqueda.
  *
  * Fase 14 — streaming sin límites:
@@ -58,42 +61,62 @@ function sleep(ms: number): Promise<void> {
 
 // ─── Query builders (multi-variante) ────────────────────────────────────────
 
-/** Variantes de query para un episodio: `S01E01` + `1x01` (+ sufijos de idioma).
- *  `altTitles` (títulos localizados en el idioma elegido) añaden variantes
- *  adicionales para maximizar recall (p.ej. "Linternas S01E01" además de
- *  "Lanterns S01E01"). */
+/** Variantes de query para un episodio: `S01E01` + `1x01` + `101`.
+ *  `altTitles` (títulos localizados) añaden variantes adicionales (p.ej.
+ *  "Linternas S01E01" además de "Lanterns S01E01"). Si NO hay `episodeTitle`
+ *  para identificar el release, se añaden marcadores de idioma como fallback. */
 export function buildEpisodeQueries(
   title: string,
   season: number,
   episode: number,
-  language?: string,
   altTitles?: string[],
+  language?: string,
+  episodeTitle?: string,
 ): string[] {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
+  // Formato "101" (SxxEyy → xyy): S01E06 → 106, S10E06 → 1006.
+  const abs = String(season) + e;
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
   const bases: string[] = [];
   for (const t of titles) {
-    bases.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`);
+    bases.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`, `${t} ${abs}`);
   }
-  return withLanguageVariants(bases, language);
+  // Fallback de idioma: solo cuando no hay título de episodio que identifique
+  // el archivo (los marcadores ayudan a reconocer el release en ese caso).
+  return episodeTitle ? bases : withLanguageVariants(bases, language);
 }
 
-/** Variantes de query para una película: `{title} {year}` (+ sufijos de idioma
- *  y títulos localizados). */
+/** Variantes de query para una película: `{title} {year}` (+ títulos
+ *  localizados). Las películas no tienen título de episodio, así que el idioma
+ *  se añade siempre para identificar mejor el release. */
 export function buildMovieQueries(
   title: string,
   year?: number,
-  language?: string,
   altTitles?: string[],
+  language?: string,
 ): string[] {
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
   const bases = titles.map((t) => (year ? `${t} ${year}` : t));
   return withLanguageVariants(bases, language);
 }
 
-/** Query booleana para aMule: une las variantes SxxExx / 1x01 con OR
- *  (incluyendo los títulos localizados). */
+/** Añade variantes con marcadores de idioma a un set de queries base. */
+function withLanguageVariants(bases: string[], language?: string): string[] {
+  const markers = languageQueryMarkers(language);
+  if (markers.length === 0) return bases;
+  const out = [...bases];
+  for (const m of markers) {
+    for (const b of bases) out.push(`${b} ${m}`);
+  }
+  return out;
+}
+
+/** Query booleana para aMule: une las variantes de episodio con OR y agrupa
+ *  cada título con paréntesis. aMule hace AND implícito entre palabras del
+ *  título y soporta OR/paréntesis, así que "{título} (S01E06 OR 1x06 OR 106)"
+ *  busca un release con todas las palabras del título Y cualquiera de las tres
+ *  nomenclaturas de episodio (SxxExx / 1x01 / 101 → "Cap.106"). */
 function buildAmuleEpisodeQuery(
   title: string,
   season: number,
@@ -102,12 +125,10 @@ function buildAmuleEpisodeQuery(
 ): string {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
+  const abs = String(season) + e; // "101": S01E06 → 106
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
-  const parts: string[] = [];
-  for (const t of titles) {
-    parts.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`);
-  }
-  return parts.join(" OR ");
+  const epGroup = [`S${s}E${e}`, `${season}x${e}`, abs].join(" OR ");
+  return titles.map((t) => `${t} (${epGroup})`).join(" OR ");
 }
 
 /** Query booleana para aMule (películas): `{title} {year}` OR por título localizado. */
@@ -135,20 +156,10 @@ function dedupeTitles(titles: string[]): string[] {
   return out;
 }
 
-function withLanguageVariants(bases: string[], language?: string): string[] {
-  const markers = languageQueryMarkers(language);
-  if (markers.length === 0) return bases;
-  const out = [...bases];
-  for (const m of markers) {
-    for (const b of bases) out.push(`${b} ${m}`);
-  }
-  return out;
-}
-
 // ─── Direct plugin provider (torrent-search) ────────────────────────────────
 
 async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[]> {
-  // Ejecuta TODAS las variantes de query en paralelo (S01E01, 1x01, idioma).
+  // Ejecuta TODAS las variantes de query en paralelo (S01E01, 1x01, 101).
   // Límite alto (100 por variante) para no recortar resultados artificialmente.
   const batches = await Promise.all(
     queries.map((query) =>
@@ -328,9 +339,10 @@ export async function searchEpisode(
   season: number,
   episode: number,
   searchServices: string[],
-  language?: string,
   timeoutMs = 60_000,
   altTitles?: string[],
+  language?: string,
+  episodeTitle?: string,
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchEpisodeStreamed(
@@ -338,12 +350,13 @@ export async function searchEpisode(
     season,
     episode,
     searchServices,
-    language,
     (_svc, items) => {
       collected.push(...items);
     },
     timeoutMs,
     altTitles,
+    language,
+    episodeTitle,
   );
   // Espera a que TODAS las búsquedas terminen o al timeout, lo que ocurra antes.
   await Promise.race([done, sleep(timeoutMs)]);
@@ -357,21 +370,21 @@ export async function searchMovie(
   title: string,
   year: number | undefined,
   searchServices: string[],
-  language?: string,
   timeoutMs = 60_000,
   altTitles?: string[],
+  language?: string,
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchMovieStreamed(
     title,
     year,
     searchServices,
-    language,
     (_svc, items) => {
       collected.push(...items);
     },
     timeoutMs,
     altTitles,
+    language,
   );
   await Promise.race([done, sleep(timeoutMs)]);
   return dedupe(collected);
@@ -389,13 +402,17 @@ export async function searchEpisodeStreamed(
   season: number,
   episode: number,
   searchServices: string[],
-  language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
   altTitles?: string[],
+  language?: string,
+  episodeTitle?: string,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  const queries = buildEpisodeQueries(title, season, episode, language, altTitles);
+  // Queries: título (localizado) + episodio. Si no hay título de episodio, se
+  // añaden marcadores de idioma como fallback para identificar el release. El
+  // idioma (scoring), la calidad y el tamaño se aplican en decision-engine.
+  const queries = buildEpisodeQueries(title, season, episode, altTitles, language, episodeTitle);
   const amuleQuery = buildAmuleEpisodeQuery(title, season, episode, altTitles);
 
   const tasks: Promise<void>[] = [];
@@ -419,13 +436,15 @@ export async function searchMovieStreamed(
   title: string,
   year: number | undefined,
   searchServices: string[],
-  language: string | undefined,
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
   altTitles?: string[],
+  language?: string,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  const queries = buildMovieQueries(title, year, language, altTitles);
+  // Queries: título (localizado) + año + marcadores de idioma (las películas no
+  // tienen título de episodio que las identifique).
+  const queries = buildMovieQueries(title, year, altTitles, language);
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {

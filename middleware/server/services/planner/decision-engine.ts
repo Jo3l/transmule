@@ -3,9 +3,9 @@
  *
  * Pipeline:
  *   1. filter by language profile (must_have / must_not_have)
- *   2. filter by min_quality (Q7: uhd/fullhd/hd/sd tiers)
+ *   2. quality scoring (preferencia suave: penaliza por debajo de min_quality)
  *   3. filter por match de título (episodio correcto)
- *   4. sort por calidad + seeds + size
+ *   4. sort por calidad + source + idioma + tamaño
  *   5. pick best
  *
  * Devuelve la decisión con el razonamiento (para logging y UI).
@@ -70,7 +70,7 @@ export interface DecisionRequest {
 
 export interface ReleaseScore {
   release: ParsedRelease;
-  /** Puntos de calidad (QUALITY_ORDER) */
+  /** Puntos de calidad: tier × 100, penalizado si está por debajo de min_quality */
   qualityScore: number;
   /** Puntos de fuente (SOURCE_ORDER) */
   sourceScore: number;
@@ -241,16 +241,9 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       }
     }
 
-    // 2. Quality mínima (Q7)
-    const qLevel = QUALITY_ORDER[release.quality] ?? 0;
-    const minLevel = QUALITY_ORDER[req.minQuality] ?? 0;
-    if (qLevel < minLevel) {
-      rejected.push({
-        release,
-        reason: `quality ${release.quality} < min ${req.minQuality}`,
-      });
-      continue;
-    }
+    // 2. Quality: preferencia suave, no umbral duro. Estar por debajo de
+    //    min_quality resta puntos en el scoring (igual que el tamaño penaliza
+    //    el exceso), en lugar de descartar el release.
 
     // 3. Language profile
     const lang = languageScore(release.languages, req.languageProfile);
@@ -316,13 +309,19 @@ export function pickBest(req: DecisionRequest): DecisionResult {
     }
 
     // 5. Score
-    const qualityScore = qLevel;
+    // Quality: tier × 100 (uhd 400 > fullhd 300 > hd 200 > sd 100 > unknown 0).
+    // Por debajo del tier preferido resta 100 pts por escalón — queda ordenado
+    // detrás de los que cumplen, pero sigue disponible como fallback.
+    const qLevel = QUALITY_ORDER[release.quality] ?? 0;
+    const minLevel = QUALITY_ORDER[req.minQuality] ?? 0;
+    const qualityScore =
+      qLevel * 100 - (qLevel < minLevel ? (minLevel - qLevel) * 100 : 0);
     const sourceScore = SOURCE_ORDER[release.source] ?? 0;
     const titlePenalty = Math.round((1 - sim) * 10);
     const languageScoreVal = lang.score;
 
     const total =
-      qualityScore * 100 +
+      qualityScore +
       sourceScore * 10 +
       languageScoreVal +
       yearScore +
