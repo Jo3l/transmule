@@ -17,6 +17,7 @@ import {
   getAllTmdbTvEpisodes,
   getTmdbTvDetail,
 } from "~/services/planner/tmdb";
+import { resolveAltTitles } from "~/services/planner/localized-titles";
 import {
   listSeasons,
   listEpisodes,
@@ -132,6 +133,22 @@ export default defineEventHandler(async (event) => {
           search_attempts: existingEp?.search_attempts ?? 0,
         });
       }
+    }
+
+    // Localizar el título de la serie según el idioma de la suscripción
+    // (p.ej. "Linternas" en vez de "Lanterns"). Igual que updateMovies hace
+    // con las películas, así el título mostrado Y buscado usan el idioma
+    // elegido en vez del original.
+    const localizedTitle = await resolveAltTitles({
+      tvdb_id: sub.tvdb_id,
+      tmdb_id: sub.tmdb_id,
+      language: sub.language,
+      title: sub.title,
+      media_type: "series",
+    });
+    if (localizedTitle[0] && localizedTitle[0] !== sub.title) {
+      updateSubscription(id, { title: localizedTitle[0] });
+      sub.title = localizedTitle[0];
     }
 
     // Actualizar metadata del sub (status, overview, poster)
