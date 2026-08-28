@@ -15,8 +15,9 @@
  *     identifique el release (las películas siempre). El título del episodio,
  *     la calidad y el tamaño se aplican en el scoring (decision-engine).
  *   - Cada provider ejecuta sus variantes de query en PARALELO y deduplica.
- *   - `amule` usa una única query booleana con OR (`S01E01 OR 1x01 OR 101`), porque
- *     su API solo retiene la última búsqueda.
+ *   - `amule` usa una única query booleana AND/OR/NOT con AND explícito + paréntesis
+ *     ("{título} AND (S01E01 OR 1x01 OR 101)"), porque su API solo retiene la última
+ *     búsqueda y el parser limita a 10 operadores booleanos.
  *
  * Fase 14 — streaming sin límites:
  *   - Modo INTERACTIVO: sin timeout. `searchEpisodeStreamed`/`searchMovieStreamed`
@@ -112,12 +113,13 @@ function withLanguageVariants(bases: string[], language?: string): string[] {
   return out;
 }
 
-/** Query booleana para aMule: une las variantes de episodio con OR y agrupa
- *  cada título con paréntesis. aMule hace AND implícito entre palabras del
- *  título y soporta OR/paréntesis, así que "{título} (S01E06 OR 1x06 OR 106)"
- *  busca un release con todas las palabras del título Y cualquiera de las tres
- *  nomenclaturas de episodio (SxxExx / 1x01 / 101 → "Cap.106"). */
-function buildAmuleEpisodeQuery(
+/** Query booleana para aMule. El parser (Parser.y) solo aplica AND implícito
+ *  entre PALABRAS (and_strings), NO entre una palabra y un grupo entre
+ *  paréntesis, y limita la expresión a 10 operadores booleanos (AND/OR/NOT).
+ *  Por eso: AND explícito antes del grupo, y OR entre las variantes de episodio
+ *  DENTRO del paréntesis (sin repetir el título, que dispararía el límite):
+ *  "{título} AND (S01E06 OR 1x06 OR 106)". */
+export function buildAmuleEpisodeQuery(
   title: string,
   season: number,
   episode: number,
@@ -127,18 +129,22 @@ function buildAmuleEpisodeQuery(
   const e = String(episode).padStart(2, "0");
   const abs = String(season) + e; // "101": S01E06 → 106
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
-  const epGroup = [`S${s}E${e}`, `${season}x${e}`, abs].join(" OR ");
-  return titles.map((t) => `${t} (${epGroup})`).join(" OR ");
+  const titleGroup = titles.length > 1 ? `(${titles.join(" OR ")})` : titles[0];
+  const epGroup = `(S${s}E${e} OR ${season}x${e} OR ${abs})`;
+  return `${titleGroup} AND ${epGroup}`;
 }
 
-/** Query booleana para aMule (películas): `{title} {year}` OR por título localizado. */
-function buildAmuleMovieQuery(
+/** Query booleana para aMule (películas). Misma regla que episodios: OR entre
+ *  títulos va entre paréntesis, y el año se une con AND explícito:
+ *  "{título} AND {año}" o "({título1} OR {título2}) AND {año}". */
+export function buildAmuleMovieQuery(
   title: string,
   year?: number,
   altTitles?: string[],
 ): string {
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
-  return titles.map((t) => (year ? `${t} ${year}` : t)).join(" OR ");
+  const titleGroup = titles.length > 1 ? `(${titles.join(" OR ")})` : titles[0];
+  return year ? `${titleGroup} AND ${year}` : titleGroup;
 }
 
 /** Deduplica títulos (case-insensitive, preservando el orden). */
@@ -407,6 +413,7 @@ export async function searchEpisodeStreamed(
   altTitles?: string[],
   language?: string,
   episodeTitle?: string,
+  onQueries?: (q: { queries: string[]; amule: string }) => void,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   // Queries: título (localizado) + episodio. Si no hay título de episodio, se
@@ -414,6 +421,7 @@ export async function searchEpisodeStreamed(
   // idioma (scoring), la calidad y el tamaño se aplican en decision-engine.
   const queries = buildEpisodeQueries(title, season, episode, altTitles, language, episodeTitle);
   const amuleQuery = buildAmuleEpisodeQuery(title, season, episode, altTitles);
+  onQueries?.({ queries, amule: amuleQuery });
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
@@ -440,11 +448,14 @@ export async function searchMovieStreamed(
   timeoutMs?: number,
   altTitles?: string[],
   language?: string,
+  onQueries?: (q: { queries: string[]; amule: string }) => void,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   // Queries: título (localizado) + año + marcadores de idioma (las películas no
   // tienen título de episodio que las identifique).
   const queries = buildMovieQueries(title, year, altTitles, language);
+  const amuleQuery = buildAmuleMovieQuery(title, year, altTitles);
+  onQueries?.({ queries, amule: amuleQuery });
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
@@ -454,7 +465,6 @@ export async function searchMovieStreamed(
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    const amuleQuery = buildAmuleMovieQuery(title, year, altTitles);
     tasks.push(streamAmule(amuleQuery, (r) => onResult("amule", r), timeoutMs));
   }
 

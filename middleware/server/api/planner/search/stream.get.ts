@@ -112,10 +112,16 @@ export default defineEventHandler(async (event) => {
     res.write(`event: result\ndata: ${payload}\n\n`);
   };
 
+  // Emite las queries REALES que se envían a cada red (para debug en el diálogo).
+  const emitQueries = (q: { queries: string[]; amule: string }) => {
+    if (finished) return;
+    res.write(`event: query\ndata: ${JSON.stringify(q)}\n\n`);
+  };
+
   const search =
     type === "episode"
-      ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitles, language, episodeTitle)
-      : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitles, language);
+      ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitles, language, episodeTitle, emitQueries)
+      : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitles, language, emitQueries);
 
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
 
