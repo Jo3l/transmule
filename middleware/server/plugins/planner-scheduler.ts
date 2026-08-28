@@ -145,6 +145,21 @@ async function updateCalendar(): Promise<void> {
       if (!Number.isNaN(synced) && synced > staleThreshold) continue;
     }
 
+    // Localizar el título de la serie según el idioma elegido (p.ej.
+    // "Linternas" en vez de "Lanterns"), para que el título mostrado y el
+    // buscado usen el idioma seleccionado y no el original.
+    const localizedTitle = await resolveAltTitles({
+      tvdb_id: sub.tvdb_id,
+      tmdb_id: sub.tmdb_id,
+      language: sub.language,
+      title: sub.title,
+      media_type: "series",
+    });
+    if (localizedTitle[0] && localizedTitle[0] !== sub.title) {
+      updateSubscription(sub.id, { title: localizedTitle[0] });
+      sub.title = localizedTitle[0];
+    }
+
     // TVDB primero; si la serie no tiene tvdb_id (añadida desde TMDB),
     // usa TMDB como fuente de episodios.
     let episodes: Array<{
