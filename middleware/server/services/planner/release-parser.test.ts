@@ -4,7 +4,7 @@
  * Ejecutar: node --experimental-strip-types middleware/server/services/planner/release-parser.test.ts
  * (o importar en un runner de test del proyecto).
  */
-import { parseReleaseName, mapLanguageToIso, languageQueryMarkers } from "./release-parser.ts";
+import { parseReleaseName, mapLanguageToIso } from "./release-parser.ts";
 
 let passed = 0;
 let failed = 0;
@@ -281,16 +281,6 @@ expectEq(mapLanguageToIso("korean"), "ko", "iso korean→ko");
 expectEq(mapLanguageToIso("chinese"), "zh", "iso chinese→zh");
 expectEq(mapLanguageToIso("multi"), "multi", "iso multi→multi");
 expectEq(mapLanguageToIso("zz"), "zz", "iso fallback devuelve el mismo código");
-
-// ── Marcadores de query por idioma (languageQueryMarkers) ──────────────────
-
-assert(languageQueryMarkers("es").includes("ESPAÑOL"), "markers es incluye ESPAÑOL");
-assert(languageQueryMarkers("es").includes("CASTELLANO"), "markers es incluye CASTELLANO");
-assert(languageQueryMarkers("latino").includes("LATINO"), "markers latino incluye LATINO");
-assert(languageQueryMarkers("en").includes("ENGLISH"), "markers en incluye ENGLISH");
-expectEq(languageQueryMarkers(undefined), [], "markers undefined → []");
-expectEq(languageQueryMarkers("multi"), [], "markers multi → []");
-expectEq(languageQueryMarkers("subs"), [], "markers subs → []");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

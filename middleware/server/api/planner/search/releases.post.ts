@@ -102,8 +102,8 @@ export default defineEventHandler(async (event) => {
   // el idioma, calidad y tamaño se aplican después en el scoring).
   const items =
     type === "episode"
-      ? await searchEpisode(title, season!, episode!, searchServices, undefined, altTitles, language, episodeTitle)
-      : await searchMovie(title, year, searchServices, undefined, altTitles, language);
+      ? await searchEpisode(title, season!, episode!, searchServices, undefined, altTitles)
+      : await searchMovie(title, year, searchServices, undefined, altTitles);
 
   // Score SIN decidir: evaluamos todos y devolvemos candidatos (los válidos
   // primero, los rechazados con su motivo al final) para que el usuario elija.

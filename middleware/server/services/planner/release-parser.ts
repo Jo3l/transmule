@@ -413,38 +413,3 @@ export function mapLanguageToIso(lang: string): string {
   };
   return map[l] ?? l;
 }
-
-const LANGUAGE_QUERY_MARKERS: Record<string, string[]> = {
-  es: [
-    "ESPAÑOL",
-    "ESPANOL",
-    "CASTELLANO",
-    "SPANISH",
-    "ESPAÑA",
-    "ESPANA",
-    "ESP",
-    "DUAL",
-  ],
-  latino: ["LATINO", "LAT", "LATAM", "DUBLADO"],
-  en: ["ENGLISH"],
-  it: ["ITALIANO", "ITALIAN", "ITA", "[IT]"],
-  pt: ["PORTUGUÊS", "PORTUGUES", "PORTUGUESE", "PT-BR", "LEGENDADO"],
-  fr: ["FRENCH", "FRANÇAIS", "FRANCAIS", "TRUEFRENCH", "VFF", "FRE"],
-  de: ["GERMAN", "DEUTSCH", "GER", "[DE]"],
-  ru: ["RUSSIAN", "RUS", "РУССКИЙ", "ДУБЛЯЖ"],
-  ja: ["JAPANESE", "JAP", "JPN", "RAW", "[JA]"],
-  ko: ["KOREAN", "KOR", "[KO]"],
-  zh: ["CHINESE", "CHI", "MANDARIN", "CANTONESE", "CHS", "CHT", "[ZH]"],
-};
-
-/**
- * Marcadores de idioma a añadir a una query de búsqueda para maximizar recall
- * (p.ej. `ESPAÑOL`, `CASTELLANO`, `LATINO`). Vacío si no hay idioma o si es
- * `multi`/`subs`/`unknown` (sin marcador de query específico).
- */
-export function languageQueryMarkers(lang?: string): string[] {
-  if (!lang) return [];
-  const iso = mapLanguageToIso(lang);
-  if (iso === "multi" || iso === "subs" || iso === "unknown") return [];
-  return LANGUAGE_QUERY_MARKERS[iso] ?? [];
-}
