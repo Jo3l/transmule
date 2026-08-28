@@ -29,7 +29,7 @@
         />
       </p>
       <p class="has-text-grey">
-        {{ searching ? $t("planner.searchingReleases") : $t("planner.noResults") }}
+        {{ searching ? $t("planner.searchingReleases") : $t("planner.noResultsFor", { query: searchQuery }) }}
       </p>
     </div>
 
@@ -133,12 +133,13 @@ const columns = computed(() => [
   { prop: "actions", label: "", width: "110px" },
 ]);
 
-// String de búsqueda usado en las redes (multi-nomenclatura SxxExx / 1x01).
+// String de búsqueda usado en las redes (multi-nomenclatura SxxExx / 1x01 / 101).
 const searchQuery = computed(() => {
   if (props.mediaType === "series") {
     const s = String(props.season ?? 0).padStart(2, "0");
     const e = String(props.episode ?? 0).padStart(2, "0");
-    return `${props.title} S${s}E${e} OR ${props.title} ${props.season}x${e}`;
+    const abs = String(props.season ?? 0) + e;
+    return `${props.title} S${s}E${e} OR ${props.title} ${props.season}x${e} OR ${props.title} ${abs}`;
   }
   return props.year ? `${props.title} ${props.year}` : props.title;
 });

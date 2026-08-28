@@ -36,6 +36,12 @@ const SEASON_EP_RE = /\bS(\d{1,2})E(\d{1,3})(?:E(\d{1,3}))?\b/i;
 const SEASON_EP_DASH_RE = /\bS(\d{1,2})E(\d{1,3})[-.]?E(\d{1,3})\b/i;
 const X_N_RE = /\b(\d{1,2})x(\d{1,3})\b/i;
 
+// Formato "101" (SxxEyy → xyy): "Cap.106", "Capitulo 106", "Capítulo 106",
+// "Ep.106", "Episode 106", "Episodio 106". El número 106 → temporada 1,
+// episodio 6 (los 3-4 dígitos se descomponen en season = floor(n/100),
+// episode = n % 100). Común en releases españoles de ed2k.
+const CAP_EP_RE = /\b(?:cap(?:[ií]tulo)?|ep(?:isodio|isode)?)[.\s-]*(\d{3,4})\b/i;
+
 // Complete Season 1 / Season 1 / S01 (pack)
 const SEASON_PACK_RE = /\b(?:Complete\s+)?(?:Season|Seasons?|S)\s*(\d{1,2})\b/i;
 
@@ -158,6 +164,7 @@ export function parseReleaseName(name: string): ParsedRelease {
   const seDash = clean.match(SEASON_EP_DASH_RE);
   const se = clean.match(SEASON_EP_RE);
   const xn = clean.match(X_N_RE);
+  const capEp = clean.match(CAP_EP_RE);
   const seasonPack = clean.match(SEASON_PACK_RE);
 
   if (seDash) {
@@ -173,6 +180,12 @@ export function parseReleaseName(name: string): ParsedRelease {
   } else if (xn) {
     season = Number(xn[1]);
     episode = Number(xn[2]);
+    type = "series";
+  } else if (capEp) {
+    // Formato "101": "Cap.106" → S01E06, "Cap.213" → S02E13.
+    const num = Number(capEp[1]);
+    season = Math.floor(num / 100);
+    episode = num % 100;
     type = "series";
   } else if (
     seasonPack &&
@@ -279,6 +292,7 @@ export function parseReleaseName(name: string): ParsedRelease {
     .replace(SEASON_EP_DASH_RE, " ")
     .replace(SEASON_EP_RE, " ")
     .replace(X_N_RE, " ")
+    .replace(CAP_EP_RE, " ")
     .replace(SEASON_PACK_RE, " ")
     .replace(QUALITY_RE, " ")
     .replace(SOURCE_RE, " ")

@@ -1571,6 +1571,7 @@
     "historyEventStuckRecovered": "Recovered",
     "searchStatusNoResults": "No results",
     "searchStatusPending": "Pending",
-    "detail": "Detail"
+    "detail": "Detail",
+    "noResultsFor": "No releases found for {query}"
   }
 }

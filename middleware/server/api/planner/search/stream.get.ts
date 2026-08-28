@@ -114,8 +114,8 @@ export default defineEventHandler(async (event) => {
 
   const search =
     type === "episode"
-      ? searchEpisodeStreamed(title, season!, episode!, searchServices, language, onResult, MAX_STREAM_MS, altTitles)
-      : searchMovieStreamed(title, year, searchServices, language, onResult, MAX_STREAM_MS, altTitles);
+      ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitles, language, episodeTitle)
+      : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitles, language);
 
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
 
