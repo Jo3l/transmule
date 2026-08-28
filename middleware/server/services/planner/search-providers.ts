@@ -29,7 +29,7 @@
 
 import { searchTorrents } from "../../torrent-search/index";
 import type { ParsedRelease } from "./release-parser";
-import { parseReleaseName } from "./release-parser";
+import { parseReleaseName, isVideoFile } from "./release-parser";
 import { useSlskdClient } from "../../utils/slskd-client";
 import { useAmuleClient, SearchType } from "../../utils/amule-client";
 
@@ -53,8 +53,6 @@ export interface SearchResultItem {
 export type SearchProviderId = "direct-plugin" | "slskd" | "amule";
 
 const VALID_PROVIDERS: SearchProviderId[] = ["direct-plugin", "slskd", "amule"];
-
-const VIDEO_EXT_RE = /\.(mkv|mp4|avi|ts|m2ts|webm)$/i;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -159,6 +157,8 @@ async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[
   const items: SearchResultItem[] = [];
   for (const results of batches) {
     for (const r of results) {
+      // Ignorar ficheros no-vídeo (subs .srt, .nfo, .torrent, imágenes...).
+      if (!isVideoFile(r.name)) continue;
       items.push({
         url: r.magnet || r.downloadUrl || "",
         hash: r.infoHash,
@@ -237,7 +237,7 @@ async function streamSlskd(
     for (const id of created) {
       const files = await client.getSearchResponses(id).catch(() => []);
       for (const f of files) {
-        if (!VIDEO_EXT_RE.test(f.filename)) continue;
+        if (!isVideoFile(f.filename)) continue;
         const key = f.filename.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
@@ -296,12 +296,15 @@ async function streamAmule(
     ]);
 
     const files = resp?.files ?? [];
-    const fresh = files.map(amuleToItem).filter((it) => {
-      const key = it.hash ?? it.rawName.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    const fresh = files
+      .filter((f: any) => isVideoFile(f.fileName ?? ""))
+      .map(amuleToItem)
+      .filter((it) => {
+        const key = it.hash ?? it.rawName.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
     if (fresh.length > 0) onResult(fresh);
 
     // progress >= 1 → búsqueda completa.

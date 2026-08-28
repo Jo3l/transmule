@@ -23,6 +23,7 @@ import {
   getSubscription,
 } from "~/utils/planner-db";
 import { useDatabase } from "~/utils/database";
+import { refreshSeriesEpisodes } from "~/services/planner/metadata-sync";
 
 defineRouteMeta({
   openAPI: {
@@ -88,6 +89,13 @@ export default defineEventHandler(async (event) => {
   if (episodeId == null && movieId == null) {
     setResponseStatus(event, 400);
     return { error: "episode_id or movie_id is required" };
+  }
+
+  // Refrescar metadata de la serie antes de descargar: el título del episodio
+  // debe quedar actualizado en la BD para el post-proceso (smart rename, Plex).
+  // No bloquea la descarga: refreshSeriesEpisodes traga los errores.
+  if (sub.type === "series" && episodeId != null) {
+    await refreshSeriesEpisodes(sub, { force: true });
   }
 
   const grab = enqueueGrab({

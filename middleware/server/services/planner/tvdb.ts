@@ -179,6 +179,7 @@ export async function getTvdbSeriesEpisodes(
   id: number,
   seasonNumber?: number,
   language?: string,
+  opts: { noCache?: boolean } = {},
 ): Promise<TvdbEpisode[]> {
   // TVDB v4 exige el segmento de ruta {season-type} (p. ej. "default").
   // Sin él, /series/{id}/episodes devuelve 400 Bad Request.
@@ -189,7 +190,7 @@ export async function getTvdbSeriesEpisodes(
   const path = tvdbLang
     ? `/series/${id}/episodes/default/${tvdbLang}${season}`
     : `/series/${id}/episodes/default${season}`;
-  const data = await tvdbFetch<any>(path, { ttlSeconds: 6 * 60 * 60 });
+  const data = await tvdbFetch<any>(path, { ttlSeconds: 60 * 60, noCache: opts.noCache });
   // El endpoint traducido (/…/{lang}) devuelve { series: { episodes: [...] } };
   // el normal devuelve { episodes: [...] }.
   const episodes: any[] = Array.isArray(data?.episodes)

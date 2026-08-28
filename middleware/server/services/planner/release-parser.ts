@@ -19,8 +19,14 @@ const CODEC_RE =
 const AUDIO_CODEC_RE =
   /\b(EAC3|E[-.]?AC[-.]?3|AC3|AAC|FLAC|DTS[-.]?HD(?:[-.]?MA)?|DTS|TRUEHD|ATMOS|DDP\d*(?:\.\d)?|DD\d+(?:\.\d)?|MP3|OPUS|VORBIS|PCM)\b/gi;
 const VIDEO_EXT_RE = /\b(MKV|MP4|AVI|M2TS|WEBM|MOV|WMV|FLV|M4V)\b/gi;
+// Extensiones de ficheros auxiliares (subs, nfo, torrent, imágenes...) que
+// llegan como falsos "releases" de aMule/slskd y ensucian el título.
+const NON_VIDEO_EXT_RE =
+  /\b(NFO|SRT|ASS|SSA|IDX|TORRENT|JPG|JPEG|PNG|XML|TXT|SFV|MD5|RAR|ZIP|7Z|P2P[-]?HASH|CHAPTERS?)\b/gi;
 // HDR / rango dinámico, profundidad de bit y fuente de streaming (junk del título)
-const HDR_RE = /\b(HDR10\+?|HDR|DOVI|DOLBY[-\s]?VISION|SDR|HLG)\b/gi;
+const HDR_RE = /\b(HDR10\+?|HDR|DOVI|DV|DOLBY[-\s]?VISION|SDR|HLG)\b/gi;
+// Canales de audio sueltos (6CH, 8CH...) que quedan en el título.
+const CHANNEL_RE = /\b\d{1,2}CH\b/gi;
 const BITDEPTH_RE = /\b(10[-\s]?BIT|8[-\s]?BIT)\b/gi;
 const STREAM_SRC_RE =
   /\b(ATVP|AMZN|DSNP|HMAX|DPLUS|AAPL|PEACOCK|CRAV|NF|HULU)\b/gi;
@@ -150,6 +156,18 @@ function mapSource(raw: string): ReleaseSource {
 }
 
 // ─── Main parse ─────────────────────────────────────────────────────────────
+
+/**
+ * True si el nombre corresponde a un fichero de vídeo (o no se puede descartar).
+ * False para ficheros auxiliares (subs .srt, .nfo, .torrent, imágenes, .xml…)
+ * que llegan como falsos "releases" de aMule/slskd y deben ignorarse.
+ */
+export function isVideoFile(name: string): boolean {
+  const ext = (name ?? "").slice((name ?? "").lastIndexOf(".") + 1).toLowerCase();
+  if (/^(mkv|mp4|avi|m2ts|webm|mov|wmv|flv|m4v|ts|mpg|mpeg)$/.test(ext)) return true;
+  if (/^(nfo|srt|sub|ass|ssa|idx|torrent|jpe?g|png|gif|xml|txt|sfv|md5|rar|zip|7z|p2p-hash|hash|url)$/.test(ext)) return false;
+  return true; // sin extensión o desconocida → no descartar
+}
 
 export function parseReleaseName(name: string): ParsedRelease {
   const clean = name.replace(/[._]/g, " ").replace(/\s+/g, " ").trim();
@@ -299,7 +317,9 @@ export function parseReleaseName(name: string): ParsedRelease {
     .replace(CODEC_RE, " ")
     .replace(AUDIO_CODEC_RE, " ")
     .replace(VIDEO_EXT_RE, " ")
+    .replace(NON_VIDEO_EXT_RE, " ")
     .replace(HDR_RE, " ")
+    .replace(CHANNEL_RE, " ")
     .replace(BITDEPTH_RE, " ")
     .replace(STREAM_SRC_RE, " ")
     .replace(YEAR_RE, " ")
@@ -407,7 +427,7 @@ export function mapLanguageToIso(lang: string): string {
     vietnamese: "vi",
     vietnamita: "vi",
     hindi: "hi",
-    multi: "multi",
+    multi: "latino",
     subs: "subs",
     unknown: "unknown",
   };

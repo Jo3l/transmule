@@ -9,6 +9,8 @@
  * integración configurada).
  */
 import { getPlexCredentials, getPlexSeriesEpisodes } from "~/services/plex";
+import { getTvdbSeriesDetail } from "~/services/planner/tvdb";
+import { getTmdbTvDetail } from "~/services/planner/tmdb";
 
 defineRouteMeta({
   openAPI: {
@@ -37,9 +39,31 @@ export default defineEventHandler(async (event) => {
     return { error: "series required" };
   }
 
+  // Candidatos de título: el localizado (lo que muestra TransMule) y, si viene
+  // identificador y hay idioma seleccionado, el ORIGINAL desde TVDB/TMDB.
+  // Plex tiene la serie localizada en unos casos y en el original en otros,
+  // así que se prueban ambos.
+  const tvdbId = Number(getQuery(event).tvdb_id);
+  const tmdbId = Number(getQuery(event).tmdb_id);
+  const language = String(getQuery(event).language ?? "").trim();
+  const candidates: string[] = [series];
+  if ((Number.isFinite(tvdbId) || Number.isFinite(tmdbId)) && language && language !== "en") {
+    try {
+      if (Number.isFinite(tvdbId)) {
+        const d = await getTvdbSeriesDetail(tvdbId);
+        if (d?.name) candidates.push(d.name);
+      } else {
+        const d = await getTmdbTvDetail(tmdbId);
+        if (d?.name) candidates.push(d.name);
+      }
+    } catch {
+      /* sin título original → probamos solo el localizado */
+    }
+  }
+
   const force = getQuery(event).force === "1";
   try {
-    const res = await getPlexSeriesEpisodes(series, force);
+    const res = await getPlexSeriesEpisodes([...new Set(candidates)], force);
     return {
       configured: true,
       found: res?.found ?? false,

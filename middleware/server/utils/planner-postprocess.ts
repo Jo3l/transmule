@@ -24,6 +24,17 @@ import { useSlskdClient } from "./slskd-client";
 import { useAmuleClient } from "./amule-client";
 import { refreshPlexLibraries } from "~/services/plex";
 
+// Localización del archivo descargado: reintentos con espera. aMule/slskd no
+// son síncronos — al marcar "completado" el fichero puede tardar en aparecer
+// en el volumen compartido (hashing + movimiento a incoming). Reintentamos con
+// backoff fijo de 30s antes de rendirnos.
+const LOCATE_RETRIES = 6;
+const LOCATE_RETRY_MS = 30_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /** Datos del grab enriquecidos con la subscription (query del importer). */
 export interface PostProcessGrab {
   id: number;
@@ -278,14 +289,28 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
   const defaultRoot = rootIsDefault(grab.root_folder);
   if (defaultRoot && !smartRename && !plexScan) return; // nada que hacer
 
-  const located = await locateGrabbedFile(grab);
+  let located = await locateGrabbedFile(grab);
+  if (!located) {
+    // El archivo puede tardar en aparecer en el volumen compartido tras
+    // completar la descarga (aMule/slskd mueven y hashean el fichero al final).
+    // Reintentar con espera antes de rendirse.
+    logGrab(
+      grab,
+      "postprocess_retry",
+      `archivo no localizado aún (${grab.service}) — reintentando cada ${LOCATE_RETRY_MS / 1000}s (máx ${LOCATE_RETRIES} intentos)`,
+    );
+    for (let attempt = 1; attempt <= LOCATE_RETRIES && !located; attempt++) {
+      await sleep(LOCATE_RETRY_MS);
+      located = await locateGrabbedFile(grab);
+    }
+  }
   if (!located) {
     // El archivo está en el volumen aunque no lo hayamos localizado para
     // moverlo — si plex_scan está activo, refrescar Plex igualmente.
     logGrab(
       grab,
       "postprocess_failed",
-      `no se localizó el archivo descargado (${grab.service})`,
+      `no se localizó el archivo descargado (${grab.service}) tras ${LOCATE_RETRIES} reintentos`,
     );
     if (plexScan) logPlexScan(grab, `grab #${grab.id} (no ubicado)`);
     console.warn(

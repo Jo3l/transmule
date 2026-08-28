@@ -69,11 +69,16 @@ export default defineEventHandler(async (event) => {
       detail = await getTvdbSeriesDetail(sub.tvdb_id);
       // El título de episodio se localiza según el idioma de la suscripción
       // (TVDB devuelve el nombre traducido; fallback a inglés si no hay).
-      episodes = await getTvdbSeriesEpisodes(sub.tvdb_id, undefined, sub.language ?? undefined);
+      // noCache: el botón de refresh es una acción manual — datos frescos.
+      episodes = await getTvdbSeriesEpisodes(sub.tvdb_id, undefined, sub.language ?? undefined, {
+        noCache: true,
+      });
     } else if (sub.tmdb_id) {
       // Serie añadida desde TMDB (sin tvdb_id): usar TMDB como fuente,
       // con el idioma de la suscripción.
-      const tmdbEpisodes = await getAllTmdbTvEpisodes(sub.tmdb_id, sub.language ?? undefined);
+      const tmdbEpisodes = await getAllTmdbTvEpisodes(sub.tmdb_id, sub.language ?? undefined, {
+        noCache: true,
+      });
       episodes = tmdbEpisodes.map((e) => ({
         seasonNumber: e.season_number,
         number: e.episode_number,

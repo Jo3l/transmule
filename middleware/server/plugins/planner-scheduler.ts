@@ -45,6 +45,7 @@ import { getConfig, useDatabase } from "../utils/database";
 import { searchEpisode, searchMovie, parseSearchServices } from "../services/planner/search-providers";
 import { pickBest } from "../services/planner/decision-engine";
 import { resolveAltTitles } from "../services/planner/localized-titles";
+import { refreshSeriesEpisodes } from "../services/planner/metadata-sync";
 import type { ParsedRelease } from "../services/planner/release-parser";
 
 const GUARD_KEY = "__transmule_planner_scheduler_started__";
@@ -135,7 +136,10 @@ async function runJobs(): Promise<void> {
 
 async function updateCalendar(): Promise<void> {
   const series = listSubscriptions({ type: "series" });
-  const staleThreshold = Date.now() - 12 * 60 * 60 * 1000;
+  // 6h (antes 12h): un capítulo emitido "hoy" debe tener su título disponible
+  // antes de la búsqueda de las 18:00. El listado de episodios en TVDB/TMDB se
+  // cachea 1h, así que el peor caso de frescura queda en ~7h.
+  const staleThreshold = Date.now() - 6 * 60 * 60 * 1000;
 
   for (const sub of series) {
     if (!sub.tvdb_id && !sub.tmdb_id) continue;
@@ -469,6 +473,15 @@ async function grabEpisode(
 ): Promise<void> {
   const services = parseSearchServices(sub.search_services_json);
   try {
+    // Refrescar metadata antes de buscar/descargar: el título del episodio
+    // debe estar lo más fresco posible (p.ej. capítulo emitido hoy). El force
+    // está throttled a 15 min por serie dentro de refreshSeriesEpisodes.
+    await refreshSeriesEpisodes(sub, { force: true });
+    const freshEp = listEpisodes(sub.id, { seasonNumber: ep.season_number }).find(
+      (e) => e.episode_number === ep.episode_number,
+    );
+    if (freshEp) ep = freshEp;
+
     // Títulos localizados (idioma elegido) para el scoring.
     const altTitles = await resolveAltTitles({
       tvdb_id: sub.tvdb_id,
