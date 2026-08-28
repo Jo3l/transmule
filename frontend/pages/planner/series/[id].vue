@@ -202,6 +202,28 @@
               {{ $t("planner.refresh") }}
             </SButton>
           </div>
+
+          <div class="box">
+            <h4 class="title is-6 mb-1">{{ $t("planner.history") }}</h4>
+            <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.historyHint") }}</p>
+            <div v-if="history.length === 0" class="has-text-grey is-size-7">
+              {{ $t("planner.historyEmpty") }}
+            </div>
+            <STable v-else :data="history" :columns="historyColumns" row-key="key">
+              <template #cell-timestamp="{ row }">
+                {{ histDisplay.formatTimestamp(row.timestamp) }}
+              </template>
+              <template #cell-kind="{ row }">
+                <STag>{{ histDisplay.kindLabel(row.kind) }}</STag>
+              </template>
+              <template #cell-event="{ row }">
+                <STag :variant="histDisplay.eventVariant(row)">{{ histDisplay.eventLabel(row) }}</STag>
+              </template>
+              <template #cell-detail="{ row }">
+                <span :title="histDisplay.detailText(row)">{{ histDisplay.detailText(row) }}</span>
+              </template>
+            </STable>
+          </div>
         </div>
       </div>
 
@@ -254,12 +276,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlannerStatusDisplay, padEpisode, formatPlannerDate } from "~/composables/usePlannerUi";
+import { usePlannerStatusDisplay, usePlannerHistoryDisplay, padEpisode, formatPlannerDate } from "~/composables/usePlannerUi";
 
 const route = useRoute();
 const { t } = useI18n();
-const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, downloadSeason } = usePlanner();
+const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, downloadSeason, getSubscriptionHistory } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
+const histDisplay = usePlannerHistoryDisplay();
 const { apiFetch, showToast } = useApi();
 
 const id = Number(route.params.id);
@@ -276,6 +299,7 @@ const downloadingSeasonId = ref<number | null>(null);
 const plexTag = ref(false);
 const plexConfigured = ref(false);
 const plexEpisodes = ref<Set<string>>(new Set()); // "season-episode" presentes en Plex
+const history = ref<any[]>([]);
 
 // ── Configuración editable (misma que se introduce al añadir) ───────────────
 const LANGUAGE_OPTIONS = [
@@ -367,6 +391,13 @@ const episodeColumns = computed(() => {
   return cols;
 });
 
+const historyColumns = computed(() => [
+  { prop: "timestamp", label: t("planner.date"), width: "130px" },
+  { prop: "kind", label: t("planner.searchKind"), width: "110px" },
+  { prop: "event", label: t("planner.status"), width: "130px" },
+  { prop: "detail", label: t("planner.detail") },
+]);
+
 function downloadedCount(season: any): number {
   return (season.episodes ?? []).filter((e: any) => e.status === "downloaded").length;
 }
@@ -435,6 +466,7 @@ async function load() {
     const detail = await getSubscription(id);
     sub.value = detail;
     seasons.value = detail.seasons ?? [];
+    history.value = await getSubscriptionHistory(id);
     loadConfig();
     void initPlex();
   } catch (err: any) {

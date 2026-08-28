@@ -144,32 +144,28 @@
           </div>
 
           <div class="box">
-            <h4 class="title is-6 mb-1">{{ $t("planner.searchHistory") }}</h4>
-            <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.searchHistoryHint") }}</p>
+            <h4 class="title is-6 mb-1">{{ $t("planner.history") }}</h4>
+            <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.historyHint") }}</p>
             <div v-if="history.length === 0" class="has-text-grey is-size-7">
-              {{ $t("planner.noHistory") }}
+              {{ $t("planner.historyEmpty") }}
             </div>
             <STable
               v-else
               :data="history"
               :columns="historyColumns"
-              row-key="id"
-              :pagination="false"
-              :bordered="false"
+              row-key="key"
             >
-              <template #cell-picked_at="{ row }">
-                {{ (row.picked_at ?? "").slice(0, 16) }}
+              <template #cell-timestamp="{ row }">
+                {{ histDisplay.formatTimestamp(row.timestamp) }}
               </template>
-              <template #cell-search_kind="{ row }">
-                <STag>{{ row.search_kind }}</STag>
+              <template #cell-kind="{ row }">
+                <STag>{{ histDisplay.kindLabel(row.kind) }}</STag>
               </template>
-              <template #cell-status="{ row }">
-                <STag :variant="historyStatusClass(row.status)">
-                  {{ row.status }}
-                </STag>
+              <template #cell-event="{ row }">
+                <STag :variant="histDisplay.eventVariant(row)">{{ histDisplay.eventLabel(row) }}</STag>
               </template>
-              <template #cell-picked_title="{ row }">
-                <span :title="row.picked_title">{{ row.picked_title ?? "—" }}</span>
+              <template #cell-detail="{ row }">
+                <span :title="histDisplay.detailText(row)">{{ histDisplay.detailText(row) }}</span>
               </template>
             </STable>
           </div>
@@ -223,12 +219,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePlannerStatusDisplay, formatPlannerDate } from "~/composables/usePlannerUi";
+import { usePlannerStatusDisplay, usePlannerHistoryDisplay, formatPlannerDate } from "~/composables/usePlannerUi";
 
 const route = useRoute();
 const { t } = useI18n();
 const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, getSubscriptionHistory, updateSubscription } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
+const histDisplay = usePlannerHistoryDisplay();
 const { apiFetch, showToast } = useApi();
 
 const id = Number(route.params.id);
@@ -313,18 +310,11 @@ const canDownload = computed(() => {
 });
 
 const historyColumns = computed(() => [
-  { prop: "picked_at", label: t("planner.date") },
-  { prop: "search_kind", label: t("planner.searchKind"), width: "100px" },
-  { prop: "status", label: t("planner.status"), width: "120px" },
-  { prop: "picked_title", label: t("planner.picked") },
+  { prop: "timestamp", label: t("planner.date"), width: "130px" },
+  { prop: "kind", label: t("planner.searchKind"), width: "110px" },
+  { prop: "event", label: t("planner.status"), width: "130px" },
+  { prop: "detail", label: t("planner.detail") },
 ]);
-
-function historyStatusClass(s: string): "default" | "success" | "warning" | "danger" {
-  if (s === "grabbed") return "success";
-  if (s === "no_results") return "warning";
-  if (s === "failed") return "danger";
-  return "default";
-}
 function formatDate(d: string | null): string {
   return formatPlannerDate(d);
 }

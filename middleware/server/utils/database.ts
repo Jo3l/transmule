@@ -222,11 +222,27 @@ function _initSchema(db: DatabaseSync): void {
       state           TEXT    NOT NULL DEFAULT 'pending',
       attempts        INTEGER DEFAULT 0,
       last_error      TEXT,
+      last_attempt_at TEXT,
       priority        TEXT    NOT NULL DEFAULT 'normal',
       created_at      TEXT    DEFAULT (datetime('now')),
       FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_planner_grab_queue_state ON planner_grab_queue(state);
+
+    CREATE TABLE IF NOT EXISTS planner_grab_log (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      subscription_id INTEGER NOT NULL,
+      episode_id      INTEGER,
+      movie_id        INTEGER,
+      grab_id         INTEGER,
+      event           TEXT    NOT NULL,
+      message         TEXT,
+      created_at      TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (subscription_id) REFERENCES planner_subscriptions(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_planner_grab_log_sub ON planner_grab_log(subscription_id);
+    CREATE INDEX IF NOT EXISTS idx_planner_grab_log_ep ON planner_grab_log(episode_id);
+    CREATE INDEX IF NOT EXISTS idx_planner_grab_log_movie ON planner_grab_log(movie_id);
 
     CREATE TABLE IF NOT EXISTS planner_indexers (
       id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,6 +294,15 @@ function _initSchema(db: DatabaseSync): void {
     .all() as { name: string }[];
   if (!movieCols.some((c) => c.name === "theatrical_release_date")) {
     db.exec("ALTER TABLE planner_movies ADD COLUMN theatrical_release_date TEXT");
+  }
+
+  // Migration (cola de descargas): last_attempt_at registra el último intento de
+  // dispatch para espaciar los reintentos (recoverFailedGrabs, cada hora).
+  const grabCols = db
+    .prepare("PRAGMA table_info(planner_grab_queue)")
+    .all() as { name: string }[];
+  if (!grabCols.some((c) => c.name === "last_attempt_at")) {
+    db.exec("ALTER TABLE planner_grab_queue ADD COLUMN last_attempt_at TEXT");
   }
 }
 

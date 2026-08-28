@@ -206,6 +206,25 @@ export async function getTmdbMovieLocalizedTitle(
   return localized;
 }
 
+/**
+ * Título localizado de la SERIE en el idioma dado (o null si es igual al
+ * original / no hay traducción). Usado por el scoring de búsqueda para series
+ * añadidas por TMDB (sin tvdb_id, p.ej. desde el calendario).
+ */
+export async function getTmdbTvLocalizedName(
+  id: number,
+  isoLang: string,
+): Promise<string | null> {
+  if (!isoLang || isoLang === "en") return null;
+  const data = await tmdbFetch<any>(`/tv/${id}`, { language: isoLang }).catch(() => null);
+  if (!data) return null;
+  const localized = data.name?.trim();
+  const original = data.original_name?.trim();
+  if (!localized) return null;
+  if (original && localized.toLowerCase() === original.toLowerCase()) return null;
+  return localized;
+}
+
 export async function getTmdbTvDetail(
   id: number,
 ): Promise<{ id: number; name: string; overview: string | null; first_air_date: string | null; poster_url: string | null; status: string | null } | null> {

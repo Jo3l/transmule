@@ -11,7 +11,7 @@
  * habla directo con los servicios, pasando por la capa de TransMule.
  */
 
-import { nextPendingGrabs, updateGrabState } from "../utils/planner-db";
+import { nextPendingGrabs, updateGrabState, recordGrabLog } from "../utils/planner-db";
 import { useTransmissionClient } from "../utils/transmission-client";
 import { useAmuleClient } from "../utils/amule-client";
 import { useSlskdClient } from "../utils/slskd-client";
@@ -36,9 +36,26 @@ async function processQueue(): Promise<void> {
     try {
       await dispatch(grab);
       updateGrabState(grab.id, "dispatched");
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "dispatched",
+        message: `enviado a ${grab.service}: ${grab.release_title ?? grab.release_url.slice(0, 60)}`,
+      });
       console.log(`[planner] grab #${grab.id} dispatched → ${grab.service}: ${grab.release_title ?? grab.release_url.slice(0, 60)}`);
     } catch (err: any) {
-      updateGrabState(grab.id, "failed", err?.message ?? String(err));
+      const msg = err?.message ?? String(err);
+      updateGrabState(grab.id, "failed", msg);
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "dispatch_failed",
+        message: msg,
+      });
       console.error(`[planner] grab #${grab.id} failed:`, err?.message);
     }
   }

@@ -372,8 +372,9 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
         tmdb_id: movie.tmdb_id ?? null,
         language: movie.language,
         title: movie.title,
+        media_type: "movie",
       });
-      const items = await searchMovie(movie.title, movie.year ?? null, services, movie.language ?? undefined);
+      const items = await searchMovie(movie.title, movie.year ?? null, services, movie.language ?? undefined, undefined, altTitles);
       const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
       const decision = pickBest({
         releases: parsed,
@@ -459,8 +460,9 @@ async function grabEpisode(
       tmdb_id: sub.tmdb_id,
       language: sub.language,
       title: sub.title,
+      media_type: "series",
     });
-    const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, sub.language ?? undefined);
+    const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, sub.language ?? undefined, undefined, altTitles);
     const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
     const decision = pickBest({
       releases: parsed,
@@ -590,11 +592,18 @@ export async function searchAndGrabMovie(subscriptionId: number): Promise<{ queu
   if (!releaseDate || releaseDate > today) return { queued: 0 };
 
   try {
-    const items = await searchMovie(sub.title, sub.year ?? null, services, sub.language ?? undefined);
+    const altTitles = await resolveAltTitles({
+      tmdb_id: sub.tmdb_id ?? null,
+      language: sub.language,
+      title: sub.title,
+      media_type: "movie",
+    });
+    const items = await searchMovie(sub.title, sub.year ?? null, services, sub.language ?? undefined, undefined, altTitles);
     const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,
+      ...(altTitles.length ? { altTitles } : {}),
       ...(sub.year ? { expectedYear: sub.year } : {}),
       minQuality: (sub.min_quality ?? "fullhd") as any,
       ...(sub.max_size_mb != null ? { maxSizeMb: sub.max_size_mb } : {}),
