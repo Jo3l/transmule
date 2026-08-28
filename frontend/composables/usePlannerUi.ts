@@ -75,6 +75,9 @@ const HISTORY_EVENT_LABELS: Record<string, string> = {
   completed: "planner.historyEventCompleted",
   gave_up: "planner.historyEventGaveUp",
   stuck_recovered: "planner.historyEventStuckRecovered",
+  postprocess_moved: "planner.historyEventPostprocessMoved",
+  postprocess_failed: "planner.historyEventPostprocessFailed",
+  postprocess_plex: "planner.historyEventPostprocessPlex",
 };
 
 /**
@@ -99,10 +102,15 @@ export function usePlannerHistoryDisplay() {
 
   const eventVariant = (row: any): PlannerTagVariant => {
     if (row.kind === "grab") {
-      if (row.event === "completed") return "success";
-      if (row.event === "dispatch_failed" || row.event === "gave_up") return "danger";
+      if (row.event === "completed" || row.event === "postprocess_moved") return "success";
+      if (
+        row.event === "dispatch_failed" ||
+        row.event === "gave_up" ||
+        row.event === "postprocess_failed"
+      )
+        return "danger";
       if (row.event === "requeued" || row.event === "stuck_recovered") return "warning";
-      if (row.event === "dispatched") return "info";
+      if (row.event === "dispatched" || row.event === "postprocess_plex") return "info";
       return "default";
     }
     if (row.status === "grabbed") return "success";
