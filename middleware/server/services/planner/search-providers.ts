@@ -210,12 +210,18 @@ async function streamSlskd(
   const client = useSlskdClient();
   const ids = queries.map(() => crypto.randomUUID());
 
-  await Promise.all(
-    ids.map((id, i) => client.createSearch(id, queries[i]).catch(() => false)),
-  );
+  // Solo se sondean las búsquedas que se crearon de verdad: si createSearch
+  // falla (slskd caído), su id nunca aparecerá en getSearches() y el bucle
+  // esperaría para siempre sin el timeout.
+  const created: string[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    const ok = await client.createSearch(ids[i], queries[i]).catch(() => false);
+    if (ok !== false) created.push(ids[i]);
+  }
+  if (created.length === 0) return;
 
   const seen = new Set<string>();
-  const pending = new Set(ids);
+  const pending = new Set(created);
   const started = Date.now();
   while (pending.size > 0) {
     if (timeoutMs && Date.now() - started >= timeoutMs) break;
@@ -228,7 +234,7 @@ async function streamSlskd(
     }
 
     const fresh: SearchResultItem[] = [];
-    for (const id of ids) {
+    for (const id of created) {
       const files = await client.getSearchResponses(id).catch(() => []);
       for (const f of files) {
         if (!VIDEO_EXT_RE.test(f.filename)) continue;
