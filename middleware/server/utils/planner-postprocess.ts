@@ -16,6 +16,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, basename, extname } from "node:path";
 import { useDatabase } from "./database";
+import { recordGrabLog } from "./planner-db";
 import { getDownloadsRoot } from "./remoteMounts";
 import { movePath } from "./transfer-engine";
 import { useTransmissionClient } from "./transmission-client";
@@ -26,6 +27,7 @@ import { refreshPlexLibraries } from "~/services/plex";
 /** Datos del grab enriquecidos con la subscription (query del importer). */
 export interface PostProcessGrab {
   id: number;
+  subscription_id: number;
   service: string;
   release_hash: string | null;
   release_title: string | null;
@@ -220,7 +222,9 @@ async function locateGrabbedFile(grab: PostProcessGrab): Promise<LocatedFile | n
   switch (grab.service) {
     case "transmission":
     case "direct-plugin":
-      return locateTransmission(grab);
+      // Fallback por nombre: si el torrent ya no está en transmission (auto-remove
+      // tras seedear, o hash que no casa), igual se localiza en /downloads por título.
+      return (await locateTransmission(grab)) ?? (await searchByName(grab.release_title));
     case "slskd":
       return (await locateSlskd(grab)) ?? (await searchByName(grab.release_title));
     case "amule":
@@ -235,6 +239,31 @@ async function locateGrabbedFile(grab: PostProcessGrab): Promise<LocatedFile | n
 function rootIsDefault(rootFolder: string | null): boolean {
   const r = (rootFolder || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
   return !r || r === "home" || r === "downloads";
+}
+
+/**
+ * Registra un paso del post-proceso en el log de la serie (planner_grab_log),
+ * para que el historial muestre "dónde mirar" si algo falla. Nunca lanza.
+ */
+function logGrab(grab: PostProcessGrab, event: string, message: string): void {
+  try {
+    recordGrabLog({
+      subscription_id: grab.subscription_id,
+      episode_id: grab.episode_id ?? null,
+      movie_id: grab.movie_id ?? null,
+      grab_id: grab.id,
+      event,
+      message,
+    });
+  } catch {
+    /* el log es informativo; nunca romper el post-proceso */
+  }
+}
+
+/** Rescan de Plex + constancia en el log de la serie. */
+function logPlexScan(grab: PostProcessGrab, ctx: string): void {
+  logGrab(grab, "postprocess_plex", "rescan de Plex lanzado");
+  triggerPlexRefresh(ctx);
 }
 
 /**
@@ -253,7 +282,12 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
   if (!located) {
     // El archivo está en el volumen aunque no lo hayamos localizado para
     // moverlo — si plex_scan está activo, refrescar Plex igualmente.
-    if (plexScan) triggerPlexRefresh(`grab #${grab.id} (no ubicado)`);
+    logGrab(
+      grab,
+      "postprocess_failed",
+      `no se localizó el archivo descargado (${grab.service})`,
+    );
+    if (plexScan) logPlexScan(grab, `grab #${grab.id} (no ubicado)`);
     console.warn(
       `[planner] post-proceso grab #${grab.id}: no se localizó el archivo (${grab.service}, '${grab.release_title ?? ""}')`,
     );
@@ -277,22 +311,29 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
   if (destVirtual === located.virtual) {
     // El destino no cambia (ni carpeta ni nombre) — solo registrar file_path
     setFilePath(db, grab, located.virtual);
-    if (plexScan) triggerPlexRefresh(`grab #${grab.id}`);
+    if (plexScan) logPlexScan(grab, `grab #${grab.id}`);
     return;
   }
 
+  const renamed = newName != null && newName !== located.name;
   try {
     await movePath(located.virtual, destVirtual);
+    logGrab(
+      grab,
+      "postprocess_moved",
+      `movido '${located.virtual}' → '${destVirtual}'${renamed ? " (smart rename)" : ""}`,
+    );
     console.log(
-      `[planner] grab #${grab.id}: movido '${located.virtual}' → '${destVirtual}'${newName && newName !== located.name ? " (smart rename)" : ""}`,
+      `[planner] grab #${grab.id}: movido '${located.virtual}' → '${destVirtual}'${renamed ? " (smart rename)" : ""}`,
     );
     setFilePath(db, grab, destVirtual);
     db.prepare(
       "UPDATE planner_grab_queue SET last_error = NULL WHERE id = ?",
     ).run(grab.id);
-    if (plexScan) triggerPlexRefresh(`grab #${grab.id}`);
+    if (plexScan) logPlexScan(grab, `grab #${grab.id}`);
   } catch (err: any) {
     const msg = `post-process: ${err?.message ?? err}`;
+    logGrab(grab, "postprocess_failed", msg);
     db.prepare(
       "UPDATE planner_grab_queue SET last_error = ? WHERE id = ?",
     ).run(msg, grab.id);

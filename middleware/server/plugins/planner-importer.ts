@@ -267,6 +267,7 @@ async function checkCompleted(): Promise<void> {
       const thDate = (d: any) => (d ? String(d).slice(0, 4) : null);
       void postProcessGrab({
         id: grab.id,
+        subscription_id: grab.subscription_id,
         service: grab.service,
         release_hash: grab.release_hash ?? null,
         release_title: grab.release_title ?? null,
