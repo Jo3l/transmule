@@ -21,12 +21,6 @@
       <span class="has-text-grey is-size-7">{{ filtered.length }} {{ $t("planner.results") }}</span>
     </div>
 
-    <!-- Queries reales enviadas a cada red (debug) -->
-    <div v-if="debugQueries" class="psd-debug has-text-grey is-size-7 mb-3">
-      <div>slskd / Torrent: <code>{{ debugQueries.queries.join(" · ") }}</code></div>
-      <div>aMule: <code>{{ debugQueries.amule }}</code></div>
-    </div>
-
     <div v-if="filtered.length === 0" class="box has-text-centered">
       <p>
         <span
@@ -127,7 +121,6 @@ const grabbingId = ref<string | null>(null);
 const networkFilter = ref("all");
 const seenKeys = new Set<string>();
 const abortCtrl = ref<AbortController | null>(null);
-const debugQueries = ref<{ queries: string[]; amule: string } | null>(null);
 
 const columns = computed(() => [
   { prop: "service", label: "", width: "40px" },
@@ -140,11 +133,8 @@ const columns = computed(() => [
   { prop: "actions", label: "", width: "110px" },
 ]);
 
-// Queries REALES que el backend envía a cada red (para debug).
+// Título de la búsqueda para el encabezado y el mensaje "sin resultados".
 const searchQuery = computed(() => {
-  const q = debugQueries.value;
-  if (q) return q.amule || q.queries.join(" · ");
-  // Fallback hasta recibir las queries reales.
   if (props.mediaType === "series") {
     const s = String(props.season ?? 0).padStart(2, "0");
     const e = String(props.episode ?? 0).padStart(2, "0");
@@ -211,7 +201,6 @@ async function runSearch() {
   candidates.value = [];
   seenKeys.clear();
   networkFilter.value = "all";
-  debugQueries.value = null;
 
   try {
     await searchReleasesStreamed(
@@ -226,9 +215,6 @@ async function runSearch() {
       },
       (_service, incoming) => appendCandidates(incoming),
       ctrl.signal,
-      (queries, amule) => {
-        debugQueries.value = { queries, amule };
-      },
     );
   } catch (err: any) {
     if (ctrl.signal.aborted) return;
@@ -280,10 +266,6 @@ onUnmounted(() => abortCtrl.value?.abort());
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.psd-debug code {
-  word-break: break-all;
-  color: var(--s-text-secondary, #888);
 }
 .psd-spinner {
   font-size: 1.1rem;

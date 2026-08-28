@@ -258,7 +258,6 @@ export function usePlanner() {
     body: Record<string, unknown>,
     onBatch: (service: string, candidates: ReleaseCandidate[]) => void,
     signal?: AbortSignal,
-    onQueries?: (queries: string[], amule: string) => void,
   ): Promise<void> {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(body)) {
@@ -294,7 +293,6 @@ export function usePlanner() {
         try {
           const d = JSON.parse(data);
           if (type === "result") onBatch(d.service, d.candidates ?? []);
-          else if (type === "query") onQueries?.(d.queries ?? [], d.amule ?? "");
         } catch { /* skip */ }
       }
     }

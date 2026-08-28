@@ -10,10 +10,10 @@
  *
  * Fase 13 — búsqueda unificada:
  *   - buildEpisodeQueries/buildMovieQueries generan VARIAS variantes de query
- *     (S01E01 / 1x01 / 101) para maximizar recall. Solo título + episodio/año;
- *     el idioma se añade como FALLBACK cuando no hay título de episodio que
- *     identifique el release (las películas siempre). El título del episodio,
- *     la calidad y el tamaño se aplican en el scoring (decision-engine).
+ *     (S01E01 / 1x01 / 101) para maximizar recall. Solo título + episodio/año.
+ *     El idioma, el título del episodio, la calidad y el tamaño se aplican en
+ *     el scoring (decision-engine), NUNCA en la query: los marcadores de idioma
+ *     multiplicarían las búsquedas en paralelo sin aportar recall.
  *   - Cada provider ejecuta sus variantes de query en PARALELO y deduplica.
  *   - `amule` usa una única query booleana AND/OR/NOT con AND explícito + paréntesis
  *     ("{título} AND (S01E01 OR 1x01 OR 101)"), porque su API solo retiene la última
@@ -29,7 +29,7 @@
 
 import { searchTorrents } from "../../torrent-search/index";
 import type { ParsedRelease } from "./release-parser";
-import { parseReleaseName, languageQueryMarkers } from "./release-parser";
+import { parseReleaseName } from "./release-parser";
 import { useSlskdClient } from "../../utils/slskd-client";
 import { useAmuleClient, SearchType } from "../../utils/amule-client";
 
@@ -64,15 +64,14 @@ function sleep(ms: number): Promise<void> {
 
 /** Variantes de query para un episodio: `S01E01` + `1x01` + `101`.
  *  `altTitles` (títulos localizados) añaden variantes adicionales (p.ej.
- *  "Linternas S01E01" además de "Lanterns S01E01"). Si NO hay `episodeTitle`
- *  para identificar el release, se añaden marcadores de idioma como fallback. */
+ *  "Linternas S01E01" además de "Lanterns S01E01"). Solo título + episodio:
+ *  el idioma se valida en el scoring, no se añade a la query (evita multiplicar
+ *  las búsquedas en paralelo con marcadores de idioma). */
 export function buildEpisodeQueries(
   title: string,
   season: number,
   episode: number,
   altTitles?: string[],
-  language?: string,
-  episodeTitle?: string,
 ): string[] {
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
@@ -83,34 +82,18 @@ export function buildEpisodeQueries(
   for (const t of titles) {
     bases.push(`${t} S${s}E${e}`, `${t} ${season}x${e}`, `${t} ${abs}`);
   }
-  // Fallback de idioma: solo cuando no hay título de episodio que identifique
-  // el archivo (los marcadores ayudan a reconocer el release en ese caso).
-  return episodeTitle ? bases : withLanguageVariants(bases, language);
+  return bases;
 }
 
 /** Variantes de query para una película: `{title} {year}` (+ títulos
- *  localizados). Las películas no tienen título de episodio, así que el idioma
- *  se añade siempre para identificar mejor el release. */
+ *  localizados). Solo título + año; el idioma se valida en el scoring. */
 export function buildMovieQueries(
   title: string,
   year?: number,
   altTitles?: string[],
-  language?: string,
 ): string[] {
   const titles = dedupeTitles([title, ...(altTitles ?? [])]);
-  const bases = titles.map((t) => (year ? `${t} ${year}` : t));
-  return withLanguageVariants(bases, language);
-}
-
-/** Añade variantes con marcadores de idioma a un set de queries base. */
-function withLanguageVariants(bases: string[], language?: string): string[] {
-  const markers = languageQueryMarkers(language);
-  if (markers.length === 0) return bases;
-  const out = [...bases];
-  for (const m of markers) {
-    for (const b of bases) out.push(`${b} ${m}`);
-  }
-  return out;
+  return titles.map((t) => (year ? `${t} ${year}` : t));
 }
 
 /** Query booleana para aMule. El parser (Parser.y) solo aplica AND implícito
@@ -347,8 +330,6 @@ export async function searchEpisode(
   searchServices: string[],
   timeoutMs = 60_000,
   altTitles?: string[],
-  language?: string,
-  episodeTitle?: string,
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchEpisodeStreamed(
@@ -361,8 +342,6 @@ export async function searchEpisode(
     },
     timeoutMs,
     altTitles,
-    language,
-    episodeTitle,
   );
   // Espera a que TODAS las búsquedas terminen o al timeout, lo que ocurra antes.
   await Promise.race([done, sleep(timeoutMs)]);
@@ -378,7 +357,6 @@ export async function searchMovie(
   searchServices: string[],
   timeoutMs = 60_000,
   altTitles?: string[],
-  language?: string,
 ): Promise<SearchResultItem[]> {
   const collected: SearchResultItem[] = [];
   const done = searchMovieStreamed(
@@ -390,7 +368,6 @@ export async function searchMovie(
     },
     timeoutMs,
     altTitles,
-    language,
   );
   await Promise.race([done, sleep(timeoutMs)]);
   return dedupe(collected);
@@ -411,17 +388,15 @@ export async function searchEpisodeStreamed(
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
   altTitles?: string[],
-  language?: string,
-  episodeTitle?: string,
-  onQueries?: (q: { queries: string[]; amule: string }) => void,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  // Queries: título (localizado) + episodio. Si no hay título de episodio, se
-  // añaden marcadores de idioma como fallback para identificar el release. El
-  // idioma (scoring), la calidad y el tamaño se aplican en decision-engine.
-  const queries = buildEpisodeQueries(title, season, episode, altTitles, language, episodeTitle);
+  // Queries: título (localizado) + episodio (S01E01 / 1x01 / 101). El idioma,
+  // la calidad y el tamaño se aplican en decision-engine, no en la query.
+  const queries = buildEpisodeQueries(title, season, episode, altTitles);
   const amuleQuery = buildAmuleEpisodeQuery(title, season, episode, altTitles);
-  onQueries?.({ queries, amule: amuleQuery });
+  console.log(
+    `[planner] episode queries (slskd/torrent): ${queries.join(" · ")} · aMule: ${amuleQuery}`,
+  );
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
@@ -447,15 +422,14 @@ export async function searchMovieStreamed(
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
   altTitles?: string[],
-  language?: string,
-  onQueries?: (q: { queries: string[]; amule: string }) => void,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
-  // Queries: título (localizado) + año + marcadores de idioma (las películas no
-  // tienen título de episodio que las identifique).
-  const queries = buildMovieQueries(title, year, altTitles, language);
+  // Queries: título (localizado) + año. El idioma se valida en decision-engine.
+  const queries = buildMovieQueries(title, year, altTitles);
   const amuleQuery = buildAmuleMovieQuery(title, year, altTitles);
-  onQueries?.({ queries, amule: amuleQuery });
+  console.log(
+    `[planner] movie queries (slskd/torrent): ${queries.join(" · ")} · aMule: ${amuleQuery}`,
+  );
 
   const tasks: Promise<void>[] = [];
   if (providers.includes("direct-plugin")) {
