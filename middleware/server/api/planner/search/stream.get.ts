@@ -31,6 +31,10 @@ import { scoreCandidates, type CandidateContext } from "~/services/planner/candi
 import { getSubscription } from "~/utils/planner-db";
 import { resolveAltTitles } from "~/services/planner/localized-titles";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export default defineEventHandler(async (event) => {
   requireUser(event);
 
@@ -94,18 +98,30 @@ export default defineEventHandler(async (event) => {
     minQuality,
   };
 
+  // Deadline global: el stream nunca debe quedarse colgado. slskd/aMule son
+  // lentos y a veces su búsqueda no termina (o el servicio está caído). Tras
+  // MAX_STREAM_MS emitimos "complete" y cerramos aunque algún provider siga
+  // pendiente, para que el cliente no espere hasta el timeout del proxy.
+  const MAX_STREAM_MS = 60_000;
+  let finished = false;
+
   const onResult = (service: SearchResultItem["service"], items: SearchResultItem[]) => {
+    if (finished) return;
     const candidates = scoreCandidates(items, ctx);
     const payload = JSON.stringify({ service, candidates });
     res.write(`event: result\ndata: ${payload}\n\n`);
   };
 
-  if (type === "episode") {
-    await searchEpisodeStreamed(title, season!, episode!, searchServices, language, onResult, undefined, altTitles);
-  } else {
-    await searchMovieStreamed(title, year, searchServices, language, onResult, undefined, altTitles);
-  }
+  const search =
+    type === "episode"
+      ? searchEpisodeStreamed(title, season!, episode!, searchServices, language, onResult, MAX_STREAM_MS, altTitles)
+      : searchMovieStreamed(title, year, searchServices, language, onResult, MAX_STREAM_MS, altTitles);
 
-  res.write(`event: complete\ndata: ${JSON.stringify({ done: true })}\n\n`);
-  res.end();
+  await Promise.race([search, sleep(MAX_STREAM_MS)]);
+
+  if (!finished) {
+    finished = true;
+    res.write(`event: complete\ndata: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  }
 });
