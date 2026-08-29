@@ -158,6 +158,9 @@ async function updateCalendar(): Promise<void> {
       language: sub.language,
       title: sub.title,
       media_type: "series",
+      // Solo localizado: aquí se re-titula la suscripción al nombre del idioma
+      // elegido; el original en inglés lo añade el buscador como alternativa.
+      includeOriginal: false,
     });
     if (localizedTitle[0] && localizedTitle[0] !== sub.title) {
       updateSubscription(sub.id, { title: localizedTitle[0] });

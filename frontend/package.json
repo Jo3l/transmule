@@ -1,6 +1,6 @@
 {
   "name": "transmule",
-  "version": "1.155",
+  "version": "1.156",
   "private": true,
   "description": "TransMule — unified download manager with custom theming",
   "scripts": {

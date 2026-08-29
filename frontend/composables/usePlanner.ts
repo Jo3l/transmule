@@ -242,13 +242,6 @@ export function usePlanner() {
 
   // ── Búsqueda interactiva unificada (Fase 14) ──────────────────────────────
 
-  async function searchReleases(body: Record<string, unknown>) {
-    return apiFetch<{ candidates: ReleaseCandidate[]; count: number }>(
-      "/api/planner/search/releases",
-      { method: "POST", body },
-    );
-  }
-
   /**
    * Búsqueda de releases en STREAMING (SSE): invoca onBatch(service, candidates)
    * en cuanto cada red termina, sin esperar a las demás. Devuelve al cerrar el
@@ -331,7 +324,6 @@ export function usePlanner() {
     getPlannerStatus,
     getTvdbTranslations,
     getTmdbTranslations,
-    searchReleases,
     searchReleasesStreamed,
     grabRelease,
     autoDownload,
