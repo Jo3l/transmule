@@ -14,8 +14,8 @@
  */
 
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, basename, extname } from "node:path";
-import { useDatabase } from "./database";
+import { join, basename } from "node:path";
+import { useDatabase, getConfig } from "./database";
 import { recordGrabLog } from "./planner-db";
 import { getDownloadsRoot } from "./remoteMounts";
 import { movePath } from "./transfer-engine";
@@ -23,6 +23,11 @@ import { useTransmissionClient } from "./transmission-client";
 import { useSlskdClient } from "./slskd-client";
 import { useAmuleClient } from "./amule-client";
 import { refreshPlexLibraries } from "~/services/plex";
+import {
+  getSmartRenameSuggestion,
+  buildProviderPreferredLocales,
+  normalizeLocale,
+} from "~/services/smart-rename";
 
 // Localización del archivo descargado: reintentos con espera. aMule/slskd no
 // son síncronos — al marcar "completado" el fichero puede tardar en aparecer
@@ -67,37 +72,37 @@ function norm(s: string): string {
   return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-/** Caracteres inválidos en nombres de archivo Windows/SMB. */
-function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[\\/:*?"<>|]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\.+$/, "");
-}
-
 // ─── Smart rename ────────────────────────────────────────────────────────────
 
-/** Construye el nombre limpio para el archivo del grab (o null si no aplica). */
-export function buildSmartName(grab: PostProcessGrab, baseName: string): string | null {
-  const ext = extname(baseName);
-  let raw: string | null = null;
-  if (grab.episode_id) {
-    const s = String(grab.season_number ?? "").padStart(2, "0");
-    const e = String(grab.episode_number ?? "").padStart(2, "0");
-    const marker = s && e ? `S${s}E${e}` : null;
-    if (grab.sub_title && marker) {
-      raw = grab.episode_title
-        ? `${grab.sub_title} - ${marker} - ${grab.episode_title}`
-        : `${grab.sub_title} - ${marker}`;
-    }
-  } else if (grab.movie_id && grab.sub_title) {
-    raw = grab.movie_year ? `${grab.sub_title} (${grab.movie_year})` : grab.sub_title;
-  }
-  if (!raw) return null;
-  const clean = sanitizeFilename(raw);
-  if (!clean) return null;
-  return clean + ext;
+/**
+ * Nombre final del smart rename usando el MISMO cleaner que el file manager
+ * (services/smart-rename): parsea el nombre del archivo descargado, limpia el
+ * ruido (1080p, codecs, tags...) y verifica el título con TMDB/TVDB si están
+ * configurados. Devuelve null si no se puede determinar un nombre razonable
+ * (tipo desconocido o el fallback "File" del cleaner) — entonces no se renombra.
+ */
+async function suggestSmartRename(located: LocatedFile): Promise<string | null> {
+  const tmdbPreferredLocales = buildProviderPreferredLocales(
+    normalizeLocale(getConfig("tmdb_locale") ?? ""),
+    [],
+  );
+  const tvdbPreferredLocales = buildProviderPreferredLocales(
+    normalizeLocale(getConfig("tvdb_locale") ?? ""),
+    [],
+  );
+
+  const res = await getSmartRenameSuggestion(located.virtual, {
+    tmdbPreferredLocales,
+    tvdbPreferredLocales,
+    includeCleanup: true,
+    includeIntegrations: true,
+  });
+
+  // "File"/"File.ext" es el marcador del cleaner cuando no reconoce el tipo;
+  // renombrar a eso sería destructivo.
+  const stem = String(res.suggested ?? "").replace(/\.[^.]+$/, "");
+  if (res.type === "unknown" || /^file$/i.test(stem)) return null;
+  return res.suggested;
 }
 
 // ─── Localización del archivo descargado ────────────────────────────────────
@@ -319,7 +324,7 @@ export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
     return;
   }
 
-  const newName = smartRename ? buildSmartName(grab, located.name) : null;
+  const newName = smartRename ? await suggestSmartRename(located) : null;
   const finalName = newName && newName !== located.name ? newName : null;
 
   let destVirtual: string;

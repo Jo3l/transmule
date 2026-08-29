@@ -16,8 +16,10 @@
  *     multiplicarían las búsquedas en paralelo sin aportar recall.
  *   - Cada provider ejecuta sus variantes de query en PARALELO y deduplica.
  *   - `amule` usa una única query booleana AND/OR/NOT con AND explícito + paréntesis
- *     ("{título} AND (S01E01 OR 1x01 OR 101)"), porque su API solo retiene la última
- *     búsqueda y el parser limita a 10 operadores booleanos.
+ *     y con cada título ENTRE COMILLAS ("{título original}" OR "{título localizado}"),
+ *     porque su API solo retiene la última búsqueda, el parser limita la expresión
+ *     a 10 operadores booleanos (contando los AND implícitos de cada palabra) y las
+ *     comillas convierten cada título en un único token.
  *
  * Fase 14 — streaming sin límites:
  *   - Modo INTERACTIVO: sin timeout. `searchEpisodeStreamed`/`searchMovieStreamed`
@@ -96,10 +98,15 @@ export function buildMovieQueries(
 
 /** Query booleana para aMule. El parser (Parser.y) solo aplica AND implícito
  *  entre PALABRAS (and_strings), NO entre una palabra y un grupo entre
- *  paréntesis, y limita la expresión a 10 operadores booleanos (AND/OR/NOT).
- *  Por eso: AND explícito antes del grupo, y OR entre las variantes de episodio
- *  DENTRO del paréntesis (sin repetir el título, que dispararía el límite):
- *  "{título} AND (S01E06 OR 1x06 OR 106)". */
+ *  paréntesis, y limita la expresión a 10 operadores booleanos (AND/OR/NOT) —
+ *  contando también los AND implícitos de cada cadena de palabras. Por eso:
+ *   - cada TÍTULO va entre comillas dobles → un solo token por título (sin
+ *     ANDs implícitos por palabra), dejando presupuesto de operadores para el
+ *     grupo de episodio y para los títulos alternativos (original + localizado);
+ *   - AND explícito antes del grupo, y OR entre las variantes de episodio
+ *     DENTRO del paréntesis:
+ *     ("Título original" OR "Título localizado") AND (S01E06 OR 1x06 OR 106)
+ */
 export function buildAmuleEpisodeQuery(
   title: string,
   season: number,
@@ -109,23 +116,31 @@ export function buildAmuleEpisodeQuery(
   const s = String(season).padStart(2, "0");
   const e = String(episode).padStart(2, "0");
   const abs = String(season) + e; // "101": S01E06 → 106
-  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]).map(quoteTitle);
   const titleGroup = titles.length > 1 ? `(${titles.join(" OR ")})` : titles[0];
   const epGroup = `(S${s}E${e} OR ${season}x${e} OR ${abs})`;
   return `${titleGroup} AND ${epGroup}`;
 }
 
-/** Query booleana para aMule (películas). Misma regla que episodios: OR entre
+/** Query booleana para aMule (películas). Misma regla que episodios: cada
+ *  título entre comillas (un token, sin ANDs implícitos por palabra), OR entre
  *  títulos va entre paréntesis, y el año se une con AND explícito:
- *  "{título} AND {año}" o "({título1} OR {título2}) AND {año}". */
+ *  "Título" AND 2022 o ("Título1" OR "Título2") AND 2022. */
 export function buildAmuleMovieQuery(
   title: string,
   year?: number,
   altTitles?: string[],
 ): string {
-  const titles = dedupeTitles([title, ...(altTitles ?? [])]);
+  const titles = dedupeTitles([title, ...(altTitles ?? [])]).map(quoteTitle);
   const titleGroup = titles.length > 1 ? `(${titles.join(" OR ")})` : titles[0];
   return year ? `${titleGroup} AND ${year}` : titleGroup;
+}
+
+/** Entrecomilla un título para aMule: "Star Trek: Strange New Worlds" es UN
+ *  token para Parser.y (Scanner.l), así las palabras del título no consumen
+ *  ANDs implícitos del límite de 10 operadores booleanos. */
+function quoteTitle(t: string): string {
+  return `"${String(t ?? "").replace(/"/g, "")}"`;
 }
 
 /** Deduplica títulos (case-insensitive, preservando el orden). */

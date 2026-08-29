@@ -26,15 +26,23 @@ export interface TorrentSearchOptions {
   extraTrackers?: string;
 }
 
+/** Tiempo máximo por plugin: si un tracker se cuelga (sin timeout propio en el
+ *  plugin), no debe retrasar al resto del lote ni a las otras redes. */
+const PLUGIN_TIMEOUT_MS = 20_000;
+
+function sleep(ms: number): Promise<undefined> {
+  return new Promise((resolve) => setTimeout(() => resolve(undefined), ms));
+}
+
 /** Run a single plugin search, silently swallowing errors. */
 async function safeSearch(
   fn: () => Promise<TorrentSearchResult[]>,
 ): Promise<TorrentSearchResult[]> {
-  try {
-    return await fn();
-  } catch {
-    return [];
-  }
+  // El plugin se ejecuta con un timeout duro: si no responde en PLUGIN_TIMEOUT_MS
+  // se descarta ([]); su promesa ya lleva .catch() para evitar unhandledRejection.
+  const task = fn().catch(() => [] as TorrentSearchResult[]);
+  const result = await Promise.race([task, sleep(PLUGIN_TIMEOUT_MS)]);
+  return result ?? [];
 }
 
 export async function searchTorrents(

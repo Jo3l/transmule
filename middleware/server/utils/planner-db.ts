@@ -8,7 +8,6 @@
  *   - planner_movies
  *   - planner_quality_profiles
  *   - planner_language_profiles
- *   - planner_indexers
  *   - planner_search_history
  *   - planner_grab_queue
  *   - planner_metadata_cache
@@ -41,7 +40,6 @@ export type PlannerMovieStatus =
   | "downloaded"
   | "cutoff_unmet"
   | "failed";
-export type PlannerIndexerKind = "newznab" | "torznab" | "rss";
 export type PlannerGrabPriority = "normal" | "high" | "manual";
 export type PlannerGrabState =
   | "pending"
@@ -142,19 +140,6 @@ export interface PlannerLanguageProfile {
   must_have_json: string | null;
   must_not_have_json: string | null;
   created_at: string;
-}
-
-export interface PlannerIndexer {
-  id: number;
-  name: string;
-  kind: PlannerIndexerKind;
-  base_url: string;
-  api_key: string | null;
-  enabled: number;
-  priority: number;
-  last_sync_at: string | null;
-  last_sync_status: string | null;
-  added_at: string;
 }
 
 export interface PlannerSearchHistory {
@@ -611,81 +596,6 @@ export function deleteLanguageProfile(id: number): boolean {
   const db = useDatabase();
   const result = db
     .prepare("DELETE FROM planner_language_profiles WHERE id = ?")
-    .run(id);
-  return result.changes > 0;
-}
-
-// ─── Indexers ───────────────────────────────────────────────────────────────
-
-export function listIndexers(opts: { enabled?: boolean } = {}): PlannerIndexer[] {
-  const db = useDatabase();
-  let sql = "SELECT * FROM planner_indexers";
-  const params: unknown[] = [];
-  if (opts.enabled !== undefined) {
-    sql += " WHERE enabled = ?";
-    params.push(opts.enabled ? 1 : 0);
-  }
-  sql += " ORDER BY priority DESC, name ASC";
-  return db.prepare(sql).all(...(params as any)) as unknown as PlannerIndexer[];
-}
-
-function getIndexer(id: number): PlannerIndexer | undefined {
-  const db = useDatabase();
-  return db
-    .prepare("SELECT * FROM planner_indexers WHERE id = ?")
-    .get(id) as unknown as PlannerIndexer | undefined;
-}
-
-export function createIndexer(input: {
-  name: string;
-  kind: PlannerIndexerKind;
-  base_url: string;
-  api_key?: string | null;
-  enabled?: boolean;
-  priority?: number;
-}): PlannerIndexer {
-  const db = useDatabase();
-  const result = db
-    .prepare(
-      `INSERT INTO planner_indexers (name, kind, base_url, api_key, enabled, priority)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      input.name,
-      input.kind,
-      input.base_url,
-      input.api_key ?? null,
-      input.enabled === false ? 0 : 1,
-      input.priority ?? 25,
-    );
-  return getIndexer(Number(result.lastInsertRowid))!;
-}
-
-export function updateIndexer(
-  id: number,
-  input: Partial<Omit<PlannerIndexer, "id" | "added_at">>,
-): PlannerIndexer | undefined {
-  const db = useDatabase();
-  const fields: string[] = [];
-  const params: unknown[] = [];
-  for (const [key, value] of Object.entries(input)) {
-    if (value === undefined) continue;
-    fields.push(`${key} = ?`);
-    if (typeof value === "boolean") params.push(value ? 1 : 0);
-    else params.push(value);
-  }
-  if (fields.length === 0) return getIndexer(id);
-  params.push(id);
-  db.prepare(`UPDATE planner_indexers SET ${fields.join(", ")} WHERE id = ?`).run(
-    ...(params as unknown as Parameters<ReturnType<typeof db.prepare>["run"]>),
-  );
-  return getIndexer(id);
-}
-
-export function deleteIndexer(id: number): boolean {
-  const db = useDatabase();
-  const result = db
-    .prepare("DELETE FROM planner_indexers WHERE id = ?")
     .run(id);
   return result.changes > 0;
 }

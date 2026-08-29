@@ -9,7 +9,7 @@
       @mouseup.self="overlayMouseup"
       @keydown.escape="close"
     >
-      <div class="s-dialog" :style="{ width }" @mousedown.stop="dialogMousedown">
+      <div class="s-dialog" :style="{ width: dialogWidth }" @mousedown.stop="dialogMousedown">
         <div class="s-dialog__header">
           <span>{{ title }}</span>
           <button class="s-dialog__close" @click="close">
@@ -34,14 +34,30 @@ const props = withDefaults(
   defineProps<{
     modelValue?: boolean;
     title?: string;
+    /** Ancho explícito (p.ej. "480px"). Tiene prioridad sobre `size`. */
     width?: string;
+    /**
+     * Tamaño predefinido: sm=400px, md=500px, lg=920px, xl=1400px.
+     * Si se pasa `width`, este prop se ignora.
+     */
+    size?: "sm" | "md" | "lg" | "xl";
   }>(),
   {
     modelValue: false,
     title: "",
-    width: "500px",
+    width: "",
+    size: "md",
   },
 );
+
+const SIZE_WIDTHS: Record<NonNullable<typeof props.size>, string> = {
+  sm: "400px",
+  md: "500px",
+  lg: "920px",
+  xl: "1400px",
+};
+
+const dialogWidth = computed<string>(() => props.width || SIZE_WIDTHS[props.size]);
 
 const emit = defineEmits<{ "update:modelValue": [val: boolean] }>();
 

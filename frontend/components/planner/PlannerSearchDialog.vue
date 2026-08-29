@@ -2,7 +2,7 @@
   <SDialog
     :model-value="modelValue"
     :title="dialogTitle"
-    width="920px"
+    size="xl"
     @update:model-value="(v: boolean) => emit('update:modelValue', v)"
   >
     <SAlert v-if="errorMsg" variant="error" size="sm" class="mb-3">
@@ -19,6 +19,21 @@
         <option value="amule">ED2K</option>
       </SSelect>
       <span class="has-text-grey is-size-7">{{ filtered.length }} {{ $t("planner.results") }}</span>
+    </div>
+
+    <!-- Estado por red: cada cliente (torrent, ED2K, Soulseek) muestra sus
+         resultados en cuanto llegan, sin esperar al resto de redes. -->
+    <div class="psd-net-status mb-3">
+      <span
+        v-for="svc in networkStatusList"
+        :key="svc.id"
+        class="psd-net-chip"
+        :class="{ 'is-pending': !svc.done && svc.count === 0 }"
+      >
+        <span class="mdi psd-chip-icon" :class="chipIcon(svc)" />
+        <span class="psd-chip-label">{{ svc.label }}</span>
+        <span v-if="svc.done || svc.count > 0" class="psd-chip-count">{{ svc.count }}</span>
+      </span>
     </div>
 
     <div v-if="filtered.length === 0" class="box has-text-centered">
@@ -122,6 +137,38 @@ const networkFilter = ref("all");
 const seenKeys = new Set<string>();
 const abortCtrl = ref<AbortController | null>(null);
 
+// ── Estado por red (chips de la barra superior) ────────────────────────────
+const NETWORKS = [
+  { id: "direct-plugin", label: "Torrent" },
+  { id: "slskd", label: "Soulseek" },
+  { id: "amule", label: "ED2K" },
+] as const;
+
+interface NetStatus {
+  id: string;
+  label: string;
+  count: number;
+  done: boolean;
+}
+
+function freshNetworkStats(): Record<string, { count: number; done: boolean }> {
+  return Object.fromEntries(NETWORKS.map((n) => [n.id, { count: 0, done: false }]));
+}
+
+const networkStats = ref<Record<string, { count: number; done: boolean }>>(freshNetworkStats());
+
+const networkStatusList = computed<NetStatus[]>(() =>
+  NETWORKS.map((n) => ({ id: n.id, label: n.label, ...networkStats.value[n.id] })),
+);
+
+// Icono del chip: spinner mientras la red no ha devuelto nada, check al
+// terminar, y el icono de la red entre medias (ya tiene resultados).
+function chipIcon(svc: NetStatus): string {
+  if (!svc.done && svc.count === 0) return "mdi-loading mdi-spin";
+  if (svc.done) return "mdi-check";
+  return serviceIcon(svc.id);
+}
+
 const columns = computed(() => [
   { prop: "service", label: "", width: "40px" },
   { prop: "name", label: t("planner.release") },
@@ -180,15 +227,25 @@ function dedupKey(c: ReleaseCandidate): string {
   return `${name}|${c.sizeMb ?? ""}`;
 }
 
-function appendCandidates(incoming: ReleaseCandidate[]) {
+function appendCandidates(incoming: ReleaseCandidate[]): number {
+  let added = 0;
   for (const c of incoming) {
     const key = dedupKey(c);
     if (seenKeys.has(key)) continue;
     seenKeys.add(key);
     candidates.value.push(c);
+    added++;
   }
   // Mantener ordenados por score desc (los rechazados, score -1, quedan al final).
   candidates.value.sort((a, b) => b.score - a.score);
+  return added;
+}
+
+/** Lote recibido de una red: lo añade a la tabla y actualiza su chip. */
+function handleBatch(service: string, incoming: ReleaseCandidate[]) {
+  const added = appendCandidates(incoming);
+  const stat = networkStats.value[service];
+  if (stat && added > 0) stat.count += added;
 }
 
 async function runSearch() {
@@ -201,6 +258,7 @@ async function runSearch() {
   candidates.value = [];
   seenKeys.clear();
   networkFilter.value = "all";
+  networkStats.value = freshNetworkStats();
 
   try {
     await searchReleasesStreamed(
@@ -213,14 +271,19 @@ async function runSearch() {
           ? { season: props.season, episode: props.episode }
           : { year: props.year }),
       },
-      (_service, incoming) => appendCandidates(incoming),
+      (service, incoming) => handleBatch(service, incoming),
       ctrl.signal,
     );
   } catch (err: any) {
     if (ctrl.signal.aborted) return;
     errorMsg.value = err?.message ?? String(err);
   } finally {
-    if (!ctrl.signal.aborted) searching.value = false;
+    if (!ctrl.signal.aborted) {
+      searching.value = false;
+      // El stream cerró (todas las redes terminaron o deadline de 60s):
+      // pasar los chips pendientes a estado final.
+      for (const n of NETWORKS) networkStats.value[n.id].done = true;
+    }
   }
 }
 
@@ -272,11 +335,43 @@ onUnmounted(() => abortCtrl.value?.abort());
   color: var(--s-text-secondary, #888);
 }
 .psd-name {
-  max-width: 360px;
+  max-width: 720px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.82rem;
+}
+.psd-net-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.psd-net-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--s-border, #e2e8f0);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  color: var(--s-text-secondary, #888);
+  background: var(--s-bg-surface, #fff);
+}
+.psd-net-chip.is-pending {
+  color: var(--s-text-muted, #999);
+}
+.psd-chip-icon {
+  font-size: 0.85rem;
+}
+.psd-chip-icon.mdi-spin {
+  color: var(--s-accent, #22d3ee);
+}
+.psd-chip-icon.mdi-check {
+  color: var(--s-success, #22c55e);
+}
+.psd-chip-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 .psd-net-icon {
   font-size: 1.1rem;
