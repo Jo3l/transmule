@@ -76,6 +76,23 @@ const LANG_JAPANESE_RE = /\b(JAPANESE|JAP|JPN|\[JP\]|\.JP\.)\b/i;
 // Spanish-specific markers
 const SUB_RE = /\b(VOSE|VOS|SUBS?\s*(?:ESP|SPA|ES)|SUB[. ]?ESP[AÑOL]*)\b/i;
 
+// Marcadores de "solo subtítulos": el audio es el ORIGINAL y los tags de
+// idioma del nombre describen SUBTÍTULOS, no una pista de audio localizada.
+// V.O.S./VOSE/VOS (versión original subtitulada) — con o sin puntos.
+const VOSE_RE = /(?:^|[^A-Za-z0-9])V\.?O\.?S\.?(?:E\.?)?(?:$|[^A-Za-z0-9])/i;
+// Forma con espacios tras normalizar puntos ("V O S", "V O S E").
+const VOSE_SPACED_RE = /(?:^|[^A-Za-z0-9])V\s*O\s*S(?:\s*E)?(?:$|[^A-Za-z0-9])/i;
+// "subs/subtítulos integrados|embebidos|embedded|incluidos"
+const EMBEDDED_SUBS_RE =
+  /\b(?:SUBS?|SUBT[ÍI]TULOS?)\s+(?:INTEGRADOS?|EMBEBIDOS?|EMBEDDED|INCLUIDOS?)\b/i;
+// Formas verbales inequívocas de "lleva subtítulos" (audio original).
+const SUBTITLED_RE = /\b(?:SUBTITULAD[OA]S?|SUBTITLED|SUBBED|HARDSUBS?)\b/i;
+// Marcadores explícitos de pista de audio localizada: si aparecen, los tags
+// de idioma SÍ describen audio (p.ej. "Castellano Subs Integrados") y el
+// release NO se considera subtitle-only.
+const AUDIO_TRACK_RE =
+  /\b(?:CASTELLANO|ESPA[ÑN]OL|DUBLAD[OA]S?|DUBBED|LATINO|LATAM|DUAL|MULTI(?:LANGUAGE)?)\b/i;
+
 // ─── Output types ───────────────────────────────────────────────────────────
 
 export type ReleaseType = "series" | "movie" | "unknown";
@@ -296,6 +313,24 @@ export function parseReleaseName(name: string): ParsedRelease {
     }
   }
 
+  // 5b. Subtitle-only: V.O.S./VOSE/VOS, "subs integrados" o "subtitulado"
+  // significan que el audio es el ORIGINAL y los tags de idioma detectados
+  // arriba describen SUBTÍTULOS, no una pista localizada. Salvo que haya un
+  // marcador explícito de audio (CASTELLANO/LATINO/DUAL/MULTI...), el release
+  // se puntúa como "sin idioma": el scoring lo penaliza igual que a un archivo
+  // no localizado y solo se etiqueta como "subs" (evita el falso positivo del
+  // tipo "V.O.S. ... Spanish subs" contado como español de España).
+  const subtitleOnly =
+    !AUDIO_TRACK_RE.test(clean) &&
+    (VOSE_RE.test(raw) ||
+      VOSE_SPACED_RE.test(clean) ||
+      EMBEDDED_SUBS_RE.test(clean) ||
+      SUBTITLED_RE.test(clean));
+  if (subtitleOnly) {
+    languages.length = 0;
+    languages.push("subs");
+  }
+
   // 6. Edition flags
   const edition: string[] = [];
   const properMatch = clean.match(PROPER_RE);
@@ -325,6 +360,12 @@ export function parseReleaseName(name: string): ParsedRelease {
     .replace(YEAR_RE, " ")
     .replace(PROPER_RE, " ")
     .replace(/\b(MULTI|MULT)\b/gi, " ")
+    // "subs integrados" / "subtítulos integrados" y V.O.S. normalizado
+    // ("V O S") — junk de marcadores de subtítulos que diluye la similitud.
+    // Deben ir ANTES del regex de palabras: si "subs" se quita primero,
+    // "integrados" queda huérfano en el título.
+    .replace(/\b(?:SUBS?|SUBT[ÍI]TULOS?)\s+INTEGRADOS?\b/gi, " ")
+    .replace(/\bV\s*O\s*S(?:\s*E)?\b/gi, " ")
     .replace(
       /\b(?:ESPA[ÑN]OL|CASTELLANO|SPANISH|LATINO|ENGLISH|GERMAN|FRENCH|JAPANESE|VOSE|VOS|SUBS?|SUBTITLES?|SUBTITULADOS?)\b/gi,
       " ",

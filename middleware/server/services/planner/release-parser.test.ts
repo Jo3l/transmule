@@ -283,6 +283,41 @@ const cases: Array<{
       assert(!t.includes("6ch"), `Silo-6CH sin "6ch" en "${r.title}"`);
     },
   },
+  {
+    // Regression: V.O.S. + "Spanish subs integrados" — el español describe
+    // SUBTÍTULOS, no audio: no debe contarse como release localizado
+    // (falso positivo reportado en el buscador: salía primero con +1000).
+    input:
+      "Star Trek Strange New Worlds (2022) 4x06 1080p - Off-Hour (V.O.S. Spa-Eng) - Spanish subs integrados by JuAnItO.mkv",
+    check: (r) => {
+      expectEq(r.type, "series", "SNW-VOS type");
+      expectEq(r.season, 4, "SNW-VOS season");
+      expectEq(r.episode, 6, "SNW-VOS episode");
+      expectEq(r.languages, ["subs"], `SNW-VOS solo subs (no spanish): "${r.languages}"`);
+      assert(!r.languages.includes("spanish"), "SNW-VOS español NO debe contar como audio");
+      const t = r.title.toLowerCase();
+      assert(!t.includes("integrados"), `SNW-VOS título sin "integrados": "${r.title}"`);
+      assert(t.includes("star trek strange new worlds"), `SNW-VOS título limpio: "${r.title}"`);
+    },
+  },
+  {
+    // VOSE compacto (sin puntos) también es subtitle-only.
+    input: "Star.Trek.S04E06.1080p.WEB-DL.x264-VOSE.mkv",
+    check: (r) => {
+      expectEq(r.languages, ["subs"], `VOSE solo subs: "${r.languages}"`);
+    },
+  },
+  {
+    // Guard: marcador explícito de audio (Castellano) + subs integrados →
+    // SÍ es español localizado (el guard de audio manda, no es subtitle-only).
+    input: "Silo.S01E01.1080p.WEB-DL.Castellano.Subs.Integrados.mkv",
+    check: (r) => {
+      assert(
+        r.languages.includes("spanish"),
+        `Castellano+Subs es español: "${r.languages}"`,
+      );
+    },
+  },
 ];
 
 for (const c of cases) {

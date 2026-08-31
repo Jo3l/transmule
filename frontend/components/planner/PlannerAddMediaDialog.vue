@@ -205,19 +205,15 @@
     </div>
   </SDialog>
 
-  <!-- Selector de carpeta de destino (mismo componente que el file manager:
-       incluye 'home' (descargas) y las carpetas SMB montadas) -->
-  <SDialog v-model="showFolderPicker" :title="$t('planner.chooseFolder')" width="480px">
-    <FolderPicker v-model="pickerPath" :key="'fp-planner-' + showFolderPicker" />
-    <template #footer>
-      <div class="flex-end gap-sm">
-        <SButton @click="showFolderPicker = false">{{ $t("planner.cancel") }}</SButton>
-        <SButton variant="primary" @click="confirmFolder">
-          {{ $t("planner.useFolder") }}
-        </SButton>
-      </div>
-    </template>
-  </SDialog>
+  <!-- Selector de carpeta de destino (FolderPickerDialog compartido con el
+       file manager: incluye 'home' (descargas), las carpetas SMB montadas y
+       crear carpeta dentro de la seleccionada activa) -->
+  <FolderPickerDialog
+    v-model="showFolderPicker"
+    v-model:path="pickerPath"
+    :title="$t('planner.chooseFolder')"
+    @select="onFolderPicked"
+  />
 </template>
 
 <script setup lang="ts">
@@ -258,9 +254,18 @@ const rootFolder = ref("downloads");
 const smartRename = ref(false);
 const plexScan = ref(false);
 
-// ── Selector de carpeta de destino (FolderPicker, como el file manager) ────
+// ── Selector de carpeta de destino (FolderPickerDialog compartido) ────────
 const showFolderPicker = ref(false);
 const pickerPath = ref("");
+
+function onFolderPicked(p: string) {
+  let v = (p ?? "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  // La raíz de descargas se representa como "downloads" (visible y estable);
+  // "downloads" (por defecto) y "home" (jerga interna) se normalizan a ella.
+  if (!v || v === "home" || v === "downloads") v = "downloads";
+  else if (v.startsWith("home/")) v = "downloads/" + v.slice(5);
+  rootFolder.value = v;
+}
 
 function openFolderPicker() {
   let cur = rootFolder.value.replace(/^\/+/, "").replace(/\/+$/, "");
@@ -271,16 +276,6 @@ function openFolderPicker() {
   else cur = cur.replace(/^downloads\//, "home/");
   pickerPath.value = cur;
   showFolderPicker.value = true;
-}
-
-function confirmFolder() {
-  let p = pickerPath.value.trim().replace(/^\/+/, "").replace(/\/+$/, "");
-  // La raíz de descargas se representa como "downloads" (visible y estable);
-  // "downloads" (por defecto) y "home" (jerga interna) se normalizan a ella.
-  if (!p || p === "home" || p === "downloads") p = "downloads";
-  else if (p.startsWith("home/")) p = "downloads/" + p.slice(5);
-  rootFolder.value = p;
-  showFolderPicker.value = false;
 }
 
 const addingId = ref<number | null>(null);
