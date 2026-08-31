@@ -44,6 +44,10 @@ export interface SearchResultItem {
   sizeMb?: number;
   /** Seeds (solo torrents) */
   seeds?: number;
+  /** Fuentes (aMule: número total de fuentes) */
+  sources?: number;
+  /** Usuario que comparte el archivo (slskd) */
+  username?: string;
   /** Servicio que produjo el resultado */
   service: "direct-plugin" | "slskd" | "amule";
   /** Release parseado (title, season/ep, quality, source, languages...) */
@@ -206,6 +210,7 @@ function slskdToItem(f: any): SearchResultItem {
   return {
     url: `slskd://${f.username}/${f.filename}`,
     sizeMb: f.size ? Math.round(f.size / 1024 / 1024) : undefined,
+    username: f.username ?? undefined,
     service: "slskd" as const,
     parsed: parseReleaseName(f.filename),
     rawName: f.filename,
@@ -275,6 +280,7 @@ function amuleToItem(r: any): SearchResultItem {
     url: `ed2k://|file|${encodeURIComponent(name)}|${r.sizeFull ?? 0}|${hash}|/`,
     hash: hash || undefined,
     sizeMb: r.sizeFull ? Math.round(r.sizeFull / 1024 / 1024) : undefined,
+    sources: r.sourceCount ?? undefined,
     service: "amule" as const,
     parsed: parseReleaseName(name),
     rawName: name,

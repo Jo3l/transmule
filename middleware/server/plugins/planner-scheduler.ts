@@ -339,7 +339,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     : now.getHours() >= 18
       ? today
       : localDateString(new Date(now.getTime() - 24 * 60 * 60 * 1000));
-  const ready = getEpisodesReadyForDownload(cutoff, force);
+  const ready = getEpisodesReadyForDownload(cutoff);
   for (const ep of ready) {
     if (searched >= maxSearches) break;
     const sub = getSubscription(ep.subscription_id);
@@ -359,9 +359,9 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     await grabEpisode(sub, ep, "auto");
   }
 
-  // ── Movies: waiting (recién estrenadas) + released (si force) ─────────────
+  // ── Movies: waiting (recién estrenadas) ─────────────
   const db = useDatabase();
-  const movieStatus = force ? "('waiting', 'released')" : "('waiting')";
+  const movieStatus = "('waiting')";
   const movieRows = db
     .prepare(
       `SELECT m.*, s.title, s.year, s.min_quality, s.max_size_mb, s.search_services_json, s.language,
@@ -572,26 +572,15 @@ async function grabAiredEpisodes(
   const today = localDateString();
   let queued = 0;
   for (const ep of episodes) {
-    // Solo emitidos y sin archivo ni grab previo.
+    // Solo emitidos y sin archivo ni grab previo. Los 'released' (ya emitidos)
+    // NUNCA se auto-encolan: se descargan solo con el botón manual de descarga.
     if (!ep.air_date || ep.air_date > today) continue;
+    if (ep.status === "released") continue;
     if (ep.file_path || ep.status === "downloaded" || ep.status === "grabbed") continue;
     queued++;
     await grabEpisode(sub, ep, "manual");
   }
   return queued;
-}
-
-/**
- * "Descargar temporada": busca y descarga los episodios emitidos de una temporada.
- * Lo llama el endpoint de descarga de temporada (acción manual del usuario).
- */
-export async function searchAndGrabSeason(
-  subscriptionId: number,
-  seasonNumber: number,
-): Promise<{ queued: number }> {
-  return {
-    queued: await grabAiredEpisodes(subscriptionId, listEpisodes(subscriptionId, { seasonNumber })),
-  };
 }
 
 /**
@@ -620,7 +609,9 @@ export async function searchAndGrabMovie(subscriptionId: number): Promise<{ queu
   const releaseDate = movie.digital_release_date ?? movie.theatrical_release_date;
 
   // Solo películas ya estrenadas; si no hay fecha o es futura, no hay nada que buscar.
+  // 'released' (ya estrenada) nunca se auto-encola: solo con el botón manual.
   if (!releaseDate || releaseDate > today) return { queued: 0 };
+  if (movie.status === "released") return { queued: 0 };
 
   try {
     const altTitles = await resolveAltTitles({

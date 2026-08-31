@@ -135,16 +135,6 @@
                   :model-value="Boolean(season.monitored)"
                   @update:model-value="(v: boolean) => toggleSeasonMonitored(season, v)"
                 />
-                <SButton
-                  variant="primary"
-                  size="sm"
-                  icon="mdi-download"
-                  class="ml-3"
-                  :loading="downloadingSeasonId === season.id"
-                  @click="downloadSeasonNow(season)"
-                >
-                  {{ $t("planner.downloadSeason") }}
-                </SButton>
               </div>
             </div>
 
@@ -275,7 +265,7 @@ import { usePlannerStatusDisplay, usePlannerHistoryDisplay, padEpisode, formatPl
 
 const route = useRoute();
 const { t } = useI18n();
-const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, downloadSeason, getSubscriptionHistory } = usePlanner();
+const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, getSubscriptionHistory } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const histDisplay = usePlannerHistoryDisplay();
 const { apiFetch, showToast } = useApi();
@@ -290,7 +280,6 @@ const searching = ref(false);
 const showDeleteModal = ref(false);
 const showDownloadDialog = ref(false);
 const downloadTarget = ref<any>(null);
-const downloadingSeasonId = ref<number | null>(null);
 const plexTag = ref(false);
 const plexConfigured = ref(false);
 const plexEpisodes = ref<Set<string>>(new Set()); // "season-episode" presentes en Plex
@@ -533,20 +522,6 @@ async function toggleEpisodeMonitored(ep: any, v: boolean) {
     ep.monitored = v ? 1 : 0;
   } catch (err: any) {
     errorMsg.value = err?.message ?? String(err);
-  }
-}
-
-async function downloadSeasonNow(season: any) {
-  downloadingSeasonId.value = season.id;
-  try {
-    await downloadSeason(id, season.id);
-    showToast(t("planner.seasonDownloadQueued"), "success", 3000);
-    // Los grabs se encolan en background; refrescamos para ver los estados.
-    setTimeout(load, 1500);
-  } catch (err: any) {
-    errorMsg.value = err?.message ?? String(err);
-  } finally {
-    downloadingSeasonId.value = null;
   }
 }
 

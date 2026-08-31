@@ -304,6 +304,17 @@ function _initSchema(db: DatabaseSync): void {
   if (!grabCols.some((c) => c.name === "last_attempt_at")) {
     db.exec("ALTER TABLE planner_grab_queue ADD COLUMN last_attempt_at TEXT");
   }
+  // Cola de tareas del planificador (post-proceso por pasos):
+  // locate → rename → move → done, avanzando un paso por ciclo de cron (1 min).
+  if (!grabCols.some((c) => c.name === "post_step")) {
+    db.exec("ALTER TABLE planner_grab_queue ADD COLUMN post_step TEXT");
+  }
+  if (!grabCols.some((c) => c.name === "located_path")) {
+    db.exec("ALTER TABLE planner_grab_queue ADD COLUMN located_path TEXT");
+  }
+  if (!grabCols.some((c) => c.name === "move_job_id")) {
+    db.exec("ALTER TABLE planner_grab_queue ADD COLUMN move_job_id TEXT");
+  }
 }
 
 // ─── Plugin repository helpers ───────────────────────────────────────────────

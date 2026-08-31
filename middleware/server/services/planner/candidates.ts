@@ -10,6 +10,8 @@ export interface ReleaseCandidate {
   hash: string | null;
   sizeMb: number | null;
   seeds: number | null;
+  sources: number | null;
+  username: string | null;
   service: string | null;
   rawName: string;
   title: string;
@@ -76,6 +78,8 @@ export function scoreCandidates(
       hash: it?.hash ?? null,
       sizeMb: it?.sizeMb ?? null,
       seeds: it?.seeds ?? null,
+      sources: it?.sources ?? null,
+      username: it?.username ?? null,
       service: it?.service ?? null,
       rawName: it?.rawName ?? parsed.raw,
       title: parsed.title,

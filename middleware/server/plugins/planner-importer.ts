@@ -19,7 +19,7 @@ import { recordGrabLog } from "../utils/planner-db";
 import { useTransmissionClient } from "../utils/transmission-client";
 import { useSlskdClient } from "../utils/slskd-client";
 import { useAmuleClient } from "../utils/amule-client";
-import { postProcessGrab } from "../utils/planner-postprocess";
+import { runPostProcessTasks } from "../utils/planner-postprocess";
 
 const GUARD_KEY = "__transmule_planner_importer_started__";
 const INTERVAL_MS = 60_000;
@@ -29,6 +29,8 @@ export default defineNitroPlugin(() => {
   (globalThis as any)[GUARD_KEY] = true;
 
   setInterval(checkCompleted, INTERVAL_MS);
+  setInterval(runPostProcessTasks, INTERVAL_MS); // cola de tareas: 1 paso por ciclo
+  setTimeout(runPostProcessTasks, 60_000); // 1 min tras boot
   setInterval(recoverStuckGrabs, 5 * 60_000); // cada 5 min
   setTimeout(recoverStuckGrabs, 60_000); // 1 min tras boot
   setInterval(recoverFailedGrabs, 60 * 60_000); // reintentos de fallos: cada hora
@@ -184,18 +186,7 @@ async function checkCompleted(): Promise<void> {
 
   // Grabs dispatched que aún no han completado
   const grabs = db
-    .prepare(
-      `SELECT g.*,
-              s.title AS sub_title, s.root_folder, s.smart_rename, s.plex_scan,
-              e.season_number, e.episode_number, e.title AS episode_title,
-              m.theatrical_release_date AS movie_theatrical,
-              m.digital_release_date AS movie_digital
-       FROM planner_grab_queue g
-       LEFT JOIN planner_subscriptions s ON s.id = g.subscription_id
-       LEFT JOIN planner_episodes e ON e.id = g.episode_id
-       LEFT JOIN planner_movies m ON m.id = g.movie_id
-       WHERE g.state = 'dispatched'`,
-    )
+    .prepare(`SELECT * FROM planner_grab_queue WHERE state = 'dispatched'`)
     .all() as unknown as Array<Record<string, any>>;
 
   for (const grab of grabs) {
@@ -231,9 +222,11 @@ async function checkCompleted(): Promise<void> {
     }
 
     if (done) {
-      const now = new Date().toISOString();
+      // El cliente de descarga terminó → entra en la cola de post-proceso.
+      // NO marcamos 'downloaded' todavía: ese estado significa "el archivo
+      // existe en la carpeta de destino" (lo pone el post-proceso al final).
       db.prepare(
-        "UPDATE planner_grab_queue SET state = 'completed' WHERE id = ?",
+        "UPDATE planner_grab_queue SET state = 'completed', post_step = 'locate' WHERE id = ?",
       ).run(grab.id);
       recordGrabLog({
         subscription_id: grab.subscription_id,
@@ -241,49 +234,9 @@ async function checkCompleted(): Promise<void> {
         movie_id: grab.movie_id ?? null,
         grab_id: grab.id,
         event: "completed",
-        message: `descargado (${grab.service})${grab.release_title ? ": " + grab.release_title : ""}`,
+        message: `descargado (${grab.service})${grab.release_title ? ": " + grab.release_title : ""} — esperando post-proceso`,
       });
-
-      if (grab.episode_id) {
-        db.prepare(
-          `UPDATE planner_episodes
-           SET status = 'downloaded', downloaded_at = ?, file_path = NULL
-           WHERE id = ? AND status = 'grabbed'`,
-        ).run(now, grab.episode_id);
-        console.log(`[planner] episode #${grab.episode_id} completed (grab #${grab.id})`);
-      }
-      if (grab.movie_id) {
-        db.prepare(
-          `UPDATE planner_movies
-           SET status = 'downloaded', downloaded_at = ?
-           WHERE id = ? AND status = 'grabbed'`,
-        ).run(now, grab.movie_id);
-        console.log(`[planner] movie #${grab.movie_id} completed (grab #${grab.id})`);
-      }
-
-      // Post-proceso: mover a la carpeta destino (root_folder) + smart rename.
-      // Se ejecuta en background — el contenido YA está descargado; el movimiento
-      // (posiblemente a un share SMB) no debe bloquear el ciclo del importer.
-      const thDate = (d: any) => (d ? String(d).slice(0, 4) : null);
-      void postProcessGrab({
-        id: grab.id,
-        subscription_id: grab.subscription_id,
-        service: grab.service,
-        release_hash: grab.release_hash ?? null,
-        release_title: grab.release_title ?? null,
-        episode_id: grab.episode_id ?? null,
-        movie_id: grab.movie_id ?? null,
-        sub_title: grab.sub_title ?? null,
-        root_folder: grab.root_folder ?? null,
-        smart_rename: grab.smart_rename ?? 0,
-        plex_scan: grab.plex_scan ?? 0,
-        season_number: grab.season_number ?? null,
-        episode_number: grab.episode_number ?? null,
-        episode_title: grab.episode_title ?? null,
-        movie_year: Number(thDate(grab.movie_theatrical) ?? thDate(grab.movie_digital) ?? 0) || null,
-      }).catch((err: any) => {
-        console.error(`[planner] post-proceso grab #${grab.id}: ${err?.message ?? err}`);
-      });
+      console.log(`[planner] grab #${grab.id} completed (${grab.service}) → post-proceso`);
     }
   }
 }
