@@ -99,6 +99,7 @@ export interface ReleaseCandidate {
   hash: string | null;
   sizeMb: number | null;
   seeds: number | null;
+  leechers: number | null;
   sources: number | null;
   username: string | null;
   service: string | null;
