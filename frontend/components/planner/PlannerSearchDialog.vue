@@ -76,11 +76,15 @@
         <span v-if="row.service === 'slskd' && row.username" class="has-text-grey is-size-7">
           <span class="mdi mdi-account" /> {{ row.username }}
         </span>
-        <span v-else-if="row.service === 'amule' && row.sources != null" class="has-text-success">
-          <span class="mdi mdi-donkey" /> {{ row.sources }}
+        <span v-else-if="row.service === 'amule'" class="psd-peers">
+          <span class="has-text-success">{{ row.sources ?? '—' }}</span>
+          <span class="psd-peers-sep">/</span>
+          <span class="has-text-grey">—</span>
         </span>
-        <span v-else-if="row.seeds != null" class="has-text-success">
-          <span class="mdi mdi-arrow-up-bold" /> {{ row.seeds }}
+        <span v-else-if="row.service === 'direct-plugin'" class="psd-peers">
+          <span class="has-text-success">{{ row.seeds ?? '—' }}</span>
+          <span class="psd-peers-sep">/</span>
+          <span class="has-text-danger">{{ row.leechers ?? '—' }}</span>
         </span>
         <span v-else class="has-text-grey">—</span>
       </template>
@@ -180,7 +184,7 @@ const columns = computed(() => [
   { prop: "name", label: t("planner.release") },
   { prop: "quality", label: t("planner.quality"), width: "110px" },
   { prop: "size", label: t("planner.size"), width: "100px" },
-  { prop: "seeds", label: t("planner.sources"), width: "80px" },
+  { prop: "seeds", label: t("planner.sources"), width: "90px" },
   { prop: "languages", label: t("planner.language"), width: "130px" },
   { prop: "score", label: t("planner.score"), width: "70px", align: "right" as const },
   { prop: "actions", label: "", width: "110px" },
@@ -387,5 +391,15 @@ onUnmounted(() => abortCtrl.value?.abort());
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--s-accent, #22d3ee);
+}
+.psd-peers {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.psd-peers-sep {
+  color: var(--s-text-muted, #999);
 }
 </style>

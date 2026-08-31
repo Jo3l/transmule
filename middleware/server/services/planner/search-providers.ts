@@ -44,6 +44,8 @@ export interface SearchResultItem {
   sizeMb?: number;
   /** Seeds (solo torrents) */
   seeds?: number;
+  /** Leechers (solo torrents) */
+  leechers?: number;
   /** Fuentes (aMule: número total de fuentes) */
   sources?: number;
   /** Usuario que comparte el archivo (slskd) */
@@ -183,6 +185,7 @@ async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[
         hash: r.infoHash,
         sizeMb: r.size != null ? Math.round(r.size / 1024 / 1024) : undefined,
         seeds: r.seeders,
+        leechers: r.leechers,
         service: "direct-plugin" as const,
         parsed: parseReleaseName(r.name),
         rawName: r.name,
