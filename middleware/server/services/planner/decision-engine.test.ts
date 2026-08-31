@@ -378,5 +378,29 @@ const multiEsDecision = pickBest({
 });
 expectEq(multiEsDecision.rejected.length, 1, "Multi: MULTi se rechaza para 'es' (España)");
 
+// ── Caso 19: V.O.S./subs integrados → NO cuenta como español localizado ─────
+// "Spanish subs" describe SUBTÍTULOS, no audio: el release se puntúa como
+// sin idioma (-100) en vez de +1000 (falso positivo reportado en el buscador).
+const voseReleases = [
+  "Star Trek Strange New Worlds (2022) 4x06 1080p - Off-Hour (V.O.S. Spa-Eng) - Spanish subs integrados by JuAnItO.mkv",
+  "Star.Trek.Strange.New.Worlds.S04E06.1080p.WEB-DL.x264-ESP.mkv",
+].map(parseReleaseName);
+
+const voseDecision = pickBest({
+  releases: voseReleases,
+  expectedTitle: "Star Trek Strange New Worlds",
+  season: 4,
+  episode: 6,
+  minQuality: "fullhd",
+  languageProfile: { mustHave: ["es"], allowUnknownLang: true },
+});
+const voseEval = voseDecision.evaluated.find((e) => e.release.languages[0] === "subs");
+const espEval = voseDecision.evaluated.find((e) => e.release.languages.includes("spanish"));
+assert(voseEval !== undefined, "Vose: evaluado, no rechazado");
+assert(espEval !== undefined, "Vose: el release ESP también evaluado");
+expectEq(voseEval?.languageScore, -100, "Vose: -100 como no localizado (NO +1000)");
+expectEq(espEval?.languageScore, 1000, "Vose: el release ESP sí suma +1000");
+assert(voseEval!.total < espEval!.total, "Vose: V.O.S. queda por debajo del español real");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

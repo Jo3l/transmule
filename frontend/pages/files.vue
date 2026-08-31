@@ -84,7 +84,7 @@
           <SButton
             v-if="isAdmin"
             size="sm"
-            @click="showNewFolderDialog = true"
+            @click="openNewFolderDialog()"
             icon="mdi-folder-plus"
           >
             {{ $t("fileManager.newFolder") }}
@@ -220,26 +220,13 @@
       </div>
     </template>
 
-    <!-- ── New Folder dialog ─────────────────────────────────────────── -->
-    <SDialog v-model="showNewFolderDialog" :title="$t('fileManager.newFolder')">
-      <SFormItem :label="$t('fileManager.folderName')">
-        <SInput
-          v-model="newFolderName"
-          :placeholder="$t('fileManager.folderNamePlaceholder')"
-          @enter="doNewFolder"
-        />
-      </SFormItem>
-      <template #footer>
-        <div class="flex-end gap-sm">
-          <SButton @click="showNewFolderDialog = false">
-            {{ $t("fileManager.cancel") }}
-          </SButton>
-          <SButton variant="primary" :loading="working" @click="doNewFolder">
-            {{ $t("fileManager.create") }}
-          </SButton>
-        </div>
-      </template>
-    </SDialog>
+    <!-- ── New Folder dialog (barra de acciones; el del mover/copiar lo
+             gestiona FolderPickerDialog internamente) ─────────────────── -->
+    <FolderCreateDialog
+      v-model="showNewFolderDialog"
+      :base-path="currentPath"
+      @created="onNewFolderCreated"
+    />
 
     <!-- ── Rename dialog ─────────────────────────────────────────────── -->
     <SDialog v-model="showRenameDialog" :title="$t('fileManager.rename')">
@@ -499,11 +486,11 @@
     </div>
   </Teleport>
 
-  <!-- ── Move / Copy dialog ───────────────────────────────────────── -->
-  <SDialog
+  <!-- ── Move / Copy dialog (FolderPickerDialog compartido) ──────────── -->
+  <FolderPickerDialog
     v-model="showTransferDialog"
+    v-model:path="transferDest"
     :title="transferMode === 'move' ? $t('fileManager.moveTitle') : $t('fileManager.copyTitle')"
-    width="480px"
   >
     <p class="is-size-7 has-text-grey mb-3">
       {{
@@ -513,25 +500,21 @@
         })
       }}
     </p>
-    <FolderPicker v-model="transferDest" :key="'fp-transfer-' + showTransferDialog" />
-    <template #footer>
-      <div class="flex-end gap-sm">
-        <SButton @click="showTransferDialog = false">{{ $t("fileManager.cancel") }}</SButton>
-        <SButton
-          :variant="transferMode === 'move' ? 'warning' : 'primary'"
-          :disabled="!transferDest && transferDest !== ''"
-          @click="doTransfer"
-        >
-          <span
-            :class="
-              transferMode === 'move' ? 'mdi mdi-folder-move mr-1' : 'mdi mdi-content-copy mr-1'
-            "
-          />
-          {{ transferMode === "move" ? $t("fileManager.move") : $t("fileManager.copy") }}
-        </SButton>
-      </div>
+    <template #confirm>
+      <SButton
+        :variant="transferMode === 'move' ? 'warning' : 'primary'"
+        :disabled="!transferDest && transferDest !== ''"
+        @click="doTransfer"
+      >
+        <span
+          :class="
+            transferMode === 'move' ? 'mdi mdi-folder-move mr-1' : 'mdi mdi-content-copy mr-1'
+          "
+        />
+        {{ transferMode === "move" ? $t("fileManager.move") : $t("fileManager.copy") }}
+      </SButton>
     </template>
-  </SDialog>
+  </FolderPickerDialog>
 
   <!-- ── Webamp player ──────────────────────────────────────────────── -->
   <!-- Mounted in default.vue layout so it survives route changes -->
@@ -1020,7 +1003,6 @@ const fileInputEl = ref<HTMLInputElement>();
 
 // ── Dialog state ───────────────────────────────────────────────────────────
 const showNewFolderDialog = ref(false);
-const newFolderName = ref("");
 
 // ── Remote mounts state ────────────────────────────────────────────────────
 const remoteMounts = ref<RemoteMount[]>([]);
@@ -2058,26 +2040,14 @@ function uploadFiles(files: File[]) {
   xhr.send(formData);
 }
 
-// ── New folder ─────────────────────────────────────────────────────────────
-watch(showNewFolderDialog, (v) => {
-  if (v) newFolderName.value = "";
-});
+// ── New folder (FolderCreateDialog de la barra de acciones) ────────────────
+function openNewFolderDialog() {
+  showNewFolderDialog.value = true;
+}
 
-async function doNewFolder() {
-  const name = newFolderName.value.trim();
-  if (!name) return;
-  working.value = true;
-  try {
-    const path = currentPath.value ? `${currentPath.value}/${name}` : name;
-    await apiFetch("/api/files/mkdir", { method: "POST", body: { path } });
-    showNewFolderDialog.value = false;
-    loadDir();
-    folderTreeRef.value?.refresh();
-  } catch (err: any) {
-    showToast(err?.data?.statusMessage ?? t("errors.middlewareError", { status: 0 }), "error");
-  } finally {
-    working.value = false;
-  }
+function onNewFolderCreated() {
+  loadDir();
+  folderTreeRef.value?.refresh();
 }
 
 // ── Remote mounts ──────────────────────────────────────────────────────────

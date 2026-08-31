@@ -202,18 +202,13 @@
         @grabbed="onGrabbed"
       />
 
-      <!-- Selector de carpeta de destino (mismo componente que el file manager) -->
-      <SDialog v-model="showFolderPicker" :title="$t('planner.chooseFolder')" width="480px">
-        <FolderPicker v-model="pickerPath" :key="'fp-detail-' + showFolderPicker" />
-        <template #footer>
-          <div class="flex-end gap-sm">
-            <SButton @click="showFolderPicker = false">{{ $t("planner.cancel") }}</SButton>
-            <SButton variant="primary" @click="confirmFolder">
-              {{ $t("planner.useFolder") }}
-            </SButton>
-          </div>
-        </template>
-      </SDialog>
+      <!-- Selector de carpeta de destino (FolderPickerDialog compartido con el file manager) -->
+      <FolderPickerDialog
+        v-model="showFolderPicker"
+        v-model:path="pickerPath"
+        :title="$t('planner.chooseFolder')"
+        @select="onFolderPicked"
+      />
     </div>
   </SLoading>
 </template>
@@ -248,9 +243,16 @@ const cfgSmartRename = ref(false);
 const cfgPlexScan = ref(false);
 const savingCfg = ref(false);
 
-// Selector de carpeta de destino (mismo patrón que el add flow)
+// Selector de carpeta de destino (FolderPickerDialog compartido)
 const showFolderPicker = ref(false);
 const pickerPath = ref("");
+
+function onFolderPicked(p: string) {
+  let v = (p ?? "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!v || v === "home" || v === "downloads") v = "downloads";
+  else if (v.startsWith("home/")) v = "downloads/" + v.slice(5);
+  cfgRootFolder.value = v;
+}
 
 function openFolderPicker() {
   let cur = cfgRootFolder.value.replace(/^\/+/, "").replace(/\/+$/, "");
@@ -258,14 +260,6 @@ function openFolderPicker() {
   else cur = cur.replace(/^downloads\//, "home/");
   pickerPath.value = cur;
   showFolderPicker.value = true;
-}
-
-function confirmFolder() {
-  let p = pickerPath.value.trim().replace(/^\/+/, "").replace(/\/+$/, "");
-  if (!p || p === "home" || p === "downloads") p = "downloads";
-  else if (p.startsWith("home/")) p = "downloads/" + p.slice(5);
-  cfgRootFolder.value = p;
-  showFolderPicker.value = false;
 }
 
 function loadConfig() {
