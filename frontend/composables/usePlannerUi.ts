@@ -78,6 +78,9 @@ const HISTORY_EVENT_LABELS: Record<string, string> = {
   postprocess_moved: "planner.historyEventPostprocessMoved",
   postprocess_failed: "planner.historyEventPostprocessFailed",
   postprocess_plex: "planner.historyEventPostprocessPlex",
+  postprocess_located: "planner.historyEventPostprocessLocated",
+  postprocess_renamed: "planner.historyEventPostprocessRenamed",
+  postprocess_move_queued: "planner.historyEventPostprocessMoveQueued",
 };
 
 /**
@@ -110,7 +113,14 @@ export function usePlannerHistoryDisplay() {
       )
         return "danger";
       if (row.event === "requeued" || row.event === "stuck_recovered") return "warning";
-      if (row.event === "dispatched" || row.event === "postprocess_plex") return "info";
+      if (
+        row.event === "dispatched" ||
+        row.event === "postprocess_plex" ||
+        row.event === "postprocess_located" ||
+        row.event === "postprocess_renamed" ||
+        row.event === "postprocess_move_queued"
+      )
+        return "info";
       return "default";
     }
     if (row.status === "grabbed") return "success";

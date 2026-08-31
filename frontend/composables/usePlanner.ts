@@ -99,6 +99,8 @@ export interface ReleaseCandidate {
   hash: string | null;
   sizeMb: number | null;
   seeds: number | null;
+  sources: number | null;
+  username: string | null;
   service: string | null;
   rawName: string;
   title: string;
@@ -178,13 +180,6 @@ export function usePlanner() {
     return apiFetch<PlannerEpisode>(
       `/api/planner/subscriptions/${subId}/episodes/${epId}`,
       { method: "PATCH", body },
-    );
-  }
-
-  async function downloadSeason(subId: number, seasonId: number) {
-    return apiFetch<{ ok: boolean; started: boolean }>(
-      `/api/planner/subscriptions/${subId}/seasons/${seasonId}/download`,
-      { method: "POST" },
     );
   }
 
@@ -317,7 +312,6 @@ export function usePlanner() {
     searchSubscription,
     getSubscriptionHistory,
     updateEpisode,
-    downloadSeason,
     searchTmdb,
     searchTvdb,
     searchSeries,

@@ -1,24 +1,35 @@
 /**
- * Post-procesado de grabs del planificador (iteración "librarian").
+ * Post-proceso de grabs del planificador — COLA DE TAREAS POR PASOS.
  *
- * Cuando un grab del planificador completa en CUALQUIER red (transmission,
- * slskd, amule, pyload), este módulo:
- *   1. Localiza el archivo descargado en el volumen compartido (/downloads).
- *   2. Lo MUEVE a la carpeta destino (root_folder) de la subscription
- *      (local↔local rename instantáneo, local→SMB upload + delete).
- *   3. Opcionalmente aplica un "smart rename" (formato limpio de episodio
- *      o película) si la subscription tiene `smart_rename` activado.
+ * Cuando un grab del planificador completa su descarga (lo detecta el importer),
+ * se marca `post_step = 'locate'` y este módulo avanza UN paso por ciclo de
+ * cron (1 minuto):
  *
- * Reutiliza el motor de transferencia compartido (transfer-engine) — el mismo
- * que usa el file manager — para que el comportamiento local/SMB sea idéntico.
+ *   locate  — ¿existe el archivo descargado en /downloads? (reintenta hasta
+ *             que el cliente de descarga lo deje en el volumen compartido)
+ *   rename  — si la subscription tiene `smart_rename`, aplica el renombrado
+ *             limpio (Series - S01E02 - Título.ext) en el sitio.
+ *   move    — si el destino no es la carpeta por defecto, encola un movimiento
+ *             en la cola del systray (igual que el file manager) y espera a que
+ *             el archivo aparezca en la carpeta de destino.
+ *   done    — archivo en destino: marca el episodio/película `downloaded` y
+ *             guarda `file_path`.
+ *
+ * Así `downloaded` significa SIEMPRE "el archivo existe en la carpeta de
+ * destino", y el largo tiempo entre "el servicio terminó" y "el archivo aparece
+ * en /downloads" ya no rompe el proceso (se reintenta cada minuto sin límite).
+ *
+ * Reutiliza el motor de transferencia compartido (transfer-engine) y la cola
+ * del systray (transfer-queue).
  */
 
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, basename } from "node:path";
 import { useDatabase, getConfig } from "./database";
 import { recordGrabLog } from "./planner-db";
-import { getDownloadsRoot } from "./remoteMounts";
+import { getDownloadsRoot, resolveVirtualPath, smbStat } from "./remoteMounts";
 import { movePath } from "./transfer-engine";
+import { enqueueTransferJob, isPathInActiveTransfer } from "./transfer-queue";
 import { useTransmissionClient } from "./transmission-client";
 import { useSlskdClient } from "./slskd-client";
 import { useAmuleClient } from "./amule-client";
@@ -29,18 +40,7 @@ import {
   normalizeLocale,
 } from "~/services/smart-rename";
 
-// Localización del archivo descargado: reintentos con espera. aMule/slskd no
-// son síncronos — al marcar "completado" el fichero puede tardar en aparecer
-// en el volumen compartido (hashing + movimiento a incoming). Reintentamos con
-// backoff fijo de 30s antes de rendirnos.
-const LOCATE_RETRIES = 6;
-const LOCATE_RETRY_MS = 30_000;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-/** Datos del grab enriquecidos con la subscription (query del importer). */
+/** Datos del grab enriquecidos con la subscription (query del post-proceso). */
 export interface PostProcessGrab {
   id: number;
   subscription_id: number;
@@ -49,14 +49,12 @@ export interface PostProcessGrab {
   release_title: string | null;
   episode_id: number | null;
   movie_id: number | null;
-  sub_title: string | null;
   root_folder: string | null;
   smart_rename: number | boolean;
   plex_scan: number | boolean;
-  season_number?: number | null;
-  episode_number?: number | null;
-  episode_title?: string | null;
-  movie_year?: number | null;
+  post_step: string | null;
+  located_path: string | null;
+  move_job_id: string | null;
 }
 
 export interface LocatedFile {
@@ -76,12 +74,10 @@ function norm(s: string): string {
 
 /**
  * Nombre final del smart rename usando el MISMO cleaner que el file manager
- * (services/smart-rename): parsea el nombre del archivo descargado, limpia el
- * ruido (1080p, codecs, tags...) y verifica el título con TMDB/TVDB si están
- * configurados. Devuelve null si no se puede determinar un nombre razonable
- * (tipo desconocido o el fallback "File" del cleaner) — entonces no se renombra.
+ * (services/smart-rename). Devuelve null si no se puede determinar un nombre
+ * razonable (tipo desconocido o el fallback "File" del cleaner).
  */
-async function suggestSmartRename(located: LocatedFile): Promise<string | null> {
+async function suggestSmartRename(virtual: string): Promise<string | null> {
   const tmdbPreferredLocales = buildProviderPreferredLocales(
     normalizeLocale(getConfig("tmdb_locale") ?? ""),
     [],
@@ -91,15 +87,14 @@ async function suggestSmartRename(located: LocatedFile): Promise<string | null> 
     [],
   );
 
-  const res = await getSmartRenameSuggestion(located.virtual, {
+  const res = await getSmartRenameSuggestion(virtual, {
     tmdbPreferredLocales,
     tvdbPreferredLocales,
     includeCleanup: true,
     includeIntegrations: true,
   });
 
-  // "File"/"File.ext" es el marcador del cleaner cuando no reconoce el tipo;
-  // renombrar a eso sería destructivo.
+  // "File"/"File.ext" es el marcador del cleaner cuando no reconoce el tipo.
   const stem = String(res.suggested ?? "").replace(/\.[^.]+$/, "");
   if (res.type === "unknown" || /^file$/i.test(stem)) return null;
   return res.suggested;
@@ -140,7 +135,6 @@ async function searchByName(
       if (ent.name.includes(".part") || ent.name.endsWith(".!ut") || ent.name === "@@") continue;
       const abs = join(dir, ent.name);
       if (!norm(ent.name)) continue;
-      // Match por nombre (includes normalizado)
       const nm = norm(ent.name);
       if (nm.includes(target) || target.includes(nm)) {
         let mtime = 0;
@@ -218,7 +212,6 @@ async function locateAmule(grab: PostProcessGrab): Promise<LocatedFile | null> {
     if (!name) return null;
     const candidates = [name];
     const root = getDownloadsRoot().replace(/\/+$/, "");
-    // Si aMule devuelve solo el nombre (no la ruta), buscar en /downloads
     if (!name.startsWith("/")) {
       candidates.push(join(root, name));
       candidates.push(join(root, "temp", name));
@@ -238,8 +231,6 @@ async function locateGrabbedFile(grab: PostProcessGrab): Promise<LocatedFile | n
   switch (grab.service) {
     case "transmission":
     case "direct-plugin":
-      // Fallback por nombre: si el torrent ya no está en transmission (auto-remove
-      // tras seedear, o hash que no casa), igual se localiza en /downloads por título.
       return (await locateTransmission(grab)) ?? (await searchByName(grab.release_title));
     case "slskd":
       return (await locateSlskd(grab)) ?? (await searchByName(grab.release_title));
@@ -250,17 +241,25 @@ async function locateGrabbedFile(grab: PostProcessGrab): Promise<LocatedFile | n
   }
 }
 
-// ─── Post-proceso principal ──────────────────────────────────────────────────
+// ─── Post-proceso principal (un paso por ciclo) ──────────────────────────────
 
 function rootIsDefault(rootFolder: string | null): boolean {
   const r = (rootFolder || "").trim().replace(/^\/+/, "").replace(/\/+$/, "");
   return !r || r === "home" || r === "downloads";
 }
 
-/**
- * Registra un paso del post-proceso en el log de la serie (planner_grab_log),
- * para que el historial muestre "dónde mirar" si algo falla. Nunca lanza.
- */
+/** ¿Existe una ruta virtual (local o SMB)? */
+async function virtualExists(rel: string): Promise<boolean> {
+  const r = resolveVirtualPath(rel);
+  if (!r) return false;
+  if (r.type === "local") return existsSync(r.absPath);
+  try {
+    return !!(await smbStat(r.config, r.subPath));
+  } catch {
+    return false;
+  }
+}
+
 function logGrab(grab: PostProcessGrab, event: string, message: string): void {
   try {
     recordGrabLog({
@@ -272,110 +271,15 @@ function logGrab(grab: PostProcessGrab, event: string, message: string): void {
       message,
     });
   } catch {
-    /* el log es informativo; nunca romper el post-proceso */
+    /* el log es informativo */
   }
 }
 
-/** Rescan de Plex + constancia en el log de la serie. */
 function logPlexScan(grab: PostProcessGrab, ctx: string): void {
   logGrab(grab, "postprocess_plex", "rescan de Plex lanzado");
   triggerPlexRefresh(ctx);
 }
 
-/**
- * Mueve el archivo del grab a la carpeta destino y (si está activado) aplica
- * el smart rename. Actualiza file_path en la BD. Nunca lanza: registra el
- * error en last_error del grab para que sea visible.
- */
-export async function postProcessGrab(grab: PostProcessGrab): Promise<void> {
-  const db = useDatabase();
-  const smartRename = grab.smart_rename === 1 || grab.smart_rename === true;
-  const plexScan = grab.plex_scan === 1 || grab.plex_scan === true;
-  const defaultRoot = rootIsDefault(grab.root_folder);
-  if (defaultRoot && !smartRename && !plexScan) return; // nada que hacer
-
-  let located = await locateGrabbedFile(grab);
-  if (!located) {
-    // El archivo puede tardar en aparecer en el volumen compartido tras
-    // completar la descarga (aMule/slskd mueven y hashean el fichero al final).
-    // Reintentar con espera antes de rendirse.
-    logGrab(
-      grab,
-      "postprocess_retry",
-      `archivo no localizado aún (${grab.service}) — reintentando cada ${LOCATE_RETRY_MS / 1000}s (máx ${LOCATE_RETRIES} intentos)`,
-    );
-    for (let attempt = 1; attempt <= LOCATE_RETRIES && !located; attempt++) {
-      await sleep(LOCATE_RETRY_MS);
-      located = await locateGrabbedFile(grab);
-    }
-  }
-  if (!located) {
-    // El archivo está en el volumen aunque no lo hayamos localizado para
-    // moverlo — si plex_scan está activo, refrescar Plex igualmente.
-    logGrab(
-      grab,
-      "postprocess_failed",
-      `no se localizó el archivo descargado (${grab.service}) tras ${LOCATE_RETRIES} reintentos`,
-    );
-    if (plexScan) logPlexScan(grab, `grab #${grab.id} (no ubicado)`);
-    console.warn(
-      `[planner] post-proceso grab #${grab.id}: no se localizó el archivo (${grab.service}, '${grab.release_title ?? ""}')`,
-    );
-    return;
-  }
-
-  const newName = smartRename ? await suggestSmartRename(located) : null;
-  const finalName = newName && newName !== located.name ? newName : null;
-
-  let destVirtual: string;
-  if (defaultRoot) {
-    // Solo rename en el sitio actual
-    destVirtual = finalName
-      ? located.virtual.slice(0, located.virtual.lastIndexOf("/") + 1) + finalName
-      : located.virtual;
-  } else {
-    const root = (grab.root_folder || "").replace(/^\/+/, "").replace(/\/+$/, "");
-    destVirtual = root + "/" + (finalName ?? located.name);
-  }
-
-  if (destVirtual === located.virtual) {
-    // El destino no cambia (ni carpeta ni nombre) — solo registrar file_path
-    setFilePath(db, grab, located.virtual);
-    if (plexScan) logPlexScan(grab, `grab #${grab.id}`);
-    return;
-  }
-
-  const renamed = newName != null && newName !== located.name;
-  try {
-    await movePath(located.virtual, destVirtual);
-    logGrab(
-      grab,
-      "postprocess_moved",
-      `movido '${located.virtual}' → '${destVirtual}'${renamed ? " (smart rename)" : ""}`,
-    );
-    console.log(
-      `[planner] grab #${grab.id}: movido '${located.virtual}' → '${destVirtual}'${renamed ? " (smart rename)" : ""}`,
-    );
-    setFilePath(db, grab, destVirtual);
-    db.prepare(
-      "UPDATE planner_grab_queue SET last_error = NULL WHERE id = ?",
-    ).run(grab.id);
-    if (plexScan) logPlexScan(grab, `grab #${grab.id}`);
-  } catch (err: any) {
-    const msg = `post-process: ${err?.message ?? err}`;
-    logGrab(grab, "postprocess_failed", msg);
-    db.prepare(
-      "UPDATE planner_grab_queue SET last_error = ? WHERE id = ?",
-    ).run(msg, grab.id);
-    console.error(`[planner] grab #${grab.id}: fallo al mover: ${msg}`);
-  }
-}
-
-/**
- * Dispara un rescan de Plex en background (nunca lanza; solo loguea).
- * Se ejecuta desconectado del flujo — el rescan de Plex no debe bloquear
- * ni romper el post-proceso si el servidor está caído o mal configurado.
- */
 function triggerPlexRefresh(ctx: string): void {
   void refreshPlexLibraries()
     .then((res) => {
@@ -402,5 +306,175 @@ function setFilePath(
     }
   } catch {
     /* file_path es informativo */
+  }
+}
+
+/** Marca el grab como completado: archivo en destino + episodio/película 'downloaded'. */
+function finalize(grab: PostProcessGrab, destVirtual: string): void {
+  const db = useDatabase();
+  const now = new Date().toISOString();
+  const plexScan = grab.plex_scan === 1 || grab.plex_scan === true;
+
+  setFilePath(db, grab, destVirtual);
+  db.prepare(
+    "UPDATE planner_grab_queue SET post_step = 'done', last_error = NULL, move_job_id = NULL WHERE id = ?",
+  ).run(grab.id);
+
+  if (grab.episode_id) {
+    db.prepare(
+      "UPDATE planner_episodes SET status = 'downloaded', downloaded_at = ? WHERE id = ? AND status = 'grabbed'",
+    ).run(now, grab.episode_id);
+  }
+  if (grab.movie_id) {
+    db.prepare(
+      "UPDATE planner_movies SET status = 'downloaded', downloaded_at = ? WHERE id = ? AND status = 'grabbed'",
+    ).run(now, grab.movie_id);
+  }
+
+  logGrab(grab, "postprocess_moved", `archivo en destino: '${destVirtual}'`);
+  console.log(`[planner] grab #${grab.id}: archivo en destino '${destVirtual}'`);
+  if (plexScan) logPlexScan(grab, `grab #${grab.id}`);
+}
+
+/** Mapea una fila de la query al tipo PostProcessGrab. */
+function toPostProcessGrab(row: Record<string, any>): PostProcessGrab {
+  return {
+    id: row.id,
+    subscription_id: row.subscription_id,
+    service: row.service,
+    release_hash: row.release_hash ?? null,
+    release_title: row.release_title ?? null,
+    episode_id: row.episode_id ?? null,
+    movie_id: row.movie_id ?? null,
+    root_folder: row.root_folder ?? null,
+    smart_rename: row.smart_rename ?? 0,
+    plex_scan: row.plex_scan ?? 0,
+    post_step: row.post_step ?? null,
+    located_path: row.located_path ?? null,
+    move_job_id: row.move_job_id ?? null,
+  };
+}
+
+/**
+ * Lanza todas las tareas del planificador pendientes, ejecutando UN paso de
+ * cada una. Lo llama el importer cada 60 segundos.
+ */
+export async function runPostProcessTasks(): Promise<void> {
+  const db = useDatabase();
+  const rows = db
+    .prepare(
+      `SELECT g.*, s.root_folder, s.smart_rename, s.plex_scan
+       FROM planner_grab_queue g
+       LEFT JOIN planner_subscriptions s ON s.id = g.subscription_id
+       WHERE g.post_step IN ('locate', 'rename', 'move')`,
+    )
+    .all() as unknown as Array<Record<string, any>>;
+
+  for (const row of rows) {
+    const grab = toPostProcessGrab(row);
+    try {
+      await runPostProcessStep(grab);
+    } catch (err: any) {
+      console.error(`[planner] post-process step failed for grab #${grab.id}:`, err?.message);
+    }
+  }
+}
+
+/** Ejecuta UN paso del post-proceso de un grab. */
+async function runPostProcessStep(grab: PostProcessGrab): Promise<void> {
+  const db = useDatabase();
+  const smartRename = grab.smart_rename === 1 || grab.smart_rename === true;
+
+  switch (grab.post_step) {
+    // 1) ¿Existe el archivo descargado en /downloads?
+    case "locate": {
+      const located = await locateGrabbedFile(grab);
+      if (!located) return; // reintentar el próximo ciclo (el archivo puede tardar)
+      db.prepare(
+        "UPDATE planner_grab_queue SET located_path = ?, post_step = ? WHERE id = ?",
+      ).run(located.virtual, smartRename ? "rename" : "move", grab.id);
+      logGrab(
+        grab,
+        "postprocess_located",
+        `archivo localizado: '${located.virtual}' (${grab.service})`,
+      );
+      return;
+    }
+
+    // 2) ¿Aplicar smart rename? (en el sitio)
+    case "rename": {
+      const virtual = grab.located_path;
+      if (!virtual) {
+        db.prepare("UPDATE planner_grab_queue SET post_step = 'move' WHERE id = ?").run(grab.id);
+        return;
+      }
+      let newName: string | null = null;
+      try {
+        newName = await suggestSmartRename(virtual);
+      } catch {
+        newName = null;
+      }
+      const current = basename(virtual);
+      if (newName && newName !== current) {
+        const dir = virtual.slice(0, virtual.lastIndexOf("/") + 1);
+        const newVirtual = dir + newName;
+        try {
+          await movePath(virtual, newVirtual);
+          db.prepare(
+            "UPDATE planner_grab_queue SET located_path = ?, post_step = 'move' WHERE id = ?",
+          ).run(newVirtual, grab.id);
+          logGrab(grab, "postprocess_renamed", `renombrado '${current}' → '${newName}'`);
+          return;
+        } catch (err: any) {
+          const msg = `post-process rename: ${err?.message ?? err}`;
+          logGrab(grab, "postprocess_failed", msg);
+          db.prepare("UPDATE planner_grab_queue SET last_error = ? WHERE id = ?").run(msg, grab.id);
+          return; // reintentar el próximo ciclo
+        }
+      }
+      db.prepare("UPDATE planner_grab_queue SET post_step = 'move' WHERE id = ?").run(grab.id);
+      return;
+    }
+
+    // 3) ¿Ya está en destino o hay que moverlo?
+    case "move": {
+      const virtual = grab.located_path;
+      if (!virtual) {
+        db.prepare("UPDATE planner_grab_queue SET post_step = 'done', last_error = 'no located_path' WHERE id = ?").run(grab.id);
+        return;
+      }
+
+      // Carpeta por defecto: el archivo ya está en su destino.
+      if (rootIsDefault(grab.root_folder)) {
+        finalize(grab, virtual);
+        return;
+      }
+
+      const root = (grab.root_folder || "").replace(/^\/+/, "").replace(/\/+$/, "");
+      const destDir = root || "downloads";
+      const destVirtual = destDir + "/" + basename(virtual);
+
+      // Ya está en destino → listo.
+      if (await virtualExists(destVirtual)) {
+        finalize(grab, destVirtual);
+        return;
+      }
+
+      // Ya hay un movimiento activo para este archivo → esperar.
+      if (isPathInActiveTransfer(virtual)) return;
+
+      // Encolar el movimiento en la cola del systray (igual que el file manager).
+      const jobId = enqueueTransferJob([virtual], destDir, "move");
+      db.prepare("UPDATE planner_grab_queue SET move_job_id = ? WHERE id = ?").run(jobId, grab.id);
+      logGrab(
+        grab,
+        "postprocess_move_queued",
+        `movimiento encolado '${virtual}' → '${destDir}/' (job ${jobId.slice(0, 8)})`,
+      );
+      return;
+    }
+
+    default:
+      return;
   }
 }

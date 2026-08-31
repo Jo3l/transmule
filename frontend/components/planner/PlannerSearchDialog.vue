@@ -73,7 +73,13 @@
         {{ formatSize(row.sizeMb) }}
       </template>
       <template #cell-seeds="{ row }">
-        <span v-if="row.seeds != null" class="has-text-success">
+        <span v-if="row.service === 'slskd' && row.username" class="has-text-grey is-size-7">
+          <span class="mdi mdi-account" /> {{ row.username }}
+        </span>
+        <span v-else-if="row.service === 'amule' && row.sources != null" class="has-text-success">
+          <span class="mdi mdi-donkey" /> {{ row.sources }}
+        </span>
+        <span v-else-if="row.seeds != null" class="has-text-success">
           <span class="mdi mdi-arrow-up-bold" /> {{ row.seeds }}
         </span>
         <span v-else class="has-text-grey">—</span>
@@ -174,7 +180,7 @@ const columns = computed(() => [
   { prop: "name", label: t("planner.release") },
   { prop: "quality", label: t("planner.quality"), width: "110px" },
   { prop: "size", label: t("planner.size"), width: "100px" },
-  { prop: "seeds", label: t("planner.seeds"), width: "80px" },
+  { prop: "seeds", label: t("planner.sources"), width: "80px" },
   { prop: "languages", label: t("planner.language"), width: "130px" },
   { prop: "score", label: t("planner.score"), width: "70px", align: "right" as const },
   { prop: "actions", label: "", width: "110px" },

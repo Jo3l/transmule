@@ -178,6 +178,12 @@ export interface PlannerGrabQueueEntry {
   attempts: number;
   last_error: string | null;
   last_attempt_at: string | null;
+  /** Paso actual del post-proceso (locate → rename → move → done). */
+  post_step: string | null;
+  /** Ruta virtual del archivo localizado en /downloads. */
+  located_path: string | null;
+  /** jobId de la tarea de mover encolada en la cola del systray. */
+  move_job_id: string | null;
   /** Carpeta destino de la subscription (JOIN en nextPendingGrabs). */
   root_folder?: string | null;
   priority: PlannerGrabPriority;
@@ -637,7 +643,7 @@ export function recordSearchHistory(input: Omit<PlannerSearchHistory, "id">): Pl
 
 // ─── Grab queue ─────────────────────────────────────────────────────────────
 
-export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | "attempts" | "last_error" | "last_attempt_at" | "created_at">): PlannerGrabQueueEntry {
+export function enqueueGrab(input: Omit<PlannerGrabQueueEntry, "id" | "state" | "attempts" | "last_error" | "last_attempt_at" | "created_at" | "post_step" | "located_path" | "move_job_id">): PlannerGrabQueueEntry {
   const db = useDatabase();
 
   // Anti double-grab: si ya hay un grab pending/dispatched para el mismo
@@ -870,19 +876,20 @@ export function getEpisodesByAirDateRange(
 }
 
 /**
- * Episodios listos para la búsqueda automática:
- *   - sin `force`: solo `waiting` que ya han emitido (air_date <= cutoff, regla 18:00).
- *   - con `force`: también `released` (emitidos, descarga manual) — "descarga automática".
+ * Episodios listos para la búsqueda automática.
+ *
+ * Solo `waiting` (emisión hoy/futura, regla de las 18:00). Los `released`
+ * (ya emitidos) NUNCA se auto-encolan: se descargan exclusivamente con el
+ * botón manual de descarga (búsqueda interactiva de un release concreto).
  */
-export function getEpisodesReadyForDownload(cutoff: string, force = false): PlannerEpisode[] {
+export function getEpisodesReadyForDownload(cutoff: string): PlannerEpisode[] {
   const db = useDatabase();
-  const statusClause = force ? "e.status IN ('waiting', 'released')" : "e.status = 'waiting'";
   return db
     .prepare(
       `SELECT e.*, s.title AS subscription_title, s.poster_url AS subscription_poster
        FROM planner_episodes e
        JOIN planner_subscriptions s ON s.id = e.subscription_id
-       WHERE ${statusClause}
+       WHERE e.status = 'waiting'
          AND e.monitored = 1
          AND s.monitored = 1
          AND e.air_date IS NOT NULL
