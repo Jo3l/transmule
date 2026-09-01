@@ -58,6 +58,8 @@ export default defineEventHandler(async (event) => {
     month?: string;
     days?: string;
     discover?: string;
+    /** Categorías de TVmaze a mostrar (separadas por coma); "all" = sin filtro. */
+    types?: string;
   };
 
   // ── Modo legacy: ?days=N (lista plana de próximos N días) ────────────────
@@ -158,10 +160,15 @@ export default defineEventHandler(async (event) => {
 
     // 3a. Series: TVmaze schedule (episodio por episodio — como Sonarr/TVDB)
     //     Funciona sin API key. Itera días del mes con caché.
+    // Filtro de categorías de TVmaze: por defecto solo series de ficción
+    // (Scripted + Animation). "all" o lista explícita de tipos en `types`.
+    const tvTypes = q.types ? parseTvTypes(q.types) : SCRIPTED_TYPES;
+
     const tvmazeEpisodes = await getTvmazeEpisodesInRange(from, to).catch(() => []);
     for (const ep of tvmazeEpisodes) {
       if (subscribedTitles.has(normalize(ep.show.name))) continue; // ya suscrita
       if (!ep.airdate) continue;
+      if (tvTypes && ep.show.type && !tvTypes.has(ep.show.type)) continue; // categoría no deseada
       const subtitleParts: string[] = [];
       if (ep.season != null && ep.number != null) {
         subtitleParts.push(`S${String(ep.season).padStart(2, "0")}E${String(ep.number).padStart(2, "0")}`);
@@ -244,6 +251,16 @@ export default defineEventHandler(async (event) => {
     events,
   };
 });
+
+/** Categorías de TVmaze que cuentan como "series de ficción" (guionizadas). */
+const SCRIPTED_TYPES = new Set(["Scripted", "Animation"]);
+
+/** Parsea el parámetro `types` (lista separada por comas). null = sin filtro (todo). */
+function parseTvTypes(typesParam?: string): Set<string> | null {
+  const v = (typesParam ?? "").trim();
+  if (!v || v === "all") return null;
+  return new Set(v.split(",").map((x) => x.trim()).filter(Boolean));
+}
 
 function normalize(t: string): string {
   return t

@@ -27,6 +27,9 @@ export interface TvmazeEpisode {
   show: {
     id: number;
     name: string;
+    /** Categoría del show: "Scripted", "Animation", "Documentary", "Reality",
+     *  "Talk Show", "News", "Sports", "Game Show", "Variety", "Panel Show"… */
+    type: string | null;
     status: string | null;
     premiered: string | null;
     genres: string[];

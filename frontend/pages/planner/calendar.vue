@@ -9,7 +9,14 @@
         </div>
         <div class="level-right">
           <div class="is-flex is-align-items-center">
-            <span class="is-size-7 has-text-grey mr-2">{{ $t("planner.discoverToggle") }}</span>
+            <span class="is-size-7 has-text-grey mr-2">{{ $t("planner.calFilter") }}</span>
+            <SSelect
+              v-model="tvFilter"
+              :options="tvFilterOptions"
+              :disabled="!discover"
+              @update:model-value="load"
+            />
+            <span class="is-size-7 has-text-grey ml-3 mr-2">{{ $t("planner.discoverToggle") }}</span>
             <SSwitch v-model="discover" @update:model-value="load" />
           </div>
         </div>
@@ -58,6 +65,15 @@ const errorMsg = ref("");
 const events = ref<any[]>([]);
 const discover = ref(true);
 
+// Filtro de categorías del descubrimiento (TVmaze show.type). Por defecto solo
+// series de ficción (Scripted + Animation); "all" muestra también realities,
+// talk shows, noticias, deportes, concursos, etc.
+const tvFilter = ref("Scripted,Animation");
+const tvFilterOptions = computed(() => [
+  { label: t("planner.calFilterFiction"), value: "Scripted,Animation" },
+  { label: t("planner.calFilterAll"), value: "all" },
+]);
+
 // Fecha visible (month 1-12)
 const viewMonth = ref({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
 
@@ -67,7 +83,7 @@ async function load() {
   try {
     const monthStr = `${viewMonth.value.year}-${String(viewMonth.value.month).padStart(2, "0")}`;
     const res = await apiFetch<{ events: any[]; tmdb: boolean }>(
-      `/api/planner/calendar?month=${monthStr}&discover=${discover.value ? "1" : "0"}`,
+      `/api/planner/calendar?month=${monthStr}&discover=${discover.value ? "1" : "0"}&types=${encodeURIComponent(tvFilter.value)}`,
     );
     events.value = res.events ?? [];
   } catch (err: any) {
