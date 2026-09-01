@@ -14,11 +14,13 @@
 
 import {
   getTvdbSeriesEpisodes,
+  getTvdbSeriesDetail,
 } from "../services/planner/tvdb";
 import {
   getTmdbMovieDetail,
   getTmdbMovieReleaseDates,
   getAllTmdbTvEpisodes,
+  getTmdbTvDetail,
 } from "../services/planner/tmdb";
 import {
   listSubscriptions,
@@ -40,6 +42,7 @@ import {
   type PlannerSeason,
   type PlannerEpisode,
   type PlannerSubscription,
+  type UpdateSubscriptionInput,
 } from "../utils/planner-db";
 import { getConfig, useDatabase } from "../utils/database";
 import { searchEpisode, searchMovie, parseSearchServices } from "../services/planner/search-providers";
@@ -241,9 +244,33 @@ async function updateCalendar(): Promise<void> {
       }
     }
 
-    updateSubscription(sub.id, { metadata_synced_at: new Date().toISOString() });
+    // Detalle de la serie (status/overview/ended) — igual que el refresh manual,
+    // para que el estado (Continuing/Ended) y la sinopsis se actualicen solos.
+    let detail: { status?: string | null; overview?: string | null } | null = null;
+    try {
+      if (sub.tvdb_id) {
+        const d = await getTvdbSeriesDetail(sub.tvdb_id).catch(() => null);
+        detail = d ? { status: d.status ?? null, overview: d.overview ?? null } : null;
+      } else if (sub.tmdb_id) {
+        const d = await getTmdbTvDetail(sub.tmdb_id).catch(() => null);
+        detail = d ? { status: d.status ?? null, overview: d.overview ?? null } : null;
+      }
+    } catch {
+      detail = null;
+    }
+
+    const now = new Date().toISOString();
+    const subUpdate: UpdateSubscriptionInput = {
+      metadata_synced_at: now,
+      metadata_json: JSON.stringify({
+        tvdbStatus: detail?.status ?? null,
+        overview: detail?.overview ?? sub.overview ?? null,
+      }),
+    };
+    if (detail?.status === "Ended") subUpdate.ended_at = now;
+    updateSubscription(sub.id, subUpdate);
     console.log(
-      `[planner] synced "${sub.title}" — ${bySeason.size} seasons, ${episodes.length} episodes`,
+      `[planner] synced "${sub.title}" — ${bySeason.size} seasons, ${episodes.length} episodes (status=${detail?.status ?? "n/a"})`,
     );
   }
 }
