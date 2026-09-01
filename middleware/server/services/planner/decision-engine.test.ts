@@ -93,7 +93,27 @@ const langDecision = pickBest({
 });
 
 expectEq(langDecision.picked?.release.languages, ["spanish"], "Lang picks spanish release");
-expectEq(langDecision.rejected.length, 1, "Lang rejects english release");
+expectEq(langDecision.rejected.length, 0, "Lang: english ya no se rechaza (preferencia suave)");
+expectEq(langDecision.evaluated.length, 2, "Lang: ambos evaluados (english penalizado)");
+
+// ── Caso 3b: must_have spanish pero SOLO hay inglés → fallback al mejor ─────
+
+const onlyEnglishReleases = [
+  "Breaking.Bad.S01E01.1080p.WEB-DL.x264-ENGLISH",
+  "Breaking.Bad.S01E01.720p.HDTV.x264-ENGLISH",
+].map(parseReleaseName);
+
+const fallbackDecision = pickBest({
+  releases: onlyEnglishReleases,
+  expectedTitle: "Breaking Bad",
+  season: 1,
+  episode: 1,
+  minQuality: "hd",
+  languageProfile: { mustHave: ["spanish"], allowUnknownLang: true },
+});
+
+assert(fallbackDecision.picked !== null, "Fallback: descarga el mejor inglés en vez de nada");
+expectEq(fallbackDecision.picked?.release.quality, "fullhd", "Fallback: elige 1080p sobre 720p");
 
 // ── Caso 4: language must_not_have german ───────────────────────────────────
 
@@ -376,7 +396,9 @@ const multiEsDecision = pickBest({
   minQuality: "hd",
   languageProfile: { mustHave: ["es"], allowUnknownLang: true },
 });
-expectEq(multiEsDecision.rejected.length, 1, "Multi: MULTi se rechaza para 'es' (España)");
+expectEq(multiEsDecision.rejected.length, 0, "Multi: MULTi ya no se rechaza para 'es' (fallback suave)");
+assert(multiEsDecision.picked !== null, "Multi: MULTi sigue siendo elegible como fallback para 'es'");
+expectEq(multiEsDecision.picked?.languageScore, -500, "Multi: MULTi penalizado -500 para 'es'");
 
 // ── Caso 19: V.O.S./subs integrados → NO cuenta como español localizado ─────
 // "Spanish subs" describe SUBTÍTULOS, no audio: el release se puntúa como
