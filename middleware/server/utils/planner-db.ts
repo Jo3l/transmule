@@ -103,6 +103,12 @@ export interface PlannerEpisode {
   downloaded_at: string | null;
   last_search_at: string | null;
   search_attempts: number;
+  /** Día (YYYY-MM-DD) del último intento de búsqueda automática — para el límite 3/día. */
+  search_day?: string | null;
+  /** Intentos de búsqueda automática realizados en `search_day`. */
+  search_day_count?: number;
+  /** Mejor candidato visto hasta ahora (JSON) — para elegir el de mejor puntuación. */
+  best_candidate_json?: string | null;
 }
 
 export interface PlannerMovie {
@@ -394,8 +400,9 @@ export function upsertEpisode(input: PlannerEpisode): PlannerEpisode {
     `INSERT INTO planner_episodes
       (subscription_id, season_id, season_number, episode_number, absolute_number,
        title, air_date, runtime, monitored, status, file_path,
-       downloaded_quality, grabbed_at, downloaded_at, last_search_at, search_attempts)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       downloaded_quality, grabbed_at, downloaded_at, last_search_at, search_attempts,
+       search_day, search_day_count, best_candidate_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(subscription_id, season_number, episode_number) DO UPDATE SET
        title = excluded.title,
        air_date = excluded.air_date,
@@ -407,7 +414,10 @@ export function upsertEpisode(input: PlannerEpisode): PlannerEpisode {
        grabbed_at = excluded.grabbed_at,
        downloaded_at = excluded.downloaded_at,
        last_search_at = excluded.last_search_at,
-       search_attempts = excluded.search_attempts`,
+       search_attempts = excluded.search_attempts,
+       search_day = excluded.search_day,
+       search_day_count = excluded.search_day_count,
+       best_candidate_json = excluded.best_candidate_json`,
   ).run(
     input.subscription_id,
     input.season_id,
@@ -425,6 +435,9 @@ export function upsertEpisode(input: PlannerEpisode): PlannerEpisode {
     input.downloaded_at,
     input.last_search_at,
     input.search_attempts,
+    input.search_day ?? null,
+    input.search_day_count ?? 0,
+    input.best_candidate_json ?? null,
   );
   const row = db
     .prepare(

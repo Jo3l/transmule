@@ -189,6 +189,10 @@ function stripEpisodeTitle(releaseTitle: string, episodeTitle: string): string {
 // detectado se penaliza para que quede por debajo de los que sí lo traen.
 const LANGUAGE_MATCH_BONUS = 1000;
 const LANGUAGE_UNKNOWN_PENALTY = -100;
+// Idioma distinto del pedido: penaliza fuerte pero NO rechaza. Si no hay nada
+// en el idioma deseado, se coge el mejor disponible (fallback) en vez de
+// quedarse sin descargar nada (los mustHave ahora son preferencia, no umbral).
+const LANGUAGE_WRONG_PENALTY = -500;
 
 function languageScore(
   releaseLangs: string[],
@@ -209,22 +213,29 @@ function languageScore(
     }
   }
 
-  // must_have: puntúa si coincide, rechaza si ninguno
+  // must_have: PREFERENCIA (no umbral). Coincidencia = +1000; idioma distinto
+  // conocido = penaliza fuerte pero NO rechaza (fallback); idioma desconocido
+  // solo se admite si allowUnknownLang.
   if (mustHave.length > 0) {
     const unknownOnly =
       relLangs.length === 0 ||
       relLangs.every((l) => l === "unknown" || l === "subs");
-    if (unknownOnly && profile.allowUnknownLang) {
-      // Sin idioma detectado: no rechazar, pero penalizar con fuerza para que
-      // no gane frente a un release con el idioma correcto.
-      return { score: LANGUAGE_UNKNOWN_PENALTY };
-    }
     const matched = mustHave.filter((m) => relLangs.includes(m));
     if (matched.length === 0) {
-      return {
-        score: -500,
-        rejected: `no required language (need ${mustHave.join("|")}, got ${relLangs.join(",") || "none"})`,
-      };
+      if (unknownOnly) {
+        // Sin idioma detectado.
+        if (profile.allowUnknownLang) {
+          // Penaliza para que no gane frente a un idioma real, pero no rechaza.
+          return { score: LANGUAGE_UNKNOWN_PENALTY };
+        }
+        // allowUnknownLang=false: un release sin idioma detectable no es fiable.
+        return {
+          score: -500,
+          rejected: `no required language (need ${mustHave.join("|")}, got ${relLangs.join(",") || "unknown"})`,
+        };
+      }
+      // Idioma conocido pero distinto del pedido → preferencia suave (fallback).
+      return { score: LANGUAGE_WRONG_PENALTY };
     }
     return { score: LANGUAGE_MATCH_BONUS + (matched.length - 1) * 10 };
   }
@@ -370,7 +381,16 @@ export function pickBest(req: DecisionRequest): DecisionResult {
 
   let note = "";
   if (!picked) {
-    note = `no eligible release (${req.releases.length} input, ${rejected.length} rejected)`;
+    // Desglose de motivos de rechazo para diagnóstico.
+    const byReason = new Map<string, number>();
+    for (const r of rejected) {
+      const key = r.reason.split(" (")[0];
+      byReason.set(key, (byReason.get(key) ?? 0) + 1);
+    }
+    const breakdown = [...byReason.entries()]
+      .map(([k, n]) => `${n} ${k}`)
+      .join(", ");
+    note = `no eligible release (${req.releases.length} input, ${rejected.length} rejected${breakdown ? `: ${breakdown}` : ""})`;
   } else {
     const why: string[] = [];
     why.push(`q=${picked.release.quality}`);

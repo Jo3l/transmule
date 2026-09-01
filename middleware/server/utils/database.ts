@@ -315,6 +315,22 @@ function _initSchema(db: DatabaseSync): void {
   if (!grabCols.some((c) => c.name === "move_job_id")) {
     db.exec("ALTER TABLE planner_grab_queue ADD COLUMN move_job_id TEXT");
   }
+
+  // Reintentos de búsqueda automática (3/día × 3 días): día del último intento,
+  // intentos de hoy, y el mejor candidato visto hasta ahora (para elegir el de
+  // mejor puntuación entre todas las búsquedas del día).
+  const epCols = db
+    .prepare("PRAGMA table_info(planner_episodes)")
+    .all() as { name: string }[];
+  if (!epCols.some((c) => c.name === "search_day")) {
+    db.exec("ALTER TABLE planner_episodes ADD COLUMN search_day TEXT");
+  }
+  if (!epCols.some((c) => c.name === "search_day_count")) {
+    db.exec("ALTER TABLE planner_episodes ADD COLUMN search_day_count INTEGER DEFAULT 0");
+  }
+  if (!epCols.some((c) => c.name === "best_candidate_json")) {
+    db.exec("ALTER TABLE planner_episodes ADD COLUMN best_candidate_json TEXT");
+  }
 }
 
 // ─── Plugin repository helpers ───────────────────────────────────────────────

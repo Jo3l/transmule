@@ -35,6 +35,7 @@ import {
   getSubscription,
   enqueueGrab,
   recordSearchHistory,
+  recordGrabLog,
   updateEpisode,
   localDateString,
   computeEpisodeStatus,
@@ -366,6 +367,10 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     : now.getHours() >= 18
       ? today
       : localDateString(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const maxPerDay = Math.max(Number(getConfig("planner.search_attempts_per_day")) || 3, 1);
+  const retryDays = Math.max(Number(getConfig("planner.search_retry_days")) || 3, 1);
+  const maxTotal = maxPerDay * retryDays;
+
   const ready = getEpisodesReadyForDownload(cutoff);
   for (const ep of ready) {
     if (searched >= maxSearches) break;
@@ -382,8 +387,29 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     // de la suscripción (solo auto-descarga lo que tiene evento futuro). Force lo ignora.
     if (!force && isBacklog(ep.air_date, sub.added_at)) continue;
 
+    // Límite diario: máx `maxPerDay` búsquedas por día natural.
+    const dayCount = ep.search_day === today ? (ep.search_day_count ?? 0) : 0;
+    if (dayCount >= maxPerDay) continue;
+
+    // Límite total (3 días): agotado → dar por perdido (solo descarga manual).
+    if ((ep.search_attempts ?? 0) >= maxTotal) {
+      updateEpisode(ep.id, { status: "released" });
+      recordGrabLog({
+        subscription_id: ep.subscription_id,
+        episode_id: ep.id,
+        movie_id: null,
+        grab_id: null,
+        event: "gave_up",
+        message: `abandonado tras ${maxTotal} búsquedas automáticas sin resultado (${retryDays} días × ${maxPerDay}/día)`,
+      });
+      console.warn(
+        `[planner] "${sub.title}" S${ep.season_number}E${ep.episode_number}: abandonado tras ${maxTotal} búsquedas (→ released)`,
+      );
+      continue;
+    }
+
     searched++;
-    await grabEpisode(sub, ep, "auto");
+    await grabEpisode(sub, ep, "auto", { maxPerDay });
   }
 
   // ── Movies: waiting (recién estrenadas) ─────────────
@@ -492,6 +518,58 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
 
 // ─── Search & grab de un único episodio (compartido) ────────────────────────
 
+/** Mejor candidato visto en las búsquedas del día (para el fallback de idioma). */
+interface BestCandidate {
+  score: number;
+  rawName: string;
+  url: string;
+  hash: string | null;
+  quality: string;
+  sizeMb: number | null;
+  seeds: number | null;
+  service: string;
+}
+
+function parseBestCandidate(json: string | null | undefined): BestCandidate | null {
+  if (!json) return null;
+  try {
+    const c = JSON.parse(json);
+    return c && typeof c.rawName === "string" ? (c as BestCandidate) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Encola un grab del episodio y lo marca 'grabbed'. */
+function enqueueEpisodeGrab(
+  sub: PlannerSubscription,
+  epId: number,
+  release: {
+    rawName: string;
+    url: string;
+    hash: string | null;
+    quality: string;
+    sizeMb: number | null;
+    seeds: number | null;
+    service: string;
+  },
+): void {
+  enqueueGrab({
+    subscription_id: sub.id,
+    episode_id: epId,
+    movie_id: null,
+    release_title: release.rawName,
+    release_url: release.url,
+    release_hash: release.hash,
+    release_quality: release.quality,
+    release_size_mb: release.sizeMb,
+    release_seeds: release.seeds,
+    service: release.service,
+    priority: "normal",
+  });
+  updateEpisode(epId, { status: "grabbed", grabbed_at: new Date().toISOString() });
+}
+
 /**
  * Busca y descarga un único episodio (decision engine + enqueueGrab).
  * `searchKind` distingue "auto" (scheduler) de "manual" (botón de temporada).
@@ -500,8 +578,10 @@ async function grabEpisode(
   sub: PlannerSubscription,
   ep: PlannerEpisode,
   searchKind: string,
+  opts: { maxPerDay?: number } = {},
 ): Promise<void> {
   const services = parseSearchServices(sub.search_services_json);
+  const maxPerDay = opts.maxPerDay ?? 3;
   try {
     // Refrescar metadata antes de buscar/descargar: el título del episodio
     // debe estar lo más fresco posible (p.ej. capítulo emitido hoy). El force
@@ -555,31 +635,77 @@ async function grabEpisode(
       error_message: decision.picked ? null : decision.note,
     });
 
+    const nowIso = new Date().toISOString();
+    const today = localDateString();
+    const dayCount = (ep.search_day === today ? (ep.search_day_count ?? 0) : 0) + 1;
+    const attempts = (ep.search_attempts ?? 0) + 1;
+
     if (decision.picked) {
-      const winner = items.find((i) => i.parsed.raw === decision.picked!.release.raw);
-      if (winner) {
-        enqueueGrab({
-          subscription_id: sub.id,
-          episode_id: ep.id,
-          movie_id: null,
-          release_title: winner.rawName,
-          release_url: winner.url,
-          release_hash: winner.hash ?? null,
-          release_quality: winner.parsed.quality,
-          release_size_mb: winner.sizeMb ?? null,
-          release_seeds: winner.seeds ?? null,
-          service: winner.service,
-          priority: "normal",
+      const winner = decision.picked;
+      const winnerItem = items.find((i) => i.parsed.raw === winner.release.raw);
+      // Manual o idioma correcto → coger ya. Auto con idioma no pedido → acumular
+      // el mejor candidato y esperar por si aparece uno mejor a lo largo del día.
+      const grabNow = searchKind !== "auto" || winner.languageScore >= 0;
+      if (grabNow && winnerItem) {
+        enqueueEpisodeGrab(sub, ep.id, {
+          rawName: winnerItem.rawName,
+          url: winnerItem.url,
+          hash: winnerItem.hash ?? null,
+          quality: winnerItem.parsed.quality,
+          sizeMb: winnerItem.sizeMb ?? null,
+          seeds: winnerItem.seeds ?? null,
+          service: winnerItem.service,
         });
         updateEpisode(ep.id, {
-          status: "grabbed",
-          grabbed_at: new Date().toISOString(),
-          last_search_at: new Date().toISOString(),
+          last_search_at: nowIso,
+          search_attempts: attempts,
+          search_day: today,
+          search_day_count: dayCount,
+          best_candidate_json: null,
         });
-        console.log(`[planner] grabbed "${sub.title}" S${ep.season_number}E${ep.episode_number} ← ${winner.rawName} (${winner.service})`);
+        console.log(`[planner] grabbed "${sub.title}" S${ep.season_number}E${ep.episode_number} ← ${winnerItem.rawName} (${winnerItem.service})`);
+        return;
       }
-    } else {
-      updateEpisode(ep.id, { last_search_at: new Date().toISOString() });
+
+      // Fallback automático: guardar el mejor candidato del día (por score).
+      const candidate: BestCandidate = {
+        score: winner.total,
+        rawName: winnerItem?.rawName ?? winner.release.raw,
+        url: winnerItem?.url ?? "",
+        hash: winnerItem?.hash ?? null,
+        quality: winner.release.quality,
+        sizeMb: winner.release.sizeMb ?? null,
+        seeds: winnerItem?.seeds ?? null,
+        service: winnerItem?.service ?? "",
+      };
+      const prev = parseBestCandidate(ep.best_candidate_json);
+      if (!prev || candidate.score > prev.score) {
+        updateEpisode(ep.id, { best_candidate_json: JSON.stringify(candidate) });
+      }
+    }
+
+    // Registrar el intento de búsqueda.
+    updateEpisode(ep.id, {
+      last_search_at: nowIso,
+      search_attempts: attempts,
+      search_day: today,
+      search_day_count: dayCount,
+    });
+
+    // Última búsqueda del día (auto): si no se cogió nada "bueno", coger el mejor
+    // candidato acumulado en vez de esperar al día siguiente.
+    if (searchKind === "auto" && dayCount >= maxPerDay) {
+      const fresh = listEpisodes(sub.id, { seasonNumber: ep.season_number }).find(
+        (e) => e.episode_number === ep.episode_number,
+      );
+      if (fresh && fresh.status === "waiting") {
+        const best = parseBestCandidate(fresh.best_candidate_json);
+        if (best) {
+          enqueueEpisodeGrab(sub, fresh.id, best);
+          updateEpisode(fresh.id, { best_candidate_json: null });
+          console.log(`[planner] fallback "${sub.title}" S${fresh.season_number}E${fresh.episode_number} ← ${best.rawName} (mejor de ${dayCount} búsquedas, score=${best.score})`);
+        }
+      }
     }
   } catch (err: any) {
     console.error(`[planner] search failed for "${sub.title}" S${ep.season_number}E${ep.episode_number}:`, err?.message);
