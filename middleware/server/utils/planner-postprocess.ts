@@ -29,7 +29,7 @@ import { useDatabase, getConfig } from "./database";
 import { recordGrabLog } from "./planner-db";
 import { getDownloadsRoot, resolveVirtualPath, smbStat } from "./remoteMounts";
 import { movePath } from "./transfer-engine";
-import { enqueueTransferJob, isPathInActiveTransfer } from "./transfer-queue";
+import { enqueueTransferJob, isPathInActiveTransfer, getTransferJob } from "./transfer-queue";
 import { useTransmissionClient } from "./transmission-client";
 import { useSlskdClient } from "./slskd-client";
 import { useAmuleClient } from "./amule-client";
@@ -260,6 +260,18 @@ async function virtualExists(rel: string): Promise<boolean> {
   }
 }
 
+/** ¿Dos rutas virtuales apuntan al mismo archivo/carpeta (local o SMB)? */
+function sameVirtualLocation(a: string, b: string): boolean {
+  const ra = resolveVirtualPath(a);
+  const rb = resolveVirtualPath(b);
+  if (!ra || !rb || ra.type !== rb.type) return false;
+  if (ra.type === "local" && rb.type === "local") return ra.absPath === rb.absPath;
+  if (ra.type === "smb" && rb.type === "smb") {
+    return ra.config.id === rb.config.id && ra.subPath.replace(/\/+$/, "") === rb.subPath.replace(/\/+$/, "");
+  }
+  return false;
+}
+
 function logGrab(grab: PostProcessGrab, event: string, message: string): void {
   try {
     recordGrabLog({
@@ -454,16 +466,58 @@ async function runPostProcessStep(grab: PostProcessGrab): Promise<void> {
       const destDir = root || "downloads";
       const destVirtual = destDir + "/" + basename(virtual);
 
-      // Ya está en destino → listo.
+      // ¿El archivo ya está en su sitio? Solo se da por válido si el origen es la
+      // MISMA ruta (p.ej. transmission descargó directo en root_folder → no hacía
+      // falta mover) o si el origen ya NO existe (el move previo ya lo sacó de
+      // /downloads). Si el destino existe pero el origen sigue en /downloads
+      // (duplicado de un move con borrado fallido), NO finalizamos: re-encolamos
+      // para que el rename sobrescriba el destino y elimine el origen de verdad.
       if (await virtualExists(destVirtual)) {
-        finalize(grab, destVirtual);
+        if (sameVirtualLocation(virtual, destVirtual) || !(await virtualExists(virtual))) {
+          finalize(grab, destVirtual);
+          return;
+        }
+        // destino presente + origen también → caer al re-encolado.
+      }
+
+      // ¿Hay un job de move asociado a este grab? Verificar su desenlace REAL.
+      const job = grab.move_job_id ? getTransferJob(grab.move_job_id) : null;
+      if (job) {
+        if (job.status === "queued" || job.status === "running") return; // en curso → esperar
+        if (job.status === "error") {
+          logGrab(grab, "postprocess_failed", `move falló: ${job.error ?? "error desconocido"} — reintentando`);
+          db.prepare("UPDATE planner_grab_queue SET last_error = ?, move_job_id = NULL WHERE id = ?")
+            .run(`post-process move: ${job.error ?? "error"}`, grab.id);
+          // cae al re-encolado
+        } else if (job.status === "done") {
+          // El job dice "done" → COMPROBAR de verdad que el archivo está en destino.
+          if (await virtualExists(destVirtual)) {
+            finalize(grab, destVirtual);
+            return;
+          }
+          logGrab(grab, "postprocess_failed", "el job de move terminó pero el destino no existe — re-encolando");
+          db.prepare("UPDATE planner_grab_queue SET move_job_id = NULL WHERE id = ?").run(grab.id);
+          // cae al re-encolado
+        } else {
+          return; // estado transitorio/desconocido → esperar
+        }
+      }
+
+      // El origen ya no existe y el destino tampoco: no hay nada que mover.
+      // Registrar un error visible en vez de reintentar a ciegas en bucle.
+      if (!(await virtualExists(virtual))) {
+        logGrab(grab, "postprocess_failed", `el origen '${virtual}' ya no existe y el destino no aparece`);
+        db.prepare("UPDATE planner_grab_queue SET last_error = ? WHERE id = ?")
+          .run(`post-process move: origen '${virtual}' desapareció sin dejar el archivo en destino`, grab.id);
         return;
       }
 
-      // Ya hay un movimiento activo para este archivo → esperar.
+      // Si ya hay un movimiento activo para este origen (p.ej. iniciado desde el
+      // file manager), esperar.
       if (isPathInActiveTransfer(virtual)) return;
 
-      // Encolar el movimiento en la cola del systray (igual que el file manager).
+      // Encolar (o re-encolar) el movimiento en la cola del systray (igual que el
+      // file manager, para que el usuario lo vea en las tareas del systray).
       const jobId = enqueueTransferJob([virtual], destDir, "move");
       db.prepare("UPDATE planner_grab_queue SET move_job_id = ? WHERE id = ?").run(jobId, grab.id);
       logGrab(

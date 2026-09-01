@@ -66,6 +66,18 @@ export function isPathInActiveTransfer(virtual: string): boolean {
   return false;
 }
 
+/** Devuelve el job de la cola por id (o null si ya no existe, p.ej. tras un reinicio). */
+export function getTransferJob(jobId: string): {
+  status?: string;
+  error?: string;
+  sources?: string[];
+  destination?: string;
+  done?: number;
+  total?: number;
+} | null {
+  return globalThis.__transferJobs?.get(jobId) ?? null;
+}
+
 /* ── Queue ───────────────────────────────────────────────────────────────── */
 
 function scheduleQueue() {
