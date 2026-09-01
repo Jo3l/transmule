@@ -145,6 +145,31 @@ export async function rmPath(rel: string): Promise<void> {
   else { try { await smbRmRecursive(r.config, r.subPath); } catch { /* ignore */ } }
 }
 
+/** ¿Existe una ruta virtual (local o SMB)? */
+async function pathExists(rel: string): Promise<boolean> {
+  const r = resolveVirtualPath(rel);
+  if (!r) return false;
+  if (r.type === "local") return existsSync(r.absPath);
+  try {
+    return !!(await smbStat(r.config, r.subPath));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Elimina el origen y VERIFICA que desapareció. Si el borrado falla (p.ej. el
+ * cliente de descarga aún lo tiene bloqueado), lanza un error para que el job
+ * de la cola quede en "error" y el llamador (el planificador) reintente — en
+ * lugar de reportar un movimiento exitoso con el archivo aún en origen.
+ */
+async function removeSource(srcRel: string): Promise<void> {
+  await rmPath(srcRel);
+  if (await pathExists(srcRel)) {
+    throw new Error(`No se pudo eliminar el origen tras el movimiento: ${srcRel}`);
+  }
+}
+
 /** Copia una ruta virtual a otra (directorios recursivos incluidos). */
 export async function copyPath(
   srcRel: string,
@@ -167,7 +192,7 @@ export async function movePath(
   const d = resolveVirtualPath(destRel);
   if (s && d && s.type === "smb" && d.type === "smb" && s.config.id === d.config.id) {
     try { await smbRename(s.config, s.subPath, d.subPath); }
-    catch { await copyPath(srcRel, destRel, opts); await rmPath(srcRel); }
+    catch { await copyPath(srcRel, destRel, opts); await removeSource(srcRel); }
   } else if (s && d && s.type === "local" && d.type === "local") {
     // Asegurar que el directorio padre existe antes del rename
     const parent = dirname(d.absPath);
@@ -178,15 +203,15 @@ export async function movePath(
       if ((err as any)?.code === "EXDEV") {
         // Volumen distinto → copia + borra
         await copyPath(srcRel, destRel, opts);
-        await rmPath(srcRel);
+        await removeSource(srcRel);
       } else {
         // Puede ser EPERM/EBUSY (fichero en uso) → copia + borra como fallback
         await copyPath(srcRel, destRel, opts);
-        await rmPath(srcRel);
+        await removeSource(srcRel);
       }
     }
   } else {
     await copyPath(srcRel, destRel, opts);
-    await rmPath(srcRel);
+    await removeSource(srcRel);
   }
 }
