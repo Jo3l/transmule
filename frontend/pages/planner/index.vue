@@ -1,113 +1,127 @@
 <template>
   <SLoading id="page-planner" :loading="loading">
     <div class="py-4">
-      <h2 class="title is-4 mb-4">
-        <span class="mdi mdi-calendar-clock mr-2" />{{ $t("planner.title") }}
-      </h2>
-
-      <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
-
-      <!-- Stats cards -->
-      <div class="columns mb-4">
-        <div class="column is-3">
-          <NuxtLink :to="'/planner/series'" class="stats-link">
-            <div class="box has-text-centered">
-              <p class="is-size-1">{{ counts.series }}</p>
-              <p class="has-text-grey">{{ $t("planner.series") }}</p>
-            </div>
-          </NuxtLink>
+      <div class="level mb-4">
+        <div class="level-left">
+          <h2 class="title is-4 mb-0">
+            <span class="mdi mdi-calendar-clock mr-2" />{{ $t("planner.title") }}
+          </h2>
         </div>
-        <div class="column is-3">
-          <NuxtLink :to="'/planner/movies'" class="stats-link">
-            <div class="box has-text-centered">
-              <p class="is-size-1">{{ counts.movies }}</p>
-              <p class="has-text-grey">{{ $t("planner.movies") }}</p>
-            </div>
-          </NuxtLink>
-        </div>
-        <div class="column is-3">
-          <NuxtLink :to="'/planner/wanted'" class="stats-link">
-            <div class="box has-text-centered">
-              <p class="is-size-1">{{ counts.wanted }}</p>
-              <p class="has-text-grey">{{ $t("planner.wanted") }}</p>
-            </div>
-          </NuxtLink>
-        </div>
-        <div class="column is-3">
-          <div class="box has-text-centered">
-            <p class="is-size-1">{{ counts.grabbed }}</p>
-            <p class="has-text-grey">{{ $t("planner.grabbed") }}</p>
+        <div class="level-right">
+          <div class="is-flex is-align-items-center">
+            <span class="is-size-7 has-text-grey mr-2">{{ $t("planner.language") }}</span>
+            <SSelect
+              v-model="selectedLang"
+              :options="langOptions"
+              style="min-width: 200px"
+              @update:model-value="onLangChange"
+            />
           </div>
         </div>
       </div>
 
-      <!-- Quick actions -->
-      <div class="columns mb-4">
-        <div class="column">
-          <SButton variant="primary" icon="mdi-television-play" @click="navigateTo('/planner/series')">
-            {{ $t("planner.series") }}
-          </SButton>
-          <SButton variant="primary" icon="mdi-movie-open" @click="navigateTo('/planner/movies')" class="ml-2">
-            {{ $t("planner.movies") }}
-          </SButton>
-          <SButton variant="default" icon="mdi-calendar-month-outline" @click="navigateTo('/planner/calendar')" class="ml-2">
-            {{ $t("planner.calendar") }}
-          </SButton>
-          <SButton variant="default" icon="mdi-download-multiple" @click="navigateTo('/planner/wanted')" class="ml-2">
-            {{ $t("planner.wanted") }}
-          </SButton>
-          <SButton variant="primary" icon="mdi-plus" @click="showAddSeries = true" class="ml-4">
-            {{ $t("planner.addSeries") }}
-          </SButton>
-          <SButton variant="primary" icon="mdi-plus" @click="showAddMovie = true" class="ml-2">
-            {{ $t("planner.addMovie") }}
-          </SButton>
-        </div>
+      <SAlert v-if="errorMsg" variant="error" class="mb-4">{{ errorMsg }}</SAlert>
+
+      <!-- Acciones rápidas -->
+      <div class="mb-4">
+        <SButton variant="primary" icon="mdi-plus" @click="showAddSeries = true">
+          {{ $t("planner.addSeries") }}
+        </SButton>
+        <SButton variant="primary" icon="mdi-plus" @click="showAddMovie = true" class="ml-2">
+          {{ $t("planner.addMovie") }}
+        </SButton>
+        <SButton variant="default" icon="mdi-calendar-month-outline" @click="navigateTo('/planner/calendar')" class="ml-2">
+          {{ $t("planner.calendar") }}
+        </SButton>
+        <SButton variant="default" icon="mdi-download-multiple" @click="navigateTo('/planner/wanted')" class="ml-2">
+          {{ $t("planner.wanted") }}
+        </SButton>
       </div>
 
-      <!-- Upcoming episodes (next 30 days) -->
-      <h3 class="title is-5 mt-4">
-        <span class="mdi mdi-calendar-month-outline mr-2" />{{ $t("planner.upcoming") }}
-      </h3>
-      <div v-if="upcoming.length === 0" class="box has-text-centered">
-        <p><span class="mdi mdi-calendar-blank-outline is-size-2 has-text-grey-light" /></p>
-        <p class="has-text-grey">{{ $t("planner.noUpcoming") }}</p>
-      </div>
-      <STable
-        v-else
-        :data="upcoming"
-        :columns="upcomingColumns"
-        row-key="id"
-        :stripe="true"
-      >
-        <template #cell-air_date="{ row }">
-          <span class="has-text-weight-medium">{{ formatDate(row.air_date) }}</span>
-        </template>
-        <template #cell-subscription_id="{ row }">
-          <NuxtLink :to="`/planner/series/${row.subscription_id}`" class="planner-link">
-            {{ titleFor(row.subscription_id) }}
-          </NuxtLink>
-        </template>
-        <template #cell-episode="{ row }">
-          <STag variant="info">S{{ padEpisode(row.season_number) }}E{{ padEpisode(row.episode_number) }}</STag>
-        </template>
-        <template #cell-status="{ row }">
-          <STag :variant="statusClass(row.status)">
-            {{ statusLabel(row.status) }}
-          </STag>
-        </template>
-      </STable>
+      <!-- Series populares -->
+      <section class="mb-5">
+        <div class="planner-section-head">
+          <h3 class="title is-5 mb-0">
+            <span class="mdi mdi-television-play mr-2" />{{ $t("planner.popularSeries") }}
+          </h3>
+          <span v-if="popularLoading" class="mdi mdi-loading mdi-spin has-text-grey" />
+        </div>
+        <PlannerPosterSlider
+          v-if="popularSeries.length"
+          :items="popularSeries"
+          media-type="series"
+          @select="onSelectSeries"
+        />
+        <div v-else-if="!popularLoading" class="box has-text-centered">
+          <p class="has-text-grey is-size-7">{{ $t("planner.popularEmpty") }}</p>
+        </div>
+      </section>
+
+      <!-- Películas populares -->
+      <section class="mb-5">
+        <div class="planner-section-head">
+          <h3 class="title is-5 mb-0">
+            <span class="mdi mdi-movie-open mr-2" />{{ $t("planner.popularMovies") }}
+          </h3>
+        </div>
+        <PlannerPosterSlider
+          v-if="popularMovies.length"
+          :items="popularMovies"
+          media-type="movie"
+          @select="onSelectMovie"
+        />
+        <div v-else-if="!popularLoading" class="box has-text-centered">
+          <p class="has-text-grey is-size-7">{{ $t("planner.popularEmpty") }}</p>
+        </div>
+      </section>
+
+      <!-- Próximos episodios (próximos 30 días) -->
+      <section>
+        <h3 class="title is-5 mb-3">
+          <span class="mdi mdi-calendar-month-outline mr-2" />{{ $t("planner.upcoming") }}
+        </h3>
+        <div v-if="upcoming.length === 0" class="box has-text-centered">
+          <p><span class="mdi mdi-calendar-blank-outline is-size-2 has-text-grey-light" /></p>
+          <p class="has-text-grey">{{ $t("planner.noUpcoming") }}</p>
+        </div>
+        <STable
+          v-else
+          :data="upcoming"
+          :columns="upcomingColumns"
+          row-key="id"
+          :stripe="true"
+        >
+          <template #cell-air_date="{ row }">
+            <span class="has-text-weight-medium">{{ formatDate(row.air_date) }}</span>
+          </template>
+          <template #cell-subscription_id="{ row }">
+            <NuxtLink :to="`/planner/series/${row.subscription_id}`" class="planner-link">
+              {{ titleFor(row.subscription_id) }}
+            </NuxtLink>
+          </template>
+          <template #cell-episode="{ row }">
+            <STag variant="info">S{{ padEpisode(row.season_number) }}E{{ padEpisode(row.episode_number) }}</STag>
+          </template>
+          <template #cell-status="{ row }">
+            <STag :variant="statusClass(row.status)">
+              {{ statusLabel(row.status) }}
+            </STag>
+          </template>
+        </STable>
+      </section>
     </div>
 
     <!-- Modales añadir -->
     <PlannerAddMediaDialog
       v-model="showAddSeries"
       media-type="series"
+      :initial-result="addInitialSeries"
       @added="onAddedSeries"
     />
     <PlannerAddMediaDialog
       v-model="showAddMovie"
       media-type="movie"
+      :initial-result="addInitialMovie"
       @added="onAddedMovie"
     />
   </SLoading>
@@ -115,9 +129,10 @@
 
 <script setup lang="ts">
 import { usePlannerStatusDisplay, padEpisode, formatPlannerDate } from "~/composables/usePlannerUi";
+import type { TmdbPopularItem } from "~/composables/usePlanner";
 
 const { t } = useI18n();
-const { listSubscriptions } = usePlanner();
+const { listSubscriptions, discoverPopular, getPlannerStatus } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const { apiFetch } = useApi();
 
@@ -128,8 +143,82 @@ const movies = ref<Awaited<ReturnType<typeof listSubscriptions>>>([]);
 const upcoming = ref<any[]>([]);
 const showAddSeries = ref(false);
 const showAddMovie = ref(false);
+const addInitialSeries = ref<any>(null);
+const addInitialMovie = ref<any>(null);
 
-const counts = reactive({ series: 0, movies: 0, wanted: 0, grabbed: 0 });
+// ── Sliders de populares ─────────────────────────────────────────────────────
+const popularSeries = ref<TmdbPopularItem[]>([]);
+const popularMovies = ref<TmdbPopularItem[]>([]);
+const popularLoading = ref(false);
+
+// ── Idioma (localización de títulos) ─────────────────────────────────────────
+const LANG_STORAGE_KEY = "planner.lang";
+const PLANNER_LANGUAGES = [
+  { code: "es", name: "Español" },
+  { code: "en", name: "English" },
+  { code: "it", name: "Italiano" },
+  { code: "pt", name: "Português" },
+  { code: "fr", name: "Français" },
+  { code: "de", name: "Deutsch" },
+  { code: "ja", name: "日本語" },
+  { code: "ko", name: "한국어" },
+  { code: "zh", name: "中文" },
+];
+const selectedLang = ref("");
+const defaultLocale = ref("");
+
+const langOptions = computed(() => {
+  const suffix = defaultLocale.value ? ` (${defaultLocale.value})` : "";
+  return [
+    { label: t("planner.languageDefault") + suffix, value: "" },
+    ...PLANNER_LANGUAGES.map((l) => ({ label: l.name, value: l.code })),
+  ];
+});
+
+function onLangChange(v: string | number) {
+  selectedLang.value = String(v);
+  localStorage.setItem(LANG_STORAGE_KEY, selectedLang.value);
+  loadPopular();
+}
+
+async function loadPopular() {
+  popularLoading.value = true;
+  try {
+    const res = await discoverPopular({
+      language: selectedLang.value || undefined,
+      limit: 14,
+    });
+    popularSeries.value = res.series;
+    popularMovies.value = res.movies;
+  } catch {
+    popularSeries.value = [];
+    popularMovies.value = [];
+  } finally {
+    popularLoading.value = false;
+  }
+}
+
+/** Convierte un título popular de TMDB al shape de initialResult del modal. */
+function toInitialResult(item: TmdbPopularItem): any {
+  return {
+    id: item.id,
+    title: item.title,
+    date: item.date,
+    poster_url: item.poster_url,
+    overview: item.overview,
+    vote_average: item.vote_average,
+    source: "tmdb",
+  };
+}
+
+function onSelectSeries(item: TmdbPopularItem) {
+  addInitialSeries.value = toInitialResult(item);
+  showAddSeries.value = true;
+}
+function onSelectMovie(item: TmdbPopularItem) {
+  addInitialMovie.value = toInitialResult(item);
+  showAddMovie.value = true;
+}
 
 function formatDate(d: string | null): string {
   return formatPlannerDate(d);
@@ -145,14 +234,26 @@ const upcomingColumns = computed(() => [
 ]);
 function onAddedSeries(subId: number) {
   showAddSeries.value = false;
+  addInitialSeries.value = null;
   navigateTo(`/planner/series/${subId}`);
 }
 function onAddedMovie(subId: number) {
   showAddMovie.value = false;
+  addInitialMovie.value = null;
   navigateTo(`/planner/movies/${subId}`);
 }
 
 onMounted(async () => {
+  selectedLang.value = localStorage.getItem(LANG_STORAGE_KEY) ?? "";
+
+  // Sliders + estado (para el idioma por defecto) en paralelo con el resto.
+  loadPopular();
+  getPlannerStatus()
+    .then((s) => {
+      defaultLocale.value = s?.tmdbLocale ?? "";
+    })
+    .catch(() => {});
+
   try {
     const [s, m] = await Promise.all([
       listSubscriptions({ type: "series" }),
@@ -160,8 +261,6 @@ onMounted(async () => {
     ]);
     series.value = s;
     movies.value = m;
-    counts.series = s.length;
-    counts.movies = m.length;
 
     // Episodios próximos: consultar cada serie con episodes
     const today = new Date().toISOString().slice(0, 10);
@@ -188,19 +287,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.stats-link {
-  display: block;
-  color: inherit;
-}
-.stats-link:hover .box {
-  border-color: var(--s-accent, #00d4ff);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
 .planner-link {
   color: var(--s-accent, #00d4ff);
   font-weight: 500;
 }
 .planner-link:hover {
   text-decoration: underline;
+}
+.planner-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 </style>

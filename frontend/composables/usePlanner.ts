@@ -86,12 +86,26 @@ export interface TvdbLanguage {
   name: string;
 }
 
+export interface TmdbPopularItem {
+  id: number;
+  title: string;
+  original_title: string;
+  overview: string | null;
+  date: string | null;
+  poster_url: string | null;
+  vote_average: number | null;
+  media_type: "movie" | "tv";
+}
+
 export interface PlannerStatus {
   hasTvdb: boolean;
   hasTmdb: boolean;
   hasMetadataIntegration: boolean;
   searchPluginCount: number;
   hasSearchPlugins: boolean;
+  /** Localización configurada en Integraciones (p. ej. "es-ES"). */
+  tmdbLocale: string;
+  tvdbLocale: string;
 }
 
 export interface ReleaseCandidate {
@@ -236,6 +250,17 @@ export function usePlanner() {
     return res.languages ?? [];
   }
 
+  /** Títulos populares (series y películas) de TMDB para los sliders del dashboard. */
+  async function discoverPopular(opts: { language?: string; limit?: number } = {}) {
+    const params = new URLSearchParams();
+    if (opts.language) params.set("language", opts.language);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    const qs = params.toString();
+    return apiFetch<{ series: TmdbPopularItem[]; movies: TmdbPopularItem[] }>(
+      `/api/planner/discover/popular${qs ? `?${qs}` : ""}`,
+    );
+  }
+
   // ── Búsqueda interactiva unificada (Fase 14) ──────────────────────────────
 
   /**
@@ -319,6 +344,7 @@ export function usePlanner() {
     getPlannerStatus,
     getTvdbTranslations,
     getTmdbTranslations,
+    discoverPopular,
     searchReleasesStreamed,
     grabRelease,
     autoDownload,

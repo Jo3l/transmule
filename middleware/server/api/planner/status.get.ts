@@ -32,5 +32,7 @@ export default defineEventHandler(async (event) => {
     hasMetadataIntegration: hasTvdb || hasTmdb,
     searchPluginCount,
     hasSearchPlugins: searchPluginCount > 0,
+    tmdbLocale: (getConfig("tmdb_locale") ?? "").trim(),
+    tvdbLocale: (getConfig("tvdb_locale") ?? "").trim(),
   };
 });
