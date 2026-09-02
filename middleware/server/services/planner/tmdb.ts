@@ -83,6 +83,32 @@ function tmdbLocale(): string {
   return "en-US";
 }
 
+/** Región (país) por defecto cuando la localización no lleva región explícita. */
+const LANGUAGE_DEFAULT_REGION: Record<string, string> = {
+  en: "US",
+  es: "ES",
+  it: "IT",
+  pt: "BR",
+  fr: "FR",
+  de: "DE",
+  ja: "JP",
+  ko: "KR",
+  zh: "CN",
+};
+
+/**
+ * Región ISO 3166-1 (país) derivada de la localización configurada
+ * (p. ej. "es-ES" → "ES"; "es" → "ES"; "pt" → "BR"). Se usa como
+ * `watch_region` en los filtros de disponibilidad de /discover.
+ */
+function tmdbRegion(): string | null {
+  const locale = tmdbLocale().trim();
+  const parts = locale.split("-").filter(Boolean);
+  const region = parts[1]?.toUpperCase();
+  if (region && /^[A-Z]{2}$/.test(region)) return region;
+  return LANGUAGE_DEFAULT_REGION[parts[0]?.toLowerCase()] ?? null;
+}
+
 // ─── Low-level fetch with cache ─────────────────────────────────────────────
 
 async function tmdbFetch<T>(
@@ -392,6 +418,60 @@ export async function discoverTmdbTvInRange(
     poster_url: posterUrl(r.poster_path, "w185"),
     vote_average: r.vote_average ?? null,
   }));
+}
+
+// ─── Popular discovery (dashboard sliders) ──────────────────────────────────
+
+export interface TmdbPopularItem {
+  id: number;
+  /** Título localizado en el idioma solicitado. */
+  title: string;
+  original_title: string;
+  overview: string | null;
+  /** release_date (movie) o first_air_date (tv). */
+  date: string | null;
+  poster_url: string | null;
+  vote_average: number | null;
+  media_type: "movie" | "tv";
+}
+
+/**
+ * Títulos populares de TMDB disponibles para ver en la región (streaming,
+ * gratis, con anuncios, alquiler o compra). Usa /discover con
+ * `with_watch_monetization_types=flatrate|free|ads|rent|buy` (OR) y
+ * `watch_region` derivado de la localización configurada.
+ */
+export async function discoverTmdbPopular(
+  mediaType: "movie" | "tv",
+  opts: { region?: string; language?: string; limit?: number } = {},
+): Promise<TmdbPopularItem[]> {
+  const region = opts.region ?? tmdbRegion();
+  const params = new URLSearchParams({
+    sort_by: "popularity.desc",
+    include_adult: "false",
+    include_video: "false",
+    "with_watch_monetization_types": "flatrate|free|ads|rent|buy",
+  });
+  if (region) params.set("watch_region", region);
+
+  const data = await tmdbFetch<{ results: any[] }>(
+    `/discover/${mediaType}?${params.toString()}`,
+    { ttlSeconds: 12 * 60 * 60, language: opts.language },
+  ).catch(() => null);
+  if (!data?.results) return [];
+
+  const list = data.results.map((r: any) => ({
+    id: r.id,
+    title: r.title ?? r.name ?? "",
+    original_title: r.original_title ?? r.original_name ?? "",
+    overview: r.overview ?? null,
+    date: r.release_date ?? r.first_air_date ?? null,
+    poster_url: posterUrl(r.poster_path, "w500"),
+    vote_average: r.vote_average ?? null,
+    media_type: mediaType,
+  }));
+
+  return opts.limit && opts.limit > 0 ? list.slice(0, opts.limit) : list;
 }
 
 export { getTmdbKey };

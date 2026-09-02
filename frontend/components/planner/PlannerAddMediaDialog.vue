@@ -238,6 +238,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { searchTmdb, searchSeries, createSubscription, refreshSubscription, listSubscriptions, getTvdbTranslations, getTmdbTranslations } = usePlanner();
 const { showToast } = useApi();
+const { loadStatus } = usePlannerStatus();
 
 const query = ref("");
 const isSearching = ref(false);
@@ -382,25 +383,55 @@ function seriesUsesTvdb(): boolean {
   return seriesSource.value === "tvdb";
 }
 
+const DEFAULT_LANG_NAMES: Record<string, string> = {
+  en: "English", es: "Español", it: "Italiano", pt: "Português",
+  fr: "Français", de: "Deutsch", ja: "日本語", ko: "한국어", zh: "中文",
+};
+
+/** Idioma configurado en Integraciones (ISO-2) para pre-seleccionar el selector. */
+async function defaultLanguage(): Promise<string> {
+  try {
+    const status = await loadStatus();
+    const locale = props.mediaType === "series" ? status?.tvdbLocale : status?.tmdbLocale;
+    return (locale ?? "").trim().slice(0, 2).toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+/** Garantiza que el idioma preseleccionado aparezca en el desplegable. */
+function ensureLangPresent(c: { languages: { code: string; name: string }[]; selectedLanguage: string }) {
+  if (c.selectedLanguage && !c.languages.some((l) => l.code === c.selectedLanguage)) {
+    c.languages.unshift({
+      code: c.selectedLanguage,
+      name: DEFAULT_LANG_NAMES[c.selectedLanguage] ?? c.selectedLanguage,
+    });
+  }
+}
+
 async function addMedia(r: TvdbSearchResult | TmdbSearchResult) {
   errorMsg.value = "";
+  // Idioma por defecto: el configurado en Integraciones (localización).
+  const defLang = await defaultLanguage();
   if (props.mediaType === "series" && seriesUsesTvdb()) {
     // Pedir idioma (series TVDB): cargar las traducciones de TVDB.
-    confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
+    confirming.value = { result: r, languages: [], selectedLanguage: defLang, loading: true };
     try {
       confirming.value.languages = await getTvdbTranslations(r.id);
     } catch {
       confirming.value.languages = [];
     }
+    ensureLangPresent(confirming.value);
     confirming.value.loading = false;
   } else if (props.mediaType === "movie") {
     // Pedir idioma (películas): cargar las traducciones de TMDB.
-    confirming.value = { result: r, languages: [], selectedLanguage: "", loading: true };
+    confirming.value = { result: r, languages: [], selectedLanguage: defLang, loading: true };
     try {
       confirming.value.languages = await getTmdbTranslations(r.id);
     } catch {
       confirming.value.languages = [];
     }
+    ensureLangPresent(confirming.value);
     confirming.value.loading = false;
   } else {
     await doCreate(r, null);

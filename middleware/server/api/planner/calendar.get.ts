@@ -164,6 +164,11 @@ export default defineEventHandler(async (event) => {
     // (Scripted + Animation). "all" o lista explícita de tipos en `types`.
     const tvTypes = q.types ? parseTvTypes(q.types) : SCRIPTED_TYPES;
 
+    // Dedupe entre fuentes: un mismo show+dia aparece en TVmaze (episodio concreto)
+    // Y en TMDB discover/tv (próximo episodio). TVmaze es más detallado, así que
+    // el de TMDB se descarta si ya está aquí.
+    const seenTvShows = new Set<string>();
+
     const tvmazeEpisodes = await getTvmazeEpisodesInRange(from, to).catch(() => []);
     for (const ep of tvmazeEpisodes) {
       if (subscribedTitles.has(normalize(ep.show.name))) continue; // ya suscrita
@@ -190,6 +195,7 @@ export default defineEventHandler(async (event) => {
         vote_average: null,
         source: "tvmaze",
       });
+      seenTvShows.add(normalize(ep.show.name) + "|" + ep.airdate);
     }
 
     if (tmdbEnabled) {
@@ -220,6 +226,7 @@ export default defineEventHandler(async (event) => {
       for (const t of tv) {
         if (subscribedTitles.has(normalize(t.title))) continue;
         if (!t.date) continue;
+        if (seenTvShows.has(normalize(t.title) + "|" + t.date)) continue; // ya está en TVmaze
         events.push({
           date: t.date,
           kind: "discover-tv",
