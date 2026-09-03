@@ -94,12 +94,6 @@
                 {{ $t("planner.calendar") }}
               </NuxtLink>
             </li>
-            <li>
-              <NuxtLink to="/planner/wanted" @click="$emit('close')">
-                <span class="mdi mdi-download-multiple"></span>
-                {{ $t("planner.wanted") }}
-              </NuxtLink>
-            </li>
           </ul>
         </div>
 

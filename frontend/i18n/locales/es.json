@@ -739,6 +739,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Oscuridad corporativa azul marino, brillo cian eléctrico — estética del piso segregado"
+    },
+    "steam": {
+      "name": "Steam",
+      "description": "Cliente clásico Steam verde oliva con Tahoma"
     }
   },
   "ports": {
@@ -1465,7 +1469,6 @@
     "calFilter": "Programas TV",
     "calFilterFiction": "Series de ficción",
     "calFilterAll": "Todos los programas",
-    "wanted": "Pendientes",
     "addSeries": "Añadir serie",
     "addMovie": "Añadir película",
     "noSeries": "No hay series suscritas",
@@ -1513,11 +1516,6 @@
     "season": "Temporada",
     "status": "Estado",
     "noEpisodes": "No hay episodios. Pulsa Actualizar para sincronizar con TVDB",
-    "noWanted": "No hay episodios pendientes",
-    "autoDownload": "Descarga automática",
-    "autoDownloadStarted": "Descarga automática iniciada",
-    "wantedMissing": "Faltantes",
-    "wantedCutoff": "Upgrade disponible",
     "noHistory": "Sin historial",
     "digitalRelease": "Estreno digital",
     "downloadedQuality": "Calidad descargada",

@@ -739,6 +739,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Deep navy corporate darkness, electric cyan glow — severed floor aesthetic"
+    },
+    "steam": {
+      "name": "Steam",
+      "description": "Classic Steam olive-green client with Tahoma"
     }
   },
   "ports": {
@@ -1465,7 +1469,6 @@
     "calFilter": "TV shows",
     "calFilterFiction": "Scripted series",
     "calFilterAll": "All shows",
-    "wanted": "Wanted",
     "addSeries": "Add series",
     "addMovie": "Add movie",
     "noSeries": "No subscribed series",
@@ -1513,11 +1516,6 @@
     "season": "Season",
     "status": "Status",
     "noEpisodes": "No episodes yet. Press Refresh to sync with TVDB",
-    "noWanted": "No wanted episodes",
-    "autoDownload": "Auto-download",
-    "autoDownloadStarted": "Auto-download started",
-    "wantedMissing": "Missing",
-    "wantedCutoff": "Upgrade available",
     "noHistory": "No history",
     "digitalRelease": "Digital release",
     "downloadedQuality": "Downloaded quality",

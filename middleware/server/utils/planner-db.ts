@@ -913,21 +913,6 @@ export function getEpisodesReadyForDownload(cutoff: string): PlannerEpisode[] {
     .all(cutoff) as unknown as PlannerEpisode[];
 }
 
-/** Episodios emitidos (`released`) sin descargar — para la vista "Pendientes". */
-export function getMissingEpisodes(): PlannerEpisode[] {
-  const db = useDatabase();
-  return db
-    .prepare(
-      `SELECT e.*, s.title AS subscription_title, s.poster_url AS subscription_poster
-       FROM planner_episodes e
-       JOIN planner_subscriptions s ON s.id = e.subscription_id
-       WHERE e.status = 'released'
-         AND s.monitored = 1
-       ORDER BY e.air_date ASC`,
-    )
-    .all() as unknown as PlannerEpisode[];
-}
-
 // ─── Fecha local ─────────────────────────────────────────────────────────────
 
 /** Fecha local YYYY-MM-DD (no UTC) — base para la regla de las 18:00 del estreno. */
