@@ -375,3 +375,56 @@
   --s-btn-shadow: #000000;
   --s-btn-outline: #d8d8d8;
 }
+
+/* ── THEME: Steam (classic olive-green client) ─────────────────────────────
+   Faithful recreation of the Steam2 client palette (steam2-db.pages.dev):
+   olive-green panels, sage-green text, tan accent, Tahoma font.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-theme="steam"] {
+  --s-bg: #3e4637;
+  --s-bg-surface: #4c5844;
+  --s-bg-surface-alt: #3f4d39;
+  --s-bg-overlay: rgba(0, 0, 0, 0.7);
+  --s-bg-input: #2d3629;
+  --s-bg-sidebar: #262f22;
+  --s-bg-topbar: #2d3629;
+  --s-bg-hover: #56654e;
+  --s-border: #4a5743;
+  --s-border-light: #20261c;
+  --s-border-focus: #d8be75;
+  --s-text: #c4d6b0;
+  --s-text-secondary: #97af87;
+  --s-text-muted: #65745b;
+  --s-text-inverse: #1a2117;
+  --s-accent: #d8be75;
+  --s-accent-hover: #e5ad35;
+  --s-accent-subtle: rgba(216, 190, 117, 0.12);
+  --s-success: #78b846;
+  --s-success-subtle: rgba(120, 184, 70, 0.12);
+  --s-warning: #e5ad35;
+  --s-warning-subtle: rgba(229, 173, 53, 0.12);
+  --s-danger: #d35050;
+  --s-danger-subtle: rgba(211, 80, 80, 0.12);
+  --s-info: #d8be75;
+  --s-info-subtle: rgba(216, 190, 117, 0.12);
+  --s-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --s-radius: 4px;
+  --s-radius-lg: 8px;
+  --s-sidebar-text: #97af87;
+  --s-sidebar-text-hover: #c4d6b0;
+  --s-sidebar-active-bg: #d8be75;
+  --s-sidebar-active-text: #1a2117;
+  --s-sidebar-section-text: #65745b;
+  --s-sidebar-border: #20261c;
+  --s-topbar-border: #20261c;
+  --s-table-header-bg: #2d3629;
+  --s-table-stripe-bg: rgba(196, 214, 176, 0.03);
+  --s-table-hover-bg: rgba(196, 214, 176, 0.07);
+  --s-table-border: #20261c;
+  --s-scrollbar-thumb: #4c5844;
+  --s-scrollbar-track: #2d3629;
+  --s-glow: 0 0 10px rgba(216, 190, 117, 0.25);
+  --s-btn-shadow: #1a2117;
+  --s-btn-outline: var(--s-accent);
+}

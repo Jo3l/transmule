@@ -319,15 +319,6 @@ export function usePlanner() {
     );
   }
 
-  // ── Descarga automática (backlog + wanted) ─────────────────────────────────
-
-  async function autoDownload() {
-    return apiFetch<{ ok: boolean; started: boolean }>(
-      "/api/planner/wanted/auto-grab",
-      { method: "POST", body: {} },
-    );
-  }
-
   return {
     listSubscriptions,
     getSubscription,
@@ -347,6 +338,5 @@ export function usePlanner() {
     discoverPopular,
     searchReleasesStreamed,
     grabRelease,
-    autoDownload,
   };
 }

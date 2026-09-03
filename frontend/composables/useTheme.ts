@@ -1,4 +1,4 @@
-const THEMES = ["tron", "sark", "light", "matrix", "xp", "spectrum", "lumon"] as const;
+const THEMES = ["tron", "sark", "light", "matrix", "xp", "spectrum", "lumon", "steam"] as const;
 export type ThemeId = (typeof THEMES)[number];
 
 export const THEME_META: Record<ThemeId, { name: string; icon: string; description: string }> = {
@@ -36,6 +36,11 @@ export const THEME_META: Record<ThemeId, { name: string; icon: string; descripti
     name: "Lumon",
     icon: "mdi-office-building",
     description: "Deep navy corporate darkness, electric cyan glow — severed floor aesthetic",
+  },
+  steam: {
+    name: "Steam",
+    icon: "mdi-steam",
+    description: "Classic Steam olive-green client with Tahoma",
   },
 };
 

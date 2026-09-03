@@ -33,9 +33,6 @@
         <SButton variant="default" icon="mdi-calendar-month-outline" @click="navigateTo('/planner/calendar')" class="ml-2">
           {{ $t("planner.calendar") }}
         </SButton>
-        <SButton variant="default" icon="mdi-download-multiple" @click="navigateTo('/planner/wanted')" class="ml-2">
-          {{ $t("planner.wanted") }}
-        </SButton>
       </div>
 
       <!-- Series populares -->
