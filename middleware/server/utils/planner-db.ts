@@ -46,7 +46,8 @@ export type PlannerGrabState =
   | "dispatched"
   | "failed"
   | "given_up"
-  | "completed";
+  | "completed"
+  | "cancelled";
 
 export interface PlannerSubscription {
   id: number;
@@ -961,4 +962,156 @@ export function computeMovieStatus(
   if (existingStatus && !PRE.has(existingStatus)) return existingStatus;
   if (releaseDate == null) return "unreleased";
   return releaseDate >= today ? "waiting" : "released";
+}
+
+
+// ─── Cancel vinculado a la vista de descargas ─────────────────────────────────
+
+export interface PlannerCancelTarget {
+  /** Servicio del release cancelado ('amule' | 'transmission' | 'slskd' | 'pyload'). */
+  service: string;
+  /** Hash ed2k (amule) o infoHash (transmission) — coincide con planner_grab_queue.release_hash. */
+  hash?: string | null;
+  /** Título/nombre del release (slskd / pyload) — coincide con release_title. */
+  title?: string | null;
+  /** Usuario Soulseek (slskd) para desambiguar por dueño del archivo. */
+  username?: string | null;
+}
+
+/**
+ * Vincula un cancel de la vista de descargas al grab del planificador que lo
+ * originó y lo libera.
+ *
+ * Marca 'cancelled' los grabs activos (pending/dispatched) que coinciden con el
+ * release cancelado y, si no queda ningún otro grab activo para el mismo
+ * episodio/película, devuelve ese episodio/película a su estado pre-descarga
+ * (released/waiting según su fecha). Si SÍ queda otro hilo activo apuntando al
+ * mismo episodio/película, se respeta el estado 'grabbed' (sigue en curso).
+ *
+ * Nota de mapeo de servicio: los grabs del planificador guardan service =
+ * 'direct-plugin' (torrent), 'slskd' o 'amule'. El target procedente de la
+ * vista de descargas usa 'transmission' para torrent; aquí se normaliza.
+ */
+export function cancelPlannerGrabs(targets: PlannerCancelTarget[]): {
+  cancelled: number;
+  releasedEpisodes: number;
+  releasedMovies: number;
+} {
+  const db = useDatabase();
+  let cancelled = 0;
+  let releasedEpisodes = 0;
+  let releasedMovies = 0;
+
+  for (const t of targets) {
+    // Normalizar serviceKey al valor que usa planner_grab_queue.
+    let services: string[];
+    if (t.service === "transmission" || t.service === "direct-plugin") {
+      services = ["direct-plugin", "transmission"];
+    } else if (t.service === "amule") {
+      services = ["amule"];
+    } else if (t.service === "slskd") {
+      services = ["slskd"];
+    } else if (t.service === "pyload") {
+      services = ["pyload"];
+    } else {
+      continue;
+    }
+    const inClause = services.map(() => "?").join(",");
+
+    // Localizar grabs activos que matcheen este release.
+    let rows: Array<Record<string, any>> = [];
+    if (t.hash) {
+      rows = db
+        .prepare(
+          `SELECT * FROM planner_grab_queue
+           WHERE state IN ('pending','dispatched')
+             AND service IN (${inClause})
+             AND LOWER(release_hash) = LOWER(?)`,
+        )
+        .all(...services, t.hash) as unknown as Array<Record<string, any>>;
+    } else if (t.title) {
+      const like = `%${t.title}%`;
+      rows = db
+        .prepare(
+          `SELECT * FROM planner_grab_queue
+           WHERE state IN ('pending','dispatched')
+             AND service IN (${inClause})
+             AND (release_title = ? OR release_title LIKE ?)`,
+        )
+        .all(...services, t.title, like) as unknown as Array<Record<string, any>>;
+    } else {
+      continue;
+    }
+
+    for (const grab of rows) {
+      db.prepare(
+        "UPDATE planner_grab_queue SET state = 'cancelled', last_error = 'cancelado desde la vista de descargas' WHERE id = ?",
+      ).run(grab.id);
+      cancelled++;
+
+      recordGrabLog({
+        subscription_id: grab.subscription_id,
+        episode_id: grab.episode_id ?? null,
+        movie_id: grab.movie_id ?? null,
+        grab_id: grab.id,
+        event: "cancelled",
+        message: `cancelado desde la vista de descargas (${t.service}: ${grab.release_title ?? grab.release_hash ?? ""})`,
+      });
+
+      // Liberar episodio/película solo si no queda otro grab activo del mismo target.
+      const targetField = grab.episode_id ? "episode_id" : "movie_id";
+      const targetId = grab.episode_id ?? grab.movie_id;
+      const stillActive = db
+        .prepare(
+          `SELECT COUNT(*) AS c FROM planner_grab_queue
+           WHERE ${targetField} = ? AND state IN ('pending','dispatched')`,
+        )
+        .get(targetId) as { c: number };
+      if (Number(stillActive.c) > 0) continue; // otro hilo sigue en curso
+
+      if (grab.episode_id) {
+        releaseEpisodeToInitial(grab.episode_id);
+        releasedEpisodes++;
+      } else if (grab.movie_id) {
+        releaseMovieToInitial(grab.movie_id);
+        releasedMovies++;
+      }
+    }
+  }
+
+  return { cancelled, releasedEpisodes, releasedMovies };
+}
+
+/**
+ * Devuelve un episodio a su estado pre-descarga (released/waiting/unreleased)
+ * según su air_date, limpiando los marcadores de descarga.
+ */
+function releaseEpisodeToInitial(episodeId: number): void {
+  const db = useDatabase();
+  const ep = db
+    .prepare("SELECT * FROM planner_episodes WHERE id = ?")
+    .get(episodeId) as unknown as PlannerEpisode | undefined;
+  if (!ep) return;
+  const today = localDateString();
+  const next = computeEpisodeStatus(undefined, ep.air_date, today);
+  db.prepare(
+    "UPDATE planner_episodes SET status = ?, grabbed_at = NULL WHERE id = ? AND status = 'grabbed'",
+  ).run(next, episodeId);
+}
+
+/**
+ * Devuelve una película a su estado pre-descarga según su fecha de estreno.
+ */
+function releaseMovieToInitial(movieId: number): void {
+  const db = useDatabase();
+  const mv = db
+    .prepare("SELECT * FROM planner_movies WHERE id = ?")
+    .get(movieId) as unknown as PlannerMovie | undefined;
+  if (!mv) return;
+  const today = localDateString();
+  const releaseDate = mv.digital_release_date ?? mv.theatrical_release_date;
+  const next = computeMovieStatus(undefined, releaseDate, today);
+  db.prepare(
+    "UPDATE planner_movies SET status = ?, grabbed_at = NULL WHERE id = ? AND status = 'grabbed'",
+  ).run(next, movieId);
 }
