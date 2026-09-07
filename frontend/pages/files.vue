@@ -82,7 +82,7 @@
           </div>
 
           <SButton
-            v-if="isAdmin"
+            v-if="isAdmin && activePath"
             size="sm"
             @click="openNewFolderDialog()"
             icon="mdi-folder-plus"

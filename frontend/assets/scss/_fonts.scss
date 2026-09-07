@@ -16,3 +16,33 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* ── StarCraft font ─────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Share Tech Mono";
+  src: url("../fonts/share_tech_mono.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  src: url("../fonts/saira_condensed_500.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  src: url("../fonts/saira_condensed_600.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Saira Condensed";
+  src: url("../fonts/saira_condensed_700.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

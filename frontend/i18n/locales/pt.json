@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Azul marinho corporativo profundo, brilho ciano elétrico — estética do piso separado"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terminal do Dominio Terran - CRT ambar, Share Tech Mono"
     }
   },
   "ports": {

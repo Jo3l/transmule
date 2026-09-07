@@ -727,6 +727,10 @@
     "lumon": {
       "name": "लुमोन",
       "description": "गहरा नेवी कॉर्पोरेट अंधकार, इलेक्ट्रिक सियान चमक — सेवर्ड फ्लोर सौंदर्य"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terran Dominion terminal - amber CRT, Share Tech Mono"
     }
   },
   "ports": {

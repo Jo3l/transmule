@@ -376,6 +376,61 @@
   --s-btn-outline: #d8d8d8;
 }
 
+
+/* ── THEME: StarCraft ─────────────────────────────────────────────────────
+   Terran Dominion terminal aesthetic (starcraft-arg.vercel.app):
+   near-black teal CRT, amber accent, high tracking, hexagonal cut panels.
+   Share Tech Mono body + Saira Condensed display.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="starcraft"] {
+  --s-bg: #06090a;
+  --s-bg-surface: #0c1214;
+  --s-bg-surface-alt: #0d1315;
+  --s-bg-overlay: rgba(6, 9, 10, 0.92);
+  --s-bg-input: #0c1214;
+  --s-bg-sidebar: #080c0d;
+  --s-bg-topbar: #0e1417;
+  --s-bg-hover: #101718;
+  --s-border: #1f2a2e;
+  --s-border-light: #151d20;
+  --s-border-focus: #f5a623;
+  --s-text: #c9d3d6;
+  --s-text-secondary: #8a979c;
+  --s-text-muted: #6c7a80;
+  --s-text-inverse: #0a0f11;
+  --s-accent: #f5a623;
+  --s-accent-hover: #ffd18a;
+  --s-accent-subtle: rgba(245, 166, 35, 0.12);
+  --s-success: #7fc08c;
+  --s-success-subtle: rgba(127, 192, 140, 0.12);
+  --s-warning: #f5a623;
+  --s-warning-subtle: rgba(245, 166, 35, 0.12);
+  --s-danger: #ff4b3e;
+  --s-danger-subtle: rgba(255, 75, 62, 0.12);
+  --s-info: #f5a623;
+  --s-info-subtle: rgba(245, 166, 35, 0.12);
+  --s-shadow: none;
+  --s-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --s-radius: 2px;
+  --s-radius-lg: 2px;
+  --s-sidebar-text: #6c7a80;
+  --s-sidebar-text-hover: #c9d3d6;
+  --s-sidebar-active-bg: #131b1e;
+  --s-sidebar-active-text: #f5a623;
+  --s-sidebar-section-text: #4c5a60;
+  --s-sidebar-border: #1f2a2e;
+  --s-topbar-border: #1f2a2e;
+  --s-table-header-bg: #111a1c;
+  --s-table-stripe-bg: rgba(245, 166, 35, 0.03);
+  --s-table-hover-bg: rgba(245, 166, 35, 0.06);
+  --s-table-border: #151d20;
+  --s-scrollbar-thumb: #2a3a40;
+  --s-scrollbar-track: #06090a;
+  --s-glow: 0 0 10px rgba(245, 166, 35, 0.25);
+  --s-btn-shadow: #06090a;
+  --s-btn-outline: var(--s-accent);
+}
+
 /* ── THEME: Steam (classic olive-green client) ─────────────────────────────
    Faithful recreation of the Steam2 client palette (steam2-db.pages.dev):
    olive-green panels, sage-green text, tan accent, Tahoma font.

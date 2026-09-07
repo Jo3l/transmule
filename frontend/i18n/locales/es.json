@@ -743,6 +743,10 @@
     "steam": {
       "name": "Steam",
       "description": "Cliente clásico Steam verde oliva con Tahoma"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terminal del Dominio Terran - CRT ambar, Share Tech Mono"
     }
   },
   "ports": {
@@ -948,7 +952,14 @@
     "obfuscationSupported": "Soportada",
     "obfuscationRequested": "Solicitada",
     "obfuscationRequired": "Requerida",
-    "useSecIdent": "Usar identificación segura"
+    "useSecIdent": "Usar identificación segura",
+    "sharing": "Compartir",
+    "sharingDescription": "Configura cómo aMule comparte archivos.",
+    "sharedFileCount": "Archivos compartidos",
+    "includeSubdirs": "Buscar archivos en subcarpetas",
+    "includeSubdirsHelp": "Al escanear archivos compartidos, incluye también los de subdirectorios.",
+    "includeSubdirsUnsupported": "Tu versión de aMule no soporta esta opción todavía (se aplicará al actualizar el daemon). Configúralo mientras tanto en la propia interfaz de aMule.",
+    "reloadShared": "Recargar archivos compartidos"
   },
   "torrentSearch": {
     "title": "Buscar Torrents",

@@ -454,6 +454,77 @@ class AmuleECClient {
     return this.exec(() => this.client.reloadSharedFiles());
   }
 
+  /**
+   * Fetch the daemon's shared-directory configuration via EC_OP_GET_SHARED_DIRS
+   * (0x5D): one EC_TAG_SHAREDDIR (0x2000) per configured root, recursive roots
+   * carrying an EC_TAG_SHAREDDIR_RECURSIVE (0x2001) subtag.
+   *
+   * Availability: requires aMule commit ea20f8610 ("feat(ec): manage the core's
+   * shared folders from amuleGUI"), as yet unreleased (not in 2.3.3 / 3.0.x).
+   * Older daemons answer EC_OP_FAILED; callers should catch and treat as
+   * "unsupported" for a graceful no-op.
+   */
+  async getSharedDirs(): Promise<{ path: string; recursive: boolean }[]> {
+    return this.exec(async () => {
+      const req = {
+        buildPacket() {
+          return new Packet(0x5d as any, Flags.useUtf8Numbers(), []);
+        },
+      };
+      const response = await (this.client as any).connection.sendRequest(req);
+
+      const results: { path: string; recursive: boolean }[] = [];
+      for (const tag of response.tags ?? []) {
+        if ((tag.name as any) !== 0x2000) continue;
+        const path = String(tag?.getValue?.() ?? "");
+        const recursive = !!tag.nestedTags?.find(
+          (t: any) => t.name === 0x2001,
+        );
+        results.push({ path, recursive });
+      }
+      return results;
+    });
+  }
+
+  /**
+   * Replace the daemon's shared-directory configuration via EC_OP_SET_SHARED_DIRS
+   * (0x5E). Flat list of {path, recursive}; recursive roots carry an
+   * EC_TAG_SHAREDDIR_RECURSIVE (0x2001) subtag. The daemon persists the two
+   * intent lists and schedules its own rescan, so no separate reload is needed.
+   *
+   * Returns rejected paths (EC_TAG_SHAREDDIR_REJECTED 0x2002) with numeric
+   * reason (EC_TAG_SHAREDDIR_ERROR 0x2003): 1 = missing/not a dir, 2 = unreadable.
+   *
+   * Same availability caveat as getSharedDirs(): unreleased in stable aMule.
+   */
+  async setSharedDirs(
+    dirs: { path: string; recursive: boolean }[],
+  ): Promise<{ path: string; reason: number }[]> {
+    return this.exec(async () => {
+      const tags = dirs.map((d) =>
+        d.recursive
+          ? new StringTag(0x2000 as any, d.path, [new UByteTag(0x2001 as any, 1)])
+          : new StringTag(0x2000 as any, d.path),
+      );
+
+      const req = {
+        buildPacket() {
+          return new Packet(0x5e as any, Flags.useUtf8Numbers(), tags);
+        },
+      };
+      const response = await (this.client as any).connection.sendRequest(req);
+
+      const rejected: { path: string; reason: number }[] = [];
+      for (const tag of response.tags ?? []) {
+        if ((tag.name as any) !== 0x2002) continue;
+        const path = String(tag?.getValue?.() ?? "");
+        const errTag = tag.nestedTags?.find((t: any) => t.name === 0x2003);
+        rejected.push({ path, reason: Number(errTag?.getValue?.() ?? 0) });
+      }
+      return rejected;
+    });
+  }
+
   async getServerList(): Promise<AmuleServer[]> {
     return this.exec(() => this.client.getServerList());
   }

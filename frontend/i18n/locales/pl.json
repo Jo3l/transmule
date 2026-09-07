@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Głęboka granatowa korporacyjna ciemność, elektryczny cyjanowy blask — estetyka severed floor"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terminal Dominium Terran - bursztynowy CRT, Share Tech Mono"
     }
   },
   "ports": {

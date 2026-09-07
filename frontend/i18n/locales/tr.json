@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Koyu lacivert kurumsal karanlık, elektrik mavisi parlama — kesilmiş kat estetiği"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terran Dominion terminali - kehribar CRT, Share Tech Mono"
     }
   },
   "ports": {
