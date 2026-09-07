@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Oscurità azul marina aziendale, bagliore ciano elettrico — estetica del piano separato"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terminale del Dominio Terran - CRT ambra, Share Tech Mono"
     }
   },
   "ports": {

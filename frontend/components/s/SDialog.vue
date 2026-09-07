@@ -63,10 +63,16 @@ const emit = defineEmits<{ "update:modelValue": [val: boolean] }>();
 
 const overlayRef = ref<HTMLElement | null>(null);
 
-// Auto-focus the overlay when dialog opens so Escape key works immediately
+// Auto-focus on open: the first form field (so text dialogs are immediately
+// typable), falling back to the overlay so Escape still works on the rest.
 watch(() => props.modelValue, (val) => {
   if (val) {
-    nextTick(() => overlayRef.value?.focus());
+    nextTick(() => {
+      const firstField = overlayRef.value?.querySelector<HTMLElement>(
+        ".s-dialog__body input, .s-dialog__body select, .s-dialog__body textarea",
+      );
+      (firstField ?? overlayRef.value)?.focus();
+    });
   }
 });
 

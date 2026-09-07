@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Tiefmarineblaue Unternehmens-Dunkelheit, elektrischer Cyan-Schimmer — severed-floor-Ästhetik"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terran Dominion-Terminal - amberne CRT, Share Tech Mono"
     }
   },
   "ports": {

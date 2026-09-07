@@ -448,6 +448,9 @@
             {{ $t("amuleSettings.includeSubdirs", "Buscar archivos en subcarpetas") }}
           </SCheckbox>
           <p class="has-text-grey is-size-7 mt-1">{{ $t("amuleSettings.includeSubdirsHelp", "Al escanear archivos compartidos, incluye tambi\u00e9n los de subdirectorios.") }}</p>
+          <SAlert v-if="sharingSupportedKnown && !sharingSupported" variant="warning" class="mt-3">
+            {{ $t("amuleSettings.includeSubdirsUnsupported", "Tu versi\u00f3n de aMule no soporta esta opci\u00f3n todav\u00eda (se aplicar\u00e1 al actualizar el daemon). Config\u00faralo mientras tanto en la propia interfaz de aMule.") }}
+          </SAlert>
 
           <div class="mt-4">
             <SButton variant="default" size="sm" :loading="reloadingShared" @click="reloadShared" icon="mdi-refresh">
@@ -525,12 +528,23 @@ const saving = ref(false);
 const saved = ref(false);
 const errorMsg = ref("");
 const sharingPrefs = reactive({ includeSubdirs: true });
+const sharingSupported = ref(false);
+const sharingSupportedKnown = ref(false);
 const reloadingShared = ref(false);
 
 async function loadSharingPrefs() {
   try {
     const data = await apiFetch<any>("/api/amule/sharing");
-    if (data) sharingPrefs.includeSubdirs = data.includeSubdirs !== false;
+    if (data) {
+      sharingPrefs.includeSubdirs = data.includeSubdirs !== false;
+      if (data.supported === true) {
+        sharingSupported.value = true;
+        sharingSupportedKnown.value = true;
+      } else {
+        sharingSupported.value = false;
+        sharingSupportedKnown.value = true;
+      }
+    }
   } catch { /* silent */ }
 }
 
@@ -549,12 +563,21 @@ async function reloadShared() {
 async function saveSharing() {
   saving.value = true;
   try {
-    await apiFetch("/api/amule/sharing", {
+    const res = await apiFetch<any>("/api/amule/sharing", {
       method: "POST",
       body: { includeSubdirs: sharingPrefs.includeSubdirs },
     });
-    saved.value = true;
-    setTimeout(() => { saved.value = false; }, 3000);
+    if (res?.applied === false) {
+      addToast(
+        "La versión de aMule no soporta esta opción aún; se guardará para cuando actualices",
+        "warning",
+      );
+    } else {
+      saved.value = true;
+      setTimeout(() => { saved.value = false; }, 3000);
+    }
+    // Re-sync the reflected support state after a save attempt.
+    await loadSharingPrefs();
   } catch { /* silent */ }
   saving.value = false;
 }

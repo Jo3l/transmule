@@ -1164,3 +1164,293 @@
     font-family: "Tahoma", "MS Sans Serif", "Segoe UI", arial, sans-serif;
   }
 }
+
+/* ── StarCraft-specific overrides (Terran Dominion terminal) ─────────────── */
+[data-theme="starcraft"] {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+
+  *,
+  .s-btn,
+  .s-input,
+  .s-select select,
+  .s-tag,
+  .s-alert,
+  .s-tabs__tab,
+  .s-table,
+  .s-checkbox,
+  .s-input-number input,
+  .s-dialog,
+  .s-form-item__label {
+    font-family: "Share Tech Mono", ui-monospace, monospace !important;
+    border-radius: 2px !important;
+  }
+
+  /* Headings & display elements → Saira Condensed (militar) */
+  h1, h2, h3, h4, h5, h6,
+  .s-dialog__title,
+  .s-tabs__tab,
+  .sidebar-title,
+  .topbar-title {
+    font-family: "Saira Condensed", sans-serif !important;
+    letter-spacing: 0.14em;
+  }
+
+  /* ─ Background: near-black with faint teal radial glow ─ */
+  &,
+  html &,
+  body {
+    background-color: #06090a;
+    background-image: radial-gradient(120% 80% at 50% -10%, #101a1e 0%, #06090a 60%);
+    background-attachment: fixed;
+  }
+
+  /* ─ Scrollbars ─ */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #06090a;
+    border-left: 1px solid #1f2a2e;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a3a40;
+    border: 1px solid #39474d;
+    border-radius: 0;
+    &:hover {
+      background: #f5a623;
+    }
+  }
+  ::-webkit-scrollbar-corner {
+    background: #06090a;
+  }
+
+  /* ═══ Sidebar & topbar: flat panels, hex-cut accents ═══ */
+  .sidebar {
+    background: #080c0d;
+    border-right: 1px solid #1f2a2e;
+  }
+  .topbar {
+    background: linear-gradient(180deg, #0e1417, #0a0f11);
+    border-bottom: 1px solid #1f2a2e;
+  }
+
+  /* ═══ Inputs ═══ */
+  .s-input {
+    background: #0c1214;
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    color: #c9d3d6;
+    box-shadow: none;
+    caret-color: #f5a623;
+    letter-spacing: 0.06em;
+    &:focus {
+      border-color: #f5a623;
+      outline: none;
+    }
+  }
+  .s-select select {
+    background: #0c1214;
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    color: #c9d3d6;
+    &:focus {
+      border-color: #f5a623;
+    }
+  }
+  .s-input-number {
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    input {
+      background: #0c1214;
+      color: #c9d3d6;
+    }
+    button {
+      background: #0c1214;
+      border-left: 1px solid #2a3a40;
+      color: #8a979c;
+      &:hover {
+        background: #101718;
+        color: #f5a623;
+      }
+    }
+  }
+
+  /* ═══ Switch ═══ */
+  .s-switch .s-switch__track {
+    border-radius: 2px;
+    background: #0c1214;
+    border: 1px solid #39474d;
+    box-shadow: none;
+    .s-switch__thumb {
+      border-radius: 1px;
+      background: #6c7a80;
+      border: none;
+      box-shadow: none;
+    }
+  }
+  .s-switch.is-active .s-switch__track {
+    background: #1a2226;
+    border-color: #f5a623;
+    .s-switch__thumb {
+      background: #f5a623;
+    }
+  }
+
+  /* ═══ Checkbox ═══ */
+  .s-checkbox .s-checkbox__box {
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    background: #0c1214;
+    box-shadow: none;
+  }
+  .s-checkbox.is-checked .s-checkbox__box {
+    background: #f5a623;
+    border-color: #f5a623;
+    color: #0a0f11;
+    box-shadow: none;
+  }
+
+  /* ═══ Tags ═══ */
+  .s-tag {
+    border-radius: 2px;
+    border: 1px solid #2a3a40;
+    background: #0c1214;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: none;
+    &.s-tag--primary {
+      border-color: #f5a623;
+      color: #f5a623;
+    }
+    &.s-tag--success {
+      border-color: #7fc08c;
+      color: #7fc08c;
+    }
+    &.s-tag--warning {
+      border-color: #f5a623;
+      color: #ffd18a;
+    }
+    &.s-tag--danger {
+      border-color: #ff4b3e;
+      color: #ff6b5e;
+    }
+    &.s-tag--info {
+      border-color: #39474d;
+      color: #8a979c;
+    }
+  }
+
+  /* ═══ Progress bar ═══ */
+  .s-progress {
+    background: #0c1214;
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    box-shadow: none;
+    .s-progress__bar {
+      border-radius: 0 !important;
+      background: repeating-linear-gradient(
+        135deg,
+        #f5a623 0px,
+        #f5a623 12px,
+        #0a0f11 12px,
+        #0a0f11 24px
+      ) !important;
+      opacity: 0.85;
+    }
+    .s-progress__text {
+      color: #c9d3d6;
+      text-shadow: none;
+    }
+  }
+
+  /* ═══ Divider ═══ */
+  .s-divider {
+    border-top: 1px solid #1f2a2e;
+    box-shadow: none;
+  }
+
+  /* ═══ Alert ═══ */
+  .s-alert {
+    border-radius: 2px;
+    border: 1px solid;
+    box-shadow: none;
+    letter-spacing: 0.08em;
+    &.s-alert--error {
+      background: #0b0a09;
+      color: #ff6b5e;
+      border-color: #ff4b3e;
+    }
+    &.s-alert--success {
+      background: #0d1315;
+      color: #a8c4ae;
+      border-color: #7fc08c;
+    }
+    &.s-alert--warning {
+      background: #0c1214;
+      color: #ffd18a;
+      border-color: #f5a623;
+    }
+    &.s-alert--info {
+      background: #0c1214;
+      color: #c9d3d6;
+      border-color: #39474d;
+    }
+  }
+
+  /* ═══ Dialog ═══ */
+  .s-dialog {
+    background: #0c1214;
+    border: 1px solid #2a3a40;
+    border-radius: 2px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    .s-dialog__header {
+      background: linear-gradient(135deg, #0f1719, #0b1012);
+      color: #c9d3d6;
+      border-bottom: 1px solid #1f2a2e;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+  }
+
+  /* ═══ Tabs ═══ */
+  .s-tabs__tab {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 12px;
+    &.is-active {
+      color: #f5a623;
+      border-bottom-color: #f5a623;
+    }
+  }
+
+  /* ═══ Table ═══ */
+  .s-table th {
+    color: #6c7a80;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 400;
+    font-size: 11px;
+    border-bottom: 1px solid #223035;
+    background: #111a1c;
+  }
+  .s-table td {
+    border-bottom: 1px solid #151d20;
+    color: #c9d3d6;
+  }
+  .s-table tr:nth-child(even) td {
+    background: #0e1517;
+  }
+
+  /* ═══ Links ═══ */
+  a {
+    color: #f5a623;
+    letter-spacing: 0.06em;
+    &:hover {
+      color: #ffd18a;
+    }
+  }
+}

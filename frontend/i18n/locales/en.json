@@ -743,6 +743,10 @@
     "steam": {
       "name": "Steam",
       "description": "Classic Steam olive-green client with Tahoma"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terran Dominion terminal - amber CRT, Share Tech Mono"
     }
   },
   "ports": {

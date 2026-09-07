@@ -727,6 +727,10 @@
     "lumon": {
       "name": "Lumon",
       "description": "Глубокий тёмно-синий корпоративный фон, электрическое голубое свечение — эстетика severed floor"
+    },
+    "starcraft": {
+      "name": "StarCraft",
+      "description": "Terminal Terran Dominion - amber CRT, Share Tech Mono"
     }
   },
   "ports": {
