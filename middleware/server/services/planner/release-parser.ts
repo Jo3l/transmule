@@ -22,7 +22,7 @@ const VIDEO_EXT_RE = /\b(MKV|MP4|AVI|M2TS|WEBM|MOV|WMV|FLV|M4V)\b/gi;
 // Extensiones de ficheros auxiliares (subs, nfo, torrent, imágenes...) que
 // llegan como falsos "releases" de aMule/slskd y ensucian el título.
 const NON_VIDEO_EXT_RE =
-  /\b(NFO|SRT|ASS|SSA|IDX|TORRENT|JPG|JPEG|PNG|XML|TXT|SFV|MD5|RAR|ZIP|7Z|P2P[-]?HASH|CHAPTERS?)\b/gi;
+  /\b(NFO|SRT|ASS|SSA|IDX|TORRENT|JPG|JPEG|PNG|XML|TXT|SFV|MD5|RAR|ZIP|7Z|P2P[-]?HASH|CHAPTERS?|EXE|SCR|COM|BAT|CMD|MSI|LNK)\b/gi;
 // HDR / rango dinámico, profundidad de bit y fuente de streaming (junk del título)
 const HDR_RE = /\b(HDR10\+?|HDR|DOVI|DV|DOLBY[-\s]?VISION|SDR|HLG)\b/gi;
 // Canales de audio sueltos (6CH, 8CH...) que quedan en el título.
@@ -183,6 +183,8 @@ export function isVideoFile(name: string): boolean {
   const ext = (name ?? "").slice((name ?? "").lastIndexOf(".") + 1).toLowerCase();
   if (/^(mkv|mp4|avi|m2ts|webm|mov|wmv|flv|m4v|ts|mpg|mpeg)$/.test(ext)) return true;
   if (/^(nfo|srt|sub|ass|ssa|idx|torrent|jpe?g|png|gif|xml|txt|sfv|md5|rar|zip|7z|p2p-hash|hash|url)$/.test(ext)) return false;
+  // Ejecutables/scripts: ficheros falsos (malware) disfrazados de vídeo en ed2k.
+  if (/^(exe|scr|com|bat|cmd|msi|lnk)$/.test(ext)) return false;
   return true; // sin extensión o desconocida → no descartar
 }
 

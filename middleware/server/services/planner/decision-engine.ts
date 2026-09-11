@@ -101,7 +101,7 @@ export interface DecisionResult {
 
 // ─── Title match helpers ────────────────────────────────────────────────────
 
-function normalizeTitle(t: string): string {
+export function normalizeTitle(t: string): string {
   return t
     .toLowerCase()
     .replace(/[^a-z0-9\u00e0-\u00ff\s]/g, " ")
@@ -109,7 +109,7 @@ function normalizeTitle(t: string): string {
     .trim();
 }
 
-function titleSimilarity(a: string, b: string): number {
+export function titleSimilarity(a: string, b: string): number {
   const na = normalizeTitle(a);
   const nb = normalizeTitle(b);
   if (!na || !nb) return 0;
@@ -150,7 +150,7 @@ function normalizeForMatch(s: string): string {
  * True si el nombre del release incluye el título del episodio (localizado).
  * Coincidencia por frase completa o por todos los tokens significativos (≥3).
  */
-function episodeTitleMatch(releaseRaw: string, episodeTitle: string): boolean {
+export function episodeTitleMatch(releaseRaw: string, episodeTitle: string): boolean {
   const raw = normalizeForMatch(releaseRaw).replace(/ /g, "");
   const title = normalizeForMatch(episodeTitle);
   if (!title || title.length < 3) return false;
