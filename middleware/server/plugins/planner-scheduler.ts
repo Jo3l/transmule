@@ -19,6 +19,7 @@ import {
 import {
   getTmdbMovieDetail,
   getTmdbMovieReleaseDates,
+  getTmdbTvEpisodes,
   getAllTmdbTvEpisodes,
   getTmdbTvDetail,
 } from "../services/planner/tmdb";
@@ -47,8 +48,8 @@ import {
 } from "../utils/planner-db";
 import { getConfig, useDatabase } from "../utils/database";
 import { searchEpisode, searchMovie, parseSearchServices } from "../services/planner/search-providers";
-import { pickBest } from "../services/planner/decision-engine";
-import { resolveAltTitles } from "../services/planner/localized-titles";
+import { pickBest, normalizeTitle, titleSimilarity, episodeTitleMatch } from "../services/planner/decision-engine";
+import { resolveAltTitles, resolveLanguageTitles } from "../services/planner/localized-titles";
 import { refreshSeriesEpisodes } from "../services/planner/metadata-sync";
 import type { ParsedRelease } from "../services/planner/release-parser";
 
@@ -409,7 +410,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
     }
 
     searched++;
-    await grabEpisode(sub, ep, "auto", { maxPerDay });
+    await grabEpisode(sub, ep, "auto");
   }
 
   // ── Movies: waiting (recién estrenadas) ─────────────
@@ -518,28 +519,6 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
 
 // ─── Search & grab de un único episodio (compartido) ────────────────────────
 
-/** Mejor candidato visto en las búsquedas del día (para el fallback de idioma). */
-interface BestCandidate {
-  score: number;
-  rawName: string;
-  url: string;
-  hash: string | null;
-  quality: string;
-  sizeMb: number | null;
-  seeds: number | null;
-  service: string;
-}
-
-function parseBestCandidate(json: string | null | undefined): BestCandidate | null {
-  if (!json) return null;
-  try {
-    const c = JSON.parse(json);
-    return c && typeof c.rawName === "string" ? (c as BestCandidate) : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Encola un grab del episodio y lo marca 'grabbed'. */
 function enqueueEpisodeGrab(
   sub: PlannerSubscription,
@@ -571,6 +550,95 @@ function enqueueEpisodeGrab(
 }
 
 /**
+ * Sin referencia explícita de idioma, infiere si el release está en el idioma
+ * seleccionado comparando su título (serie y episodio) contra el título
+ * localizado y el original (inglés):
+ *   - localizado != original y el release coincide con el localizado → está en
+ *     el idioma elegido (descargar);
+ *   - coincide con el original → está en inglés (esperar si el elegido != inglés);
+ *   - localizado == original (sin localización) → no distingue el idioma, se
+ *     asume el elegido (descargar);
+ *   - si el idioma elegido ES el original (inglés), no hay check.
+ * Solo se usa cuando el release NO trae referencia explícita de idioma.
+ */
+function releaseLikelyInSelectedLanguage(
+  release: ParsedRelease,
+  localizedTitle: string | null,
+  originalTitle: string | null,
+  localizedEpisodeTitle: string | null,
+  originalEpisodeTitle: string | null,
+  selectedLang: string | null | undefined,
+): boolean {
+  // Un release con referencia explícita de idioma no se resuelve por título
+  // (el scoring ya lo clasificó; p.ej. "english" con preferencia "es" → -500).
+  const langs = release.languages ?? [];
+  if (langs.some((l) => l !== "subs")) return false;
+
+  // El idioma elegido es el original (inglés) → no hace falta check.
+  const lang = (selectedLang ?? "").trim().toLowerCase();
+  if (lang === "" || lang === "en") return true;
+
+  const distinct = (a: string | null, b: string | null): boolean =>
+    !!a && !!b && normalizeTitle(a) !== normalizeTitle(b);
+  const seriesDistinct = distinct(localizedTitle, originalTitle);
+  const episodeDistinct = distinct(localizedEpisodeTitle, originalEpisodeTitle);
+
+  // Ningún título distingue el idioma (localizado == original) → no se puede
+  // inferir que sea inglés → se asume el idioma elegido.
+  if (!seriesDistinct && !episodeDistinct) return true;
+
+  let localizedHit = false;
+  let originalHit = false;
+
+  if (seriesDistinct) {
+    const simLoc = titleSimilarity(release.title, localizedTitle!);
+    const simOrig = titleSimilarity(release.title, originalTitle!);
+    if (simLoc > simOrig) localizedHit = true;
+    else if (simOrig > simLoc) originalHit = true;
+  }
+
+  if (episodeDistinct) {
+    const loc = localizedEpisodeTitle
+      ? episodeTitleMatch(release.raw, localizedEpisodeTitle)
+      : false;
+    const orig = originalEpisodeTitle
+      ? episodeTitleMatch(release.raw, originalEpisodeTitle)
+      : false;
+    if (loc && !orig) localizedHit = true;
+    else if (orig && !loc) originalHit = true;
+  }
+
+  if (localizedHit && !originalHit) return true; // título localizado → idioma elegido
+  if (originalHit && !localizedHit) return false; // título original → inglés → esperar
+  return true; // señal ambigua (sin clara) → no bloquear
+}
+
+/**
+ * Título ORIGINAL (inglés) del episodio, para comparar con el localizado
+ * (ep.title) y deducir el idioma del release cuando no hay referencia
+ * explícita. Opcional: si falla o no hay fuente, no bloquea la inferencia.
+ */
+async function fetchOriginalEpisodeTitle(
+  sub: PlannerSubscription,
+  seasonNumber: number,
+  episodeNumber: number,
+): Promise<string | null> {
+  try {
+    if (sub.tvdb_id) {
+      const eps = await getTvdbSeriesEpisodes(sub.tvdb_id, seasonNumber, "en");
+      return eps.find((e) => e.number === episodeNumber)?.name ?? null;
+    }
+    if (sub.tmdb_id) {
+      const eps = await getTmdbTvEpisodes(sub.tmdb_id, seasonNumber, "en");
+      return eps.find((e) => e.episode_number === episodeNumber)?.name ?? null;
+    }
+  } catch {
+    /* señal opcional */
+  }
+  return null;
+}
+
+/**
  * Busca y descarga un único episodio (decision engine + enqueueGrab).
  * `searchKind` distingue "auto" (scheduler) de "manual" (botón de temporada).
  */
@@ -578,10 +646,8 @@ async function grabEpisode(
   sub: PlannerSubscription,
   ep: PlannerEpisode,
   searchKind: string,
-  opts: { maxPerDay?: number } = {},
 ): Promise<void> {
   const services = parseSearchServices(sub.search_services_json);
-  const maxPerDay = opts.maxPerDay ?? 3;
   try {
     // Refrescar metadata antes de buscar/descargar: el título del episodio
     // debe estar lo más fresco posible (p.ej. capítulo emitido hoy). El force
@@ -600,6 +666,20 @@ async function grabEpisode(
       title: sub.title,
       media_type: "series",
     });
+    // Par localizado/original + título original del episodio, para inferir el
+    // idioma cuando el release no trae referencia explícita.
+    const titles = await resolveLanguageTitles({
+      tvdb_id: sub.tvdb_id,
+      tmdb_id: sub.tmdb_id,
+      language: sub.language,
+      title: sub.title,
+      media_type: "series",
+    });
+    const originalEpisodeTitle = await fetchOriginalEpisodeTitle(
+      sub,
+      ep.season_number,
+      ep.episode_number,
+    );
     const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, undefined, altTitles);
     const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
     const decision = pickBest({
@@ -616,6 +696,23 @@ async function grabEpisode(
         : {}),
     });
 
+    const winner = decision.picked;
+
+    // ¿El release está en el idioma esperado? Referencia explícita coincidente
+    // (score >= 0) o, sin referencia, inferencia por título (localizado vs
+    // original). Manual siempre descarga.
+    const languageOk =
+      winner == null ||
+      winner.languageScore >= 0 ||
+      releaseLikelyInSelectedLanguage(
+        winner.release,
+        titles.localized,
+        titles.original,
+        ep.title,
+        originalEpisodeTitle,
+        sub.language,
+      );
+
     recordSearchHistory({
       subscription_id: sub.id,
       episode_id: ep.id,
@@ -631,7 +728,9 @@ async function grabEpisode(
       picked_hash: null,
       picked_seeds: null,
       picked_at: new Date().toISOString(),
-      status: decision.picked ? "grabbed" : "no_results",
+      status: decision.picked
+        ? (searchKind !== "auto" || languageOk ? "grabbed" : "pending")
+        : "no_results",
       error_message: decision.picked ? null : decision.note,
     });
 
@@ -640,12 +739,12 @@ async function grabEpisode(
     const dayCount = (ep.search_day === today ? (ep.search_day_count ?? 0) : 0) + 1;
     const attempts = (ep.search_attempts ?? 0) + 1;
 
-    if (decision.picked) {
-      const winner = decision.picked;
+    if (winner) {
       const winnerItem = items.find((i) => i.parsed.raw === winner.release.raw);
-      // Manual o idioma correcto → coger ya. Auto con idioma no pedido → acumular
-      // el mejor candidato y esperar por si aparece uno mejor a lo largo del día.
-      const grabNow = searchKind !== "auto" || winner.languageScore >= 0;
+      // En auto, solo se descarga si el release está en el idioma esperado
+      // (referencia explícita o inferencia por título); si no, se espera al
+      // siguiente ciclo. Manual siempre descarga lo elegido.
+      const grabNow = searchKind !== "auto" || languageOk;
       if (grabNow && winnerItem) {
         enqueueEpisodeGrab(sub, ep.id, {
           rawName: winnerItem.rawName,
@@ -661,52 +760,19 @@ async function grabEpisode(
           search_attempts: attempts,
           search_day: today,
           search_day_count: dayCount,
-          best_candidate_json: null,
         });
         console.log(`[planner] grabbed "${sub.title}" S${ep.season_number}E${ep.episode_number} ← ${winnerItem.rawName} (${winnerItem.service})`);
         return;
       }
-
-      // Fallback automático: guardar el mejor candidato del día (por score).
-      const candidate: BestCandidate = {
-        score: winner.total,
-        rawName: winnerItem?.rawName ?? winner.release.raw,
-        url: winnerItem?.url ?? "",
-        hash: winnerItem?.hash ?? null,
-        quality: winner.release.quality,
-        sizeMb: winner.release.sizeMb ?? null,
-        seeds: winnerItem?.seeds ?? null,
-        service: winnerItem?.service ?? "",
-      };
-      const prev = parseBestCandidate(ep.best_candidate_json);
-      if (!prev || candidate.score > prev.score) {
-        updateEpisode(ep.id, { best_candidate_json: JSON.stringify(candidate) });
-      }
     }
 
-    // Registrar el intento de búsqueda.
+    // Registrar el intento de búsqueda (sin descargar: se reintentará mañana).
     updateEpisode(ep.id, {
       last_search_at: nowIso,
       search_attempts: attempts,
       search_day: today,
       search_day_count: dayCount,
     });
-
-    // Última búsqueda del día (auto): si no se cogió nada "bueno", coger el mejor
-    // candidato acumulado en vez de esperar al día siguiente.
-    if (searchKind === "auto" && dayCount >= maxPerDay) {
-      const fresh = listEpisodes(sub.id, { seasonNumber: ep.season_number }).find(
-        (e) => e.episode_number === ep.episode_number,
-      );
-      if (fresh && fresh.status === "waiting") {
-        const best = parseBestCandidate(fresh.best_candidate_json);
-        if (best) {
-          enqueueEpisodeGrab(sub, fresh.id, best);
-          updateEpisode(fresh.id, { best_candidate_json: null });
-          console.log(`[planner] fallback "${sub.title}" S${fresh.season_number}E${fresh.episode_number} ← ${best.rawName} (mejor de ${dayCount} búsquedas, score=${best.score})`);
-        }
-      }
-    }
   } catch (err: any) {
     console.error(`[planner] search failed for "${sub.title}" S${ep.season_number}E${ep.episode_number}:`, err?.message);
   }

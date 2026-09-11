@@ -357,6 +357,9 @@ expectEq(isVideoFile("Silo.S03E09.1080p.HEVC.x265-MeGusta[EZTVx.to].mkv.torrent"
 expectEq(isVideoFile("Silo 3x09 thumb.jpg"), false, "no-video .jpg");
 expectEq(isVideoFile("Silo 3x09 chapters.xml"), false, "no-video .xml");
 expectEq(isVideoFile("Silo 3x09 Despedida ... by.Legan.mkv.p2p-hash"), false, "no-video .p2p-hash");
+expectEq(isVideoFile("Ted Lasso 1 S01E06 -NTb.exe"), false, "no-video .exe (malware)");
+expectEq(isVideoFile("Ted Lasso 1 S01E06 -NTb.scr"), false, "no-video .scr");
+expectEq(isVideoFile("Ted Lasso 1 S01E06 -NTb.msi"), false, "no-video .msi");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

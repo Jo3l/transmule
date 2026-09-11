@@ -90,3 +90,61 @@ export async function resolveAltTitles(src: AltTitleSource): Promise<string[]> {
 
   return [...new Set(out)];
 }
+
+export interface LanguageTitlePair {
+  /** Título en el idioma seleccionado (null si no hay localización distinta). */
+  localized: string | null;
+  /** Título original (inglés). */
+  original: string | null;
+}
+
+/**
+ * Resuelve el par de títulos (localizado vs original) por separado, para la
+ * inferencia de idioma cuando un release no trae referencia explícita. A
+ * diferencia de resolveAltTitles (lista plana para el scoring), aquí se
+ * distingue cuál es el localizado y cuál el original, y se anula el localizado
+ * cuando coincide con el original (sin localización).
+ */
+export async function resolveLanguageTitles(
+  src: AltTitleSource,
+): Promise<LanguageTitlePair> {
+  const lang = (src.language ?? "").trim();
+  let localized: string | null = null;
+  let original: string | null = null;
+
+  if (src.media_type === "series") {
+    if (src.tvdb_id) {
+      if (lang && lang !== "en") {
+        localized = await getTvdbSeriesLocalizedName(src.tvdb_id, lang).catch(() => null);
+      }
+      original = await getTvdbSeriesLocalizedName(src.tvdb_id, "en").catch(() => null);
+    } else if (src.tmdb_id) {
+      if (lang && lang !== "en") {
+        localized = await getTmdbTvLocalizedName(src.tmdb_id, lang).catch(() => null);
+      }
+      const detail = await getTmdbTvDetail(src.tmdb_id).catch(() => null);
+      original = detail?.name ?? null;
+    }
+  } else if (src.tmdb_id) {
+    if (lang && lang !== "en") {
+      localized = await getTmdbMovieLocalizedTitle(src.tmdb_id, lang).catch(() => null);
+    }
+    const detail = await getTmdbMovieDetail(src.tmdb_id, "en").catch(() => null);
+    original = detail?.title ?? detail?.original_title ?? null;
+  }
+
+  const clean = (s: string | null | undefined) => (s ?? "").trim() || null;
+  localized = clean(localized);
+  original = clean(original);
+
+  // Sin localización real (igual al original) -> localized = null.
+  if (
+    localized &&
+    original &&
+    localized.toLowerCase() === original.toLowerCase()
+  ) {
+    localized = null;
+  }
+
+  return { localized, original };
+}
