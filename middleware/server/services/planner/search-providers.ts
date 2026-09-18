@@ -243,31 +243,40 @@ async function streamSlskd(
   }
   if (created.length === 0) return;
 
-  const seen = new Set<string>();
-  const pending = new Set(created);
-  const started = Date.now();
-  while (pending.size > 0) {
-    if (timeoutMs && Date.now() - started >= timeoutMs) break;
-    await sleep(2000);
+  try {
+    const seen = new Set<string>();
+    const pending = new Set(created);
+    const started = Date.now();
+    while (pending.size > 0) {
+      if (timeoutMs && Date.now() - started >= timeoutMs) break;
+      await sleep(2000);
 
-    const searches = await client.getSearches().catch(() => []);
-    for (const id of [...pending]) {
-      const s = searches.find((x) => x.id === id);
-      if (s && isSearchDone(s)) pending.delete(id);
-    }
-
-    const fresh: SearchResultItem[] = [];
-    for (const id of created) {
-      const files = await client.getSearchResponses(id).catch(() => []);
-      for (const f of files) {
-        if (!isVideoFile(f.filename)) continue;
-        const key = f.filename.toLowerCase();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        fresh.push(slskdToItem(f));
+      const searches = await client.getSearches().catch(() => []);
+      for (const id of [...pending]) {
+        const s = searches.find((x) => x.id === id);
+        if (s && isSearchDone(s)) pending.delete(id);
       }
+
+      const fresh: SearchResultItem[] = [];
+      for (const id of created) {
+        const files = await client.getSearchResponses(id).catch(() => []);
+        for (const f of files) {
+          if (!isVideoFile(f.filename)) continue;
+          const key = f.filename.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          fresh.push(slskdToItem(f));
+        }
+      }
+      if (fresh.length > 0) onResult(fresh);
     }
-    if (fresh.length > 0) onResult(fresh);
+  } finally {
+    // Borra las búsquedas de slskd una vez leídos los resultados. Cada query
+    // del planificador genera un UUID que slskd retiene indefinidamente como
+    // "tab" abierta; sin esto se acumulan cientos de búsquedas antiguas.
+    await Promise.allSettled(
+      created.map((id) => client.removeSearch(id).catch(() => false)),
+    );
   }
 }
 

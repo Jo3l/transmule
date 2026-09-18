@@ -140,6 +140,14 @@ export function useSearchTabs() {
       _unifiedAbort.get(id)?.abort();
       _unifiedAbort.delete(id);
     }
+    if (tab.type === "unified") {
+      // Borra la búsqueda slskd asociada para no dejar "tabs" abiertos en slskd.
+      const searchId = _slskdSearchIds.get(id);
+      if (searchId) {
+        _slskdSearchIds.delete(id);
+        apiFetch(`/api/slskd/searches/${searchId}`, { method: "DELETE" }).catch(() => {});
+      }
+    }
 
     tabs.value = tabs.value.filter((t) => t.id !== id);
     if (activeTabId.value === id) {
@@ -631,7 +639,19 @@ export function useSearchTabs() {
   // ── Internal ──────────────────────────────────────────────────────────
 
   function pushTab(tab: SearchTab) {
-    if (tabs.value.length >= 10) tabs.value = tabs.value.slice(-9);
+    if (tabs.value.length >= 10) {
+      // Al expulsar la tab más antigua, borra su búsqueda slskd (si la hubiera)
+      // para no acumular búsquedas abiertas en slskd.
+      const dropped = tabs.value[0];
+      if (dropped?.type === "unified") {
+        const searchId = _slskdSearchIds.get(dropped.id);
+        if (searchId) {
+          _slskdSearchIds.delete(dropped.id);
+          apiFetch(`/api/slskd/searches/${searchId}`, { method: "DELETE" }).catch(() => {});
+        }
+      }
+      tabs.value = tabs.value.slice(-9);
+    }
     tabs.value = [...tabs.value, tab];
     activeTabId.value = tab.id;
   }
