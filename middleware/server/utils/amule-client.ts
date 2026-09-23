@@ -41,6 +41,38 @@ import {
 } from "amule-ec-client";
 
 
+// ─── EC constants not covered by amule-ec-client (aMule ≥ 3.1) ────────────────
+// Ver docs/EC_Protocol.md de aMule 3.1: las operaciones nuevas van gateadas por
+// un tag EC_TAG_CAN_* que el daemon echa en EC_OP_AUTH_OK. Comprobarlo NO es
+// informativo: enviar un opcode que el daemon no conoce lo manda a su rama de
+// "unknown opcode" (assert en builds de debug) en vez de recibir un EC_OP_FAILED.
+
+/** Respuesta al handshake; lleva los tags EC_TAG_CAN_* del daemon. */
+const EC_OP_AUTH_OK = 0x04;
+/** El daemon no conoce / rechazó la operación. */
+const EC_OP_FAILED = 0x05;
+/** Gestión de carpetas compartidas por EC (nueva en aMule 3.1). */
+const EC_OP_GET_SHARED_DIRS = 0x5d;
+const EC_OP_SET_SHARED_DIRS = 0x5e;
+/** El daemon anuncia que sirve EC_OP_GET/SET_SHARED_DIRS. */
+const EC_TAG_CAN_SHAREDDIRS_CONFIG = 0x17;
+/** Raíces compartidas: ruta + flag de recursividad, y rechazos del SET. */
+const EC_TAG_SHAREDDIR = 0x2000;
+const EC_TAG_SHAREDDIR_RECURSIVE = 0x2001;
+const EC_TAG_SHAREDDIR_REJECTED = 0x2002;
+const EC_TAG_SHAREDDIR_ERROR = 0x2003;
+
+/**
+ * El daemon no soporta una operación (capacidad ausente o EC_OP_FAILED). No es
+ * un fallo de conexión: `exec()` lo propaga tal cual, sin reconectar.
+ */
+class AmuleUnsupportedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AmuleUnsupportedError";
+  }
+}
+
 // ─── EC Preference request helpers ────────────────────────────────────────────
 
 /**
@@ -342,9 +374,59 @@ class AmuleECClient {
   private _reconnecting = false;
   private _error: string | null = null;
   private _connectPromise: Promise<void> | null = null;
+  /**
+   * Capacidades que el daemon anuncia en EC_OP_AUTH_OK (EC_TAG_CAN_*, por código).
+   * Son "load-bearing": hay que comprobarlas ANTES de enviar las operaciones que
+   * gatean (un opcode desconocido mata el dispatcher del daemon antiguo).
+   */
+  private _capabilities = new Set<number>();
 
   constructor(private options: AmuleClientOptions) {
     this.client = new AmuleClient(options);
+    this.hookAuthCapabilities();
+  }
+
+  // ─── Capability negotiation (aMule ≥ 3.1) ─────────────────────────────────
+
+  /**
+   * Captura los tags de capacidades de EC_OP_AUTH_OK enganchando el transporte
+   * de la librería (no editamos node_modules ni parcheamos el paquete).
+   *
+   * La librería amule-ec-client no expone el paquete AUTH_OK, así que envolvemos
+   * `connection.sendRequestNoAuth`: cuando la respuesta es AUTH_OK (0x04)
+   * guardamos los nombres de tag que trae. El daemon 3.1 añade ahí
+   * EC_TAG_CAN_SHAREDDIRS_CONFIG (0x17) de forma incondicional.
+   */
+  private hookAuthCapabilities(): void {
+    const conn: any = (this.client as any).connection;
+    if (!conn || conn.__transmuleCapabilityHook) return;
+    const original = conn.sendRequestNoAuth.bind(conn);
+    conn.sendRequestNoAuth = async (request: any, ...rest: any[]) => {
+      const packet = await original(request, ...rest);
+      if (packet?.opCode === EC_OP_AUTH_OK) {
+        this._capabilities = new Set(
+          (packet.tags ?? [])
+            .map((t: any) => Number(t?.name))
+            .filter((n: number) => Number.isFinite(n)),
+        );
+        // Traza útil para diagnosticar contra qué daemon estamos hablando
+        // (p.ej. si gestiona carpetas compartidas: 0x17).
+        console.log(
+          `[EC] daemon capabilities: ${
+            this._capabilities.size
+              ? [...this._capabilities].map((n) => `0x${n.toString(16)}`).join(",")
+              : "none"
+          }`,
+        );
+      }
+      return packet;
+    };
+    conn.__transmuleCapabilityHook = true;
+  }
+
+  /** ¿El daemon soporta gestionar sus carpetas compartidas por EC (aMule ≥ 3.1)? */
+  supportsSharedDirsConfig(): boolean {
+    return this._capabilities.has(EC_TAG_CAN_SHAREDDIRS_CONFIG);
   }
 
   // ─── Connection management ────────────────────────────────────────────────
@@ -391,8 +473,11 @@ class AmuleECClient {
           timeout: this.options.timeout,
         };
         this.client = new AmuleClient(opts);
+        this.hookAuthCapabilities();
       }
 
+      // Capacidades por conexión: se re-capturan en cada handshake.
+      this._capabilities = new Set();
       await this.client.reconnect();
       this._connected = true;
       this._reconnecting = false;
@@ -420,6 +505,9 @@ class AmuleECClient {
     try {
       return await fn();
     } catch (err: any) {
+      // "El daemon no soporta esto" no es un fallo de conexión: ni reconectar
+      // ni envolver en 502 — el llamante decide (p.ej. sharing.ts → unsupported).
+      if (err instanceof AmuleUnsupportedError) throw err;
       // If the connection dropped, try reconnecting once
       this._connected = false;
       this._error = err?.message || String(err);
@@ -459,26 +547,45 @@ class AmuleECClient {
    * (0x5D): one EC_TAG_SHAREDDIR (0x2000) per configured root, recursive roots
    * carrying an EC_TAG_SHAREDDIR_RECURSIVE (0x2001) subtag.
    *
-   * Availability: requires aMule commit ea20f8610 ("feat(ec): manage the core's
-   * shared folders from amuleGUI"), as yet unreleased (not in 2.3.3 / 3.0.x).
-   * Older daemons answer EC_OP_FAILED; callers should catch and treat as
-   * "unsupported" for a graceful no-op.
+   * Disponible desde aMule 3.1 (#530), que lo anuncia con
+   * EC_TAG_CAN_SHAREDDIRS_CONFIG (0x17) en EC_OP_AUTH_OK. En daemons anteriores
+   * (2.3.3 / 3.0.x) NO se envía el paquete: el opcode desconocido llega a la
+   * rama "unknown opcode" del dispatcher (assert en builds de debug) — se lanza
+   * AmuleUnsupportedError y el llamante lo trata como "no soportado".
    */
   async getSharedDirs(): Promise<{ path: string; recursive: boolean }[]> {
+    await this.ensureConnected();
+    if (!this.supportsSharedDirsConfig()) {
+      throw new AmuleUnsupportedError(
+        "aMule daemon does not advertise EC_TAG_CAN_SHAREDDIRS_CONFIG (needs aMule 3.1+)",
+      );
+    }
     return this.exec(async () => {
       const req = {
         buildPacket() {
-          return new Packet(0x5d as any, Flags.useUtf8Numbers(), []);
+          return new Packet(EC_OP_GET_SHARED_DIRS as any, Flags.useUtf8Numbers(), []);
         },
       };
       const response = await (this.client as any).connection.sendRequest(req);
+      // Segunda barrera: si el daemon contesta EC_OP_FAILED (o cualquier otra
+      // cosa), no lo interpretemos como "cero carpetas compartidas".
+      if (response?.opCode === EC_OP_FAILED) {
+        throw new AmuleUnsupportedError(
+          "aMule refused EC_OP_GET_SHARED_DIRS (EC_OP_FAILED)",
+        );
+      }
+      if (response?.opCode !== EC_OP_GET_SHARED_DIRS) {
+        throw new Error(
+          `Unexpected EC response 0x${Number(response?.opCode ?? -1).toString(16)} to EC_OP_GET_SHARED_DIRS`,
+        );
+      }
 
       const results: { path: string; recursive: boolean }[] = [];
       for (const tag of response.tags ?? []) {
-        if ((tag.name as any) !== 0x2000) continue;
+        if ((tag.name as any) !== EC_TAG_SHAREDDIR) continue;
         const path = String(tag?.getValue?.() ?? "");
         const recursive = !!tag.nestedTags?.find(
-          (t: any) => t.name === 0x2001,
+          (t: any) => t.name === EC_TAG_SHAREDDIR_RECURSIVE,
         );
         results.push({ path, recursive });
       }
@@ -489,36 +596,57 @@ class AmuleECClient {
   /**
    * Replace the daemon's shared-directory configuration via EC_OP_SET_SHARED_DIRS
    * (0x5E). Flat list of {path, recursive}; recursive roots carry an
-   * EC_TAG_SHAREDDIR_RECURSIVE (0x2001) subtag. The daemon persists the two
-   * intent lists and schedules its own rescan, so no separate reload is needed.
+   * EC_TAG_SHAREDDIR_RECURSIVE (0x2001) subtag. El daemon persiste las dos listas
+   * de intención (shareddir-explicit.dat / shareddir-recursive.dat), regenera
+   * shareddir.dat y programa su propio rescan — no hace falta un reload aparte.
    *
    * Returns rejected paths (EC_TAG_SHAREDDIR_REJECTED 0x2002) with numeric
    * reason (EC_TAG_SHAREDDIR_ERROR 0x2003): 1 = missing/not a dir, 2 = unreadable.
    *
-   * Same availability caveat as getSharedDirs(): unreleased in stable aMule.
+   * Misma puerta de capacidad que getSharedDirs().
    */
   async setSharedDirs(
     dirs: { path: string; recursive: boolean }[],
   ): Promise<{ path: string; reason: number }[]> {
+    await this.ensureConnected();
+    if (!this.supportsSharedDirsConfig()) {
+      throw new AmuleUnsupportedError(
+        "aMule daemon does not advertise EC_TAG_CAN_SHAREDDIRS_CONFIG (needs aMule 3.1+)",
+      );
+    }
     return this.exec(async () => {
       const tags = dirs.map((d) =>
         d.recursive
-          ? new StringTag(0x2000 as any, d.path, [new UByteTag(0x2001 as any, 1)])
-          : new StringTag(0x2000 as any, d.path),
+          ? new StringTag(
+              EC_TAG_SHAREDDIR as any,
+              d.path,
+              [new UByteTag(EC_TAG_SHAREDDIR_RECURSIVE as any, 1)],
+            )
+          : new StringTag(EC_TAG_SHAREDDIR as any, d.path),
       );
 
       const req = {
         buildPacket() {
-          return new Packet(0x5e as any, Flags.useUtf8Numbers(), tags);
+          return new Packet(EC_OP_SET_SHARED_DIRS as any, Flags.useUtf8Numbers(), tags);
         },
       };
       const response = await (this.client as any).connection.sendRequest(req);
+      if (response?.opCode === EC_OP_FAILED) {
+        throw new AmuleUnsupportedError("aMule refused EC_OP_SET_SHARED_DIRS (EC_OP_FAILED)");
+      }
+      if (response?.opCode !== EC_OP_SET_SHARED_DIRS) {
+        throw new Error(
+          `Unexpected EC response 0x${Number(response?.opCode ?? -1).toString(16)} to EC_OP_SET_SHARED_DIRS`,
+        );
+      }
 
       const rejected: { path: string; reason: number }[] = [];
       for (const tag of response.tags ?? []) {
-        if ((tag.name as any) !== 0x2002) continue;
+        if ((tag.name as any) !== EC_TAG_SHAREDDIR_REJECTED) continue;
         const path = String(tag?.getValue?.() ?? "");
-        const errTag = tag.nestedTags?.find((t: any) => t.name === 0x2003);
+        const errTag = tag.nestedTags?.find(
+          (t: any) => t.name === EC_TAG_SHAREDDIR_ERROR,
+        );
         rejected.push({ path, reason: Number(errTag?.getValue?.() ?? 0) });
       }
       return rejected;
@@ -834,7 +962,8 @@ class AmuleECClient {
    *     (how many sources have each specific part).
    *  4. REQ_STATUS (uint64 LE pairs) marks actively downloading ranges → DOWNLOADING.
    *
-   * @see https://github.com/amule-project/amule/blob/master/src/webserver/src/WebServer.cpp
+   * @see https://github.com/amule-org/amule/blob/3.1.0/src/webserver/src/WebServer.cpp
+   *      (el proyecto se movió de amule-project/amule a amule-org/amule en 3.0)
    */
   async getFileChunks(fileHash?: string): Promise<Record<string, ChunkInfo>> {
     return this.exec(async () => {

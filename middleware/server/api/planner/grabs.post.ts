@@ -21,6 +21,7 @@ import {
   enqueueGrab,
   updateEpisode,
   getSubscription,
+  markManualSearchPicked,
 } from "~/utils/planner-db";
 import { useDatabase } from "~/utils/database";
 import { refreshSeriesEpisodes } from "~/services/planner/metadata-sync";
@@ -120,6 +121,27 @@ export default defineEventHandler(async (event) => {
     useDatabase()
       .prepare("UPDATE planner_movies SET status = 'grabbed', grabbed_at = ? WHERE id = ?")
       .run(now, movieId);
+  }
+
+  // Log de búsqueda manual: completa la fila de la última búsqueda de este
+  // objetivo con el release elegido para descargar (para el análisis posterior).
+  try {
+    markManualSearchPicked({
+      subscription_id: subscriptionId,
+      episode_id: episodeId,
+      movie_id: movieId,
+      rawName: body?.release_title ?? null,
+      url: releaseUrl,
+      hash: body?.release_hash ?? null,
+      quality: body?.release_quality ?? null,
+      sizeMb: body?.release_size_mb != null ? Number(body.release_size_mb) : null,
+      seeds: body?.release_seeds != null ? Number(body.release_seeds) : null,
+      sources: null,
+      service: String(body?.service ?? "direct-plugin"),
+    });
+  } catch (err: any) {
+    // Best-effort: el grab ya está encolado; un fallo de log no lo deshace.
+    console.error("[planner] manual search picked log error:", err?.message ?? err);
   }
 
   return { ok: true, queued: true, grab: grab.id };

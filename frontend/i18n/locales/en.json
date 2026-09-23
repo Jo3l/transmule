@@ -1493,8 +1493,6 @@
     "metadataProvider": "Metadata provider",
     "addedAlready": "Added — open",
     "noOverview": "No overview available",
-    "searchNow": "Search now",
-    "searchQueued": "Search queued",
     "refresh": "Refresh",
     "refreshed": "Metadata refreshed",
     "delete": "Delete",
@@ -1589,6 +1587,13 @@
     "searchStatusNoResults": "No results",
     "searchStatusPending": "Pending",
     "detail": "Detail",
+    "cancelPendingTasks": "Clear pending tasks",
+    "cancelPendingTasksConfirm": "All active downloads and pending post-process tasks for this series will be cancelled, and episodes returned to their previous state. Continue?",
+    "cancelPendingTasksDone": "Pending tasks cleared",
+    "recentMissingHint": "{count} recent episodes not downloaded from season {season}",
+    "nothingPending": "No aired episodes pending download",
+    "exportLog": "Download log (JSON)",
+    "exportLogHint": "Downloads the manual-search log (query, settings, scored results and picked release) as JSON, to analyse the scoring with real data.",
     "noResultsFor": "No releases found for {query}"
   }
 }

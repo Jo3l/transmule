@@ -18,6 +18,7 @@
  */
 
 import { useDatabase } from "./database";
+import type { ReleaseCandidate } from "../services/planner/candidates";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -914,6 +915,343 @@ export function getEpisodesReadyForDownload(cutoff: string): PlannerEpisode[] {
     .all(cutoff) as unknown as PlannerEpisode[];
 }
 
+// ─── Atención por serie (avisos del listado) ────────────────────────────────
+
+/** Ventana por defecto (días) para considerar un episodio emitido "reciente". */
+export const SERIES_ATTENTION_DAYS = 30;
+
+/**
+ * Episodios emitidos recientes y aún no descargados de la TEMPORADA EN CURSO,
+ * por suscripción de serie.
+ *
+ * - Temporada en curso: la de mayor `season_number` de la serie con algún
+ *   episodio ya emitido (se ignoran las temporadas 100% futuras).
+ * - Emitido reciente: `air_date` dentro de los últimos `recentDays` días.
+ * - No descargado: `status` fuera de ('downloaded','grabbed') y sin `file_path`
+ *   (no cuenta un grab en curso ni lo ya descargado).
+ *
+ * Devuelve `Map<subscription_id, { count, season }>` solo para las series que
+ * tienen al menos un episodio en esa situación (para pintar el aviso del listado).
+ */
+export function getSeriesAttention(
+  recentDays: number = SERIES_ATTENTION_DAYS,
+): Map<number, { count: number; season: number }> {
+  const db = useDatabase();
+  const today = localDateString();
+  const since = localDateString(
+    new Date(Date.now() - Math.max(recentDays, 0) * 24 * 60 * 60 * 1000),
+  );
+
+  const rows = db
+    .prepare(
+      `WITH current_season AS (
+         SELECT e.subscription_id AS subscription_id,
+                MAX(e.season_number) AS season_number
+         FROM planner_episodes e
+         JOIN planner_subscriptions s ON s.id = e.subscription_id
+         WHERE s.type = 'series'
+           AND e.air_date IS NOT NULL
+           AND e.air_date <= ?
+         GROUP BY e.subscription_id
+       )
+       SELECT e.subscription_id AS subscription_id,
+              cs.season_number    AS season_number,
+              COUNT(*)            AS recent_missing
+       FROM planner_episodes e
+       JOIN current_season cs
+         ON cs.subscription_id = e.subscription_id
+        AND cs.season_number = e.season_number
+       WHERE e.air_date IS NOT NULL
+         AND e.air_date <= ?
+         AND e.air_date >= ?
+         AND e.status NOT IN ('downloaded', 'grabbed')
+         AND e.file_path IS NULL
+       GROUP BY e.subscription_id, cs.season_number`,
+    )
+    .all(today, today, since) as unknown as Array<{
+    subscription_id: number;
+    season_number: number;
+    recent_missing: number;
+  }>;
+
+  const map = new Map<number, { count: number; season: number }>();
+  for (const r of rows) {
+    map.set(Number(r.subscription_id), {
+      count: Number(r.recent_missing),
+      season: Number(r.season_number),
+    });
+  }
+  return map;
+}
+
+/** Busca el episodio exacto de una suscripción por número de temporada/episodio. */
+export function findEpisodeByNumber(
+  subscriptionId: number,
+  seasonNumber: number,
+  episodeNumber: number,
+): PlannerEpisode | undefined {
+  const db = useDatabase();
+  return db
+    .prepare(
+      `SELECT * FROM planner_episodes
+       WHERE subscription_id = ? AND season_number = ? AND episode_number = ?
+       LIMIT 1`,
+    )
+    .get(subscriptionId, seasonNumber, episodeNumber) as unknown as
+    | PlannerEpisode
+    | undefined;
+}
+
+// ─── Log de búsquedas MANUALES (análisis a posteriori) ──────────────────────
+
+/**
+ * Registra una búsqueda interactiva (Fase 14) en `planner_manual_search_log`.
+ * Objetivo: acumular datos reales (query + config + resultados + release
+ * elegido) para analizar cómo identificar mejor un episodio tras su release
+ * y, con el tiempo, refinar el scoring del decision engine.
+ *
+ * La fila se crea al INICIAR la búsqueda (con la query y la config) y se
+ * completa después con resultados (updateManualSearchResults) y, si el usuario
+ * descarga un release, con el elegido (markManualSearchPicked).
+ */
+export function recordManualSearchLog(
+  input: ManualSearchLogInput,
+): number {
+  const db = useDatabase();
+  const result = db
+    .prepare(
+      `INSERT INTO planner_manual_search_log
+        (subscription_id, media_type, episode_id, movie_id, tmdb_id, tvdb_id,
+         imdb_id, series_title, year, season, episode, episode_title,
+         query_text, queries_json, min_quality, max_size_mb, language,
+         search_services, alt_titles_json, searched_at, user_id, user_name)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.subscription_id,
+      input.media_type,
+      input.episode_id ?? null,
+      input.movie_id ?? null,
+      input.tmdb_id ?? null,
+      input.tvdb_id ?? null,
+      input.imdb_id ?? null,
+      input.series_title ?? null,
+      input.year ?? null,
+      input.season ?? null,
+      input.episode ?? null,
+      input.episode_title ?? null,
+      input.query_text,
+      input.queries_json ?? null,
+      input.min_quality ?? null,
+      input.max_size_mb ?? null,
+      input.language ?? null,
+      input.search_services ?? null,
+      input.alt_titles_json ?? null,
+      input.searched_at ?? new Date().toISOString(),
+      input.user_id ?? null,
+      input.user_name ?? null,
+    );
+  return Number(result.lastInsertRowid);
+}
+
+export interface ManualSearchLogInput {
+  subscription_id: number;
+  media_type: "series" | "movie";
+  episode_id?: number | null;
+  movie_id?: number | null;
+  tmdb_id?: number | null;
+  tvdb_id?: number | null;
+  imdb_id?: string | null;
+  series_title?: string | null;
+  year?: number | null;
+  season?: number | null;
+  episode?: number | null;
+  episode_title?: string | null;
+  query_text: string;
+  /** Variantes exactas enviadas a los providers (plain + aMule). */
+  queries_json?: string | null;
+  min_quality?: string | null;
+  max_size_mb?: number | null;
+  language?: string | null;
+  search_services?: string | null;
+  alt_titles_json?: string | null;
+  searched_at?: string | null;
+  user_id?: number | null;
+  user_name?: string | null;
+}
+
+/** Guarda los candidatos puntuados (incluidos los rechazados) de una búsqueda manual. */
+export function updateManualSearchResults(
+  logId: number,
+  candidates: ReleaseCandidate[],
+): void {
+  const db = useDatabase();
+  db.prepare(
+    `UPDATE planner_manual_search_log
+     SET results_count = ?, results_json = ?
+     WHERE id = ?`,
+  ).run(candidates.length, JSON.stringify(candidates), logId);
+}
+
+/** Campos del release elegido por el usuario para completar una fila del log. */
+export interface ManualSearchPickedInput {
+  subscription_id: number;
+  episode_id: number | null;
+  movie_id: number | null;
+  rawName: string | null;
+  url: string;
+  hash: string | null;
+  quality: string | null;
+  sizeMb: number | null;
+  seeds: number | null;
+  sources: number | null;
+  service: string | null;
+}
+
+/** Datos del candidato elegido que se derivan del propio results_json. */
+interface DerivedPicked {
+  languages: string[];
+  score: number | null;
+  rank: number | null;
+  seeds: number | null;
+  leechers: number | null;
+  sources: number | null;
+  username: string | null;
+  freeSlot: boolean | null;
+  queueLength: number | null;
+  uploadSpeed: number | null;
+  /** Disponibilidad normalizada (seeds en torrent, sources en eD2k, slot en slskd). */
+  availability: number | null;
+  availabilityKind: string | null;
+}
+
+/**
+ * Deriva del candidato guardado (buscado por URL en `results_json`) los datos
+ * que NO envía el cliente al descargar: idiomas, score, rank y — lo importante
+ * para el análisis posterior — la DISPONIBILIDAD (seeds/leechers en torrent,
+ * sources en eD2k, slot libre + cola en Soulseek).
+ */
+function derivePickedFromResults(
+  resultsJson: string | null,
+  url: string,
+): DerivedPicked {
+  const out: DerivedPicked = {
+    languages: [],
+    score: null,
+    rank: null,
+    seeds: null,
+    leechers: null,
+    sources: null,
+    username: null,
+    freeSlot: null,
+    queueLength: null,
+    uploadSpeed: null,
+    availability: null,
+    availabilityKind: null,
+  };
+  let results: any[] = [];
+  try {
+    const parsed = resultsJson ? JSON.parse(resultsJson) : [];
+    if (Array.isArray(parsed)) results = parsed;
+  } catch {
+    return out; // results_json corrupto → solo los campos que envía el cliente
+  }
+
+  const idx = results.findIndex((c) => c && c.url === url);
+  if (idx < 0) return out;
+  const c = results[idx];
+  out.rank = idx + 1;
+
+  if (Array.isArray(c.languages)) out.languages = c.languages;
+  if (typeof c.score === "number") out.score = c.score;
+  const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
+  out.seeds = num(c.seeds);
+  out.leechers = num(c.leechers);
+  out.sources = num(c.sources);
+  out.queueLength = num(c.queueLength);
+  out.uploadSpeed = num(c.uploadSpeed);
+  out.username = typeof c.username === "string" ? c.username : null;
+  out.freeSlot = typeof c.freeSlot === "boolean" ? c.freeSlot : null;
+
+  // Disponibilidad normalizada entre redes (para poder correlacionar en el análisis).
+  if (out.sources != null) {
+    out.availability = out.sources;
+    out.availabilityKind = "sources"; // aMule / eD2k
+  } else if (out.seeds != null) {
+    out.availability = out.seeds;
+    out.availabilityKind = "seeds"; // torrent
+  } else if (out.freeSlot != null) {
+    out.availability = out.freeSlot ? 1 : 0;
+    out.availabilityKind = "slskd-free-slot";
+  }
+  return out;
+}
+
+/**
+ * Completa la fila del log más reciente de ese objetivo (episodio/película)
+ * que aún no tenga release elegido, con el release que el usuario seleccionó
+ * para descargar. Además del campo a campo, deriva del propio results_json
+ * (buscando por URL) languages/score/rank y la disponibilidad del candidato.
+ *
+ * Devuelve el id de la fila actualizada, o null si no había fila pendiente.
+ */
+export function markManualSearchPicked(
+  input: ManualSearchPickedInput,
+): number | null {
+  const db = useDatabase();
+  const targetField = input.episode_id != null ? "episode_id" : "movie_id";
+  const targetValue = input.episode_id != null ? input.episode_id : input.movie_id;
+  if (targetValue == null) return null;
+
+  const row = db
+    .prepare(
+      `SELECT id, results_json FROM planner_manual_search_log
+       WHERE subscription_id = ? AND ${targetField} = ?
+         AND picked_url IS NULL
+       ORDER BY id DESC LIMIT 1`,
+    )
+    .get(input.subscription_id, targetValue) as
+    | { id: number; results_json: string | null }
+    | undefined;
+  if (!row) return null;
+
+  const d = derivePickedFromResults(row.results_json, input.url);
+
+  db.prepare(
+    `UPDATE planner_manual_search_log SET
+       picked_raw_name = ?, picked_url = ?, picked_hash = ?,
+       picked_quality = ?, picked_size_mb = ?, picked_seeds = ?,
+       picked_leechers = ?, picked_sources = ?, picked_username = ?,
+       picked_free_slot = ?, picked_queue_length = ?, picked_upload_speed = ?,
+       picked_availability = ?, picked_availability_kind = ?,
+       picked_service = ?, picked_languages = ?,
+       picked_score = ?, picked_rank = ?, selected_at = ?
+     WHERE id = ?`,
+  ).run(
+    input.rawName ?? null,
+    input.url,
+    input.hash ?? null,
+    input.quality ?? null,
+    input.sizeMb ?? null,
+    input.seeds ?? d.seeds,
+    d.leechers,
+    input.sources ?? d.sources,
+    d.username,
+    d.freeSlot == null ? null : d.freeSlot ? 1 : 0,
+    d.queueLength,
+    d.uploadSpeed,
+    d.availability,
+    d.availabilityKind,
+    input.service ?? null,
+    d.languages.length ? JSON.stringify(d.languages) : null,
+    d.score,
+    d.rank,
+    new Date().toISOString(),
+    row.id,
+  );
+  return row.id;
+}
+
 // ─── Fecha local ─────────────────────────────────────────────────────────────
 
 /** Fecha local YYYY-MM-DD (no UTC) — base para la regla de las 18:00 del estreno. */
@@ -1076,6 +1414,72 @@ export function cancelPlannerGrabs(targets: PlannerCancelTarget[]): {
         releaseMovieToInitial(grab.movie_id);
         releasedMovies++;
       }
+    }
+  }
+
+  return { cancelled, releasedEpisodes, releasedMovies };
+}
+
+/**
+ * Cancela TODAS las tareas pendientes de una subscription: grabs activos
+ * (pending/dispatched) y grabs descargados en post-proceso (locate/rename/move).
+ *
+ * Para cada uno libera el episodio/película a su estado pre-descarga (como
+ * `cancelPlannerGrabs`). Devuelve el recuento para mostrarlo en la UI.
+ */
+export function cancelAllPendingGrabsForSubscription(subscriptionId: number): {
+  cancelled: number;
+  releasedEpisodes: number;
+  releasedMovies: number;
+} {
+  const db = useDatabase();
+  const rows = db
+    .prepare(
+      `SELECT * FROM planner_grab_queue
+       WHERE subscription_id = ?
+         AND (state IN ('pending','dispatched')
+              OR post_step IN ('locate','rename','move'))`,
+    )
+    .all(subscriptionId) as unknown as Array<Record<string, any>>;
+
+  let cancelled = 0;
+  let releasedEpisodes = 0;
+  let releasedMovies = 0;
+
+  for (const grab of rows) {
+    db.prepare(
+      "UPDATE planner_grab_queue SET state = 'cancelled', post_step = NULL, last_error = 'cancelado desde el detalle de la serie' WHERE id = ?",
+    ).run(grab.id);
+    cancelled++;
+
+    recordGrabLog({
+      subscription_id: grab.subscription_id,
+      episode_id: grab.episode_id ?? null,
+      movie_id: grab.movie_id ?? null,
+      grab_id: grab.id,
+      event: "cancelled",
+      message: `cancelado desde el detalle de la serie (${grab.release_title ?? grab.release_hash ?? ""})`,
+    });
+
+    // Liberar episodio/película solo si no queda otro grab activo del mismo target.
+    const targetField = grab.episode_id ? "episode_id" : "movie_id";
+    const targetId = grab.episode_id ?? grab.movie_id;
+    if (targetId == null) continue;
+    const stillActive = db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM planner_grab_queue
+         WHERE ${targetField} = ?
+           AND (state IN ('pending','dispatched') OR post_step IN ('locate','rename','move'))`,
+      )
+      .get(targetId) as { c: number };
+    if (Number(stillActive.c) > 0) continue;
+
+    if (grab.episode_id) {
+      releaseEpisodeToInitial(grab.episode_id);
+      releasedEpisodes++;
+    } else if (grab.movie_id) {
+      releaseMovieToInitial(grab.movie_id);
+      releasedMovies++;
     }
   }
 

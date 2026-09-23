@@ -21,6 +21,9 @@ export default defineEventHandler(async (event) => {
     const files = sharedFiles.map((f) => ({
       hash: f.fileHashHexString || hashToHex(f.hash),
       name: f.fileName || "Unknown",
+      // aMule 3.1+ reports the folder each shared file lives in (e.g.
+      // "/downloads/subdir"); empty on older daemons.
+      filePath: f.filePath || "",
       sizeFull: f.sizeFull || 0,
       size_fmt: formatBytes(f.sizeFull),
       xfer: f.getXferred || 0,

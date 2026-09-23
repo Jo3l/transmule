@@ -50,6 +50,12 @@ export interface SearchResultItem {
   sources?: number;
   /** Usuario que comparte el archivo (slskd) */
   username?: string;
+  /** slskd: el usuario tiene un slot de subida libre (descarga inmediata) */
+  freeSlot?: boolean;
+  /** slskd: longitud de la cola del usuario */
+  queueLength?: number;
+  /** slskd: velocidad de subida del usuario (bytes/s) */
+  uploadSpeed?: number;
   /** Servicio que produjo el resultado */
   service: "direct-plugin" | "slskd" | "amule";
   /** Release parseado (title, season/ep, quality, source, languages...) */
@@ -214,6 +220,11 @@ function slskdToItem(f: any): SearchResultItem {
     url: `slskd://${f.username}/${f.filename}`,
     sizeMb: f.size ? Math.round(f.size / 1024 / 1024) : undefined,
     username: f.username ?? undefined,
+    // Disponibilidad en Soulseek: no hay "sources" (un solo uploader), pero sí
+    // slot libre + cola + velocidad — las señales equivalentes para el scoring.
+    freeSlot: typeof f.hasFreeUploadSlot === "boolean" ? f.hasFreeUploadSlot : undefined,
+    queueLength: typeof f.queueLength === "number" ? f.queueLength : undefined,
+    uploadSpeed: typeof f.uploadSpeed === "number" ? f.uploadSpeed : undefined,
     service: "slskd" as const,
     parsed: parseReleaseName(f.filename),
     rawName: f.filename,

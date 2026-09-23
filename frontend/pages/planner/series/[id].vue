@@ -16,12 +16,11 @@
           />
           <SButton
             variant="primary"
-            icon="mdi-magnify"
-            :loading="searching"
+            icon="mdi-download"
             @click="manualSearch"
             class="ml-3"
           >
-            {{ $t("planner.searchNow") }}
+            {{ $t("planner.download") }}
           </SButton>
           <SButton
             variant="default"
@@ -194,7 +193,22 @@
           </div>
 
           <div class="box">
-            <h4 class="title is-6 mb-1">{{ $t("planner.history") }}</h4>
+            <div class="level mb-1">
+              <div class="level-left">
+                <h4 class="title is-6 mb-0">{{ $t("planner.history") }}</h4>
+              </div>
+              <div class="level-right">
+                <SButton
+                  variant="danger"
+                  size="sm"
+                  icon="mdi-broom"
+                  :loading="clearingTasks"
+                  @click="showClearTasksModal = true"
+                >
+                  {{ $t("planner.cancelPendingTasks") }}
+                </SButton>
+              </div>
+            </div>
             <p class="has-text-grey is-size-7 mb-3">{{ $t("planner.historyHint") }}</p>
             <div v-if="history.length === 0" class="has-text-grey is-size-7">
               {{ $t("planner.historyEmpty") }}
@@ -236,6 +250,30 @@
         </template>
       </SDialog>
 
+      <!-- Confirm clear pending tasks -->
+      <SDialog
+        v-model="showClearTasksModal"
+        :title="$t('planner.cancelPendingTasks')"
+        width="420px"
+      >
+        <p>{{ $t("planner.cancelPendingTasksConfirm") }}</p>
+        <template #footer>
+          <div class="planner-delete-footer">
+            <SButton variant="default" @click="showClearTasksModal = false">
+              {{ $t("common.cancel") }}
+            </SButton>
+            <SButton
+              variant="danger"
+              icon="mdi-broom"
+              :loading="clearingTasks"
+              @click="clearPendingTasks"
+            >
+              {{ $t("planner.cancelPendingTasks") }}
+            </SButton>
+          </div>
+        </template>
+      </SDialog>
+
       <!-- Descarga manual de un episodio (búsqueda interactiva) -->
       <PlannerSearchDialog
         v-model="showDownloadDialog"
@@ -265,7 +303,7 @@ import { usePlannerStatusDisplay, usePlannerHistoryDisplay, padEpisode, formatPl
 
 const route = useRoute();
 const { t } = useI18n();
-const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, updateSubscription, updateEpisode, getSubscriptionHistory } = usePlanner();
+const { getSubscription, deleteSubscription, refreshSubscription, updateSubscription, updateEpisode, getSubscriptionHistory, cancelPendingGrabs } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const histDisplay = usePlannerHistoryDisplay();
 const { apiFetch, showToast } = useApi();
@@ -276,8 +314,9 @@ const errorMsg = ref("");
 const sub = ref<any>(null);
 const seasons = ref<any[]>([]);
 const refreshing = ref(false);
-const searching = ref(false);
 const showDeleteModal = ref(false);
+const showClearTasksModal = ref(false);
+const clearingTasks = ref(false);
 const showDownloadDialog = ref(false);
 const downloadTarget = ref<any>(null);
 const plexTag = ref(false);
@@ -478,16 +517,30 @@ async function refresh() {
   }
 }
 
+/**
+ * La descarga automática está desactivada: el botón superior abre la búsqueda
+ * manual del primer episodio emitido y aún no descargado (release a elegir).
+ */
 async function manualSearch() {
-  searching.value = true;
-  try {
-    await searchSubscription(id, { kind: "missing" });
-    showToast(t("planner.searchQueued"), "success", 3000);
-  } catch (err: any) {
-    errorMsg.value = err?.message ?? String(err);
-  } finally {
-    searching.value = false;
+  const first = firstPendingEpisode();
+  if (!first) {
+    showToast(t("planner.nothingPending"), "info", 3000);
+    return;
   }
+  openEpisodeSearch(first);
+}
+
+/** Primer episodio emitido sin descargar (por temporada/episodio). */
+function firstPendingEpisode(): any | null {
+  const pending = (seasons.value ?? [])
+    .flatMap((s) => (s.episodes ?? []).map((ep: any) => ({ season: s.season_number, ep })))
+    .filter(({ ep }) => isAired(ep) && !["downloaded", "grabbed"].includes(ep.status))
+    .sort(
+      (a, b) =>
+        Number(a.season) - Number(b.season) ||
+        Number(a.ep.episode_number) - Number(b.ep.episode_number),
+    );
+  return pending[0]?.ep ?? null;
 }
 
 async function toggleMonitored(v: boolean) {
@@ -506,6 +559,26 @@ async function confirmDelete() {
     navigateTo("/planner/series");
   } catch (err: any) {
     errorMsg.value = err?.message ?? String(err);
+  }
+}
+
+async function clearPendingTasks() {
+  clearingTasks.value = true;
+  errorMsg.value = "";
+  try {
+    const res = await cancelPendingGrabs(id);
+    showClearTasksModal.value = false;
+    showToast(
+      t("planner.cancelPendingTasksDone") +
+        (res?.cancelled ? ` (${res.cancelled})` : ""),
+      "success",
+      3000,
+    );
+    await load();
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    clearingTasks.value = false;
   }
 }
 

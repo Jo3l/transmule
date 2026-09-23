@@ -13,6 +13,10 @@ export interface ReleaseCandidate {
   leechers: number | null;
   sources: number | null;
   username: string | null;
+  /** slskd: slot de subida libre / cola / velocidad (disponibilidad). */
+  freeSlot: boolean | null;
+  queueLength: number | null;
+  uploadSpeed: number | null;
   service: string | null;
   rawName: string;
   title: string;
@@ -82,6 +86,9 @@ export function scoreCandidates(
       leechers: it?.leechers ?? null,
       sources: it?.sources ?? null,
       username: it?.username ?? null,
+      freeSlot: it?.freeSlot ?? null,
+      queueLength: it?.queueLength ?? null,
+      uploadSpeed: it?.uploadSpeed ?? null,
       service: it?.service ?? null,
       rawName: it?.rawName ?? parsed.raw,
       title: parsed.title,

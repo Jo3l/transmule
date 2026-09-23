@@ -15,15 +15,6 @@
             @update:model-value="toggleMonitored"
           />
           <SButton
-            variant="primary"
-            icon="mdi-magnify"
-            :loading="searching"
-            @click="manualSearch"
-            class="ml-3"
-          >
-            {{ $t("planner.searchNow") }}
-          </SButton>
-          <SButton
             variant="default"
             icon="mdi-refresh"
             :loading="refreshing"
@@ -218,7 +209,7 @@ import { usePlannerStatusDisplay, usePlannerHistoryDisplay, formatPlannerDate } 
 
 const route = useRoute();
 const { t } = useI18n();
-const { getSubscription, deleteSubscription, searchSubscription, refreshSubscription, getSubscriptionHistory, updateSubscription } = usePlanner();
+const { getSubscription, deleteSubscription, refreshSubscription, getSubscriptionHistory, updateSubscription } = usePlanner();
 const { statusLabel, statusClass } = usePlannerStatusDisplay();
 const histDisplay = usePlannerHistoryDisplay();
 const { apiFetch, showToast } = useApi();
@@ -230,7 +221,6 @@ const sub = ref<any>(null);
 const movie = ref<any>(null);
 const history = ref<any[]>([]);
 const refreshing = ref(false);
-const searching = ref(false);
 const showDeleteModal = ref(false);
 const showSearchDialog = ref(false);
 const plexTag = ref(false);
@@ -361,19 +351,6 @@ async function refresh() {
     errorMsg.value = err?.message ?? String(err);
   } finally {
     refreshing.value = false;
-  }
-}
-
-async function manualSearch() {
-  searching.value = true;
-  try {
-    await searchSubscription(id, { kind: "missing" });
-    showToast(t("planner.searchQueued"), "success", 3000);
-    await load();
-  } catch (err: any) {
-    errorMsg.value = err?.message ?? String(err);
-  } finally {
-    searching.value = false;
   }
 }
 

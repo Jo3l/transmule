@@ -29,6 +29,9 @@ interface PlannerSubscription {
   ended_at: string | null;
   metadata_synced_at: string | null;
   metadata_json: string | null;
+  /** Aviso del listado de series: episodios recientes sin descargar (temporada en curso). */
+  recent_missing_count?: number;
+  current_season?: number | null;
 }
 
 interface PlannerSeason {
@@ -116,6 +119,10 @@ export interface ReleaseCandidate {
   leechers: number | null;
   sources: number | null;
   username: string | null;
+  /** slskd: slot de subida libre / cola / velocidad (disponibilidad). */
+  freeSlot: boolean | null;
+  queueLength: number | null;
+  uploadSpeed: number | null;
   service: string | null;
   rawName: string;
   title: string;
@@ -178,16 +185,16 @@ export function usePlanner() {
     );
   }
 
-  async function searchSubscription(id: number, body: Record<string, unknown> = {}) {
-    return apiFetch<{ ok: boolean; queued: boolean }>(
-      `/api/planner/subscriptions/${id}/search`,
-      { method: "POST", body },
-    );
-  }
-
   async function getSubscriptionHistory(id: number, limit = 50) {
     return apiFetch<Record<string, unknown>[]>(
       `/api/planner/subscriptions/${id}/history?limit=${limit}`,
+    );
+  }
+
+  async function cancelPendingGrabs(id: number) {
+    return apiFetch<{ ok: boolean; cancelled: number; releasedEpisodes: number; releasedMovies: number }>(
+      `/api/planner/subscriptions/${id}/cancel-pending`,
+      { method: "POST" },
     );
   }
 
@@ -326,8 +333,8 @@ export function usePlanner() {
     updateSubscription,
     deleteSubscription,
     refreshSubscription,
-    searchSubscription,
     getSubscriptionHistory,
+    cancelPendingGrabs,
     updateEpisode,
     searchTmdb,
     searchTvdb,

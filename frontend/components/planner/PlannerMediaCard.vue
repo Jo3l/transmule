@@ -1,17 +1,33 @@
 <template>
   <div class="pmc-card">
-    <NuxtLink :to="detailPath" class="pmc-media">
-      <img
-        v-if="item.poster_url"
-        :src="item.poster_url"
-        :alt="item.title"
-        loading="lazy"
-        class="pmc-poster"
-      />
-      <div v-else class="pmc-poster pmc-poster--fallback">
-        <span class="mdi" :class="mediaIcon" />
-      </div>
-    </NuxtLink>
+    <div class="pmc-media">
+      <NuxtLink :to="detailPath" class="pmc-poster-link">
+        <img
+          v-if="item.poster_url"
+          :src="item.poster_url"
+          :alt="item.title"
+          loading="lazy"
+          class="pmc-poster"
+        />
+        <div v-else class="pmc-poster pmc-poster--fallback">
+          <span class="mdi" :class="mediaIcon" />
+        </div>
+      </NuxtLink>
+      <!-- Aviso: hay episodios emitidos recientes sin descargar (temporada en curso) -->
+      <span
+        v-if="attentionCount > 0"
+        class="pmc-alert"
+        :title="
+          $t('planner.recentMissingHint', {
+            count: attentionCount,
+            season: item.current_season ?? '',
+          })
+        "
+      >
+        <span class="mdi mdi-bell-ring" />
+        <span class="pmc-alert-count">{{ attentionCount }}</span>
+      </span>
+    </div>
     <div class="pmc-body">
       <NuxtLink :to="detailPath" class="pmc-title" :title="item.title">
         {{ item.title }}
@@ -35,12 +51,20 @@ interface CardItem {
   poster_url?: string | null;
   min_quality?: string | null;
   monitored?: number;
+  /** Episodios emitidos recientes sin descargar de la temporada en curso. */
+  recent_missing_count?: number;
+  current_season?: number | null;
 }
 
 const props = defineProps<{
   item: CardItem;
   mediaType: "series" | "movie";
 }>();
+
+/** Nº de episodios recientes sin descargar (solo series) → aviso en la tarjeta. */
+const attentionCount = computed(() =>
+  props.mediaType === "series" ? Number(props.item.recent_missing_count ?? 0) : 0,
+);
 
 const detailPath = computed(() =>
   props.mediaType === "series"
@@ -79,11 +103,41 @@ function qualityLabel(q: string): string {
   border-color: var(--s-accent, #22d3ee);
 }
 .pmc-media {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding: 0.75rem;
   background: var(--s-bg-hover, #1a1a30);
+}
+.pmc-poster-link {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+}
+/* Aviso de episodios recientes sin descargar (temporada en curso) */
+.pmc-alert {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--s-warning, #eab308);
+  background: var(--s-warning-subtle, rgba(234, 179, 8, 0.18));
+  color: var(--s-warning, #eab308);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.pmc-alert .mdi {
+  font-size: 0.85rem;
+}
+.pmc-alert-count {
+  font-variant-numeric: tabular-nums;
 }
 .pmc-poster {
   width: 100%;

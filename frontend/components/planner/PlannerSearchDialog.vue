@@ -73,8 +73,10 @@
         {{ formatSize(row.sizeMb) }}
       </template>
       <template #cell-seeds="{ row }">
-        <span v-if="row.service === 'slskd' && row.username" class="has-text-grey is-size-7">
-          <span class="mdi mdi-account" /> {{ row.username }}
+        <span v-if="row.service === 'slskd' && row.username" class="psd-peers" :title="row.username">
+          <span class="mdi mdi-account" />
+          <span v-if="row.freeSlot === true" class="mdi mdi-check text-success" />
+          <span v-else-if="row.queueLength" class="has-text-warning">{{ row.queueLength }}</span>
         </span>
         <span v-else-if="row.service === 'amule'" class="psd-peers">
           <span class="has-text-success">{{ row.sources ?? '—' }}</span>

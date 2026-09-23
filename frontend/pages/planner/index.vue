@@ -33,6 +33,17 @@
         <SButton variant="default" icon="mdi-calendar-month-outline" @click="navigateTo('/planner/calendar')" class="ml-2">
           {{ $t("planner.calendar") }}
         </SButton>
+        <!-- Export del log de búsquedas manuales (JSON) para análisis posterior -->
+        <SButton
+          variant="default"
+          icon="mdi-file-download-outline"
+          :loading="exportingLog"
+          :title="$t('planner.exportLogHint')"
+          @click="exportLog"
+          class="ml-2"
+        >
+          {{ $t("planner.exportLog") }}
+        </SButton>
       </div>
 
       <!-- Series populares -->
@@ -142,6 +153,38 @@ const showAddSeries = ref(false);
 const showAddMovie = ref(false);
 const addInitialSeries = ref<any>(null);
 const addInitialMovie = ref<any>(null);
+const exportingLog = ref(false);
+
+/**
+ * Descarga el log de búsquedas manuales del planificador en JSON
+ * (query + configuración + resultados puntuados + release elegido) para
+ * analizarlo después y afinar el scoring con datos reales.
+ */
+async function exportLog() {
+  exportingLog.value = true;
+  try {
+    const blob = await apiFetch<Blob>("/api/planner/log/export", {
+      responseType: "blob",
+    });
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, "0");
+    const stamp =
+      `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+      `-${p(d.getHours())}${p(d.getMinutes())}`;
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `planner-search-log-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (err: any) {
+    errorMsg.value = err?.message ?? String(err);
+  } finally {
+    exportingLog.value = false;
+  }
+}
 
 // ── Sliders de populares ─────────────────────────────────────────────────────
 const popularSeries = ref<TmdbPopularItem[]>([]);

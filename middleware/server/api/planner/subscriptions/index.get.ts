@@ -3,7 +3,7 @@
  *
  * Lista subscriptions con filtros opcionales (type, monitored).
  */
-import { listSubscriptions } from "~/utils/planner-db";
+import { listSubscriptions, getSeriesAttention } from "~/utils/planner-db";
 
 defineRouteMeta({
   openAPI: {
@@ -25,5 +25,21 @@ export default defineEventHandler(async (event) => {
     q.monitored !== undefined
       ? q.monitored === "true" || q.monitored === "1"
       : undefined;
-  return listSubscriptions({ type, monitored });
+  const subs = listSubscriptions({ type, monitored });
+
+  // Listado de series: añade el aviso de "episodios emitidos recientes sin
+  // descargar de la temporada en curso" (icono de notificación en la tarjeta).
+  // Solo se calcula cuando el listado puede contener series.
+  if (type === "movie") return subs;
+
+  const attention = getSeriesAttention();
+  return subs.map((s) => {
+    if (s.type !== "series") return s;
+    const a = attention.get(s.id);
+    return {
+      ...s,
+      recent_missing_count: a?.count ?? 0,
+      current_season: a?.season ?? null,
+    };
+  });
 });

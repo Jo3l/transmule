@@ -9,6 +9,7 @@
  */
 import { getSubscription, recordSearchHistory } from "~/utils/planner-db";
 import { searchAndGrabSubscription, searchAndGrabMovie } from "~/plugins/planner-scheduler";
+import { getConfig } from "~/utils/database";
 
 defineRouteMeta({
   openAPI: {
@@ -55,6 +56,21 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event);
   const kind = body?.kind ?? "missing";
   const now = new Date().toISOString();
+
+  // La descarga automática está desactivada (selección manual de releases).
+  // Este endpoint dispara búsqueda + grab automático; sin el flag no debe
+  // encolar nada. La búsqueda interactiva (elegir release) va por
+  // GET /api/planner/search/stream + POST /api/planner/grabs.
+  const autoEnabled = ["1", "true"].includes(
+    String(getConfig("planner.auto_download_enabled") ?? ""),
+  );
+  if (!autoEnabled) {
+    setResponseStatus(event, 409);
+    return {
+      error:
+        "Automatic download is disabled. Use the manual release picker (Download button per episode/movie).",
+    };
+  }
 
   // Registrar la intención (historial). La búsqueda real se ejecuta en Fase 7.
   recordSearchHistory({

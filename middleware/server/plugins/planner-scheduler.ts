@@ -3,9 +3,10 @@
  *
  * Jobs (intervalo configurable vía planner.sync_interval_min, default 15 min):
  *   1. updateCalendar() — sincroniza seasons+episodes de series monitorizadas
- *      desde TVDB (solo si metadata_synced_at tiene más de 12h).
- *   2. searchAndGrab() — búsqueda/descarga automática (episodios "waiting"
- *      ya emitidos a las 18:00 y películas disponibles).
+ *      desde TVDB/TMDB (solo si metadata_synced_at tiene más de 6h).
+ *   2. searchAndGrab() — búsqueda/descarga automática. DESACTIVADA por defecto:
+ *      la selección de releases es manual. Solo se ejecuta si la config
+ *      `planner.auto_download_enabled` vale "1"/"true".
  *   3. updateMovies() — sincroniza detalle + release dates (Digital) de movies
  *      monitorizadas desde TMDB (cada 24h).
  *
@@ -119,16 +120,30 @@ async function cleanupHistory(): Promise<void> {
   }
 }
 
+/**
+ * La descarga automática está DESACTIVADA por defecto: la selección de releases
+ * es manual. Se puede reactivar con la config `planner.auto_download_enabled = 1`
+ * (sin tocar código) para pruebas o para volver al modo automático.
+ */
+function isAutoDownloadEnabled(): boolean {
+  const v = getConfig("planner.auto_download_enabled");
+  return v === "1" || v === "true";
+}
+
 async function runJobs(): Promise<void> {
   try {
     await updateCalendar();
   } catch (err: any) {
     console.error("[planner] updateCalendar error:", err?.message);
   }
-  try {
-    await searchAndGrab();
-  } catch (err: any) {
-    console.error("[planner] searchAndGrab error:", err?.message);
+  // Descarga automática desactivada (selección manual). Solo se ejecuta si se
+  // reactiva explícitamente con planner.auto_download_enabled = 1.
+  if (isAutoDownloadEnabled()) {
+    try {
+      await searchAndGrab();
+    } catch (err: any) {
+      console.error("[planner] searchAndGrab error:", err?.message);
+    }
   }
   try {
     await updateMovies();
@@ -905,6 +920,3 @@ export async function searchAndGrabMovie(subscriptionId: number): Promise<{ queu
   return { queued: 0 };
 }
 
-// ─── Utility exports (used by API endpoints) ────────────────────────────────
-
-export { runJobs, searchAndGrab };

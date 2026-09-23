@@ -1500,8 +1500,6 @@
     "metadataProvider": "Proveedor de metadatos",
     "addedAlready": "Añadida — abrir",
     "noOverview": "Sin sinopsis disponible",
-    "searchNow": "Buscar ahora",
-    "searchQueued": "Búsqueda encolada",
     "refresh": "Actualizar",
     "refreshed": "Metadatos actualizados",
     "delete": "Eliminar",
@@ -1596,6 +1594,13 @@
     "searchStatusNoResults": "Sin resultados",
     "searchStatusPending": "Pendiente",
     "detail": "Detalle",
+    "cancelPendingTasks": "Eliminar tareas pendientes",
+    "cancelPendingTasksConfirm": "Se cancelarán todas las descargas activas y tareas de post-proceso pendientes de esta serie, y los episodios volverán a su estado previo. ¿Continuar?",
+    "cancelPendingTasksDone": "Tareas pendientes eliminadas",
+    "recentMissingHint": "{count} episodios recientes sin descargar de la temporada {season}",
+    "nothingPending": "No hay episodios emitidos pendientes de descargar",
+    "exportLog": "Descargar log (JSON)",
+    "exportLogHint": "Descarga el log de búsquedas manuales (query, configuración, resultados puntuados y release elegido) en JSON, para analizar el scoring con datos reales.",
     "noResultsFor": "No se encontraron releases para {query}"
   }
 }
