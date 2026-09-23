@@ -75,6 +75,7 @@
               >
                 <span v-if="eventIcon(ev)" class="mdi pc-event-icon" :class="eventIcon(ev)" />
                 <span class="pc-event-text">{{ ev.title }}</span>
+                <span v-if="ev.count > 1" class="pc-event-count" :title="countTitle(ev)">×{{ ev.count }}</span>
               </STag>
             </slot>
           </div>
@@ -126,6 +127,7 @@
               >
                 <span v-if="eventIcon(ev)" class="mdi pc-event-icon" :class="eventIcon(ev)" />
                 <span class="pc-event-text">{{ ev.title }}</span>
+                <span v-if="ev.count > 1" class="pc-event-count" :title="countTitle(ev)">×{{ ev.count }}</span>
               </STag>
             </slot>
           </div>
@@ -164,6 +166,7 @@
               >
                 <span v-if="eventIcon(ev)" class="mdi pc-event-icon" :class="eventIcon(ev)" />
                 <span class="pc-event-text">{{ ev.title }}</span>
+                <span v-if="ev.count > 1" class="pc-event-count" :title="countTitle(ev)">×{{ ev.count }}</span>
               </STag>
             </slot>
           </div>
@@ -193,6 +196,17 @@
           @enter="cancelHide()"
           @leave="scheduleHide()"
         />
+        <!-- Grupo de episodios (misma serie, mismo día): lista expandible -->
+        <div v-if="hoverCard.episodes.length > 0" class="pc-hover-episodes">
+          <div
+            v-for="(ep, i) in hoverCard.episodes"
+            :key="i"
+            class="pc-hover-episode"
+          >
+            <span class="mdi mdi-television-play pc-hover-episode-icon" />
+            <span class="pc-hover-episode-text">{{ ep }}</span>
+          </div>
+        </div>
       </div>
     </Teleport>
   </div>
@@ -292,15 +306,65 @@ function dateStr(year: number, month: number, day: number): string {
 
 const allEvents = computed(() => props.events ?? []);
 
+/** Clave de agrupación: misma serie el mismo día → una sola entrada. */
+function eventGroupKey(ev: any): string {
+  // Suscritas: se agrupan por suscripción (unique e inmune a títulos duplicados).
+  if (ev.subscription_id != null) {
+    return `sub:${ev.subscription_type ?? ""}:${ev.subscription_id}`;
+  }
+  // Descubrimiento: por id externo (TVmaze/TMDB) cuando existe — más preciso
+  // que el título (dos shows distintos pueden llamarse igual). Fallback a
+  // tipo + título normalizado (p.ej. TVmaze emite varios episodios del mismo
+  // show el mismo día → un único tag).
+  if (ev.external_id != null) {
+    return `${ev.kind ?? "ev"}:ext:${ev.external_id}`;
+  }
+  return `${ev.kind ?? "ev"}:${normalizeTitle(ev.title)}`;
+}
+
+/** Normaliza un título para agrupar (misma lógica que el backend). */
+function normalizeTitle(t: any): string {
+  return String(t ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u00e0-\u00ff\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Convierte un grupo de eventos de la misma serie+día en una sola entrada.
+ * `count` y `events` permiten al hover listar los episodios incluidos;
+ * el resto de campos (status, poster, ids…) vienen del primer episodio.
+ */
+function toEventGroup(group: any[]): any {
+  if (group.length <= 1) return group[0];
+  const sorted = [...group].sort((a: any, b: any) =>
+    String(a.subtitle ?? "").localeCompare(String(b.subtitle ?? "")),
+  );
+  return { ...sorted[0], count: group.length, events: sorted };
+}
+
 const eventsByDate = computed(() => {
-  const m = new Map<string, any[]>();
+  const byDate = new Map<string, any[]>();
   for (const ev of allEvents.value) {
     if (!ev?.date) continue;
-    const list = m.get(ev.date) ?? [];
+    const list = byDate.get(ev.date) ?? [];
     list.push(ev);
-    m.set(ev.date, list);
+    byDate.set(ev.date, list);
   }
-  return m;
+  // Agrupar por serie dentro de cada día.
+  const out = new Map<string, any[]>();
+  for (const [date, list] of byDate) {
+    const groups = new Map<string, any[]>();
+    for (const ev of list) {
+      const key = eventGroupKey(ev);
+      const g = groups.get(key) ?? [];
+      g.push(ev);
+      groups.set(key, g);
+    }
+    out.set(date, [...groups.values()].map(toEventGroup));
+  }
+  return out;
 });
 
 function buildDay(year: number, month: number, day: number, key: string) {
@@ -388,7 +452,12 @@ onBeforeUnmount(() => {
 // ── Helpers de eventos ──────────────────────────────────────────────────────
 
 function eventKey(ev: any): string {
-  return `${ev.date}-${ev.kind ?? "ev"}-${ev.title}-${ev.subscription_id ?? ""}`;
+  return `${ev.date}-${ev.kind ?? "ev"}-${ev.title}-${ev.subscription_id ?? ""}${ev.count ? `-x${ev.count}` : ""}`;
+}
+/** Tooltip del badge ×N: lista los episodios agrupados. */
+function countTitle(ev: any): string {
+  if (!Array.isArray(ev.events)) return "";
+  return ev.events.map((e: any) => e.subtitle ?? e.title ?? "").filter(Boolean).join("\n");
 }
 function eventIcon(ev: any): string {
   if (ev.kind === "episode") return "mdi-television-play";
@@ -418,7 +487,16 @@ const hoverCard = ref<{
   cover: string | null;
   name: string;
   details: any;
-}>({ visible: false, style: {}, cover: null, name: "", details: null });
+  /** Subtítulos de los episodios agrupados bajo la misma serie (hover) */
+  episodes: string[];
+}>({
+  visible: false,
+  style: {},
+  cover: null,
+  name: "",
+  details: null,
+  episodes: [],
+});
 
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 let hoveredEvent: any = null;
@@ -452,6 +530,9 @@ function onEventEnter(ev: any, e: MouseEvent) {
       rating: ev.vote_average ?? undefined,
       overview: ev.subtitle ?? undefined,
     },
+    // Si el tag agrupó varios episodios de la misma serie, listar sus
+    // subtítulos (SxxExx — título) en el popover.
+    episodes: Array.isArray(ev.events) ? ev.events.map((e: any) => e.subtitle).filter(Boolean) : [],
   };
 }
 
@@ -639,6 +720,19 @@ function cancelHide() {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Badge ×N: cuántos episodios agrupa el tag (misma serie, mismo día) */
+.pc-event-count {
+  flex-shrink: 0;
+  margin-left: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+  background: var(--s-accent-subtle, rgba(0, 212, 255, 0.16));
+  color: var(--s-accent, #00d4ff);
+}
 
 /* ── Popover hover (MovieCard) ───────────────────────────────────────────── */
 .pc-hover-card {
@@ -648,5 +742,31 @@ function cancelHide() {
   box-shadow: var(--s-shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.6));
   border-radius: var(--s-radius-lg, 8px);
   overflow: hidden;
+}
+/* Lista de episodios agrupados bajo el mismo tag (misma serie, mismo día) */
+.pc-hover-episodes {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px 12px;
+  border-top: 1px solid var(--s-border, #2a2a4a);
+  background: var(--s-bg-surface, #101020);
+}
+.pc-hover-episode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 0.78rem;
+  color: var(--s-text, #d0d0f0);
+}
+.pc-hover-episode-icon {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--s-accent, #00d4ff);
+}
+.pc-hover-episode-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
