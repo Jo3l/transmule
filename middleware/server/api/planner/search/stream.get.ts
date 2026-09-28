@@ -139,13 +139,32 @@ export default defineEventHandler(async (event) => {
   const loggedCandidates: ReleaseCandidate[] = [];
   let logId: number | null = null;
 
-  const flushLog = () => {
+  // Vuelco del log con debounce: con el streaming de torrents por plugin hay
+  // decenas de lotes por búsqueda; escribir la fila en cada lote generaría
+  // decenas de UPDATEs SQLite (y el JSON crece hasta MAX_LOG_CANDIDATES).
+  const writeLog = () => {
     if (logId == null) return;
     try {
       updateManualSearchResults(logId, loggedCandidates.slice(0, MAX_LOG_CANDIDATES));
     } catch (err: any) {
       console.error("[planner] manual search log update error:", err?.message ?? err);
     }
+  };
+  let flushTimer: ReturnType<typeof setTimeout> | null = null;
+  const flushLog = () => {
+    if (logId == null || flushTimer) return;
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      writeLog();
+    }, 1500);
+  };
+  /** Vuelco inmediato (para rescore y cierre del stream). */
+  const flushLogNow = () => {
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+    writeLog();
   };
 
   // ── Acumulación + re-score (puntuación incremental) ───────────────────────
@@ -170,7 +189,7 @@ export default defineEventHandler(async (event) => {
     }
     const payload = JSON.stringify({ candidates });
     res.write(`event: rescore\ndata: ${payload}\n\n`);
-    flushLog();
+    flushLogNow();
   };
 
   // Cuando llega la metadata (aunque tarde), se re-puntúa todo lo acumulado.
@@ -273,7 +292,7 @@ export default defineEventHandler(async (event) => {
     })();
     // Si la metadata llegó durante la espera y el re-score ya volcó el log,
     // este flush asegura la última versión de candidatos en la fila.
-    flushLog();
+    flushLogNow();
   })();
 
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
@@ -281,7 +300,7 @@ export default defineEventHandler(async (event) => {
   if (!finished) {
     finished = true;
     // Vuelco final del log: todas las redes terminaron (o deadline).
-    flushLog();
+    flushLogNow();
     res.write(`event: complete\ndata: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   }

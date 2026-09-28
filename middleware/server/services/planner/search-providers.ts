@@ -209,46 +209,28 @@ function torrentResultsToItems(results: TorrentSearchResult[]): SearchResultItem
 }
 
 /**
- * Búsqueda torrent en STREAMING por variante de query. Cada variante corre
- * sobre TODOS los plugins habilitados, pero emite en cuanto SUS plugins
- * terminan: un tracker lento (timeout 20s) ya no retrasa las variantes
- * rápidas ni las demás redes. Sin esperar a que todas acaben.
+ * Búsqueda torrent en STREAMING por plugin (por variante de query). Cada plugin
+ * emite SUS resultados en cuanto termina: un tracker lento (timeout 20s) ya no
+ * retrasa ni a los trackers rápidos ni a las demás redes — los primeros
+ * resultados torrent aparecen en cuanto el plugin más rápido responde, y el
+ * resto llega paulatinamente. Sin esperar a que todas las variantes acaben.
  *
- * Se deduplica por variante (hash, quedándose con más seeds); los duplicados
- * entre variantes los resuelven el acumulador del endpoint y la UI.
+ * Los duplicados entre plugins/variantes los resuelven el acumulador del
+ * endpoint y la UI (mismo criterio: nombre normalizado + tamaño).
  */
 async function streamTorrentQueries(
   queries: string[],
   onResult: (items: SearchResultItem[]) => void,
 ): Promise<void> {
   await Promise.allSettled(
-    queries.map(
-      (query) =>
-        new Promise<void>((resolve) => {
-          const collected: SearchResultItem[] = [];
-          searchTorrentsStreamed(
-            { query, source: "all", limit: 100 },
-            (_sourceId, results) => {
-              collected.push(...torrentResultsToItems(results));
-            },
-          )
-            .catch(() => {})
-            .finally(() => {
-              // Dedup por variante: hash o nombre, quedándose con más seeds.
-              const map = new Map<string, SearchResultItem>();
-              for (const it of collected) {
-                const key =
-                  it.hash?.toLowerCase() ?? it.rawName.toLowerCase();
-                const existing = map.get(key);
-                if (!existing || (it.seeds ?? 0) > (existing.seeds ?? 0)) {
-                  map.set(key, it);
-                }
-              }
-              const deduped = [...map.values()];
-              if (deduped.length > 0) onResult(deduped);
-              resolve();
-            });
-        }),
+    queries.map((query) =>
+      searchTorrentsStreamed(
+        { query, source: "all", limit: 100 },
+        (_sourceId, results) => {
+          const items = torrentResultsToItems(results);
+          if (items.length > 0) onResult(items);
+        },
+      ).catch(() => {}),
     ),
   );
 }

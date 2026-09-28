@@ -1,5 +1,8 @@
 import { getConfig, setConfig } from "../../utils/database";
-import { useAmuleClient } from "../../utils/amule-client";
+import {
+  useAmuleClient,
+  AmuleUnsupportedError,
+} from "../../utils/amule-client";
 
 defineRouteMeta({
   openAPI: {
@@ -21,7 +24,9 @@ export default defineEventHandler(async (event) => {
       includeSubdirs: boolean;
       supported: boolean;
       roots: { path: string; recursive: boolean }[];
-      error?: string;
+      /** "unsupported" = daemon antiguo sin EC shared dirs; "connection" = fallo real. */
+      error?: "unsupported" | "connection";
+      errorMessage?: string;
     } = {
       // Fall back to the persisted flag when the daemon can't be queried.
       includeSubdirs: getConfig("amule_include_subdirs") !== "false",
@@ -39,9 +44,19 @@ export default defineEventHandler(async (event) => {
         dirs.length > 0 &&
         dirs.every((d) => d.recursive);
     } catch (err: any) {
-      // Older aMule (2.3.3) answers EC_OP_FAILED → unsupported. Keep the
-      // persisted fallback rather than surfacing an error to the UI.
-      result.error = err?.statusMessage ?? err?.message ?? "unsupported";
+      if (err instanceof AmuleUnsupportedError) {
+        // Older aMule (2.3.3) answers EC_OP_FAILED → unsupported. Keep the
+        // persisted fallback rather than surfacing an error to the UI.
+        result.error = "unsupported";
+        result.errorMessage = err?.message ?? "unsupported";
+      } else {
+        // Fallo REAL (conexión/auth/transitorio): NO camuflarlo como "no
+        // soportado" — la UI lo muestra como error de conexión.
+        result.error = "connection";
+        result.errorMessage =
+          err?.statusMessage ?? err?.message ?? String(err);
+        console.error("[amule] sharing GET EC error:", result.errorMessage);
+      }
     }
 
     return result;
@@ -59,15 +74,24 @@ export default defineEventHandler(async (event) => {
 
     try {
       roots = await client.getSharedDirs();
-    } catch {
-      // Daemon lacks EC_OP_GET_SHARED_DIRS: persist the flag and bail. The
-      // value will take effect once the daemon supports it (or is configured
-      // out-of-band). Make this explicit to the caller.
-      setConfig(
-        "amule_include_subdirs",
-        body.includeSubdirs ? "true" : "false",
-      );
-      return { success: true, applied: false, reason: "unsupported" };
+    } catch (err: any) {
+      if (err instanceof AmuleUnsupportedError) {
+        // Daemon lacks EC_OP_GET_SHARED_DIRS: persist the flag and bail. The
+        // value will take effect once the daemon supports it (or is configured
+        // out-of-band). Make this explicit to the caller.
+        setConfig(
+          "amule_include_subdirs",
+          body.includeSubdirs ? "true" : "false",
+        );
+        return { success: true, applied: false, reason: "unsupported" };
+      }
+      // Cualquier otro fallo (conexión/auth) es un error REAL → 502, no
+      // "unsupported": antes se tragaba en silencio y la UI revertía el
+      // checkbox sin explicación.
+      throw createError({
+        statusCode: 502,
+        statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,
+      });
     }
 
     // Apply the new recursiveness to every currently-shared root.
@@ -77,6 +101,13 @@ export default defineEventHandler(async (event) => {
     try {
       rejected = await client.setSharedDirs(roots);
     } catch (err: any) {
+      if (err instanceof AmuleUnsupportedError) {
+        setConfig(
+          "amule_include_subdirs",
+          body.includeSubdirs ? "true" : "false",
+        );
+        return { success: true, applied: false, reason: "unsupported" };
+      }
       throw createError({
         statusCode: 502,
         statusMessage: `aMule unavailable: ${err?.statusMessage ?? err?.message ?? "connection refused"}`,

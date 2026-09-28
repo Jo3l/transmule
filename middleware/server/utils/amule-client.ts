@@ -65,8 +65,10 @@ const EC_TAG_SHAREDDIR_ERROR = 0x2003;
 /**
  * El daemon no soporta una operación (capacidad ausente o EC_OP_FAILED). No es
  * un fallo de conexión: `exec()` lo propaga tal cual, sin reconectar.
+ * Exportado para que los call sites (p.ej. sharing.ts) distingan "no
+ * soportado" de errores reales de conexión/auth.
  */
-class AmuleUnsupportedError extends Error {
+export class AmuleUnsupportedError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "AmuleUnsupportedError";

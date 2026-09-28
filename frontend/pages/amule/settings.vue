@@ -448,8 +448,12 @@
             {{ $t("amuleSettings.includeSubdirs", "Buscar archivos en subcarpetas") }}
           </SCheckbox>
           <p class="has-text-grey is-size-7 mt-1">{{ $t("amuleSettings.includeSubdirsHelp", "Al escanear archivos compartidos, incluye tambi\u00e9n los de subdirectorios.") }}</p>
-          <SAlert v-if="sharingSupportedKnown && !sharingSupported" variant="warning" class="mt-3">
-            {{ $t("amuleSettings.includeSubdirsUnsupported", "Tu versi\u00f3n de aMule no soporta esta opci\u00f3n todav\u00eda (se aplicar\u00e1 al actualizar el daemon). Config\u00faralo mientras tanto en la propia interfaz de aMule.") }}
+          <SAlert v-if="sharingConnectionError" variant="error" class="mt-3">
+            {{ $t("amuleSettings.includeSubdirsError", "No se pudo leer la configuración de compartir de aMule (daemon caído o contraseña EC cambiada). El ajuste no se aplicó.") }}
+            <span v-if="sharingErrorMsg" class="is-size-7">{{ sharingErrorMsg }}</span>
+          </SAlert>
+          <SAlert v-else-if="sharingSupportedKnown && !sharingSupported" variant="warning" class="mt-3">
+            {{ $t("amuleSettings.includeSubdirsUnsupported", "Tu versión de aMule no soporta esta opción todavía (se aplicará al actualizar el daemon). Configúralo mientras tanto en la propia interfaz de aMule.") }}
           </SAlert>
 
           <div class="mt-4">
@@ -530,6 +534,9 @@ const errorMsg = ref("");
 const sharingPrefs = reactive({ includeSubdirs: true });
 const sharingSupported = ref(false);
 const sharingSupportedKnown = ref(false);
+/** Error REAL de conexión/auth al consultar el daemon (≠ "no soportado"). */
+const sharingConnectionError = ref(false);
+const sharingErrorMsg = ref("");
 const reloadingShared = ref(false);
 
 async function loadSharingPrefs() {
@@ -540,9 +547,13 @@ async function loadSharingPrefs() {
       if (data.supported === true) {
         sharingSupported.value = true;
         sharingSupportedKnown.value = true;
+        sharingConnectionError.value = false;
+        sharingErrorMsg.value = "";
       } else {
         sharingSupported.value = false;
         sharingSupportedKnown.value = true;
+        sharingConnectionError.value = data.error === "connection";
+        sharingErrorMsg.value = data.errorMessage ?? "";
       }
     }
   } catch { /* silent */ }
@@ -572,13 +583,28 @@ async function saveSharing() {
         "La versión de aMule no soporta esta opción aún; se guardará para cuando actualices",
         "warning",
       );
+    } else if (res?.rejected?.length > 0) {
+      // El daemon aplicó el resto pero rechazó rutas (no existen / no legibles):
+      // avisar, o el re-sync posterior "revierte" el checkbox sin explicación.
+      const paths = res.rejected.map((r: any) => r.path).join(", ");
+      addToast(
+        `aMule rechazó ${res.rejected.length} carpeta(s) compartida(s) (no existen o no son legibles): ${paths}`,
+        "warning",
+      );
     } else {
       saved.value = true;
       setTimeout(() => { saved.value = false; }, 3000);
     }
     // Re-sync the reflected support state after a save attempt.
     await loadSharingPrefs();
-  } catch { /* silent */ }
+  } catch (err: any) {
+    const msg =
+      err?.response?._data?.statusMessage ||
+      err?.data?.statusMessage ||
+      err?.statusMessage ||
+      "";
+    addToast(msg || "Error al guardar la configuración de compartir", "error");
+  }
   saving.value = false;
 }
 
