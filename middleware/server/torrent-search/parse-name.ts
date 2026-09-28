@@ -152,6 +152,20 @@ export function parseTorrentName(name: string): ParsedTorrentTags {
 }
 
 // ── Language → flag emoji mapping ─────────────────────────────────────────
+
+const LANG_FLAG_MAP: Record<string, string> = {
+  EN: "🇬🇧", ES: "🇪🇸", FR: "🇫🇷", DE: "🇩🇪", IT: "🇮🇹",
+  PT: "🇵🇹", RU: "🇷🇺", JA: "🇯🇵", KO: "🇰🇷", ZH: "🇨🇳",
+  AR: "🇸🇦", NL: "🇳🇱", PL: "🇵🇱", SV: "🇸🇪", DA: "🇩🇰",
+  FI: "🇫🇮", NO: "🇳🇴", CS: "🇨🇿", HU: "🇭🇺", RO: "🇷🇴",
+  UK: "🇺🇦", EL: "🇬🇷", TR: "🇹🇷", TH: "🇹🇭", VI: "🇻🇳",
+  HI: "🇮🇳",
+};
+
+function langToFlag(code: string): string | undefined {
+  return LANG_FLAG_MAP[code];
+}
+
 /**
  * Adds parsed torrent-name tags to results that don't already have tags.
  * Native plugin tags (e.g. TorrentClaw's TrueSpec scores) are preserved.

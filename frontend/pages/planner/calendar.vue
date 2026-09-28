@@ -31,19 +31,7 @@
         :loading="loading"
         @update:month="onMonthChange"
         @event-click="onEventClick"
-      >
-        <!-- Leyenda en el toolbar -->
-        <template #toolbar-right>
-          <div class="calendar-legend">
-            <span class="legend-item">
-              <span class="legend-dot legend-subscribed" /> {{ $t("planner.subscribed") }}
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot legend-discover" /> {{ $t("planner.discoverOnly") }}
-            </span>
-          </div>
-        </template>
-      </PlannerCalendar>
+      />
 
       <!-- Modal suscripción directa desde calendario -->
       <PlannerAddMediaDialog
@@ -132,29 +120,4 @@ onMounted(load);
 </script>
 
 <style scoped>
-.calendar-legend {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  font-size: 0.78rem;
-  color: var(--s-text-muted, #777);
-  margin-left: 4px;
-}
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.legend-subscribed {
-  background: var(--s-accent, #00d4ff);
-}
-.legend-discover {
-  background: var(--s-border, #2a2a4a);
-}
 </style>

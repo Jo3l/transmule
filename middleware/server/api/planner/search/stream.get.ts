@@ -30,6 +30,7 @@ import {
   buildMovieQueries,
   buildAmuleEpisodeQuery,
   buildAmuleMovieQuery,
+  ALT_TITLES_BUDGET_MS,
 } from "~/services/planner/search-providers";
 import { scoreCandidates, type CandidateContext, type ReleaseCandidate } from "~/services/planner/candidates";
 import {
@@ -83,20 +84,101 @@ export default defineEventHandler(async (event) => {
   const minQuality = String(q.minQuality ?? sub?.min_quality ?? "fullhd");
   const maxSizeMb = q.maxSizeMb != null ? Number(q.maxSizeMb) : (sub?.max_size_mb ?? undefined);
   const episodeTitle = q.episodeTitle ? String(q.episodeTitle) : undefined;
-  const altTitles = sub
-    ? await resolveAltTitles({
+
+  // Títulos alternativos (localizado + original). Se resuelven EN PARALELO con
+  // las búsquedas: esperarlos con await aquí bloqueaba el arranque de TODO el
+  // stream — con TVDB/TMDB lentos eran ~5-20s sin ningún resultado, frente a
+  // ~2s de la búsqueda directa de aMule. `resolvedAltTitles()` acota la espera
+  // a ALT_TITLES_BUDGET_MS (para puntuar el primer lote y anotar el log), y
+  // searchEpisodeStreamed/searchMovieStreamed lanzan la segunda oleada de
+  // queries en cuanto llegan.
+  const altTitlesPromise: Promise<string[]> = sub
+    ? resolveAltTitles({
         tvdb_id: sub.tvdb_id,
         tmdb_id: sub.tmdb_id,
         language,
         title: sub.title,
         media_type: type === "episode" ? "series" : "movie",
-      })
-    : [];
+      }).catch(() => [])
+    : Promise.resolve([]);
+  let altMemo: Promise<string[]> | null = null;
+  const resolvedAltTitles = (): Promise<string[]> => {
+    if (altMemo) return altMemo;
+    altMemo = Promise.race([
+      altTitlesPromise,
+      sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
+    ]);
+    return altMemo;
+  };
 
-  // Log de búsqueda manual (análisis a posteriori): fila creada al iniciar la
-  // búsqueda con query + configuración; los resultados puntuados se añaden
-  // por red y el release elegido lo completa el grab (grabs.post.ts).
-  const logId = (() => {
+  const ctx: CandidateContext = {
+    title,
+    ...(episodeTitle ? { expectedEpisodeTitle: episodeTitle } : {}),
+    ...(type === "episode" ? { season, episode } : {}),
+    ...(year ? { year } : {}),
+    ...(language ? { language } : {}),
+    ...(maxSizeMb != null ? { maxSizeMb } : {}),
+    minQuality,
+  };
+
+  // ⚠️ Cabeceras SSE (nginx no debe bufferizar). Salen ANTES de resolver
+  // metadata: el cliente ya sabe que la búsqueda está corriendo.
+  setHeader(event, "Content-Type", "text/event-stream");
+  setHeader(event, "Cache-Control", "no-cache");
+  setHeader(event, "X-Accel-Buffering", "no");
+
+  const res = event.node.res;
+
+  // Deadline global: el stream nunca debe quedarse colgado. slskd/aMule son
+  // lentos y a veces su búsqueda no termina (o el servicio está caído). Tras
+  // MAX_STREAM_MS emitimos "complete" y cerramos aunque algún provider siga
+  // pendiente, para que el cliente no espere hasta el timeout del proxy.
+  const MAX_STREAM_MS = 60_000;
+  let finished = false;
+
+  // Candidatos puntuados acumulados → se vuelcan al log (acotado a
+  // MAX_LOG_CANDIDATES para no inflar la fila).
+  const loggedCandidates: ReleaseCandidate[] = [];
+  let logId: number | null = null;
+
+  const flushLog = () => {
+    if (logId == null) return;
+    try {
+      updateManualSearchResults(logId, loggedCandidates.slice(0, MAX_LOG_CANDIDATES));
+    } catch (err: any) {
+      console.error("[planner] manual search log update error:", err?.message ?? err);
+    }
+  };
+
+  const onResult = async (service: SearchResultItem["service"], items: SearchResultItem[]) => {
+    if (finished) return;
+    // Para puntuar bien hace falta el título alternativo (localizado/original);
+    // la espera está acotada a ALT_TITLES_BUDGET_MS y las búsquedas ya corren.
+    const titles = await resolvedAltTitles();
+    const scoreCtx = titles.length ? { ...ctx, altTitles: titles } : ctx;
+    const candidates = scoreCandidates(items, scoreCtx);
+    for (const c of candidates) {
+      if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
+    }
+    const payload = JSON.stringify({ service, candidates });
+    res.write(`event: result\ndata: ${payload}\n\n`);
+    // Actualización incremental por red: si el usuario cierra el stream antes
+    // del "complete" (o descarga enseguida), los resultados ya quedan en el log.
+    flushLog();
+  };
+
+  // 1) Las búsquedas arrancan INMEDIATAMENTE con el título canónico; los títulos
+  //    alternativos llegan después como segunda oleada (dentro de los *_Streamed).
+  const search =
+    type === "episode"
+      ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise)
+      : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise);
+
+  // 2) Log de búsqueda manual (análisis a posteriori): la fila se crea en cuanto
+  //    se resuelven los altTitles (acotado), SIN bloquear las búsquedas ya
+  //    lanzadas. Las queries anotadas son las de la primera oleada + altTitles.
+  const altTitles = await resolvedAltTitles();
+  logId = (() => {
     try {
       const epRow =
         type === "episode" && sub && season != null && episode != null
@@ -144,62 +226,6 @@ export default defineEventHandler(async (event) => {
       return null;
     }
   })();
-
-  // ⚠️ Cabeceras SSE (nginx no debe bufferizar).
-  setHeader(event, "Content-Type", "text/event-stream");
-  setHeader(event, "Cache-Control", "no-cache");
-  setHeader(event, "X-Accel-Buffering", "no");
-
-  const res = event.node.res;
-
-  const ctx: CandidateContext = {
-    title,
-    ...(altTitles.length ? { altTitles } : {}),
-    ...(episodeTitle ? { expectedEpisodeTitle: episodeTitle } : {}),
-    ...(type === "episode" ? { season, episode } : {}),
-    ...(year ? { year } : {}),
-    ...(language ? { language } : {}),
-    ...(maxSizeMb != null ? { maxSizeMb } : {}),
-    minQuality,
-  };
-
-  // Deadline global: el stream nunca debe quedarse colgado. slskd/aMule son
-  // lentos y a veces su búsqueda no termina (o el servicio está caído). Tras
-  // MAX_STREAM_MS emitimos "complete" y cerramos aunque algún provider siga
-  // pendiente, para que el cliente no espere hasta el timeout del proxy.
-  const MAX_STREAM_MS = 60_000;
-  let finished = false;
-
-  // Candidatos puntuados acumulados → se vuelcan al log (acotado a
-  // MAX_LOG_CANDIDATES para no inflar la fila).
-  const loggedCandidates: ReleaseCandidate[] = [];
-
-  const flushLog = () => {
-    if (logId == null) return;
-    try {
-      updateManualSearchResults(logId, loggedCandidates.slice(0, MAX_LOG_CANDIDATES));
-    } catch (err: any) {
-      console.error("[planner] manual search log update error:", err?.message ?? err);
-    }
-  };
-
-  const onResult = (service: SearchResultItem["service"], items: SearchResultItem[]) => {
-    if (finished) return;
-    const candidates = scoreCandidates(items, ctx);
-    for (const c of candidates) {
-      if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
-    }
-    const payload = JSON.stringify({ service, candidates });
-    res.write(`event: result\ndata: ${payload}\n\n`);
-    // Actualización incremental por red: si el usuario cierra el stream antes
-    // del "complete" (o descarga enseguida), los resultados ya quedan en el log.
-    flushLog();
-  };
-
-  const search =
-    type === "episode"
-      ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitles)
-      : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitles);
 
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
 

@@ -72,6 +72,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Presupuesto máximo para esperar los títulos alternativos (TVDB/TMDB) antes
+ *  de lanzar la segunda oleada de queries y de puntuar el primer lote. Las
+ *  búsquedas arrancan SIEMPRE con el título canónico; esto solo acota cuánto
+ *  esperamos la metadata extra (si tarda más, se busca solo con el canónico). */
+export const ALT_TITLES_BUDGET_MS = 4000;
+
+/** Normaliza `string[] | Promise<string[]>` a una promesa que nunca rechaza. */
+function altPromiseOf(altTitles: string[] | Promise<string[]> | undefined): Promise<string[]> {
+  if (Array.isArray(altTitles)) return Promise.resolve(altTitles);
+  return altTitles ? altTitles.catch(() => []) : Promise.resolve([]);
+}
+
 // ─── Query builders (multi-variante) ────────────────────────────────────────
 
 /** Variantes de query para un episodio: `S01E01` + `1x01` + `101`.
@@ -330,9 +342,18 @@ async function streamAmule(
 
   const seen = new Set<string>();
   const started = Date.now();
+  let poll = 0;
   while (true) {
     if (timeoutMs && Date.now() - started >= timeoutMs) break;
-    await sleep(2000);
+    // Primer poll a los 1s (no 2s): aMule suele tener resultados a los
+    // ~0.5-2s de lanzar la búsqueda, igual que el buscador directo. Esperar
+    // 2s antes del primer searchResults() retrasaba el primer lote del
+    // planificador ~1.5s respecto a la búsqueda directa.
+    // OJO: justo tras searchAsync, searchStatus() devuelve el progreso
+    // RESIDUAL de la búsqueda anterior (1), no el de la nueva — por eso el
+    // break por progress>=1 solo aplica desde el segundo poll.
+    await sleep(poll === 0 ? 1000 : 2000);
+    poll++;
 
     const [resp, progress] = await Promise.all([
       client.searchResults().catch(() => null),
@@ -351,8 +372,9 @@ async function streamAmule(
       });
     if (fresh.length > 0) onResult(fresh);
 
-    // progress >= 1 → búsqueda completa.
-    if (progress >= 1) break;
+    // progress >= 1 → búsqueda completa (solo desde el 2º poll: la primera
+    // lectura de searchStatus tras searchAsync trae el progreso residual).
+    if (progress >= 1 && poll >= 2) break;
   }
 }
 
@@ -434,26 +456,74 @@ export async function searchEpisodeStreamed(
   searchServices: string[],
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
-  altTitles?: string[],
+  altTitles?: string[] | Promise<string[]>,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   // Queries: título (localizado) + episodio (S01E01 / 1x01 / 101). El idioma,
   // la calidad y el tamaño se aplican en decision-engine, no en la query.
-  const queries = buildEpisodeQueries(title, season, episode, altTitles);
-  const amuleQuery = buildAmuleEpisodeQuery(title, season, episode, altTitles);
+  // Para TORRENT se añade también el título PELADO (sin episodio): los trackers
+  // apenas matchean "S01E01"/"1x01"/"101" (apenas dan resultados), pero sí
+  // devuelven packs/temporadas buscando solo el título — el scoring luego filtra
+  // episodio/idioma/calidad. En slskd/aMule NO se añade (inundaría de ruido).
+  const queries = buildEpisodeQueries(title, season, episode);
+  const amuleQuery = buildAmuleEpisodeQuery(title, season, episode);
+  const canUseTorrents = providers.includes("direct-plugin");
+  const torrentQueries = canUseTorrents
+    ? [...new Set([title.trim(), ...queries])].filter(Boolean)
+    : queries;
   console.log(
-    `[planner] episode queries (slskd/torrent): ${queries.join(" · ")} · aMule: ${amuleQuery}`,
+    `[planner] episode queries (slskd): ${queries.join(" · ")} · (torrent): ${torrentQueries.join(" · ")} · aMule: ${amuleQuery}`,
   );
 
   const tasks: Promise<void>[] = [];
-  if (providers.includes("direct-plugin")) {
-    tasks.push(searchDirectPlugins(queries).then((r) => onResult("direct-plugin", r)));
+  let amuleFound = false;
+  const amuleSink = (items: SearchResultItem[]) => {
+    if (items.length > 0) amuleFound = true;
+    onResult("amule", items);
+  };
+
+  // Primera oleada: las búsquedas arrancan YA con el título canónico. Los
+  // títulos alternativos (localizado/original de TVDB/TMDB) llegan en paralelo
+  // y NUNCA bloquean el arranque (ver la segunda oleada abajo).
+  if (canUseTorrents) {
+    tasks.push(searchDirectPlugins(torrentQueries).then((r) => onResult("direct-plugin", r)));
   }
   if (providers.includes("slskd")) {
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    tasks.push(streamAmule(amuleQuery, (r) => onResult("amule", r), timeoutMs));
+    tasks.push(streamAmule(amuleQuery, amuleSink, timeoutMs));
+  }
+
+  // Segunda oleada cuando llegan los títulos alternativos (presupuesto acotado:
+  // si TVDB/TMDB tardan más, se busca solo con el canónico).
+  const alt = await Promise.race([
+    altPromiseOf(altTitles),
+    sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
+  ]);
+  if (alt.length > 0) {
+    const altQueries = buildEpisodeQueries(title, season, episode, alt);
+    if (canUseTorrents) {
+      const extraTorrents = [...new Set([...alt.map((t) => t.trim()), ...altQueries])].filter(
+        (q) => !torrentQueries.includes(q),
+      );
+      if (extraTorrents.length > 0) {
+        tasks.push(searchDirectPlugins(extraTorrents).then((r) => onResult("direct-plugin", r)));
+      }
+    }
+    if (providers.includes("slskd")) {
+      const extraSlskd = altQueries.filter((q) => !queries.includes(q));
+      if (extraSlskd.length > 0) {
+        tasks.push(streamSlskd(extraSlskd, (r) => onResult("slskd", r), timeoutMs));
+      }
+    }
+    if (providers.includes("amule") && !amuleFound) {
+      // aMule solo retiene UNA búsqueda: se relanza con la query combinada
+      // solo si la primera no encontró nada (si ya hay resultados, no se tiran).
+      tasks.push(
+        streamAmule(buildAmuleEpisodeQuery(title, season, episode, alt), amuleSink, timeoutMs),
+      );
+    }
   }
 
   await Promise.allSettled(tasks);
@@ -468,17 +538,25 @@ export async function searchMovieStreamed(
   searchServices: string[],
   onResult: (service: SearchProviderId, items: SearchResultItem[]) => void,
   timeoutMs?: number,
-  altTitles?: string[],
+  altTitles?: string[] | Promise<string[]>,
 ): Promise<void> {
   const providers = normalizeProviders(searchServices);
   // Queries: título (localizado) + año. El idioma se valida en decision-engine.
-  const queries = buildMovieQueries(title, year, altTitles);
-  const amuleQuery = buildAmuleMovieQuery(title, year, altTitles);
+  // Las películas NO usan título pelado (la query con año ya recuerda bien).
+  const queries = buildMovieQueries(title, year);
+  const amuleQuery = buildAmuleMovieQuery(title, year);
   console.log(
     `[planner] movie queries (slskd/torrent): ${queries.join(" · ")} · aMule: ${amuleQuery}`,
   );
 
   const tasks: Promise<void>[] = [];
+  let amuleFound = false;
+  const amuleSink = (items: SearchResultItem[]) => {
+    if (items.length > 0) amuleFound = true;
+    onResult("amule", items);
+  };
+
+  // Primera oleada: arranca YA con el título canónico (los altTitles no bloquean).
   if (providers.includes("direct-plugin")) {
     tasks.push(searchDirectPlugins(queries).then((r) => onResult("direct-plugin", r)));
   }
@@ -486,7 +564,29 @@ export async function searchMovieStreamed(
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
   }
   if (providers.includes("amule")) {
-    tasks.push(streamAmule(amuleQuery, (r) => onResult("amule", r), timeoutMs));
+    tasks.push(streamAmule(amuleQuery, amuleSink, timeoutMs));
+  }
+
+  // Segunda oleada con títulos alternativos (presupuesto acotado).
+  const alt = await Promise.race([
+    altPromiseOf(altTitles),
+    sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
+  ]);
+  if (alt.length > 0) {
+    const altQueries = buildMovieQueries(title, year, alt);
+    const extraTorrents = altQueries.filter((q) => !queries.includes(q));
+    if (providers.includes("direct-plugin") && extraTorrents.length > 0) {
+      tasks.push(searchDirectPlugins(extraTorrents).then((r) => onResult("direct-plugin", r)));
+    }
+    const extraSlskd = altQueries.filter((q) => !queries.includes(q));
+    if (providers.includes("slskd") && extraSlskd.length > 0) {
+      tasks.push(streamSlskd(extraSlskd, (r) => onResult("slskd", r), timeoutMs));
+    }
+    if (providers.includes("amule") && !amuleFound) {
+      // aMule solo retiene UNA búsqueda: se relanza con la query combinada
+      // solo si la primera no encontró nada (si ya hay resultados, no se tiran).
+      tasks.push(streamAmule(buildAmuleMovieQuery(title, year, alt), amuleSink, timeoutMs));
+    }
   }
 
   await Promise.allSettled(tasks);
