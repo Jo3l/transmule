@@ -260,6 +260,46 @@ function handleBatch(service: string, incoming: ReleaseCandidate[]) {
   if (stat && added > 0) stat.count += added;
 }
 
+/**
+ * Re-puntuación completa del servidor (evento `rescore`): actualiza los scores
+ * de las filas ya presentes EN SITIO (sin duplicar ni perder posición de
+ * scroll) y reordena por score desc. Si llegara un candidato nuevo, se añade.
+ */
+function upsertCandidates(incoming: ReleaseCandidate[]): number {
+  let added = 0;
+  const index = new Map<string, number>();
+  candidates.value.forEach((c, i) => index.set(dedupKey(c), i));
+  for (const c of incoming) {
+    const key = dedupKey(c);
+    const i = index.get(key);
+    if (i !== undefined) {
+      index.set(key, i);
+      Object.assign(candidates.value[i], c);
+    } else {
+      index.set(key, candidates.value.length);
+      candidates.value.push(c);
+      added++;
+      if (!seenKeys.has(key)) seenKeys.add(key);
+    }
+  }
+  // Mantener ordenados por score desc (los rechazados, score -1, al final).
+  candidates.value.sort((a, b) => b.score - a.score);
+  return added;
+}
+
+function handleRescore(incoming: ReleaseCandidate[]) {
+  const added = upsertCandidates(incoming);
+  if (added > 0) {
+    // Si el re-score trajo filas nunca vistas, recalcular los contadores por
+    // red desde el listado (los chips cuentan filas únicas por red).
+    const counts: Record<string, number> = {};
+    for (const c of candidates.value) {
+      if (c.service) counts[c.service] = (counts[c.service] ?? 0) + 1;
+    }
+    for (const n of NETWORKS) networkStats.value[n.id].count = counts[n.id] ?? 0;
+  }
+}
+
 async function runSearch() {
   abortCtrl.value?.abort();
   const ctrl = new AbortController();
@@ -284,6 +324,7 @@ async function runSearch() {
           : { year: props.year }),
       },
       (service, incoming) => handleBatch(service, incoming),
+      (incoming) => handleRescore(incoming),
       ctrl.signal,
     );
   } catch (err: any) {

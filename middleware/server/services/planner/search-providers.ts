@@ -24,12 +24,17 @@
  * Fase 14 — streaming sin límites:
  *   - Modo INTERACTIVO: sin timeout. `searchEpisodeStreamed`/`searchMovieStreamed`
  *     emiten resultados NUEVOS a medida que llegan (sondeando aMule/slskd hasta
- *     que la búsqueda termina). No se recorta el número de resultados.
+ *     que la búsqueda termina; torrents por variante de query en cuanto sus
+ *     plugins acaban, sin esperar a los trackers lentos). No se recorta el
+ *     número de resultados.
  *   - Modo AUTOMÁTICO: `searchEpisode`/`searchMovie` recogen resultados durante
  *     `timeoutMs` (default 60 s) y luego el scheduler decide (pickBest).
  */
 
-import { searchTorrents } from "../../torrent-search/index";
+import {
+  searchTorrentsStreamed,
+  type TorrentSearchResult,
+} from "../../torrent-search/stream";
 import type { ParsedRelease } from "./release-parser";
 import { parseReleaseName, isVideoFile } from "./release-parser";
 import { useSlskdClient } from "../../utils/slskd-client";
@@ -72,10 +77,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Presupuesto máximo para esperar los títulos alternativos (TVDB/TMDB) antes
- *  de lanzar la segunda oleada de queries y de puntuar el primer lote. Las
- *  búsquedas arrancan SIEMPRE con el título canónico; esto solo acota cuánto
- *  esperamos la metadata extra (si tarda más, se busca solo con el canónico). */
+/** Presupuesto máximo (ms) para esperar los títulos alternativos (TVDB/TMDB)
+ *  solo donde hacen falta SIN bloquear resultados: la anotación del log de
+ *  búsqueda manual espera como mucho esto; si la metadata llega después, la
+ *  segunda oleada de queries y el re-score del stream la usan igualmente. */
 export const ALT_TITLES_BUDGET_MS = 4000;
 
 /** Normaliza `string[] | Promise<string[]>` a una promesa que nunca rechaza. */
@@ -184,33 +189,68 @@ function dedupeTitles(titles: string[]): string[] {
 
 // ─── Direct plugin provider (torrent-search) ────────────────────────────────
 
-async function searchDirectPlugins(queries: string[]): Promise<SearchResultItem[]> {
-  // Ejecuta TODAS las variantes de query en paralelo (S01E01, 1x01, 101).
-  // Límite alto (100 por variante) para no recortar resultados artificialmente.
-  const batches = await Promise.all(
-    queries.map((query) =>
-      searchTorrents({ query, source: "all", limit: 100 }).catch(() => []),
+function torrentResultsToItems(results: TorrentSearchResult[]): SearchResultItem[] {
+  const items: SearchResultItem[] = [];
+  for (const r of results) {
+    // Ignorar ficheros no-vídeo (subs .srt, .nfo, .torrent, imágenes...).
+    if (!isVideoFile(r.name)) continue;
+    items.push({
+      url: r.magnet || r.downloadUrl || "",
+      hash: r.infoHash,
+      sizeMb: r.size != null ? Math.round(r.size / 1024 / 1024) : undefined,
+      seeds: r.seeders,
+      leechers: r.leechers,
+      service: "direct-plugin" as const,
+      parsed: parseReleaseName(r.name),
+      rawName: r.name,
+    });
+  }
+  return items;
+}
+
+/**
+ * Búsqueda torrent en STREAMING por variante de query. Cada variante corre
+ * sobre TODOS los plugins habilitados, pero emite en cuanto SUS plugins
+ * terminan: un tracker lento (timeout 20s) ya no retrasa las variantes
+ * rápidas ni las demás redes. Sin esperar a que todas acaben.
+ *
+ * Se deduplica por variante (hash, quedándose con más seeds); los duplicados
+ * entre variantes los resuelven el acumulador del endpoint y la UI.
+ */
+async function streamTorrentQueries(
+  queries: string[],
+  onResult: (items: SearchResultItem[]) => void,
+): Promise<void> {
+  await Promise.allSettled(
+    queries.map(
+      (query) =>
+        new Promise<void>((resolve) => {
+          const collected: SearchResultItem[] = [];
+          searchTorrentsStreamed(
+            { query, source: "all", limit: 100 },
+            (_sourceId, results) => {
+              collected.push(...torrentResultsToItems(results));
+            },
+          )
+            .catch(() => {})
+            .finally(() => {
+              // Dedup por variante: hash o nombre, quedándose con más seeds.
+              const map = new Map<string, SearchResultItem>();
+              for (const it of collected) {
+                const key =
+                  it.hash?.toLowerCase() ?? it.rawName.toLowerCase();
+                const existing = map.get(key);
+                if (!existing || (it.seeds ?? 0) > (existing.seeds ?? 0)) {
+                  map.set(key, it);
+                }
+              }
+              const deduped = [...map.values()];
+              if (deduped.length > 0) onResult(deduped);
+              resolve();
+            });
+        }),
     ),
   );
-
-  const items: SearchResultItem[] = [];
-  for (const results of batches) {
-    for (const r of results) {
-      // Ignorar ficheros no-vídeo (subs .srt, .nfo, .torrent, imágenes...).
-      if (!isVideoFile(r.name)) continue;
-      items.push({
-        url: r.magnet || r.downloadUrl || "",
-        hash: r.infoHash,
-        sizeMb: r.size != null ? Math.round(r.size / 1024 / 1024) : undefined,
-        seeds: r.seeders,
-        leechers: r.leechers,
-        service: "direct-plugin" as const,
-        parsed: parseReleaseName(r.name),
-        rawName: r.name,
-      });
-    }
-  }
-  return dedupe(items);
 }
 
 // ─── slskd provider (streaming) ─────────────────────────────────────────────
@@ -486,7 +526,7 @@ export async function searchEpisodeStreamed(
   // títulos alternativos (localizado/original de TVDB/TMDB) llegan en paralelo
   // y NUNCA bloquean el arranque (ver la segunda oleada abajo).
   if (canUseTorrents) {
-    tasks.push(searchDirectPlugins(torrentQueries).then((r) => onResult("direct-plugin", r)));
+    tasks.push(streamTorrentQueries(torrentQueries, (items) => onResult("direct-plugin", items)));
   }
   if (providers.includes("slskd")) {
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
@@ -495,12 +535,13 @@ export async function searchEpisodeStreamed(
     tasks.push(streamAmule(amuleQuery, amuleSink, timeoutMs));
   }
 
-  // Segunda oleada cuando llegan los títulos alternativos (presupuesto acotado:
-  // si TVDB/TMDB tardan más, se busca solo con el canónico).
-  const alt = await Promise.race([
-    altPromiseOf(altTitles),
-    sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
-  ]);
+  // Segunda oleada cuando llegan los títulos alternativos. NO hay presupuesto
+  // acotado: la primera oleada ya se emitió (los primeros resultados no
+  // esperan a la metadata), así que esperar aquí solo retrasa la segunda
+  // oleada. TVDB/TMDB llevan timeouts internos (6-8s) y los errores ya se
+  // convierten en [] — si la metadata llega tarde, la segunda oleada sale
+  // tarde pero se emite (el stream la acota con su deadline de 60s).
+  const alt = await altPromiseOf(altTitles);
   if (alt.length > 0) {
     const altQueries = buildEpisodeQueries(title, season, episode, alt);
     if (canUseTorrents) {
@@ -508,7 +549,7 @@ export async function searchEpisodeStreamed(
         (q) => !torrentQueries.includes(q),
       );
       if (extraTorrents.length > 0) {
-        tasks.push(searchDirectPlugins(extraTorrents).then((r) => onResult("direct-plugin", r)));
+        tasks.push(streamTorrentQueries(extraTorrents, (items) => onResult("direct-plugin", items)));
       }
     }
     if (providers.includes("slskd")) {
@@ -558,7 +599,7 @@ export async function searchMovieStreamed(
 
   // Primera oleada: arranca YA con el título canónico (los altTitles no bloquean).
   if (providers.includes("direct-plugin")) {
-    tasks.push(searchDirectPlugins(queries).then((r) => onResult("direct-plugin", r)));
+    tasks.push(streamTorrentQueries(queries, (items) => onResult("direct-plugin", items)));
   }
   if (providers.includes("slskd")) {
     tasks.push(streamSlskd(queries, (r) => onResult("slskd", r), timeoutMs));
@@ -567,16 +608,14 @@ export async function searchMovieStreamed(
     tasks.push(streamAmule(amuleQuery, amuleSink, timeoutMs));
   }
 
-  // Segunda oleada con títulos alternativos (presupuesto acotado).
-  const alt = await Promise.race([
-    altPromiseOf(altTitles),
-    sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
-  ]);
+  // Segunda oleada con títulos alternativos (sin presupuesto: la primera ya
+  // se emitió; la metadata tardía solo retrasa esta segunda oleada).
+  const alt = await altPromiseOf(altTitles);
   if (alt.length > 0) {
     const altQueries = buildMovieQueries(title, year, alt);
     const extraTorrents = altQueries.filter((q) => !queries.includes(q));
     if (providers.includes("direct-plugin") && extraTorrents.length > 0) {
-      tasks.push(searchDirectPlugins(extraTorrents).then((r) => onResult("direct-plugin", r)));
+      tasks.push(streamTorrentQueries(extraTorrents, (items) => onResult("direct-plugin", items)));
     }
     const extraSlskd = altQueries.filter((q) => !queries.includes(q));
     if (providers.includes("slskd") && extraSlskd.length > 0) {

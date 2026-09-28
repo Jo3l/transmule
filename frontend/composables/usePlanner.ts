@@ -272,12 +272,16 @@ export function usePlanner() {
 
   /**
    * Búsqueda de releases en STREAMING (SSE): invoca onBatch(service, candidates)
-   * en cuanto cada red termina, sin esperar a las demás. Devuelve al cerrar el
-   * stream (evento `complete`).
+   * en cuanto cada red termina, sin esperar a las demás. Cuando llegan los
+   * títulos alternativos (TVDB/TMDB), el servidor re-puntúa todo lo acumulado
+   * y emite un evento `rescore` → onRescore(candidates) con la lista completa
+   * actualizada (scores + orden). Devuelve al cerrar el stream (evento
+   * `complete`).
    */
   async function searchReleasesStreamed(
     body: Record<string, unknown>,
     onBatch: (service: string, candidates: ReleaseCandidate[]) => void,
+    onRescore: (candidates: ReleaseCandidate[]) => void,
     signal?: AbortSignal,
   ): Promise<void> {
     const params = new URLSearchParams();
@@ -314,6 +318,7 @@ export function usePlanner() {
         try {
           const d = JSON.parse(data);
           if (type === "result") onBatch(d.service, d.candidates ?? []);
+          else if (type === "rescore") onRescore(d.candidates ?? []);
         } catch { /* skip */ }
       }
     }

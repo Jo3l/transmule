@@ -19,7 +19,9 @@
  *   minQuality?: string      (default "fullhd")
  *
  * Eventos SSE:
- *   event: result   data: { service, candidates }
+ *   event: result   data: { service, candidates }   — lote nuevo de una red
+ *   event: rescore  data: { candidates }            — re-puntuación completa al
+ *                                                    llegar los títulos localizados
  *   event: complete data: { done: true }
  */
 import type { SearchResultItem } from "~/services/planner/search-providers";
@@ -86,12 +88,13 @@ export default defineEventHandler(async (event) => {
   const episodeTitle = q.episodeTitle ? String(q.episodeTitle) : undefined;
 
   // Títulos alternativos (localizado + original). Se resuelven EN PARALELO con
-  // las búsquedas: esperarlos con await aquí bloqueaba el arranque de TODO el
-  // stream — con TVDB/TMDB lentos eran ~5-20s sin ningún resultado, frente a
-  // ~2s de la búsqueda directa de aMule. `resolvedAltTitles()` acota la espera
-  // a ALT_TITLES_BUDGET_MS (para puntuar el primer lote y anotar el log), y
+  // las búsquedas y NUNCA bloquean el stream: la primera oleada se emite al
+  // instante con el contexto actual (puntuación preliminar, sin títulos
+  // localizados) y, cuando la metadata llega — aunque tarde; TVDB/TMDB llevan
+  // timeouts internos de 6-8s —, se re-puntúa TODO lo acumulado y se emite
+  // `event: rescore` para que el cliente actualice scores y orden en sitio.
   // searchEpisodeStreamed/searchMovieStreamed lanzan la segunda oleada de
-  // queries en cuanto llegan.
+  // queries en cuanto llegan (sin presupuesto que las descarte por lentas).
   const altTitlesPromise: Promise<string[]> = sub
     ? resolveAltTitles({
         tvdb_id: sub.tvdb_id,
@@ -101,15 +104,10 @@ export default defineEventHandler(async (event) => {
         media_type: type === "episode" ? "series" : "movie",
       }).catch(() => [])
     : Promise.resolve([]);
-  let altMemo: Promise<string[]> | null = null;
-  const resolvedAltTitles = (): Promise<string[]> => {
-    if (altMemo) return altMemo;
-    altMemo = Promise.race([
-      altTitlesPromise,
-      sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
-    ]);
-    return altMemo;
-  };
+
+  // Contexto de scoring ACTUAL (mutable): cada lote se puntúa con lo que haya
+  // en este momento. Preliminar (sin altTitles) si la metadata aún no llegó.
+  let currentAltTitles: string[] = [];
 
   const ctx: CandidateContext = {
     title,
@@ -150,13 +148,54 @@ export default defineEventHandler(async (event) => {
     }
   };
 
-  const onResult = async (service: SearchResultItem["service"], items: SearchResultItem[]) => {
+  // ── Acumulación + re-score (puntuación incremental) ───────────────────────
+  // Los items se acumulan deduplicados (mismo criterio que la UI: nombre
+  // normalizado + tamaño). Al llegar los títulos alternativos se re-puntúa el
+  // conjunto completo y se emite `rescore` — la UI actualiza scores en sitio.
+  const allItems: SearchResultItem[] = [];
+  const seenItems = new Set<string>();
+  const itemKey = (it: SearchResultItem): string =>
+    `${(it.rawName ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")}|${it.sizeMb ?? ""}`;
+
+  const scoreCtxWith = (titles: string[]): CandidateContext =>
+    titles.length ? { ...ctx, altTitles: titles } : ctx;
+
+  const rescoreAll = () => {
+    if (finished || allItems.length === 0) return;
+    const candidates = scoreCandidates(allItems, scoreCtxWith(currentAltTitles));
+    // El log se actualiza con los scores finales (misma lista acotada).
+    loggedCandidates.length = 0;
+    for (const c of candidates) {
+      if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
+    }
+    const payload = JSON.stringify({ candidates });
+    res.write(`event: rescore\ndata: ${payload}\n\n`);
+    flushLog();
+  };
+
+  // Cuando llega la metadata (aunque tarde), se re-puntúa todo lo acumulado.
+  altTitlesPromise.then((titles) => {
+    currentAltTitles = titles;
+    if (titles.length > 0) rescoreAll();
+  });
+
+  const onResult = (
+    service: SearchResultItem["service"],
+    items: SearchResultItem[],
+  ) => {
     if (finished) return;
-    // Para puntuar bien hace falta el título alternativo (localizado/original);
-    // la espera está acotada a ALT_TITLES_BUDGET_MS y las búsquedas ya corren.
-    const titles = await resolvedAltTitles();
-    const scoreCtx = titles.length ? { ...ctx, altTitles: titles } : ctx;
-    const candidates = scoreCandidates(items, scoreCtx);
+    // Puntuación PRELIMINAR con el contexto actual: se emite al instante sin
+    // esperar a la metadata. Cuando lleguen los altTitles, rescoreAll() re-
+    // puntúa el conjunto completo (evento `rescore`).
+    const fresh = items.filter((it) => {
+      const key = itemKey(it);
+      if (seenItems.has(key)) return false;
+      seenItems.add(key);
+      allItems.push(it);
+      return true;
+    });
+    if (fresh.length === 0) return;
+    const candidates = scoreCandidates(fresh, scoreCtxWith(currentAltTitles));
     for (const c of candidates) {
       if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
     }
@@ -174,57 +213,67 @@ export default defineEventHandler(async (event) => {
       ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise)
       : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise);
 
-  // 2) Log de búsqueda manual (análisis a posteriori): la fila se crea en cuanto
-  //    se resuelven los altTitles (acotado), SIN bloquear las búsquedas ya
-  //    lanzadas. Las queries anotadas son las de la primera oleada + altTitles.
-  const altTitles = await resolvedAltTitles();
-  logId = (() => {
-    try {
-      const epRow =
-        type === "episode" && sub && season != null && episode != null
-          ? findEpisodeByNumber(sub.id, season, episode)
-          : undefined;
-      const movieRow =
-        type === "movie" && sub ? getMovieBySubscription(sub.id) : undefined;
-      const doneQueries =
-        type === "episode" && season != null && episode != null
-          ? buildEpisodeQueries(title, season, episode, altTitles)
-          : buildMovieQueries(title, year, altTitles);
-      const doneAmule =
-        type === "episode" && season != null && episode != null
-          ? buildAmuleEpisodeQuery(title, season, episode, altTitles)
-          : buildAmuleMovieQuery(title, year, altTitles);
-      return recordManualSearchLog({
-        subscription_id: subscriptionId ?? 0,
-        media_type: type === "episode" ? "series" : "movie",
-        episode_id: epRow?.id ?? null,
-        movie_id: movieRow?.id ?? null,
-        tmdb_id: sub?.tmdb_id ?? null,
-        tvdb_id: sub?.tvdb_id ?? null,
-        imdb_id: sub?.imdb_id ?? null,
-        series_title: sub?.title ?? title,
-        year: sub?.year ?? year ?? null,
-        season: type === "episode" ? (season ?? null) : null,
-        episode: type === "episode" ? (episode ?? null) : null,
-        episode_title: episodeTitle ?? epRow?.title ?? null,
-        query_text:
-          type === "episode"
-            ? `${title} S${String(season ?? 0).padStart(2, "0")}E${String(episode ?? 0).padStart(2, "0")}`
-            : (year ? `${title} ${year}` : title),
-        queries_json: JSON.stringify({ plain: doneQueries, amule: doneAmule }),
-        min_quality: minQuality,
-        max_size_mb: maxSizeMb ?? null,
-        language: language ?? null,
-        search_services: searchServices.join(","),
-        alt_titles_json: altTitles.length ? JSON.stringify(altTitles) : null,
-        user_id: user?.userId ?? null,
-        user_name: user?.username ?? null,
-      });
-    } catch (err: any) {
-      // El log es best-effort: un fallo de BD no debe romper la búsqueda.
-      console.error("[planner] manual search log error:", err?.message ?? err);
-      return null;
-    }
+  // 2) Log de búsqueda manual (análisis a posteriori): la fila se crea en
+  //    BACKGROUND — nunca bloquea el stream ni espera a la metadata. Se espera
+  //    como mucho ALT_TITLES_BUDGET_MS a los altTitles para anotar las queries
+  //    completas; si llegan más tarde, rescoreAll() ya deja el log con los
+  //    scores finales y esta fila solo documenta las queries canónicas.
+  void (async () => {
+    const logTitles = await Promise.race([
+      altTitlesPromise,
+      sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
+    ]);
+    logId = (() => {
+      try {
+        const epRow =
+          type === "episode" && sub && season != null && episode != null
+            ? findEpisodeByNumber(sub.id, season, episode)
+            : undefined;
+        const movieRow =
+          type === "movie" && sub ? getMovieBySubscription(sub.id) : undefined;
+        const doneQueries =
+          type === "episode" && season != null && episode != null
+            ? buildEpisodeQueries(title, season, episode, logTitles)
+            : buildMovieQueries(title, year, logTitles);
+        const doneAmule =
+          type === "episode" && season != null && episode != null
+            ? buildAmuleEpisodeQuery(title, season, episode, logTitles)
+            : buildAmuleMovieQuery(title, year, logTitles);
+        return recordManualSearchLog({
+          subscription_id: subscriptionId ?? 0,
+          media_type: type === "episode" ? "series" : "movie",
+          episode_id: epRow?.id ?? null,
+          movie_id: movieRow?.id ?? null,
+          tmdb_id: sub?.tmdb_id ?? null,
+          tvdb_id: sub?.tvdb_id ?? null,
+          imdb_id: sub?.imdb_id ?? null,
+          series_title: sub?.title ?? title,
+          year: sub?.year ?? year ?? null,
+          season: type === "episode" ? (season ?? null) : null,
+          episode: type === "episode" ? (episode ?? null) : null,
+          episode_title: episodeTitle ?? epRow?.title ?? null,
+          query_text:
+            type === "episode"
+              ? `${title} S${String(season ?? 0).padStart(2, "0")}E${String(episode ?? 0).padStart(2, "0")}`
+              : (year ? `${title} ${year}` : title),
+          queries_json: JSON.stringify({ plain: doneQueries, amule: doneAmule }),
+          min_quality: minQuality,
+          max_size_mb: maxSizeMb ?? null,
+          language: language ?? null,
+          search_services: searchServices.join(","),
+          alt_titles_json: logTitles.length ? JSON.stringify(logTitles) : null,
+          user_id: user?.userId ?? null,
+          user_name: user?.username ?? null,
+        });
+      } catch (err: any) {
+        // El log es best-effort: un fallo de BD no debe romper la búsqueda.
+        console.error("[planner] manual search log error:", err?.message ?? err);
+        return null;
+      }
+    })();
+    // Si la metadata llegó durante la espera y el re-score ya volcó el log,
+    // este flush asegura la última versión de candidatos en la fila.
+    flushLog();
   })();
 
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
