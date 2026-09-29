@@ -365,15 +365,31 @@ async function streamAmule(
   const seen = new Set<string>();
   const started = Date.now();
   let poll = 0;
+  // Detección de fin de búsqueda COMPATIBLE aMule 3.1 (la versión que corre en
+  // TransMule), porque el criterio histórico (progress >= 1) ya no dispara:
+  //   - Daemon legacy (2.3.3): al terminar, searchStatus() seguía devolviendo
+  //     1 (progreso residual) → break por progress >= 1 (guard poll >= 2).
+  //   - aMule 3.1 (SearchList.cpp GetSearchProgress): devuelve 0..100 SOLO
+  //     mientras el sweep de servidores está activo, y 0 cuando la búsqueda
+  //     termina (FinalizeGlobalSearch apaga m_searchInProgress). El 100% es
+  //     un instante fugaz que un poll de 2s casi nunca acierta → sin esta
+  //     corrección el bucle sondea hasta el deadline (60s) y el stream parece
+  //     "esperar a que aMule devuelva todo". Señal fiable: haber visto
+  //     progress > 0 (el sweep arrancó) y que vuelva a 0 (finalizó). Se
+  //     concede un poll de gracia porque los resultados Kademlia siguen
+  //     entrando por oleadas tras el sweep.
+  let sawProgress = false; // se ha observado el sweep en marcha (3.1)
+  let zeroStreak = 0; // polls consecutivos con progress <= 0
   while (true) {
     if (timeoutMs && Date.now() - started >= timeoutMs) break;
     // Primer poll a los 1s (no 2s): aMule suele tener resultados a los
     // ~0.5-2s de lanzar la búsqueda, igual que el buscador directo. Esperar
     // 2s antes del primer searchResults() retrasaba el primer lote del
     // planificador ~1.5s respecto a la búsqueda directa.
-    // OJO: justo tras searchAsync, searchStatus() devuelve el progreso
-    // RESIDUAL de la búsqueda anterior (1), no el de la nueva — por eso el
-    // break por progress>=1 solo aplica desde el segundo poll.
+    // OJO: justo tras searchAsync, el daemon 3.1 devuelve 0 hasta que el
+    // sweep arranca (y el legacy el progreso residual de la búsqueda
+    // anterior, 1) — por eso los breaks por progress solo aplican desde el
+    // segundo poll.
     await sleep(poll === 0 ? 1000 : 2000);
     poll++;
 
@@ -394,9 +410,18 @@ async function streamAmule(
       });
     if (fresh.length > 0) onResult(fresh);
 
-    // progress >= 1 → búsqueda completa (solo desde el 2º poll: la primera
-    // lectura de searchStatus tras searchAsync trae el progreso residual).
+    if (progress > 0) sawProgress = true;
+    if (progress <= 0) zeroStreak++;
+    else zeroStreak = 0;
+
+    // Daemon legacy: progress permanece en 1 al terminar (solo desde el 2º
+    // poll, por el progreso residual de la búsqueda anterior).
     if (progress >= 1 && poll >= 2) break;
+    // aMule 3.1: sweep finalizado → progress vuelve a 0 tras haber sido > 0.
+    if (sawProgress && progress <= 0 && zeroStreak >= 2) break;
+    // aMule 3.1: sweep nunca observado (servidor que no responde, o búsqueda
+    // que terminó entre polls): 4 polls a 0 sin actividad → terminado.
+    if (!sawProgress && progress <= 0 && zeroStreak >= 4) break;
   }
 }
 

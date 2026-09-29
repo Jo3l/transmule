@@ -54,7 +54,11 @@ export function scoreCandidates(
   ctx: CandidateContext,
 ): ReleaseCandidate[] {
   const decision = pickBest({
-    releases: items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb })),
+    releases: items.map((i) => ({
+      ...i.parsed,
+      sizeMb: i.sizeMb,
+      sources: i.sources,
+    })),
     expectedTitle: ctx.title,
     ...(ctx.altTitles?.length ? { altTitles: ctx.altTitles } : {}),
     ...(ctx.expectedEpisodeTitle

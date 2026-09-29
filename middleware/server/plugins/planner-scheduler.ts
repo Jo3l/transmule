@@ -466,7 +466,7 @@ async function searchAndGrab(opts: { force?: boolean } = {}): Promise<void> {
         media_type: "movie",
       });
       const items = await searchMovie(movie.title, movie.year ?? null, services, undefined, altTitles);
-      const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
+      const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb, sources: i.sources }));
       const decision = pickBest({
         releases: parsed,
         expectedTitle: movie.title,
@@ -696,7 +696,7 @@ async function grabEpisode(
       ep.episode_number,
     );
     const items = await searchEpisode(sub.title, ep.season_number, ep.episode_number, services, undefined, altTitles);
-    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
+    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb, sources: i.sources }));
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,
@@ -855,7 +855,7 @@ export async function searchAndGrabMovie(subscriptionId: number): Promise<{ queu
       media_type: "movie",
     });
     const items = await searchMovie(sub.title, sub.year ?? null, services, undefined, altTitles);
-    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb }));
+    const parsed = items.map((i) => ({ ...i.parsed, sizeMb: i.sizeMb, sources: i.sources }));
     const decision = pickBest({
       releases: parsed,
       expectedTitle: sub.title,

@@ -318,6 +318,39 @@ const cases: Array<{
       );
     },
   },
+  {
+    // HDrip sin resolución (rip clásico de eMule, depechemode13): calidad hd
+    // + fuente webrip. Antes: unknown/unknown → 0 pts en el scoring.
+    input:
+      "Slow Horses 1x02 Copas despues del trabajo [HDrip][Spanish-English][depechemode13 - www.lataberna.org].mkv",
+    check: (r) => {
+      expectEq(r.quality, "hd", "HDrip quality → hd");
+      expectEq(r.source, "webrip", "HDrip source → webrip");
+      expectEq(r.languages, ["spanish", "english"], "HDrip lang spanish+english");
+    },
+  },
+  {
+    // m1080p (variante eMule de 1080p): antes quedaba en unknown.
+    input: "Slow Horses 1x05 Fiasco [WEB-DL m1080p h264 Spanish-English AC3 5.1 Sub].mkv",
+    check: (r) => {
+      expectEq(r.quality, "fullhd", "m1080p quality → fullhd");
+      expectEq(r.source, "webdl", "m1080p source → webdl");
+    },
+  },
+  {
+    input: "Serie 2x01 Capitulo uno [WEB-DL m720p h264 Spanish].mkv",
+    check: (r) => {
+      expectEq(r.quality, "hd", "m720p quality → hd");
+    },
+  },
+  {
+    // "[BD 1080p]" sin token "bluray": el BD suelto debe mapear a bluray.
+    input: "Slow Horses S03E03 (2023)(3x03)[BD 1080p](Spanish.English Audio)(Subs).mkv",
+    check: (r) => {
+      expectEq(r.quality, "fullhd", "BD 1080p quality → fullhd");
+      expectEq(r.source, "bluray", "BD 1080p source → bluray");
+    },
+  },
 ];
 
 for (const c of cases) {

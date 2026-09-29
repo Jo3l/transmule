@@ -84,6 +84,8 @@ export interface ReleaseScore {
   episodeTitleScore: number;
   /** Puntos por tamaño (penaliza exceder maxSizeMb) */
   sizeScore: number;
+  /** Puntos por número de fuentes (aMule sourceCount; >3 da bonus acotado) */
+  sourceCountScore: number;
   total: number;
   /** Razón de descarte (si no fue elegible) */
   rejectedReason?: string;
@@ -339,14 +341,28 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       }
     }
 
+    // 4e. Fuentes disponibles (aMule: sourceCount). Un release con 1-2 fuentes
+    // suele estar enlazado solo a clientes ausentes y no descarga nunca; a
+    // partir de 3 fuentes (lo que pide el usuario), bonus creciente y ACOTADO
+    // (escala tie-break, no domina los escalones de calidad de 100 pts):
+    // +8 por fuente extra, tope +40. Sin fuentes (slskd/torrent) → 0.
+    let sourceCountScore = 0;
+    if (release.sources != null && release.sources > 3) {
+      sourceCountScore = Math.min((release.sources - 3) * 8, 40);
+    }
+
     // 5. Score
     // Quality: tier × 100 (uhd 400 > fullhd 300 > hd 200 > sd 100 > unknown 0).
     // Por debajo del tier preferido resta 100 pts por escalón — queda ordenado
     // detrás de los que cumplen, pero sigue disponible como fallback.
     const qLevel = QUALITY_ORDER[release.quality] ?? 0;
     const minLevel = QUALITY_ORDER[req.minQuality] ?? 0;
+    // min_quality = OBJETIVO, no suelo (validado con el log de búsquedas: los
+    // UHD 2160p de 2-4 GB ganaban al fullhd/hd que el usuario elegía). Por
+    // debajo del pedido penaliza 100/escalón (fallback ordenado tras los que
+    // cumplen); por ENCIMA no suma puntos — la calidad extra no debe dominar.
     const qualityScore =
-      qLevel * 100 - (qLevel < minLevel ? (minLevel - qLevel) * 100 : 0);
+      Math.min(qLevel, minLevel) * 100 - (qLevel < minLevel ? (minLevel - qLevel) * 100 : 0);
     const sourceScore = SOURCE_ORDER[release.source] ?? 0;
     const titlePenalty = Math.round((1 - sim) * 10);
     const languageScoreVal = lang.score;
@@ -357,7 +373,8 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       languageScoreVal +
       yearScore +
       episodeTitleScore +
-      sizeScore -
+      sizeScore +
+      sourceCountScore -
       titlePenalty;
 
     evaluated.push({
@@ -369,6 +386,7 @@ export function pickBest(req: DecisionRequest): DecisionResult {
       yearScore,
       episodeTitleScore,
       sizeScore,
+      sourceCountScore,
       total,
     });
   }

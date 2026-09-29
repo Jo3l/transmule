@@ -11,9 +11,9 @@
 
 // ─── Regex (compartidas con parse-name.ts) ──────────────────────────────────
 
-const QUALITY_RE = /\b(2160p|4[kK]|1080p|720p|480p|360p|240p)\b/i;
+const QUALITY_RE = /\b(2160p|4[kK]|m?1080p|m?720p|480p|360p|240p)\b/i;
 const SOURCE_RE =
-  /\b(BLURAY|BluRay|WEB[-.]?DL|WEB[-.]?Rip|WEB|HDRip|BRRip|DVDRip|DVD[Rr]ip|BDRip|HDTV|PDTV|DSR|SAT[Rr]ip|REMUX|CAM|TS|TC|R5)\b/i;
+  /\b(BLURAY|BluRay|BD|WEB[-.]?DL|WEB[-.]?Rip|WEB|HDRip|BRRip|DVDRip|DVD[Rr]ip|BDRip|HDTV|PDTV|DSR|SAT[Rr]ip|REMUX|CAM|TS|TC|R5)\b/i;
 const CODEC_RE =
   /\b(x265|x264|h[.\s]?265|h[.\s]?264|HEVC|AV1|DivX|XviD|AVC|MPEG-?4|MPEG-?2)\b/i;
 const AUDIO_CODEC_RE =
@@ -136,6 +136,8 @@ export interface ParsedRelease {
   raw: string;
   /** Tamaño en MB (lo adjunta el search provider; el parser no lo conoce) */
   sizeMb?: number;
+  /** Fuentes disponibles (aMule sourceCount; lo adjunta el search provider) */
+  sources?: number;
 }
 
 // ─── Mapping helpers ────────────────────────────────────────────────────────
@@ -164,6 +166,9 @@ function mapSource(raw: string): ReleaseSource {
     return "webdl";
   if (s.includes("webrip") || s.includes("web-rip") || s.includes("web rip"))
     return "webrip";
+  // "HDrip": rip de alta definición (clásico de eMule, p.ej. depechemode13) —
+  // re-encode de una fuente, no streaming directo → tier webrip.
+  if (s.includes("hdrip")) return "webrip";
   if (s.includes("hdtv")) return "hdtv";
   if (s.includes("sat")) return "sat";
   if (s.includes("dvd") || s.includes("brrip") || s.includes("bdrrip"))
@@ -239,7 +244,10 @@ export function parseReleaseName(name: string): ParsedRelease {
 
   // 3. Quality + source
   const qualMatch = clean.match(QUALITY_RE);
-  const quality: QualityTier = qualMatch ? mapQuality(qualMatch[1]) : "unknown";
+  let quality: QualityTier = qualMatch ? mapQuality(qualMatch[1]) : "unknown";
+  // "HDrip" sin resolución explícita ≈ 720p (rips españoles de eMule
+  // habituales: "[HDrip][Spanish]..."); sin esto quedaban en unknown (0 pts).
+  if (quality === "unknown" && /hdrip/i.test(clean)) quality = "hd";
   // REMUX tiene prioridad sobre BLURAY (Oppenheimer.2023.2160p.UHD.BluRay.REMUX...)
   const remuxMatch = clean.match(/\bREMUX\b/i);
   const srcMatch = remuxMatch ? ["REMUX"] : clean.match(SOURCE_RE);

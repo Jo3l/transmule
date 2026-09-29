@@ -424,5 +424,72 @@ expectEq(voseEval?.languageScore, -100, "Vose: -100 como no localizado (NO +1000
 expectEq(espEval?.languageScore, 1000, "Vose: el release ESP sí suma +1000");
 assert(voseEval!.total < espEval!.total, "Vose: V.O.S. queda por debajo del español real");
 
+// ── Caso 20: sourceCount (>3 fuentes da bonus acotado; 1-3 fuentes, 0) ──────
+// Disponibilidad en aMule: un release con 1-2 fuentes suele enlazar con
+// clientes ausentes y no descarga nunca; a partir de 3 fuentes el bonus
+// crece +8 por fuente extra hasta +40 (tie-break, no domina la calidad).
+const srcReleases = [
+  { ...parseReleaseName("Severance.S01E01.1080p.WEB-DL.x264-GRP"), sources: 1 },
+  { ...parseReleaseName("Severance.S01E01.1080p.WEB-DL.x264-OTH"), sources: 8 },
+];
+const srcDecision = pickBest({
+  releases: srcReleases as any,
+  expectedTitle: "Severance",
+  season: 1,
+  episode: 1,
+  minQuality: "fullhd",
+});
+const srcOne = srcDecision.evaluated.find((e) => e.release.sources === 1);
+const srcEight = srcDecision.evaluated.find((e) => e.release.sources === 8);
+assert(srcOne !== undefined, "sources: 1-fuente evaluado");
+assert(srcEight !== undefined, "sources: 8-fuentes evaluado");
+expectEq(srcOne?.sourceCountScore, 0, "sources: 0 pts con 1 fuente");
+expectEq(srcEight?.sourceCountScore, 40, "sources: 40 pts con 8 fuentes");
+expectEq(srcDecision.picked?.release.sources, 8, "sources: gana el de 8 fuentes (misma calidad)");
+// sin fuentes → 0 pts (compat: slskd/torrent no rellenan sources)
+const noSrc = pickBest({
+  releases: [parseReleaseName("Severance.S01E01.1080p.WEB-DL.x264-GRP")],
+  expectedTitle: "Severance",
+  season: 1,
+  episode: 1,
+  minQuality: "fullhd",
+});
+expectEq(noSrc.evaluated[0]?.sourceCountScore, 0, "sources: sin datos → 0 pts");
+
+// ── Caso 21: min_quality = OBJETIVO (cap): uhd NO suma por encima ────────────
+// Validado con el log: con min_quality=hd el usuario elegía el fullhd/HDrip y
+// no los UHD 2160p de 2-4 GB que ganaban por calidad. El cap hace que la
+// calidad extra por encima del pedido no aporte puntos (decide la fuente).
+const capReleases = [
+  { ...parseReleaseName("Serie.S01E01.2160p.UHD.BluRay.REMUX.HEVC-GRP"), sources: 5 },
+  { ...parseReleaseName("Serie.S01E01.720p.HDTV.x264-GRP"), sources: 5 },
+];
+const capDecision = pickBest({
+  releases: capReleases as any,
+  expectedTitle: "Serie",
+  season: 1,
+  episode: 1,
+  minQuality: "hd",
+});
+const capUhd = capDecision.evaluated.find((e) => e.release.quality === "uhd");
+const capHd = capDecision.evaluated.find((e) => e.release.quality === "hd");
+assert(capUhd !== undefined, "cap: uhd evaluado");
+assert(capHd !== undefined, "cap: hd evaluado");
+expectEq(capUhd?.qualityScore, 200, "cap: uhd con min hd → 200 (capped, ya no 400)");
+expectEq(capHd?.qualityScore, 200, "cap: hd con min hd → 200");
+// por debajo del pedido sigue penalizando (compat con el test BB: 720p→100 con min fullhd)
+const capLow = pickBest({
+  releases: [
+    { ...parseReleaseName("Otra.S01E01.720p.HDTV.x264-GRP"), sources: 5 },
+    { ...parseReleaseName("Otra.S01E01.1080p.WEB-DL.x264-GRP"), sources: 5 },
+  ],
+  expectedTitle: "Otra",
+  season: 1,
+  episode: 1,
+  minQuality: "fullhd",
+});
+const capLowHd = capLow.evaluated.find((e) => e.release.quality === "hd");
+expectEq(capLowHd?.qualityScore, 100, "cap: 720p con min fullhd → 100 (penaliza igual)");
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
