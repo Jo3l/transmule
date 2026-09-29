@@ -23,3 +23,6 @@ middleware/server/providers/plugins/*
 
 # Hermes agent internal files (plans, etc.)
 .hermes/
+
+# Exports del log de búsquedas del planificador (datos de análisis, no deben commitearse)
+planner-search-log-*.json
