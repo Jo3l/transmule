@@ -255,8 +255,10 @@ const showUrlBar = computed(() => {
 });
 
 const URL_DEFAULTS: Record<string, string> = {
-  "dontorrent-movies": "https://www21.dontorrent.link/ultimos",
-  "dontorrent-shows": "https://www21.dontorrent.link/descargar-series",
+  // El plugin reescribe el host al dominio vigente; lo que importa es la
+  // ruta. Se apunta a las secciones paginadas (`/page/N`), no a `/ultimos`.
+  "dontorrent-movies": "https://dontorrent.moi/peliculas",
+  "dontorrent-shows": "https://dontorrent.moi/series",
 };
 
 const URL_PREF_KEYS: Record<string, string> = {
@@ -432,7 +434,7 @@ function updateUrl() {
   router.replace({ query: q }).catch(() => {});
 }
 
-async function loadPage(pageNum: number, forceRefresh = false) {
+function listParams(pageNum: number, forceRefresh = false) {
   const params: Record<string, string | number> = { ...filters };
   params.page = pageNum;
   if (forceRefresh) params._noCache = 1;
@@ -442,7 +444,14 @@ async function loadPage(pageNum: number, forceRefresh = false) {
     params.url = sourceUrl.value.trim();
   }
 
-  const data = await fetchList(providerId.value, params);
+  return params;
+}
+
+async function loadPage(pageNum: number, forceRefresh = false) {
+  const data = await fetchList(
+    providerId.value,
+    listParams(pageNum, forceRefresh),
+  );
 
   // Store in cache
   pageCache.value = { ...pageCache.value, [pageNum]: data.items ?? [] };
@@ -471,15 +480,15 @@ async function loadPage(pageNum: number, forceRefresh = false) {
   }
 }
 
+// Precarga SOLO la página siguiente: con fuentes de muchas páginas (p. ej.
+// `/series` tiene 200) una cadena recursiva pediría el listado entero, y
+// además sin `url` acababa cacheando la página equivocada.
 async function preloadNext(pageNum: number) {
   if (pageCache.value[pageNum]) return;
-  const params: Record<string, string | number> = { ...filters };
-  params.page = pageNum;
   try {
-    const data = await fetchList(providerId.value, params);
+    const data = await fetchList(providerId.value, listParams(pageNum));
     if (data.items?.length) {
       pageCache.value = { ...pageCache.value, [pageNum]: data.items };
-      if (data.hasMore) preloadNext(pageNum + 1);
     }
   } catch {
     // silent — preload failure is non-critical
