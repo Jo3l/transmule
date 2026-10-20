@@ -33,30 +33,19 @@
         <SButton variant="default" icon="mdi-calendar-month-outline" @click="navigateTo('/planner/calendar')" class="ml-2">
           {{ $t("planner.calendar") }}
         </SButton>
-        <!-- Export del log de búsquedas manuales (JSON) para análisis posterior -->
-        <SButton
-          variant="default"
-          icon="mdi-file-download-outline"
-          :loading="exportingLog"
-          :title="$t('planner.exportLogHint')"
-          @click="exportLog"
-          class="ml-2"
-        >
-          {{ $t("planner.exportLog") }}
-        </SButton>
       </div>
 
-      <!-- Series populares -->
+      <!-- Series en tendencia (TMDB, tendencias de la semana) -->
       <section class="mb-5">
         <div class="planner-section-head">
           <h3 class="title is-5 mb-0">
-            <span class="mdi mdi-television-play mr-2" />{{ $t("planner.popularSeries") }}
+            <span class="mdi mdi-television-play mr-2" />{{ $t("planner.trendingSeries") }}
           </h3>
           <span v-if="popularLoading" class="mdi mdi-loading mdi-spin has-text-grey" />
         </div>
         <PlannerPosterSlider
-          v-if="popularSeries.length"
-          :items="popularSeries"
+          v-if="trendingSeries.length"
+          :items="trendingSeries"
           media-type="series"
           @select="onSelectSeries"
         />
@@ -153,41 +142,9 @@ const showAddSeries = ref(false);
 const showAddMovie = ref(false);
 const addInitialSeries = ref<any>(null);
 const addInitialMovie = ref<any>(null);
-const exportingLog = ref(false);
-
-/**
- * Descarga el log de búsquedas manuales del planificador en JSON
- * (query + configuración + resultados puntuados + release elegido) para
- * analizarlo después y afinar el scoring con datos reales.
- */
-async function exportLog() {
-  exportingLog.value = true;
-  try {
-    const blob = await apiFetch<Blob>("/api/planner/log/export", {
-      responseType: "blob",
-    });
-    const d = new Date();
-    const p = (n: number) => String(n).padStart(2, "0");
-    const stamp =
-      `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
-      `-${p(d.getHours())}${p(d.getMinutes())}`;
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `planner-search-log-${stamp}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (err: any) {
-    errorMsg.value = err?.message ?? String(err);
-  } finally {
-    exportingLog.value = false;
-  }
-}
-
-// ── Sliders de populares ─────────────────────────────────────────────────────
-const popularSeries = ref<TmdbPopularItem[]>([]);
+// ── Sliders del dashboard ────────────────────────────────────────────────────
+// series = tendencias de la semana en TMDB (solo ficción); movies = populares.
+const trendingSeries = ref<TmdbPopularItem[]>([]);
 const popularMovies = ref<TmdbPopularItem[]>([]);
 const popularLoading = ref(false);
 
@@ -228,17 +185,17 @@ async function loadPopular() {
       language: selectedLang.value || undefined,
       limit: 14,
     });
-    popularSeries.value = res.series;
+    trendingSeries.value = res.series;
     popularMovies.value = res.movies;
   } catch {
-    popularSeries.value = [];
+    trendingSeries.value = [];
     popularMovies.value = [];
   } finally {
     popularLoading.value = false;
   }
 }
 
-/** Convierte un título popular de TMDB al shape de initialResult del modal. */
+/** Convierte un título del slider de TMDB al shape de initialResult del modal. */
 function toInitialResult(item: TmdbPopularItem): any {
   return {
     id: item.id,

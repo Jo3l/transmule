@@ -436,6 +436,58 @@ export interface TmdbPopularItem {
 }
 
 /**
+ * Géneros de TV que no son series de ficción: informativos, realities y talk
+ * shows. /trending no admite filtros server-side, así que se descartan aquí
+ * por `genre_ids` para que el slider solo muestre series.
+ */
+const NON_SCRIPTED_TV_GENRES = new Set([10763, 10764, 10767]);
+
+/**
+ * Series en tendencia de la semana (TMDB /trending/tv/week).
+ *
+ * Equivale a la portada de TMDB → "Tendencias de esta semana" para series,
+ * descartando programas de televisión (informativos, realities, talk shows).
+ * /trending no soporta `with_watch_*` ni `without_genres`, así que el filtro
+ * se aplica en memoria y se piden hasta 2 páginas para poder llenar `limit`
+ * cuando alguna entrada descartada deja hueco.
+ */
+export async function discoverTmdbTrendingTv(
+  opts: { language?: string; limit?: number } = {},
+): Promise<TmdbPopularItem[]> {
+  const limit = opts.limit && opts.limit > 0 ? opts.limit : 20;
+  const items: TmdbPopularItem[] = [];
+  const seen = new Set<number>();
+
+  for (let page = 1; page <= 2 && items.length < limit; page++) {
+    const data = await tmdbFetch<{ results: any[] }>(`/trending/tv/week?page=${page}`, {
+      ttlSeconds: 6 * 60 * 60,
+      language: opts.language,
+    }).catch(() => null);
+    if (!data?.results?.length) break;
+
+    for (const r of data.results) {
+      const genres: number[] = r.genre_ids ?? [];
+      if (genres.some((g) => NON_SCRIPTED_TV_GENRES.has(g))) continue;
+      if (seen.has(r.id)) continue;
+      seen.add(r.id);
+      items.push({
+        id: r.id,
+        title: r.name ?? r.title ?? "",
+        original_title: r.original_name ?? r.original_title ?? "",
+        overview: r.overview ?? null,
+        date: r.first_air_date ?? null,
+        poster_url: posterUrl(r.poster_path, "w500"),
+        vote_average: r.vote_average ?? null,
+        media_type: "tv",
+      });
+      if (items.length >= limit) break;
+    }
+  }
+
+  return items;
+}
+
+/**
  * Títulos populares de TMDB disponibles para ver en la región (streaming,
  * gratis, con anuncios, alquiler o compra). Usa /discover con
  * `with_watch_monetization_types=flatrate|free|ads|rent|buy` (OR) y

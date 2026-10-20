@@ -1,19 +1,22 @@
 /**
  * GET /api/planner/discover/popular?language=es&limit=12
  *
- * Títulos populares de TMDB (series y películas) disponibles para ver en la
- * región (streaming, gratis, con anuncios, alquiler o compra), para alimentar
- * los sliders del dashboard del planificador.
+ * Sliders del dashboard del planificador:
+ *   - series: tendencias de la semana en TMDB (solo series de ficción, sin
+ *     informativos/realities/talk shows).
+ *   - movies: películas populares disponibles para ver en la región
+ *     (streaming, gratis, con anuncios, alquiler o compra).
  */
-import { discoverTmdbPopular } from "~/services/planner/tmdb";
+import { discoverTmdbPopular, discoverTmdbTrendingTv } from "~/services/planner/tmdb";
 
 defineRouteMeta({
   openAPI: {
     tags: ["Planner"],
-    summary: "Popular movies and series (TMDB discover)",
-    description: "Popular movies and TV shows available to watch in the configured region.",
+    summary: "Trending series and popular movies (TMDB)",
+    description:
+      "Series trending this week (scripted only) and popular movies available in the configured region.",
     responses: {
-      200: { description: "Popular series and movies" },
+      200: { description: "Trending series and popular movies" },
       401: { description: "Auth required" },
     },
   },
@@ -27,7 +30,7 @@ export default defineEventHandler(async (event) => {
   const limit = q.limit && Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : undefined;
 
   const [series, movies] = await Promise.all([
-    discoverTmdbPopular("tv", { language, limit }).catch(() => []),
+    discoverTmdbTrendingTv({ language, limit }).catch(() => []),
     discoverTmdbPopular("movie", { language, limit }).catch(() => []),
   ]);
 

@@ -37,6 +37,11 @@ export default defineEventHandler(async (event) => {
     setConfig("slskd_password", body.password);
   }
 
+  // The user typed their own Soulseek account in: it is no longer a generated one.
+  if (body?.username !== undefined || body?.password !== undefined) {
+    setConfig("slskd_credentials_generated", "0");
+  }
+
   // Apply credentials and all config to the running slskd instance
   if (body?.username || body?.password) {
     try {

@@ -1465,7 +1465,22 @@
     "credentialsGuide": "No hay formulario de registro online. Simplemente introduce cualquier usuario y contraseña no usados — la red Soulseek te registrará automáticamente.",
     "emoji": "Emojis",
     "searchFiles": "Filtrar archivos...",
-    "sortByFiles": "Ordenar por archivos"
+    "sortByFiles": "Ordenar por archivos",
+    "presence": "Presencia",
+    "presenceEnabled": "Aparecer en el canal Transmule",
+    "presenceHelp": "Publica la versión y el tiempo encendido de este TransMule en tu descripción de Soulseek y entra automáticamente en el canal público «Transmule». Tu nick de Soulseek será visible para quien esté en ese canal, y ese marcador es lo que cuentan las demás instancias de TransMule.",
+    "presenceMarker": "Marcador publicado: {marker}",
+    "presenceCount": "Instancias de TransMule conectadas",
+    "presenceMembers": "{n} usuarios en el canal",
+    "presenceSkipped": "{n} sin respuesta",
+    "presenceFetchedAt": "Actualizado {time}",
+    "presenceCached": "en caché (se recuenta cada hora)",
+    "presencePartial": "Recuento incompleto: algunos usuarios no respondieron a tiempo.",
+    "presenceNone": "Ninguna instancia con el marcador en el canal.",
+    "presenceUptime": "encendido {uptime}",
+    "presenceNotJoined": "No estás en el canal Transmule: para contar instancias hay que estar dentro. Nadie se cuenta mientras está desconectado.",
+    "presenceJoinChannel": "Unirse al canal",
+    "credentialsGenerated": "Estas credenciales de Soulseek se generaron automáticamente para que Soulseek funcione sin configurar nada. Puedes sustituirlas por tu propia cuenta de Soulseek cuando quieras."
   },
   "planner": {
     "title": "Planificadorr",
@@ -1484,7 +1499,7 @@
     "addMovie": "Añadir película",
     "noSeries": "No hay series suscritas",
     "noMovies": "No hay películas suscritas",
-    "popularSeries": "Series populares",
+    "trendingSeries": "Series en tendencia",
     "popularMovies": "Películas populares",
     "popularEmpty": "No se pudieron cargar los títulos populares",
     "languageDefault": "Por defecto (Integraciones)",
@@ -1599,8 +1614,6 @@
     "cancelPendingTasksDone": "Tareas pendientes eliminadas",
     "recentMissingHint": "{count} episodios recientes sin descargar de la temporada {season}",
     "nothingPending": "No hay episodios emitidos pendientes de descargar",
-    "exportLog": "Descargar log (JSON)",
-    "exportLogHint": "Descarga el log de búsquedas manuales (query, configuración, resultados puntuados y release elegido) en JSON, para analizar el scoring con datos reales.",
     "noResultsFor": "No se encontraron releases para {query}"
   }
 }

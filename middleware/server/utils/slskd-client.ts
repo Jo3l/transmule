@@ -6,6 +6,17 @@
  */
 
 import { request as httpRequest } from "node:http";
+import { randomBytes } from "node:crypto";
+
+import {
+  APP_VERSION_CONFIG_KEY,
+  MARKER_PREFIX,
+  PRESENCE_CONFIG_KEY,
+  PRESENCE_ROOM,
+  buildMarker,
+  getAppVersion,
+  isPresenceEnabled,
+} from "./slskd-presence";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +106,70 @@ export function useSlskdClient(): SlskdClient {
     _instance = new SlskdClient((config as any).slskdUrl || "http://slskd:5030");
   }
   return _instance;
+}
+
+// ─── Credential & YAML helpers ────────────────────────────────────────────────
+
+/** Prefix of the Soulseek account TransMule creates when there is none yet. */
+const GENERATED_USERNAME_PREFIX = "slsk";
+
+export interface SoulseekCredentials {
+  username: string;
+  password: string;
+  /** Where the credentials came from: TransMule's config, slskd's own file, or us. */
+  source: "config" | "slskd" | "generated";
+}
+
+function randomAlnum(length: number): string {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
+/**
+ * Write a value into the YAML unquoted when it is plain, double-quoted (a
+ * valid flow scalar) otherwise — a description containing `:` or `#` must not
+ * be able to corrupt the config file.
+ */
+function yamlScalar(value: string): string {
+  if (/^[A-Za-z0-9]/.test(value) && !/[:#'"\[\]{}&*!|>%@`,]/.test(value) && value.trim() === value) {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+/** Read `soulseek.username` / `soulseek.password` out of a slskd config file. */
+export function readSoulseekCredentialsFromYaml(yaml: string): { username: string; password: string } | null {
+  let inSoulseek = false;
+  let username = "";
+  let password = "";
+
+  for (const line of yaml.split("\n")) {
+    const trimmed = line.trimStart();
+
+    if (!inSoulseek) {
+      if (trimmed === "soulseek:") inSoulseek = true;
+      continue;
+    }
+
+    if (line.length > 0 && line[0] !== " " && line[0] !== "\t") break;
+    if (line.length === 0) continue;
+
+    const match = trimmed.match(/^(username|password):\s*(.*)$/);
+    if (!match) continue;
+
+    let value = match[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+
+    if (match[1] === "username") username = value;
+    else password = value;
+  }
+
+  return username && password ? { username, password } : null;
 }
 
 // ─── Client class ─────────────────────────────────────────────────────────────
@@ -225,6 +300,23 @@ export class SlskdClient {
 
   // ── Server ──────────────────────────────────────────────────────────────────
 
+  /**
+   * Effective options as slskd sees them (config file + env vars + args), with
+   * [Secret] values redacted to "*****" by slskd's Redactor. `soulseek.username`
+   * therefore tells us whether credentials exist at all — even those supplied
+   * through environment variables, which never appear in the config file.
+   */
+  async getOptions(): Promise<any | null> {
+    const res = await this.fetch("/options", { timeout: 10_000 });
+    if (res.status !== 200) return null;
+
+    try {
+      return JSON.parse(res.body);
+    } catch {
+      return null;
+    }
+  }
+
   async getServer(): Promise<SlskdServerState | null> {
     const res = await this.fetch("/server");
     if (res.status === 200) return JSON.parse(res.body);
@@ -237,42 +329,45 @@ export class SlskdClient {
    * If the YAML fetch fails, connection proceeds with existing config.
    */
   async connect(): Promise<boolean> {
-    const dbUser = getConfig("slskd_username");
-    const dbPass = getConfig("slskd_password");
+    // Read the config file once: credential resolution depends on what slskd
+    // already has, and every transform below is chained onto this copy.
+    const yaml = await this._readYaml();
+    if (yaml === null) {
+      console.warn("[slskd] connect: cannot fetch YAML config, connecting with existing config");
+    }
+
+    const credentials = await this.ensureSoulseekCredentials(yaml);
 
     // Build all transforms for a single YAML roundtrip
     const transforms: { label: string; fn: (yaml: string) => string }[] = [];
-    if (dbUser && dbPass) {
-      transforms.push({ label: "soulseek credentials", fn: this._credentialsTransform(dbUser, dbPass) });
+    if (credentials) {
+      transforms.push({ label: "soulseek credentials", fn: this._credentialsTransform(credentials.username, credentials.password) });
     }
     transforms.push({ label: "shared directories", fn: this._sharesTransform("/downloads") });
     transforms.push({ label: "permissions migration (0.26.0)", fn: this._permissionsMigrationTransform() });
     transforms.push({ label: "download destination", fn: this._destinationTransform() });
+    if (isPresenceEnabled()) {
+      // Presence: public identity marker + the channel in slskd's durable
+      // auto-join list (slskd joins it on every login — see slskd-presence.ts).
+      transforms.push({ label: "presence marker", fn: this._descriptionTransform(buildMarker(getAppVersion())) });
+      transforms.push({ label: "presence room", fn: this._roomsTransform(PRESENCE_ROOM, true) });
+    }
 
-    // Fetch YAML once, chain all transforms, PUT once if anything changed
-    const getRes = await this.fetch("/options/yaml", { timeout: 10_000 });
-    if (getRes.status !== 200) {
-      console.warn(`[slskd] connect: cannot fetch YAML config (${getRes.status}), connecting with existing config`);
-    } else {
-      let yaml = getRes.body;
-      if (yaml.length > 0) {
-        try { const parsed = JSON.parse(yaml); if (typeof parsed === "string") yaml = parsed; } catch { /* raw YAML */ }
-      }
-
+    if (yaml !== null) {
+      let next = yaml;
       let changed = false;
+
       for (const t of transforms) {
-        const before = yaml;
-        yaml = t.fn(yaml);
+        const before = next;
+        next = t.fn(next);
         // transform applied silently
-        if (yaml !== before) changed = true;
+        if (next !== before) changed = true;
       }
 
       if (changed) {
-        const putRes = await this.fetch("/options/yaml", {
-          method: "PUT", body: JSON.stringify(yaml), timeout: 10_000,
-        });
-        console.log(`[slskd] connect: PUT /options/yaml → ${putRes.status}`);
-        if (putRes.status === 200) {
+        const ok = await this._writeYaml(next);
+        console.log(`[slskd] connect: PUT /options/yaml → ${ok ? 200 : "failed"}`);
+        if (ok) {
           const scanRes = await this.fetch("/shares", { method: "PUT" });
           console.log(`[slskd] connect: PUT /shares (rescan) → ${scanRes.status}`);
         }
@@ -342,8 +437,8 @@ export class SlskdClient {
 
   // ── Users / Conversations ─────────────────────────────────────────────────────
 
-  async getUserInfo(username: string): Promise<any> {
-    const res = await this.fetch(`/users/${encodeURIComponent(username)}/info`, { timeout: 45_000 });
+  async getUserInfo(username: string, timeoutMs = 45_000): Promise<any> {
+    const res = await this.fetch(`/users/${encodeURIComponent(username)}/info`, { timeout: timeoutMs });
     if (res.status === 200) return JSON.parse(res.body);
     return null;
   }
@@ -606,6 +701,200 @@ export class SlskdClient {
       method: "DELETE",
     });
     return res.status === 200 || res.status === 204;
+  }
+
+  // ── Config helpers (private transforms, chained by connect()) ──────────────
+
+  /** Read slskd's config file through the API (raw text, secrets included). */
+  private async _readYaml(): Promise<string | null> {
+    const res = await this.fetch("/options/yaml", { timeout: 10_000 });
+    if (res.status !== 200) return null;
+
+    let yaml = res.body;
+    if (yaml.length > 0) {
+      try {
+        const parsed = JSON.parse(yaml);
+        if (typeof parsed === "string") yaml = parsed;
+      } catch { /* raw YAML */ }
+    }
+    return yaml;
+  }
+
+  /** Write the config file back. slskd validates it and reloads on change. */
+  private async _writeYaml(yaml: string): Promise<boolean> {
+    const res = await this.fetch("/options/yaml", {
+      method: "PUT", body: JSON.stringify(yaml), timeout: 10_000,
+    });
+    return res.status === 200;
+  }
+
+  /**
+   * Resolve the Soulseek credentials this instance logs in with.
+   *
+   *  1. TransMule's own config (the usual case once settings were saved).
+   *  2. Credentials already in slskd's config file — adopted, so a pre-existing
+   *     slskd install keeps its Soulseek account.
+   *  3. Credentials supplied outside the file (env vars): left untouched, slskd
+   *     connects with them on its own.
+   *  4. Nothing anywhere → a fresh account is generated, which is what makes a
+   *     first run work without asking the user for a Soulseek login.
+   *
+   * Returns null when the credentials must be left alone.
+   */
+  async ensureSoulseekCredentials(yaml: string | null): Promise<SoulseekCredentials | null> {
+    const dbUser = getConfig("slskd_username");
+    const dbPass = getConfig("slskd_password");
+    if (dbUser && dbPass) return { username: dbUser, password: dbPass, source: "config" };
+
+    const fromFile = yaml ? readSoulseekCredentialsFromYaml(yaml) : null;
+    if (fromFile) {
+      setConfig("slskd_username", fromFile.username);
+      setConfig("slskd_password", fromFile.password);
+      console.log("[slskd] credentials: adopted the existing Soulseek account from slskd's config file");
+      return { username: fromFile.username, password: fromFile.password, source: "slskd" };
+    }
+
+    const options = await this.getOptions();
+    if (typeof options?.soulseek?.username === "string" && options.soulseek.username.length > 0) {
+      console.log("[slskd] credentials: configured outside the config file (env/args) — leaving them untouched");
+      return null;
+    }
+
+    const username = GENERATED_USERNAME_PREFIX + randomAlnum(7);
+    const password = randomAlnum(20);
+    setConfig("slskd_username", username);
+    setConfig("slskd_password", password);
+    setConfig("slskd_credentials_generated", "1");
+    console.log("[slskd] credentials: generated a Soulseek account for this instance (see the slskd settings page)");
+    return { username, password, source: "generated" };
+  }
+
+  /**
+   * Targeted config edit over a single YAML roundtrip. `description: null` drops
+   * our marker line, `removeRoom` takes a channel out of the auto-join list.
+   * Returns whether the file actually changed.
+   */
+  async updateConfig(edits: {
+    description?: string | null;
+    ensureRoom?: string;
+    removeRoom?: string;
+  }): Promise<boolean> {
+    const yaml = await this._readYaml();
+    if (yaml === null) return false;
+
+    let next = yaml;
+    if (edits.description !== undefined) next = this._descriptionTransform(edits.description)(next);
+    if (edits.ensureRoom) next = this._roomsTransform(edits.ensureRoom, true)(next);
+    if (edits.removeRoom) next = this._roomsTransform(edits.removeRoom, false)(next);
+    if (next === yaml) return false;
+
+    return this._writeYaml(next);
+  }
+
+  /**
+   * Set (or clear) `soulseek.description`.
+   *
+   * The option has no [RequiresReconnect], so slskd serves the new value on the
+   * next user-info request — no reconnect needed. Passing null removes only our
+   * own marker line (a description the user wrote by hand is left alone), which
+   * makes slskd fall back to its default text.
+   */
+  private _descriptionTransform(marker: string | null): (yaml: string) => string {
+    return (yaml) => {
+      if (!/^soulseek:/m.test(yaml)) {
+        if (marker === null) return yaml;
+        return yaml.trimEnd() + `\n\nsoulseek:\n  description: ${yamlScalar(marker)}\n`;
+      }
+
+      const lines = yaml.split("\n");
+      const result: string[] = [];
+      let inSoulseek = false;
+      let done = false;
+
+      for (const line of lines) {
+        const trimmed = line.trimStart();
+
+        if (!inSoulseek && trimmed === "soulseek:") {
+          inSoulseek = true;
+          result.push(line);
+          continue;
+        }
+
+        if (inSoulseek) {
+          const indent = line.match(/^\s*/)?.[0] || "  ";
+
+          if (trimmed.startsWith("description:")) {
+            const current = trimmed.slice("description:".length).trim();
+
+            if (marker !== null) {
+              result.push(indent + "description: " + yamlScalar(marker));
+            } else if (current.replace(/^["']|["']$/g, "").startsWith(MARKER_PREFIX)) {
+              // our marker → drop the line so slskd's default description returns
+            } else {
+              result.push(line);
+            }
+
+            done = true;
+            continue;
+          }
+
+          if (line.length > 0 && line[0] !== " " && line[0] !== "\t") {
+            inSoulseek = false;
+            if (!done && marker !== null) {
+              result.push("  description: " + yamlScalar(marker));
+              done = true;
+            }
+          }
+        }
+
+        result.push(line);
+      }
+
+      if (!done && marker !== null) result.push("  description: " + yamlScalar(marker));
+      return result.join("\n");
+    };
+  }
+
+  /**
+   * Add or remove an entry in slskd's top-level `rooms` list — the durable
+   * auto-join list that RoomService applies on every login. An empty list is
+   * removed outright (`rooms:` with no items would bind to null).
+   */
+  private _roomsTransform(room: string, add: boolean): (yaml: string) => string {
+    const unquote = (raw: string) => {
+      const v = raw.trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) return v.slice(1, -1);
+      return v;
+    };
+    const isRoom = (entry: string) => unquote(entry).toLowerCase() === room.toLowerCase();
+
+    return (yaml) => {
+      const lines = yaml.split("\n");
+      const start = lines.findIndex((l) => /^rooms:(\s*\[\s*\])?\s*$/.test(l));
+
+      if (start === -1) {
+        if (!add) return yaml;
+        return yaml.trimEnd() + `\n\nrooms:\n  - ${yamlScalar(room)}\n`;
+      }
+
+      // Collect the block: the `rooms:` line plus the indented lines under it.
+      let end = start + 1;
+      while (end < lines.length && (lines[end].length === 0 || lines[end][0] === " " || lines[end][0] === "\t")) end++;
+
+      const block = lines.slice(start + 1, end);
+      const itemLines = block.filter((l) => /^\s*-\s+/.test(l));
+      const kept = itemLines.filter((l) => !isRoom(l.replace(/^\s*-\s+/, "")));
+      const present = kept.length !== itemLines.length;
+
+      // Nothing to do: already listed, or not listed and not asked to add.
+      if (present === add) return yaml;
+      if (add) kept.push(`  - ${yamlScalar(room)}`);
+
+      const trailing = block.filter((l) => l.trim() === "");
+      const rebuilt = kept.length > 0 ? ["rooms:", ...kept, ...trailing] : [];
+
+      return [...lines.slice(0, start), ...rebuilt, ...lines.slice(end)].join("\n");
+    };
   }
 
   // ── Config helpers (private transforms, chained by connect()) ──────────────

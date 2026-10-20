@@ -77,12 +77,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Presupuesto máximo (ms) para esperar los títulos alternativos (TVDB/TMDB)
- *  solo donde hacen falta SIN bloquear resultados: la anotación del log de
- *  búsqueda manual espera como mucho esto; si la metadata llega después, la
- *  segunda oleada de queries y el re-score del stream la usan igualmente. */
-export const ALT_TITLES_BUDGET_MS = 4000;
-
 /** Normaliza `string[] | Promise<string[]>` a una promesa que nunca rechaza. */
 function altPromiseOf(altTitles: string[] | Promise<string[]> | undefined): Promise<string[]> {
   if (Array.isArray(altTitles)) return Promise.resolve(altTitles);

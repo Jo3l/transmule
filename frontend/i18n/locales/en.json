@@ -1458,7 +1458,22 @@
     "credentialsGuide": "There is no online registration form. Simply enter any unused username and password — the Soulseek network will register you automatically.",
     "emoji": "Emojis",
     "searchFiles": "Filter files...",
-    "sortByFiles": "Sort by files"
+    "sortByFiles": "Sort by files",
+    "presence": "Presence",
+    "presenceEnabled": "Appear in the Transmule channel",
+    "presenceHelp": "Publishes this TransMule's version and uptime in your Soulseek description and joins the public \"Transmule\" channel automatically. Your Soulseek nickname becomes visible to everyone in that channel, and that marker is what other TransMule instances count.",
+    "presenceMarker": "Published marker: {marker}",
+    "presenceCount": "TransMule instances online",
+    "presenceMembers": "{n} users in the channel",
+    "presenceSkipped": "{n} did not answer",
+    "presenceFetchedAt": "Updated {time}",
+    "presenceCached": "cached (recounted hourly)",
+    "presencePartial": "Incomplete count: some users did not answer in time.",
+    "presenceNone": "No instance with the marker in the channel.",
+    "presenceUptime": "up {uptime}",
+    "presenceNotJoined": "You are not in the Transmule channel. Counting instances requires being inside it — nobody counts while disconnected.",
+    "presenceJoinChannel": "Join the channel",
+    "credentialsGenerated": "These Soulseek credentials were generated automatically so Soulseek works out of the box. You can replace them with your own Soulseek account whenever you want."
   },
   "planner": {
     "title": "Plannerr",
@@ -1477,7 +1492,7 @@
     "addMovie": "Add movie",
     "noSeries": "No subscribed series",
     "noMovies": "No subscribed movies",
-    "popularSeries": "Popular series",
+    "trendingSeries": "Trending series",
     "popularMovies": "Popular movies",
     "popularEmpty": "Could not load popular titles",
     "languageDefault": "Default (Integrations)",
@@ -1592,8 +1607,6 @@
     "cancelPendingTasksDone": "Pending tasks cleared",
     "recentMissingHint": "{count} recent episodes not downloaded from season {season}",
     "nothingPending": "No aired episodes pending download",
-    "exportLog": "Download log (JSON)",
-    "exportLogHint": "Downloads the manual-search log (query, settings, scored results and picked release) as JSON, to analyse the scoring with real data.",
     "noResultsFor": "No releases found for {query}"
   }
 }

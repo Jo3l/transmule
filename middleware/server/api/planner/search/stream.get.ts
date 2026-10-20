@@ -28,31 +28,17 @@ import type { SearchResultItem } from "~/services/planner/search-providers";
 import {
   searchEpisodeStreamed,
   searchMovieStreamed,
-  buildEpisodeQueries,
-  buildMovieQueries,
-  buildAmuleEpisodeQuery,
-  buildAmuleMovieQuery,
-  ALT_TITLES_BUDGET_MS,
 } from "~/services/planner/search-providers";
-import { scoreCandidates, type CandidateContext, type ReleaseCandidate } from "~/services/planner/candidates";
-import {
-  getSubscription,
-  findEpisodeByNumber,
-  getMovieBySubscription,
-  recordManualSearchLog,
-  updateManualSearchResults,
-} from "~/utils/planner-db";
+import { scoreCandidates, type CandidateContext } from "~/services/planner/candidates";
+import { getSubscription } from "~/utils/planner-db";
 import { resolveAltTitles } from "~/services/planner/localized-titles";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Máximo de candidatos guardados en el log por búsqueda (acotar el tamaño de fila). */
-const MAX_LOG_CANDIDATES = 300;
-
 export default defineEventHandler(async (event) => {
-  const user = requireUser(event);
+  requireUser(event);
 
   const q = getQuery(event);
   const type: "episode" | "movie" = q.type === "movie" ? "movie" : "episode";
@@ -134,39 +120,6 @@ export default defineEventHandler(async (event) => {
   const MAX_STREAM_MS = 60_000;
   let finished = false;
 
-  // Candidatos puntuados acumulados → se vuelcan al log (acotado a
-  // MAX_LOG_CANDIDATES para no inflar la fila).
-  const loggedCandidates: ReleaseCandidate[] = [];
-  let logId: number | null = null;
-
-  // Vuelco del log con debounce: con el streaming de torrents por plugin hay
-  // decenas de lotes por búsqueda; escribir la fila en cada lote generaría
-  // decenas de UPDATEs SQLite (y el JSON crece hasta MAX_LOG_CANDIDATES).
-  const writeLog = () => {
-    if (logId == null) return;
-    try {
-      updateManualSearchResults(logId, loggedCandidates.slice(0, MAX_LOG_CANDIDATES));
-    } catch (err: any) {
-      console.error("[planner] manual search log update error:", err?.message ?? err);
-    }
-  };
-  let flushTimer: ReturnType<typeof setTimeout> | null = null;
-  const flushLog = () => {
-    if (logId == null || flushTimer) return;
-    flushTimer = setTimeout(() => {
-      flushTimer = null;
-      writeLog();
-    }, 1500);
-  };
-  /** Vuelco inmediato (para rescore y cierre del stream). */
-  const flushLogNow = () => {
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-      flushTimer = null;
-    }
-    writeLog();
-  };
-
   // ── Acumulación + re-score (puntuación incremental) ───────────────────────
   // Los items se acumulan deduplicados (mismo criterio que la UI: nombre
   // normalizado + tamaño). Al llegar los títulos alternativos se re-puntúa el
@@ -182,14 +135,8 @@ export default defineEventHandler(async (event) => {
   const rescoreAll = () => {
     if (finished || allItems.length === 0) return;
     const candidates = scoreCandidates(allItems, scoreCtxWith(currentAltTitles));
-    // El log se actualiza con los scores finales (misma lista acotada).
-    loggedCandidates.length = 0;
-    for (const c of candidates) {
-      if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
-    }
     const payload = JSON.stringify({ candidates });
     res.write(`event: rescore\ndata: ${payload}\n\n`);
-    flushLogNow();
   };
 
   // Cuando llega la metadata (aunque tarde), se re-puntúa todo lo acumulado.
@@ -215,14 +162,8 @@ export default defineEventHandler(async (event) => {
     });
     if (fresh.length === 0) return;
     const candidates = scoreCandidates(fresh, scoreCtxWith(currentAltTitles));
-    for (const c of candidates) {
-      if (loggedCandidates.length < MAX_LOG_CANDIDATES) loggedCandidates.push(c);
-    }
     const payload = JSON.stringify({ service, candidates });
     res.write(`event: result\ndata: ${payload}\n\n`);
-    // Actualización incremental por red: si el usuario cierra el stream antes
-    // del "complete" (o descarga enseguida), los resultados ya quedan en el log.
-    flushLog();
   };
 
   // 1) Las búsquedas arrancan INMEDIATAMENTE con el título canónico; los títulos
@@ -232,75 +173,10 @@ export default defineEventHandler(async (event) => {
       ? searchEpisodeStreamed(title, season!, episode!, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise)
       : searchMovieStreamed(title, year, searchServices, onResult, MAX_STREAM_MS, altTitlesPromise);
 
-  // 2) Log de búsqueda manual (análisis a posteriori): la fila se crea en
-  //    BACKGROUND — nunca bloquea el stream ni espera a la metadata. Se espera
-  //    como mucho ALT_TITLES_BUDGET_MS a los altTitles para anotar las queries
-  //    completas; si llegan más tarde, rescoreAll() ya deja el log con los
-  //    scores finales y esta fila solo documenta las queries canónicas.
-  void (async () => {
-    const logTitles = await Promise.race([
-      altTitlesPromise,
-      sleep(ALT_TITLES_BUDGET_MS).then(() => [] as string[]),
-    ]);
-    logId = (() => {
-      try {
-        const epRow =
-          type === "episode" && sub && season != null && episode != null
-            ? findEpisodeByNumber(sub.id, season, episode)
-            : undefined;
-        const movieRow =
-          type === "movie" && sub ? getMovieBySubscription(sub.id) : undefined;
-        const doneQueries =
-          type === "episode" && season != null && episode != null
-            ? buildEpisodeQueries(title, season, episode, logTitles)
-            : buildMovieQueries(title, year, logTitles);
-        const doneAmule =
-          type === "episode" && season != null && episode != null
-            ? buildAmuleEpisodeQuery(title, season, episode, logTitles)
-            : buildAmuleMovieQuery(title, year, logTitles);
-        return recordManualSearchLog({
-          subscription_id: subscriptionId ?? 0,
-          media_type: type === "episode" ? "series" : "movie",
-          episode_id: epRow?.id ?? null,
-          movie_id: movieRow?.id ?? null,
-          tmdb_id: sub?.tmdb_id ?? null,
-          tvdb_id: sub?.tvdb_id ?? null,
-          imdb_id: sub?.imdb_id ?? null,
-          series_title: sub?.title ?? title,
-          year: sub?.year ?? year ?? null,
-          season: type === "episode" ? (season ?? null) : null,
-          episode: type === "episode" ? (episode ?? null) : null,
-          episode_title: episodeTitle ?? epRow?.title ?? null,
-          query_text:
-            type === "episode"
-              ? `${title} S${String(season ?? 0).padStart(2, "0")}E${String(episode ?? 0).padStart(2, "0")}`
-              : (year ? `${title} ${year}` : title),
-          queries_json: JSON.stringify({ plain: doneQueries, amule: doneAmule }),
-          min_quality: minQuality,
-          max_size_mb: maxSizeMb ?? null,
-          language: language ?? null,
-          search_services: searchServices.join(","),
-          alt_titles_json: logTitles.length ? JSON.stringify(logTitles) : null,
-          user_id: user?.userId ?? null,
-          user_name: user?.username ?? null,
-        });
-      } catch (err: any) {
-        // El log es best-effort: un fallo de BD no debe romper la búsqueda.
-        console.error("[planner] manual search log error:", err?.message ?? err);
-        return null;
-      }
-    })();
-    // Si la metadata llegó durante la espera y el re-score ya volcó el log,
-    // este flush asegura la última versión de candidatos en la fila.
-    flushLogNow();
-  })();
-
   await Promise.race([search, sleep(MAX_STREAM_MS)]);
 
   if (!finished) {
     finished = true;
-    // Vuelco final del log: todas las redes terminaron (o deadline).
-    flushLogNow();
     res.write(`event: complete\ndata: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   }

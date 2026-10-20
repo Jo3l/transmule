@@ -1441,7 +1441,22 @@
     "joinTransmule": "Join TransMule",
     "roomNamePlaceholder": "Channel name...",
     "roomExists": "This channel already exists",
-    "emptyFolder": "Empty folder"
+    "emptyFolder": "Empty folder",
+    "presence": "Varlık",
+    "presenceEnabled": "Transmule kanalında görün",
+    "presenceHelp": "Bu TransMule'un sürümünü ve açık kalma süresini Soulseek açıklamana yazar ve herkese açık \"Transmule\" kanalına otomatik katılır. Soulseek takma adın o kanaldaki herkese görünür ve diğer TransMule kurulumları bu işareti sayar.",
+    "presenceMarker": "Yayınlanan işaret: {marker}",
+    "presenceCount": "Çevrimiçi TransMule kurulumu",
+    "presenceMembers": "Kanaldaki {n} kullanıcı",
+    "presenceSkipped": "{n} yanıt vermedi",
+    "presenceFetchedAt": "Güncellendi {time}",
+    "presenceCached": "önbellekten (saatte bir yeniden sayılır)",
+    "presencePartial": "Eksik sayım: bazı kullanıcılar zamanında yanıt vermedi.",
+    "presenceNone": "Kanalda işareti taşıyan kurulum yok.",
+    "presenceUptime": "{uptime} süredir açık",
+    "presenceNotJoined": "Transmule kanalında değilsin: kurulumları saymak için içeride olmak gerekir; bağlı değilken kimse sayılmaz.",
+    "presenceJoinChannel": "Kanala katıl",
+    "credentialsGenerated": "Bu Soulseek bilgileri, Soulseek'in hemen çalışması için otomatik oluşturuldu. İstediğin zaman kendi Soulseek hesabınla değiştirebilirsin."
   },
   "planner": {
     "title": "Plannerr",

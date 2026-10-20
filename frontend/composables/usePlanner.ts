@@ -257,7 +257,10 @@ export function usePlanner() {
     return res.languages ?? [];
   }
 
-  /** Títulos populares (series y películas) de TMDB para los sliders del dashboard. */
+  /**
+   * Sliders del dashboard: series en tendencia de la semana (solo ficción) y
+   * películas populares de TMDB.
+   */
   async function discoverPopular(opts: { language?: string; limit?: number } = {}) {
     const params = new URLSearchParams();
     if (opts.language) params.set("language", opts.language);

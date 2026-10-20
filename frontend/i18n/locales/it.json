@@ -1441,7 +1441,22 @@
     "joinTransmule": "Join TransMule",
     "roomNamePlaceholder": "Channel name...",
     "roomExists": "This channel already exists",
-    "emptyFolder": "Empty folder"
+    "emptyFolder": "Empty folder",
+    "presence": "Presenza",
+    "presenceEnabled": "Comparire nel canale Transmule",
+    "presenceHelp": "Pubblica versione e tempo di attività di questo TransMule nella tua descrizione Soulseek ed entra automaticamente nel canale pubblico \"Transmule\". Il tuo nickname Soulseek sarà visibile a chi è in quel canale, e quel marcatore è ciò che le altre istanze TransMule contano.",
+    "presenceMarker": "Marcatore pubblicato: {marker}",
+    "presenceCount": "Istanze TransMule online",
+    "presenceMembers": "{n} utenti nel canale",
+    "presenceSkipped": "{n} senza risposta",
+    "presenceFetchedAt": "Aggiornato {time}",
+    "presenceCached": "in cache (ricontato ogni ora)",
+    "presencePartial": "Conteggio incompleto: alcuni utenti non hanno risposto in tempo.",
+    "presenceNone": "Nessuna istanza con il marcatore nel canale.",
+    "presenceUptime": "attivo da {uptime}",
+    "presenceNotJoined": "Non sei nel canale Transmule: per contare le istanze bisogna esserci dentro — nessuno viene contato quando è disconnesso.",
+    "presenceJoinChannel": "Entra nel canale",
+    "credentialsGenerated": "Queste credenziali Soulseek sono state generate automaticamente perché Soulseek funzioni subito. Puoi sostituirle con il tuo account Soulseek quando vuoi."
   },
   "planner": {
     "title": "Plannerr",

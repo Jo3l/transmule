@@ -268,80 +268,7 @@ function _initSchema(db: DatabaseSync): void {
       UNIQUE (source, external_id, endpoint)
     );
     CREATE INDEX IF NOT EXISTS idx_planner_metadata_cache_expires ON planner_metadata_cache(expires_at);
-
-    -- Log de búsquedas MANUALES del planificador (una fila por búsqueda interactiva).
-    -- Objetivo: acumular datos reales (query + config + resultados + release elegido)
-    -- para analizar a posteriori cómo identificar mejor un episodio tras su release
-    -- y, con el tiempo, mejorar la puntuación del decision engine.
-    -- Sin FOREIGN KEY: el log debe sobrevivir al borrado de la suscripción.
-    CREATE TABLE IF NOT EXISTS planner_manual_search_log (
-      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-      subscription_id     INTEGER,
-      media_type          TEXT,
-      episode_id          INTEGER,
-      movie_id            INTEGER,
-      tmdb_id             INTEGER,
-      tvdb_id             INTEGER,
-      imdb_id             TEXT,
-      series_title        TEXT,
-      year                INTEGER,
-      season              INTEGER,
-      episode             INTEGER,
-      episode_title       TEXT,
-      query_text          TEXT,
-      queries_json       TEXT,
-      searched_at         TEXT,
-      min_quality         TEXT,
-      max_size_mb         INTEGER,
-      language            TEXT,
-      search_services     TEXT,
-      alt_titles_json     TEXT,
-      results_count       INTEGER,
-      results_json        TEXT,
-      picked_raw_name     TEXT,
-      picked_url          TEXT,
-      picked_hash         TEXT,
-      picked_quality      TEXT,
-      picked_size_mb      INTEGER,
-      picked_seeds        INTEGER,
-      picked_leechers     INTEGER,
-      picked_sources      INTEGER,
-      picked_username     TEXT,
-      picked_free_slot    INTEGER,
-      picked_queue_length INTEGER,
-      picked_upload_speed INTEGER,
-      picked_availability INTEGER,
-      picked_availability_kind TEXT,
-      picked_service      TEXT,
-      picked_languages    TEXT,
-      picked_score        REAL,
-      picked_rank         INTEGER,
-      selected_at         TEXT,
-      user_id             INTEGER,
-      user_name           TEXT,
-      created_at          TEXT DEFAULT (datetime('now'))
-    );
-    CREATE INDEX IF NOT EXISTS idx_planner_manual_search_log_sub ON planner_manual_search_log(subscription_id);
-    CREATE INDEX IF NOT EXISTS idx_planner_manual_search_log_at ON planner_manual_search_log(searched_at);
   `);
-
-  // Migration: columnas de disponibilidad del release elegido en el log de
-  // búsquedas manuales (seeds/leechers/sources/slot/cola + normalizada).
-  const logCols = db
-    .prepare("PRAGMA table_info(planner_manual_search_log)")
-    .all() as Array<{ name: string }>;
-  const logCol = (name: string, type: string) => {
-    if (!logCols.some((c) => c.name === name)) {
-      db.exec(`ALTER TABLE planner_manual_search_log ADD COLUMN ${name} ${type}`);
-    }
-  };
-  logCol("picked_leechers", "INTEGER");
-  logCol("picked_username", "TEXT");
-  logCol("picked_free_slot", "INTEGER");
-  logCol("picked_queue_length", "INTEGER");
-  logCol("picked_upload_speed", "INTEGER");
-  logCol("picked_availability", "INTEGER");
-  logCol("picked_availability_kind", "TEXT");
 
   // Migration (Fase 15): añadir columna `language` a subscriptions existentes.
   const subsCols = db
@@ -403,6 +330,29 @@ function _initSchema(db: DatabaseSync): void {
   }
   if (!epCols.some((c) => c.name === "best_candidate_json")) {
     db.exec("ALTER TABLE planner_episodes ADD COLUMN best_candidate_json TEXT");
+  }
+
+  // Limpieza (v1.176): la tabla del log de búsquedas manuales del planificador se
+  // eliminó junto con su código (endpoint de export, escritura desde el stream y
+  // desde los grabs). Se borra aquí, en lugar de esperar a un acceso por SSH, para
+  // que las instalaciones que ya la tenían la suelten al actualizar.
+  // ⚠️ Quitar este bloque en una versión futura: solo hace falta una vez.
+  const legacySearchLog = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'planner_manual_search_log'",
+    )
+    .get();
+  if (legacySearchLog) {
+    db.exec("DROP TABLE planner_manual_search_log");
+    console.log("[db] tabla del log de búsquedas manuales eliminada (ya no se usa)");
+
+    try {
+      // Devolver el espacio al sistema. Si otro proceso tiene la BD ocupada o hay
+      // una transacción abierta, se deja: SQLite reutiliza esas páginas igualmente.
+      db.exec("VACUUM");
+    } catch (err: any) {
+      console.warn("[db] no se pudo compactar la BD tras el borrado:", err?.message);
+    }
   }
 }
 
