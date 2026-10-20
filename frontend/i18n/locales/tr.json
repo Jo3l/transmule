@@ -1444,7 +1444,7 @@
     "emptyFolder": "Empty folder",
     "presence": "Varlık",
     "presenceEnabled": "Transmule kanalında görün",
-    "presenceHelp": "Bu TransMule'un sürümünü ve açık kalma süresini Soulseek açıklamana yazar ve herkese açık \"Transmule\" kanalına otomatik katılır. Soulseek takma adın o kanaldaki herkese görünür ve diğer TransMule kurulumları bu işareti sayar.",
+    "presenceHelp": "Bu TransMule'un sürümünü ve açık kalma süresini Soulseek açıklamana yazar ve herkese açık \"Transmule\" kanalına otomatik katılır. Soulseek takma adın o kanaldaki herkese görünür ve diğer TransMule kurulumları bu işareti sayar. Varsayılan olarak açıktır — görünmek istemiyorsan buradan kapat.",
     "presenceMarker": "Yayınlanan işaret: {marker}",
     "presenceCount": "Çevrimiçi TransMule kurulumu",
     "presenceMembers": "Kanaldaki {n} kullanıcı",
@@ -1456,7 +1456,8 @@
     "presenceUptime": "{uptime} süredir açık",
     "presenceNotJoined": "Transmule kanalında değilsin: kurulumları saymak için içeride olmak gerekir; bağlı değilken kimse sayılmaz.",
     "presenceJoinChannel": "Kanala katıl",
-    "credentialsGenerated": "Bu Soulseek bilgileri, Soulseek'in hemen çalışması için otomatik oluşturuldu. İstediğin zaman kendi Soulseek hesabınla değiştirebilirsin."
+    "credentialsGenerated": "Bu Soulseek bilgileri, Soulseek'in hemen çalışması için otomatik oluşturuldu. İstediğin zaman kendi Soulseek hesabınla değiştirebilirsin.",
+    "presenceNotApplied": "Kaydedildi, ancak slskd kanala henüz katılmadı. slskd'nin Soulseek'e bağlı olduğundan emin ol — ayar bir sonraki başlatmada yeniden uygulanır."
   },
   "planner": {
     "title": "Plannerr",

@@ -13,8 +13,13 @@ function compareVersions(a: string, b: string): number {
 export function useVersionCheck() {
   const { showToast } = useToast();
   const { t } = useI18n();
+  const { apiFetch } = useApi();
 
   onMounted(async () => {
+    // Reportar la versión que corre el SPA: el marcador de presencia la publica
+    // y así no depende de que el usuario abra los ajustes de slskd.
+    apiFetch("/api/app/version", { method: "POST", body: { version: APP_VERSION } }).catch(() => {});
+
     try {
       const res = await fetch(
         `https://raw.githubusercontent.com/${GITHUB_REPO}/main/frontend/package.json?t=${Date.now()}`,

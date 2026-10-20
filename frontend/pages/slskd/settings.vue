@@ -70,6 +70,10 @@
             {{ $t("slskd.presenceHelp") }}
           </p>
 
+          <SAlert v-if="presence?.enabled && !presence.joined" variant="warning" class="mb-3">
+            {{ $t("slskd.presenceNotApplied") }}
+          </SAlert>
+
           <p v-if="presence?.enabled" class="is-size-7 mb-0">
             <span class="mdi mdi-tag-outline mr-1" />
             {{ $t("slskd.presenceMarker", { marker: presence.marker }) }}

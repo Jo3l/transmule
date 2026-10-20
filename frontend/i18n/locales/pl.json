@@ -1444,7 +1444,7 @@
     "emptyFolder": "Empty folder",
     "presence": "Obecność",
     "presenceEnabled": "Pokaż się w kanale Transmule",
-    "presenceHelp": "Publikuje wersję i czas działania tej instancji TransMule w twoim opisie Soulseek i automatycznie dołącza do publicznego kanału „Transmule”. Twój nick w Soulseek będzie widoczny dla wszystkich w tym kanale, a ten znacznik to właśnie to, co liczą inne instancje TransMule.",
+    "presenceHelp": "Publikuje wersję i czas działania tej instancji TransMule w twoim opisie Soulseek i automatycznie dołącza do publicznego kanału „Transmule”. Twój nick w Soulseek będzie widoczny dla wszystkich w tym kanale, a ten znacznik to właśnie to, co liczą inne instancje TransMule. Jest domyślnie włączona — wyłącz ją tutaj, jeśli nie chcesz się pokazywać.",
     "presenceMarker": "Opublikowany znacznik: {marker}",
     "presenceCount": "Instancje TransMule online",
     "presenceMembers": "{n} użytkowników w kanale",
@@ -1456,7 +1456,8 @@
     "presenceUptime": "działa {uptime}",
     "presenceNotJoined": "Nie ma cię w kanale Transmule — aby zliczać instancje, trzeba w nim być. Gdy połączenie jest zerwane, nikt nie jest liczony.",
     "presenceJoinChannel": "Dołącz do kanału",
-    "credentialsGenerated": "Te dane logowania do Soulseek zostały wygenerowane automatycznie, aby Soulseek działał od razu. Możesz je zastąpić własnym kontem Soulseek."
+    "credentialsGenerated": "Te dane logowania do Soulseek zostały wygenerowane automatycznie, aby Soulseek działał od razu. Możesz je zastąpić własnym kontem Soulseek.",
+    "presenceNotApplied": "Zapisano, ale slskd nie dołączył jeszcze do kanału. Sprawdź, czy slskd jest połączony z Soulseek — ustawienie zostanie zastosowane ponownie przy następnym starcie."
   },
   "planner": {
     "title": "Plannerr",

@@ -44,8 +44,16 @@ const CENSUS_PER_USER_TIMEOUT_MS = 15_000;
 /** Hard cap on members probed in one census. */
 const CENSUS_MAX_USERS = 400;
 
+/**
+ * La presencia viene ACTIVADA por defecto (opt-out): así el censo funciona sin
+ * pedirle nada a nadie, y quien no quiera aparecer en el canal la desactiva en
+ * Ajustes → Presencia (donde se explica qué se publica). Solo un "0"/"false"
+ * explícito la apaga.
+ */
 export function isPresenceEnabled(): boolean {
-  return getConfig(PRESENCE_CONFIG_KEY) === "1";
+  const raw = getConfig(PRESENCE_CONFIG_KEY);
+  if (raw === undefined) return true;
+  return raw === "1" || raw === "true";
 }
 
 /**
@@ -97,7 +105,23 @@ export interface PresenceState {
   room: string;
   version: string;
   marker: string;
+  /** El fichero de slskd se reescribió en esta llamada. */
   applied: boolean;
+  /** La instancia está en el canal (comprobado contra slskd, no asumido). */
+  joined: boolean;
+}
+
+/** ¿Está esta instancia en el canal? slskd es la fuente de verdad. */
+export async function isInChannel(client: SlskdClient): Promise<boolean> {
+  try {
+    const rooms = await client.getJoinedRooms();
+    return (rooms ?? []).some(
+      (room: any) => String(room).toLowerCase() === PRESENCE_ROOM.toLowerCase(),
+    );
+  } catch (err: any) {
+    console.warn("[slskd] presence: no se pudo leer los canales unidos:", err?.message);
+    return false;
+  }
 }
 
 /**
@@ -112,24 +136,29 @@ export async function applyPresence(client: SlskdClient, enabled: boolean): Prom
   const marker = buildMarker(version);
   let applied = false;
 
-  if (enabled) {
-    applied = await client.updateConfig({ description: marker, ensureRoom: PRESENCE_ROOM });
-    try {
-      await client.joinRoom(PRESENCE_ROOM);
-    } catch (err: any) {
-      console.warn("[slskd] presence: could not join the channel:", err?.message);
-    }
-  } else {
-    applied = await client.updateConfig({ description: null, removeRoom: PRESENCE_ROOM });
-    try {
-      await client.leaveRoom(PRESENCE_ROOM);
-    } catch (err: any) {
-      console.warn("[slskd] presence: could not leave the channel:", err?.message);
-    }
+  // Cada paso va por separado a propósito: que la escritura del fichero falle
+  // (slskd ocupado, YAML rechazado) no debe impedir entrar en el canal, y que el
+  // canal falle no debe impedir dejar la config lista para el próximo arranque.
+  try {
+    applied = enabled
+      ? await client.updateConfig({ description: marker, ensureRoom: PRESENCE_ROOM })
+      : await client.updateConfig({ description: null, removeRoom: PRESENCE_ROOM });
+  } catch (err: any) {
+    console.warn("[slskd] presence: no se pudo escribir la configuración:", err?.message);
   }
 
+  try {
+    // slskd une `rooms` al conectar; para que el canal aparezca ya, sin
+    // reiniciar nada, se entra (o se sale) explícitamente.
+    if (enabled) await client.joinRoom(PRESENCE_ROOM);
+    else await client.leaveRoom(PRESENCE_ROOM);
+  } catch (err: any) {
+    console.warn(`[slskd] presence: no se pudo ${enabled ? "entrar en" : "salir de"} el canal:`, err?.message);
+  }
+
+  const joined = await isInChannel(client);
   clearCensusCache();
-  return { enabled, room: PRESENCE_ROOM, version, marker, applied };
+  return { enabled, room: PRESENCE_ROOM, version, marker, applied, joined };
 }
 
 /**

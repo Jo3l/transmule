@@ -827,7 +827,15 @@ function joinRoom(roomName: string) {
 // ── Tab management ───────────────────────────────────────────────────────
 async function addRoom(roomName: string) {
   const id = nextTabId("room", roomName);
-  if (tabs.value.find((t) => t.id === id)) return;
+  const existing = tabs.value.find((t) => t.id === id);
+  if (existing) {
+    // Ya está abierto: activarlo y refrescar. El botón "Transmule" sirve también
+    // para volver al canal, no solo para entrar la primera vez.
+    activeTabId.value = id;
+    fetchRoomData(id, roomName);
+    nextTick(() => scrollActiveListToBottom(id, true));
+    return;
+  }
   tabs.value.push({ type: "room", id, label: roomName });
   roomMessages.value[id] = [];
   roomUsers.value[id] = [];

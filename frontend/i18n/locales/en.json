@@ -1461,7 +1461,7 @@
     "sortByFiles": "Sort by files",
     "presence": "Presence",
     "presenceEnabled": "Appear in the Transmule channel",
-    "presenceHelp": "Publishes this TransMule's version and uptime in your Soulseek description and joins the public \"Transmule\" channel automatically. Your Soulseek nickname becomes visible to everyone in that channel, and that marker is what other TransMule instances count.",
+    "presenceHelp": "Publishes this TransMule's version and uptime in your Soulseek description and joins the public \"Transmule\" channel automatically. Your Soulseek nickname becomes visible to everyone in that channel, and that marker is what other TransMule instances count. It is enabled by default — turn it off here if you prefer not to appear.",
     "presenceMarker": "Published marker: {marker}",
     "presenceCount": "TransMule instances online",
     "presenceMembers": "{n} users in the channel",
@@ -1473,7 +1473,8 @@
     "presenceUptime": "up {uptime}",
     "presenceNotJoined": "You are not in the Transmule channel. Counting instances requires being inside it — nobody counts while disconnected.",
     "presenceJoinChannel": "Join the channel",
-    "credentialsGenerated": "These Soulseek credentials were generated automatically so Soulseek works out of the box. You can replace them with your own Soulseek account whenever you want."
+    "credentialsGenerated": "These Soulseek credentials were generated automatically so Soulseek works out of the box. You can replace them with your own Soulseek account whenever you want.",
+    "presenceNotApplied": "Saved, but slskd has not joined the channel yet. Check that slskd is connected to Soulseek — the setting is applied again on the next start."
   },
   "planner": {
     "title": "Plannerr",

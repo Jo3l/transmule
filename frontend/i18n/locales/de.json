@@ -1444,7 +1444,7 @@
     "emptyFolder": "Empty folder",
     "presence": "Präsenz",
     "presenceEnabled": "Im Transmule-Kanal erscheinen",
-    "presenceHelp": "Veröffentlicht Version und Laufzeit dieser TransMule-Instanz in deiner Soulseek-Beschreibung und tritt automatisch dem öffentlichen Kanal „Transmule“ bei. Dein Soulseek-Nickname wird für alle in diesem Kanal sichtbar, und genau diese Kennung zählen die anderen TransMule-Instanzen.",
+    "presenceHelp": "Veröffentlicht Version und Laufzeit dieser TransMule-Instanz in deiner Soulseek-Beschreibung und tritt automatisch dem öffentlichen Kanal „Transmule“ bei. Dein Soulseek-Nickname wird für alle in diesem Kanal sichtbar, und genau diese Kennung zählen die anderen TransMule-Instanzen. Sie ist standardmäßig aktiviert — schalte sie hier aus, wenn du nicht erscheinen möchtest.",
     "presenceMarker": "Veröffentlichte Kennung: {marker}",
     "presenceCount": "TransMule-Instanzen online",
     "presenceMembers": "{n} Nutzer im Kanal",
@@ -1456,7 +1456,8 @@
     "presenceUptime": "läuft seit {uptime}",
     "presenceNotJoined": "Du bist nicht im Transmule-Kanal. Zum Zählen muss man drin sein — offline wird niemand gezählt.",
     "presenceJoinChannel": "Kanal beitreten",
-    "credentialsGenerated": "Diese Soulseek-Zugangsdaten wurden automatisch erzeugt, damit Soulseek sofort funktioniert. Du kannst sie jederzeit durch dein eigenes Soulseek-Konto ersetzen."
+    "credentialsGenerated": "Diese Soulseek-Zugangsdaten wurden automatisch erzeugt, damit Soulseek sofort funktioniert. Du kannst sie jederzeit durch dein eigenes Soulseek-Konto ersetzen.",
+    "presenceNotApplied": "Gespeichert, aber slskd ist dem Kanal noch nicht beigetreten. Prüfe, ob slskd mit Soulseek verbunden ist — die Einstellung wird beim nächsten Start erneut angewendet."
   },
   "planner": {
     "title": "Plannerr",

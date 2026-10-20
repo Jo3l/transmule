@@ -3,6 +3,7 @@ import {
   PRESENCE_ROOM,
   buildMarker,
   getAppVersion,
+  isInChannel,
   isPresenceEnabled,
 } from "../../utils/slskd-presence";
 
@@ -24,18 +25,10 @@ export default defineEventHandler(async (event) => {
 
   const client = useSlskdClient();
   const version = getAppVersion();
-  let joined = false;
 
   // slskd being unreachable is reported as "not joined" instead of a 502: this
   // is a status payload and the settings page must keep rendering.
-  try {
-    const rooms = await client.getJoinedRooms();
-    joined = (rooms ?? []).some(
-      (room: any) => String(room).toLowerCase() === PRESENCE_ROOM.toLowerCase(),
-    );
-  } catch (err: any) {
-    console.warn("[slskd] presence: cannot read joined rooms:", err?.message);
-  }
+  const joined = await isInChannel(client);
 
   return {
     enabled: isPresenceEnabled(),

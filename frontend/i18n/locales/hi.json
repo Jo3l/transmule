@@ -1444,7 +1444,7 @@
     "emptyFolder": "Empty folder",
     "presence": "उपस्थिति",
     "presenceEnabled": "Transmule चैनल में दिखें",
-    "presenceHelp": "यह TransMule का संस्करण और चालू रहने का समय आपके Soulseek विवरण में लिखता है और सार्वजनिक \"Transmule\" चैनल में अपने आप शामिल हो जाता है। आपका Soulseek निक उस चैनल के सभी लोगों को दिखेगा, और यही मार्कर बाकी TransMule इंस्टॉल गिनते हैं।",
+    "presenceHelp": "यह TransMule का संस्करण और चालू रहने का समय आपके Soulseek विवरण में लिखता है और सार्वजनिक \"Transmule\" चैनल में अपने आप शामिल हो जाता है। आपका Soulseek निक उस चैनल के सभी लोगों को दिखेगा, और यही मार्कर बाकी TransMule इंस्टॉल गिनते हैं। यह डिफ़ॉल्ट रूप से चालू है — दिखना न चाहें तो यहीं बंद करें।",
     "presenceMarker": "प्रकाशित मार्कर: {marker}",
     "presenceCount": "ऑनलाइन TransMule इंस्टॉल",
     "presenceMembers": "चैनल में {n} उपयोगकर्ता",
@@ -1456,7 +1456,8 @@
     "presenceUptime": "{uptime} से चालू",
     "presenceNotJoined": "आप Transmule चैनल में नहीं हैं: गिनती के लिए उसमें होना ज़रूरी है — डिस्कनेक्ट रहते हुए कोई नहीं गिना जाता।",
     "presenceJoinChannel": "चैनल में शामिल हों",
-    "credentialsGenerated": "ये Soulseek क्रेडेंशियल अपने आप बनाए गए ताकि Soulseek बिना कुछ सेट किए चल जाए। जब चाहें इन्हें अपने Soulseek खाते से बदल सकते हैं।"
+    "credentialsGenerated": "ये Soulseek क्रेडेंशियल अपने आप बनाए गए ताकि Soulseek बिना कुछ सेट किए चल जाए। जब चाहें इन्हें अपने Soulseek खाते से बदल सकते हैं।",
+    "presenceNotApplied": "सहेजा गया, पर slskd अभी चैनल में शामिल नहीं हुआ। जाँचें कि slskd Soulseek से जुड़ा है — यह सेटिंग अगली बार शुरू होने पर फिर लागू होगी।"
   },
   "planner": {
     "title": "Plannerr",
