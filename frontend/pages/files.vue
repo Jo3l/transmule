@@ -692,6 +692,7 @@ import winampIcon from "~/assets/icons/Winamp-logo.svg";
 import boltIcon from "~/assets/icons/bolt.svg";
 import ComicReader from "~/components/ComicReader.vue";
 import FileManagerPanel from "~/components/FileManagerPanel.vue";
+import { startBrowserDownload } from "~/utils/browserDownload";
 
 interface FileItem {
   name: string;
@@ -732,7 +733,7 @@ const { apiFetch, showToast } = useApi();
 const auth = useAuth();
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 const config = useRuntimeConfig();
-const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, addDownloadJob, hasActive } =
+const { enqueueTransfers, enqueueExtract, enqueueCompress, addUploadJob, hasActive } =
   useTransferJobs();
 const route = useRoute();
 const router = useRouter();
@@ -1800,47 +1801,10 @@ function downloadUrl(filename: string): string {
   return `${base}/api/files/download?path=${encodeURIComponent(rel)}&token=${encodeURIComponent(auth.token.value || "")}`;
 }
 
-/**
- * Download a file by fetching it as a blob and creating a temporary anchor.
- * This allows better error handling for remote SMB files.
- */
-async function downloadFile(filename: string) {
-  const url = downloadUrl(filename);
-  const { setPercent, setDone, setError } = addDownloadJob(filename, currentPath.value);
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.statusMessage || t("fileManager.downloadError"));
-    }
-
-    // Stream download with progress
-    const contentLength = Number(response.headers.get("Content-Length")) || 0;
-    const reader = response.body!.getReader();
-    const chunks: Uint8Array[] = [];
-    let received = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      if (contentLength > 0) setPercent(Math.round((received / contentLength) * 100));
-    }
-
-    const blob = new Blob(chunks);
-    const downloadUrlObj = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = downloadUrlObj;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(downloadUrlObj);
-    setDone();
-  } catch (err: any) {
-    setError(err.message || t("fileManager.downloadError"));
-  }
+// The browser owns download progress and errors; dispatching a click cannot
+// confirm that a file was saved, so do not create an internal transfer job.
+function downloadFile(filename: string) {
+  startBrowserDownload(downloadUrl(filename), filename);
 }
 
 // ── Upload ─────────────────────────────────────────────────────────────────
