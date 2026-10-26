@@ -192,16 +192,22 @@ const providerIconMap = computed(() => {
   }
   return map;
 });
-const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "danger"] as const;
 const providerVariantMap = computed(() => {
-  const map: Record<string, string> = { amule: "accent", slskd: "primary" };
+  const map: Record<string, string> = { amule: "primary", slskd: "info" };
   torrentSearchSources.value.forEach((s, i) => {
     map[s.id] = VARIANT_PALETTE[i % VARIANT_PALETTE.length];
   });
   return map;
 });
 function sourceVariant(src: string) {
-  return providerVariantMap.value[src] ?? "default";
+  return (providerVariantMap.value[src] ?? "default") as
+    | "default"
+    | "primary"
+    | "success"
+    | "warning"
+    | "danger"
+    | "info";
 }
 
 const { tabs, activeTabId, createUnifiedTab, closeTab, switchTab } = useSearchTabs();

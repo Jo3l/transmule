@@ -265,7 +265,7 @@
                   <div class="user-info-browse-btn">
                     <SButton
                       variant="secondary"
-                      size="xs"
+                      size="sm"
                       @click="addBrowseFiles(userInfo[tab.id].username)"
                     >
                       <span class="mdi mdi-folder-open" />
@@ -352,7 +352,7 @@
       >
         <div class="browse-toolbar">
           <span class="is-size-7 has-text-grey">{{
-            $t("slskd.browsingUser", "Explorando: {user}", { user: tab.label })
+            $t("slskd.browsingUser", { user: tab.label })
           }}</span>
           <div class="browse-stats ml-3" v-if="browseInfo[tab.id]">
             <span class="is-size-7 has-text-grey"
@@ -498,7 +498,7 @@
 </template>
 
 <script setup lang="ts">
-const { apiFetch } = useApi();
+const { apiFetch, showToast } = useApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
@@ -507,7 +507,7 @@ const slskdUsername = ref('');
 
 // ── Tab model ────────────────────────────────────────────────────────────
 interface ChatTab {
-  type: "room" | "user" | "files";
+  type: "room" | "user" | "files" | "_rooms";
   id: string;
   label: string;
 }

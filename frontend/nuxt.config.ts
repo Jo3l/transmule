@@ -29,7 +29,8 @@ export default defineNuxtConfig({
       { code: "hi", name: "हिन्दी", file: "hi.json" },
     ],
     defaultLocale: "en",
-    lazy: true,
+    // @nuxtjs/i18n v10 eliminó `lazy` (los ficheros de locale ya no se cargan
+    // todos de golpe); dejarlo aquí solo generaba un error de tipos.
     strategy: "no_prefix",
     detectBrowserLanguage: {
       useCookie: true,

@@ -21,7 +21,7 @@
           class="provider-search-input"
           type="text"
           :placeholder="f.label"
-          @keydown.enter="load"
+          @keydown.enter="() => load()"
         />
         <button
           v-if="filters[f.key]"
@@ -39,7 +39,11 @@
       <div v-if="selectFilters.length" class="provider-filters-selects">
         <div v-for="f in selectFilters" :key="f.key" class="provider-filter-group">
           <label class="provider-filter-label">{{ f.label }}</label>
-          <SSelect v-model="filters[f.key]" :options="f.options || []" @update:model-value="load" />
+          <SSelect
+            v-model="filters[f.key]"
+            :options="f.options || []"
+            @update:model-value="() => load()"
+          />
         </div>
       </div>
     </div>

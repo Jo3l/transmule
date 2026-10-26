@@ -33,7 +33,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    variant?: "default" | "primary" | "success" | "warning" | "danger" | "info" | "text";
+    variant?: "default" | "primary" | "success" | "warning" | "danger" | "info" | "text" | "secondary";
     size?: "mini" | "sm" | "md" | "lg";
     /** Optional plain-text label. When provided each character gets a staggered jump animation on hover. */
     label?: string;
@@ -55,7 +55,12 @@ defineEmits<{ click: [e: MouseEvent] }>();
 
 const classes = computed(() => [
   "s-btn",
-  `s-btn--${props.variant === "default" ? "primary" : props.variant}`,
+  // "default" es el relleno de acento; "secondary" es el neutro (tokens base,
+  // sin clase modificadora), que antes se conseguía —por error— pasando una
+  // variante inexistente.
+  props.variant === "secondary"
+    ? ""
+    : `s-btn--${props.variant === "default" ? "primary" : props.variant}`,
   props.size !== "md" && `s-btn--${props.size}`,
   props.block && "s-btn--block",
 ]);

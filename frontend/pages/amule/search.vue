@@ -232,10 +232,10 @@ const tabPanes = computed(() => amuleTabs.value.map((t) => ({ name: t.id, label:
 // ── Provider maps (for source column in SearchResultsTable) ──────────
 const providerLabelMap: Record<string, string> = { amule: "aMule" };
 const providerIconMap: Record<string, string> = { amule: "mdi-server-network" };
-const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
-const providerVariantMap: Record<string, string> = { amule: "accent" };
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "danger"] as const;
+const providerVariantMap: Record<string, STagVariant> = { amule: "primary" };
 function sourceVariant(src: string) {
-  return providerVariantMap[src] ?? "default";
+  return (providerVariantMap[src] ?? "default") as "default" | "primary" | "success" | "warning" | "danger" | "info";
 }
 
 // ── Search ─────────────────────────────────────────────────────────────────

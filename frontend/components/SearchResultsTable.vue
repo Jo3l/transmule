@@ -70,7 +70,7 @@
           >{{ row.slskdUsername }}</span>
           <span
             v-else-if="seedersValue(row) != null"
-            :class="seedersValue(row) > 0 ? 'has-text-success' : 'has-text-grey'"
+            :class="(seedersValue(row) ?? 0) > 0 ? 'has-text-success' : 'has-text-grey'"
           >{{ seedersValue(row) }}</span>
         </slot>
       </template>
@@ -84,7 +84,7 @@
           >&mdash;</span>
           <span
             v-else-if="leechersValue(row) != null"
-            :class="leechersValue(row) > 0 ? 'has-text-danger' : 'has-text-grey'"
+            :class="(leechersValue(row) ?? 0) > 0 ? 'has-text-danger' : 'has-text-grey'"
           >{{ leechersValue(row) }}</span>
         </slot>
       </template>
@@ -98,7 +98,7 @@
           >{{ row.slskdUsername }}</span>
           <span
             v-else-if="seedersValue(row) != null"
-            :class="seedersValue(row) > 0 ? 'has-text-success' : 'has-text-grey'"
+            :class="(seedersValue(row) ?? 0) > 0 ? 'has-text-success' : 'has-text-grey'"
           >{{ seedersValue(row) }}</span>
         </slot>
       </template>
@@ -123,7 +123,7 @@
             </STag>
           </template>
           <template v-else>
-            <STag :variant="row.type === 'amule' ? 'accent' : 'info'" size="sm">
+            <STag :variant="row.type === 'amule' ? 'primary' : 'info'" size="sm">
               <span v-if="row.type === 'amule'" class="mdi mdi-server-network mr-1" />
               <span v-else class="mdi mdi-magnet mr-1" />
               {{ row.source }}
@@ -233,7 +233,7 @@ const props = withDefaults(
     activeSourceFilters?: Set<string> | null;
     providerIconMap?: Record<string, string>;
     providerLabelMap?: Record<string, string>;
-    sourceVariant?: (source: string) => string;
+    sourceVariant?: (source: string) => STagVariant;
     /** Column keys for which the parent provides custom templates.
      *  Used when columns include keys not handled by the built-in templates. */
     extraSlots?: string[];

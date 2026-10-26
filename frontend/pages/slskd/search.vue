@@ -18,7 +18,13 @@
     </div>
 
     <!-- Search results tabs -->
-    <STabs v-if="searches.length > 0" v-model="activeSearchTab" variant="card" :panes="searchPanes">
+    <STabs
+      v-if="searches.length > 0"
+      :model-value="activeSearchTab ?? undefined"
+      variant="card"
+      :panes="searchPanes"
+      @update:model-value="(v: string) => (activeSearchTab = v)"
+    >
       <template v-for="se in searches" :key="'tab-' + se.id" #[`tab-srch-${se.id}`]>
         <span class="tab-label-wrap">
           <span v-if="se.state === 'InProgress' || se.state === 'Started'" class="mdi mdi-loading mdi-spin tab-status-icon" />

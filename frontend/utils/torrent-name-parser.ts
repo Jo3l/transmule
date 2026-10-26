@@ -55,7 +55,7 @@ export function parseTorrentName(name: string): NameTag[] {
     let label = audio[1].toUpperCase();
     const ch = clean.match(AUDIO_CH_RE);
     if (ch) label += ` ${ch[1]}.${ch[2]}`;
-    tags.push({ label, variant: "accent", tooltip: "Audio" });
+    tags.push({ label, variant: "primary", tooltip: "Audio" });
   }
 
   // Languages (2-3 letter ISO codes before dash or space)

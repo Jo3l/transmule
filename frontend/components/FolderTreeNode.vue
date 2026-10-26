@@ -57,6 +57,10 @@ interface TreeNode {
   name: string;
   path: string;
   children: TreeNode[];
+  /** Archivos del directorio (el árbol de shares de slskd los trae). */
+  files?: any[];
+  /** Subconjunto filtrado por la búsqueda del panel (lo pone el padre). */
+  _filteredFiles?: any[];
 }
 
 const props = defineProps<{
@@ -90,9 +94,9 @@ function formatFileSize(bytes: number): string {
 const isActive = computed(() => props.currentPath === props.node.path);
 
 const hasExpandableContent = computed(() =>
-  props.node.children?.length > 0 ||
-  props.node.files?.length > 0 ||
-  (props.node as any)._filteredFiles?.length > 0,
+  (props.node.children?.length ?? 0) > 0 ||
+  (props.node.files?.length ?? 0) > 0 ||
+  ((props.node as any)._filteredFiles?.length ?? 0) > 0,
 );
 
 const _useExternalExpand = computed(() => props.expanded !== undefined);

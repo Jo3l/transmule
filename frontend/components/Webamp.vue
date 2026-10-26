@@ -86,7 +86,7 @@ onMounted(async () => {
     initialSkin = props.skin;
   }
 
-  instance = new Webamp({
+  const wa = new Webamp({
     initialTracks: [props.track],
     zIndex: 100010,
     ...(initialSkin && { initialSkin }),
@@ -97,15 +97,16 @@ onMounted(async () => {
     },
   });
 
-  await instance.renderWhenReady(container.value!);
+  instance = wa;
+  await wa.renderWhenReady(container.value!);
   console.log("Webamp rendered, container:", container.value?.getBoundingClientRect());
-  instance.play();
+  wa.play();
 
-  instance.onClose(() => {
+  wa.onClose(() => {
     onWebampClose();
   });
 
-  registerInstance(instance);
+  registerInstance(wa);
 });
 
 onBeforeUnmount(() => {

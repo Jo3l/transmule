@@ -13,6 +13,7 @@ interface ServiceStatus {
 interface ServicesState {
   amule: ServiceStatus;
   transmission: ServiceStatus;
+  slskd: ServiceStatus;
   pyload: ServiceStatus;
 }
 
@@ -20,6 +21,7 @@ const _services = ref<ServicesState | null>(null);
 const _loading = ref<Record<string, boolean>>({
   amule: false,
   transmission: false,
+  slskd: false,
   pyload: false,
 });
 const _loaded = ref(false);
@@ -46,6 +48,7 @@ export function useServices() {
       _services.value = {
         amule: { running: false, status: "unknown", startedAt: null },
         transmission: { running: false, status: "unknown", startedAt: null },
+        slskd: { running: false, status: "unknown", startedAt: null },
         pyload: { running: false, status: "unknown", startedAt: null },
       };
     } finally {
@@ -53,7 +56,7 @@ export function useServices() {
     }
   }
 
-  async function toggle(service: "amule" | "transmission" | "pyload") {
+  async function toggle(service: "amule" | "transmission" | "slskd" | "pyload") {
     if (!_services.value) return;
     const current = _services.value[service];
     const action = current.running ? "stop" : "start";

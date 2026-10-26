@@ -1828,7 +1828,9 @@ async function downloadFile(filename: string) {
       if (contentLength > 0) setPercent(Math.round((received / contentLength) * 100));
     }
 
-    const blob = new Blob(chunks);
+    // chunks es Uint8Array[]; en runtime es válido como BlobPart, pero los
+    // tipos de TS 5.7 exigen ArrayBufferView<ArrayBuffer>.
+    const blob = new Blob(chunks as BlobPart[]);
     const downloadUrlObj = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrlObj;

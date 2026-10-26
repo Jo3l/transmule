@@ -19,7 +19,7 @@
 <script setup lang="ts">
 defineProps<{
   name: string;
-  tags?: Array<{ label: string; variant?: string; icon?: string; tooltip?: string }>;
+  tags?: Array<{ label: string; variant?: STagVariant; icon?: string; tooltip?: string }>;
   nameClass?: string;
 }>();
 </script>

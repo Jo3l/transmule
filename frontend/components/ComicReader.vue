@@ -204,7 +204,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from "vue";
-import { ZipReader, BlobReader, BlobWriter } from "@zip.js/zip.js";
+import { ZipReader, BlobReader, BlobWriter, type FileEntry } from "@zip.js/zip.js";
 
 const props = defineProps<{
   visible: boolean;
@@ -465,7 +465,9 @@ async function openCbz() {
     for (let i = 0; i < entries.length; i++) {
       if (_cancelled) break;
       const entry = entries[i];
-      const data = await entry.getData(new BlobWriter());
+      // El filtro de arriba ya descarta los directorios; el tipo de zip.js es la
+      // unión ZipEntry y no se estrecha solo, de ahí el cast.
+      const data = await (entry as FileEntry).getData(new BlobWriter());
       if (_cancelled) break;
       const ext = entry.filename.split(".").pop()?.toLowerCase() ?? "jpeg";
       const mime = imageMime(ext);

@@ -38,7 +38,7 @@ export interface SearchResult {
 /** A unified result row that can come from either torrent or aMule. */
 export interface UnifiedItem {
   id: string;
-  type: "torrent" | "amule";
+  type: "torrent" | "amule" | "slskd";
   name: string;
   size: number;
   size_fmt: string;
@@ -50,6 +50,11 @@ export interface UnifiedItem {
   tags?: Array<{ label: string; variant?: string; icon?: string; tooltip?: string }>;
   movieDetails?: CoverDetails | null;
   rawTitle?: string;
+  /** Campos propios de los resultados de slskd (descarga y carpeta remota). */
+  slskdFolder?: string;
+  slskdUsername?: string;
+  slskdFullFilename?: string;
+  slskdSize?: number;
   infoHash?: string;
   magnet?: string;
   hash?: string;
@@ -492,7 +497,7 @@ export function useSearchTabs() {
       try {
         const res = await apiFetch<any>(`/api/slskd/searches/${searchId}/responses`);
         const incoming: any[] = Array.isArray(res) ? res : [];
-        tabs.value = tabs.value.map((t) => {
+        tabs.value = tabs.value.map((t): SearchTab => {
           if (t.id !== tabId || t.type !== "unified") return t;
           const seen = new Set(t.results.map((r) => r.id));
           for (const f of incoming) {
@@ -657,7 +662,11 @@ export function useSearchTabs() {
   }
 
   function updateTab(id: string, partial: Partial<SearchTab>) {
-    tabs.value = tabs.value.map((t) => (t.id === id ? { ...t, ...partial } : t));
+    // El spread de Partial<SearchTab> sobre un miembro de la unión no es
+    // asignable por tipos, aunque en runtime solo se parchean sus claves.
+    tabs.value = tabs.value.map((t): SearchTab =>
+      t.id === id ? ({ ...t, ...partial } as SearchTab) : t,
+    );
   }
 
   let _c = 0;

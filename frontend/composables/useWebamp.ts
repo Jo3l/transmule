@@ -23,7 +23,7 @@ let _instance: {
   setSkinFromUrl: (url: string) => void;
   skinIsLoaded: () => Promise<void>;
   dispose: () => void;
-  store: { dispatch: (action: any) => void };
+  store: { dispatch: (action: any) => void; getState: () => any };
 } | null = null;
 
 // Tracks queued while Webamp is still mounting (openTracks called before ready)

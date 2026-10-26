@@ -499,7 +499,7 @@ async function onAddRepo() {
     newRepoUrl.value = "";
     if ((repo as any).installed > 0) {
       addToast(
-        t("settings.reposInstallSuccess", undefined, { count: (repo as any).installed }),
+        t("settings.reposInstallSuccess", { count: (repo as any).installed }),
         "success",
       );
     }

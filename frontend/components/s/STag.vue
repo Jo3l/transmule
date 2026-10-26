@@ -5,7 +5,7 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    variant?: "default" | "primary" | "success" | "warning" | "danger" | "info";
+    variant?: STagVariant;
     size?: "sm" | "md" | "lg";
   }>(),
   { variant: "default", size: "md" },

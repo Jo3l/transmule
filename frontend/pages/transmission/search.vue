@@ -140,7 +140,9 @@ const { tabs, activeTabId, createTorrentTab, closeTab, switchTab } = useSearchTa
 
 // ── Filter tabs by service ──────────────────────────────────────────────────
 
-const torrentTabs = computed(() => tabs.value.filter((t) => t.service === "transmission"));
+const torrentTabs = computed(() =>
+  tabs.value.filter((t): t is TorrentTab => t.service === "transmission"),
+);
 const myActiveTab = computed(
   () => torrentTabs.value.find((t) => t.id === activeTabId.value) ?? null,
 );
@@ -255,7 +257,7 @@ watch(filteredResults, () => {
   currentPage.value = 1;
 });
 
-const VARIANT_PALETTE = ["primary", "success", "warning", "info", "accent"] as const;
+const VARIANT_PALETTE = ["primary", "success", "warning", "info", "danger"] as const;
 
 const providerLabelMap = computed(() =>
   Object.fromEntries(torrentSearchSources.value.map((s) => [s.id, s.name])),
@@ -272,7 +274,13 @@ const providerVariantMap = computed(() =>
 );
 
 function sourceVariant(src: string) {
-  return providerVariantMap.value[src] ?? "default";
+  return (providerVariantMap.value[src] ?? "default") as
+    | "default"
+    | "primary"
+    | "success"
+    | "warning"
+    | "danger"
+    | "info";
 }
 
 // ── Search ───────────────────────────────────────────────────────────────────
