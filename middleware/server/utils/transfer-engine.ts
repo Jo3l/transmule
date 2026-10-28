@@ -71,8 +71,22 @@ async function copyAnyPath(
 
   let srcIsDir = false;
   if (src.type === "local") {
-    try { srcIsDir = (await stat(src.absPath)).isDirectory(); }
-    catch { throw new Error("Source not found: " + srcRel); }
+    const source = await stat(src.absPath, { bigint: true }).catch(() => {
+      throw new Error("Source not found: " + srcRel);
+    });
+    srcIsDir = source.isDirectory();
+    if (dest.type === "local") {
+      const target = await stat(dest.absPath, { bigint: true }).catch((err) => {
+        if (err.code === "ENOENT") return null;
+        throw err;
+      });
+      // stat follows symlinks (including parent directories); device/inode
+      // identity also catches virtual aliases, normalized paths and hard links.
+      // Reject before opening streams: the writer would truncate the source.
+      if (target && source.dev === target.dev && source.ino === target.ino) {
+        throw new Error("Source and destination are the same file");
+      }
+    }
   } else {
     const st = await smbStat(src.config, src.subPath);
     if (!st) throw new Error("Source not found: " + srcRel);
