@@ -33,6 +33,12 @@
         </nav>
 
         <div class="sw-body">
+          <div class="sw-target" :class="{ 'is-here': onStepPage }">
+            <span class="mdi" :class="onStepPage ? 'mdi-check-circle' : 'mdi-map-marker-outline'" />
+            <span class="sw-target-label">{{ $t("settings.title") }} → {{ targetLabel }}</span>
+            <code class="sw-target-url">{{ currentTarget.hash }}</code>
+          </div>
+
           <h6 class="sw-title">{{ $t(`setupWizard.${current.id}.title`) }}</h6>
           <p class="sw-text">{{ $t(`setupWizard.${current.id}.body`) }}</p>
 
@@ -63,7 +69,7 @@
           <div class="sw-footer-right">
             <SButton v-if="!isLast" size="sm" @click="skip">{{ $t("setupWizard.skip") }}</SButton>
             <SButton size="sm" variant="primary" @click="primary">
-              {{ isLast ? $t("setupWizard.finish") : $t(`setupWizard.${current.id}.action`) }}
+              {{ primaryLabel }}
               <span class="mdi mdi-arrow-right ml-1" />
             </SButton>
           </div>
@@ -76,14 +82,42 @@
 <script setup lang="ts">
 import type { SetupWizardStepId } from "~/composables/useSetupWizard";
 
+const { t } = useI18n();
 const auth = useAuth();
 const router = useRouter();
+const route = useRoute();
 const wizard = useSetupWizard();
 const { open, step, steps, total, missingPlugins, missingMetadata } = wizard;
 
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 const current = computed(() => steps[step.value] ?? steps[0]);
 const isLast = computed(() => step.value === total - 1);
+
+/** Where each step lives in the app (settings tabs are hash-routed). */
+const TARGETS: Record<SetupWizardStepId, { hash: string; label: string }> = {
+  integrations: { hash: "#integrations", label: "settings.integrations" },
+  providers: { hash: "#providers", label: "settings.providers" },
+  ports: { hash: "#ports", label: "ports.title" },
+  about: { hash: "#about", label: "settings.about" },
+};
+
+const currentTarget = computed(() => TARGETS[current.value.id]);
+const targetLabel = computed(() => t(currentTarget.value.label));
+
+/** True when the app is already showing the page this step talks about. */
+const onStepPage = computed(
+  () => route.path === "/settings" && route.hash === currentTarget.value.hash,
+);
+
+/**
+ * Two-click flow so the instructions never describe a page you are not looking
+ * at: first "Abrir integraciones" (go there, stay on the step), then "Siguiente"
+ * (advance and take the app to the next step's tab).
+ */
+const primaryLabel = computed(() => {
+  if (!onStepPage.value) return t(`setupWizard.${current.value.id}.action`);
+  return isLast.value ? t("setupWizard.finish") : t("setupWizard.next");
+});
 
 /** "Already done" badge for the steps the API can verify. */
 const statusDone = computed(() => {
@@ -92,28 +126,41 @@ const statusDone = computed(() => {
   return false;
 });
 
-function openTab(target: SetupWizardStepId): void {
-  router.push({ path: "/settings", hash: `#${target}` });
+function openStep(): void {
+  goToHash(currentTarget.value.hash);
+}
+
+function goToHash(hash: string): void {
+  router.push({ path: "/settings", hash });
   if (import.meta.client) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/** Move to `index` and take the app to that step's tab, so both agree. */
+function goToStep(index: number): void {
+  wizard.goTo(index);
+  goToHash(TARGETS[steps[step.value].id].hash);
+}
+
 function primary(): void {
-  openTab(current.value.id);
+  if (!onStepPage.value) {
+    openStep(); // first click: go to the tab this step talks about
+    return;
+  }
   if (isLast.value) wizard.finish();
-  else wizard.next();
+  else goToStep(step.value + 1);
 }
 
 function skip(): void {
   if (isLast.value) wizard.finish();
-  else wizard.next();
+  else goToStep(step.value + 1);
 }
 
 function goTo(index: number): void {
-  wizard.goTo(index);
+  goToStep(index);
 }
 
 function previous(): void {
-  wizard.previous();
+  goToStep(step.value - 1);
 }
 
 function dismiss(): void {
@@ -227,6 +274,33 @@ watch(step, () => {
 
 .sw-body {
   padding: 0.7rem 0.85rem 0.5rem;
+}
+
+/* Where this step lives: the wizard and the page always agree. */
+.sw-target {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--s-text-secondary);
+}
+
+.sw-target.is-here {
+  color: var(--s-success, var(--s-accent));
+}
+
+.sw-target-label {
+  font-weight: 600;
+}
+
+.sw-target-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem;
+  padding: 0.02rem 0.3rem;
+  border: 1px solid var(--s-border);
+  border-radius: 3px;
 }
 
 .sw-title {

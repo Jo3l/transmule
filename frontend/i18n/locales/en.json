@@ -1618,6 +1618,7 @@
     "stepOf": "Step {current} of {total}",
     "back": "Back",
     "skip": "Skip",
+    "next": "Next",
     "finish": "Finish",
     "close": "Close",
     "restart": "Run the setup wizard again",

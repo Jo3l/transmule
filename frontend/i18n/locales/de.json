@@ -1528,6 +1528,7 @@
     "stepOf": "Schritt {current} von {total}",
     "back": "Zurück",
     "skip": "Überspringen",
+    "next": "Weiter",
     "finish": "Fertig",
     "close": "Schließen",
     "restart": "Einrichtungsassistent erneut starten",

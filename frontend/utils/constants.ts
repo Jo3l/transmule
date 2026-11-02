@@ -1,4 +1,4 @@
-export const APP_VERSION = "1.180";
+export const APP_VERSION = "1.181";
 
 /** Variantes de color de STag. Compartido para que un valor inventado (p.ej.
  *  "accent", que nunca existió) falle en el typecheck en vez de renderizar sin

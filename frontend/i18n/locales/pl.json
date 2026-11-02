@@ -1528,6 +1528,7 @@
     "stepOf": "Krok {current} z {total}",
     "back": "Wstecz",
     "skip": "Pomiń",
+    "next": "Dalej",
     "finish": "Zakończ",
     "close": "Zamknij",
     "restart": "Uruchom kreator konfiguracji ponownie",

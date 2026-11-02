@@ -1528,6 +1528,7 @@
     "stepOf": "Passo {current} di {total}",
     "back": "Indietro",
     "skip": "Salta",
+    "next": "Avanti",
     "finish": "Fine",
     "close": "Chiudi",
     "restart": "Esegui di nuovo la procedura guidata",

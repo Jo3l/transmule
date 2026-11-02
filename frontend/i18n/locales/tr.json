@@ -1528,6 +1528,7 @@
     "stepOf": "Adım {current} / {total}",
     "back": "Geri",
     "skip": "Atla",
+    "next": "İleri",
     "finish": "Bitir",
     "close": "Kapat",
     "restart": "Kurulum sihirbazını yeniden çalıştır",

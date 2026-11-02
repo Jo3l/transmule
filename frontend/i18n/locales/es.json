@@ -1625,6 +1625,7 @@
     "stepOf": "Paso {current} de {total}",
     "back": "Atrás",
     "skip": "Saltar",
+    "next": "Siguiente",
     "finish": "Terminar",
     "close": "Cerrar",
     "restart": "Volver a ejecutar el asistente de configuración",
