@@ -697,7 +697,10 @@
     },
     "contributionsInLastYear": "contributions in the last year",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "reposInstallAll": "Alle Plugins dieses Repositorys installieren",
+    "reposAllInstalled": "Alle Plugins dieses Repositorys sind bereits installiert",
+    "reposInstallAllDone": "{count} Plugin(s) installiert"
   },
   "themes": {
     "tron": {
@@ -1519,5 +1522,44 @@
     "language": "Language",
     "languageAny": "Any",
     "noResultsFor": "Keine Releases für {query} gefunden"
+  },
+  "setupWizard": {
+    "title": "Einrichtungsassistent",
+    "stepOf": "Schritt {current} von {total}",
+    "back": "Zurück",
+    "skip": "Überspringen",
+    "finish": "Fertig",
+    "close": "Schließen",
+    "restart": "Einrichtungsassistent erneut starten",
+    "statusDone": "Bereits erledigt – diesen Schritt kannst du überspringen",
+    "starOnGithub": "TransMule auf GitHub mit einem Stern versehen",
+    "integrations": {
+      "title": "Metadaten-Anbieter",
+      "body": "Planer und Cover brauchen einen API-Schlüssel von TMDB oder TVDB. Beide sind kostenlos: registrieren, Schlüssel erstellen und hier einfügen.",
+      "point1": "Kostenloses Konto auf themoviedb.org erstellen → Einstellungen → API",
+      "point2": "Schlüssel unter Einstellungen → Integrationen einfügen und speichern; TVDB dient als Fallback",
+      "action": "Integrationen öffnen"
+    },
+    "providers": {
+      "title": "Standard-Plugins installieren",
+      "body": "Plugins liefern Quellen zum Stöbern und Suchen (Filme, Serien, Anime, Torrent-Indexe). Die offiziellen kommen aus dem TransMule-Repository.",
+      "point1": "Offizielles TransMule-Repository hinzufügen",
+      "point2": "Im Repository auf ⬇ klicken, um alle Plugins mit einem Klick zu installieren",
+      "action": "Anbieter öffnen"
+    },
+    "ports": {
+      "title": "Offene Ports prüfen",
+      "body": "P2P läuft am besten, wenn der Router die P2P-Ports an diesen Rechner weiterleitet. Dieser Schritt prüft sie nur – die Weiterleitung macht der Router.",
+      "point1": "eD2K TCP + UDP und der BitTorrent-Peer-Port",
+      "point2": "Ohne Weiterleitung bleibt aMule im LowID-Modus und Downloads werden langsamer",
+      "action": "Ports prüfen"
+    },
+    "about": {
+      "title": "Das war's",
+      "body": "TransMule ist frei und quelloffen. Wenn es dir hilft, finden andere es über einen Stern auf GitHub.",
+      "point1": "Diesen Assistenten kannst du unter Einstellungen → Über erneut starten",
+      "point2": "Einstellungen → Ports prüft die Ports jederzeit erneut",
+      "action": "Über öffnen"
+    }
   }
 }

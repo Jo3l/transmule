@@ -697,7 +697,10 @@
     },
     "contributionsInLastYear": "contributions in the last year",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "reposInstallAll": "Instalar todos os plugins deste repositório",
+    "reposAllInstalled": "Todos os plugins deste repositório já estão instalados",
+    "reposInstallAllDone": "{count} plugin(s) instalados"
   },
   "themes": {
     "tron": {
@@ -1519,5 +1522,44 @@
     "language": "Language",
     "languageAny": "Any",
     "noResultsFor": "Nenhum release para {query}"
+  },
+  "setupWizard": {
+    "title": "Assistente de configuração",
+    "stepOf": "Passo {current} de {total}",
+    "back": "Voltar",
+    "skip": "Ignorar",
+    "finish": "Concluir",
+    "close": "Fechar",
+    "restart": "Executar novamente o assistente de configuração",
+    "statusDone": "Já está feito — pode ignorar este passo",
+    "starOnGithub": "Dê uma estrela ao TransMule no GitHub",
+    "integrations": {
+      "title": "Fornecedores de metadados",
+      "body": "O planeador e as capas precisam de uma chave API do TMDB ou do TVDB. Ambas são gratuitas: registe-se, crie a chave e cole-a aqui.",
+      "point1": "Crie uma conta gratuita em themoviedb.org → Definições → API",
+      "point2": "Cole a chave em Definições → Integrações e guarde; o TVDB fica como alternativa",
+      "action": "Abrir integrações"
+    },
+    "providers": {
+      "title": "Instalar os plugins predefinidos",
+      "body": "Os plugins acrescentam fontes de navegação e pesquisa (filmes, séries, anime, índices de torrents). Os oficiais vêm do repositório do TransMule.",
+      "point1": "Adicione o repositório oficial do TransMule",
+      "point2": "Prima o botão ⬇ do repositório para instalar todos os plugins de uma vez",
+      "action": "Abrir fornecedores"
+    },
+    "ports": {
+      "title": "Verificar as portas abertas",
+      "body": "O P2P funciona melhor se o router encaminhar as portas P2P para esta máquina. Este passo apenas as verifica; o encaminhamento depende do router.",
+      "point1": "eD2K TCP + UDP e a porta de pares do BitTorrent",
+      "point2": "Sem encaminhamento, o aMule fica em LowID e as transferências abrandam",
+      "action": "Verificar as portas"
+    },
+    "about": {
+      "title": "É tudo",
+      "body": "O TransMule é livre e de código aberto. Se lhe for útil, uma estrela no GitHub ajuda mais pessoas a encontrá-lo.",
+      "point1": "Pode voltar a executar este assistente em Definições → Acerca",
+      "point2": "Definições → Portas volta a verificar as portas quando quiser",
+      "action": "Abrir Acerca"
+    }
   }
 }

@@ -88,6 +88,16 @@ const VALID_TABS = [
 ];
 const activeTab = ref(VALID_TABS.includes(route.hash.slice(1)) ? route.hash.slice(1) : "theme");
 watch(activeTab, (tab) => router.replace({ hash: `#${tab}` }));
+
+// The setup wizard (and any deep link) navigates to /settings#<tab>; follow
+// hash changes while the page is already mounted.
+watch(
+  () => route.hash,
+  (hash) => {
+    const tab = hash.replace(/^#/, "");
+    if (VALID_TABS.includes(tab) && tab !== activeTab.value) activeTab.value = tab;
+  },
+);
 const loading = ref(false);
 
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);

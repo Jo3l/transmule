@@ -19,10 +19,9 @@ export function usePortStatus() {
   const publicIp = ref<string>("");
 
   const ports = ref<PortCheck[]>([
-    { label: "aMule ED2K", port: 16881, proto: "TCP", checkable: true, open: null },
-    { label: "aMule ED2K", port: 16882, proto: "UDP", checkable: false, open: null },
-    { label: "aMule KAD", port: 16883, proto: "UDP", checkable: false, open: null },
-    { label: "Transmission", port: 16884, proto: "TCP", checkable: true, open: null },
+    { label: "aMule ED2K", port: 4662, proto: "TCP", checkable: true, open: null },
+    { label: "aMule ED2K", port: 4672, proto: "UDP", checkable: false, open: null },
+    { label: "Transmission", port: 51413, proto: "TCP", checkable: true, open: null },
     { label: "Soulseek (slskd)", port: 50300, proto: "TCP", checkable: true, open: null },
   ]);
   const checking = ref(false);
@@ -35,7 +34,7 @@ export function usePortStatus() {
         privateIp: string;
         publicIp: string;
         checks: Record<number, boolean>;
-        amule: { tcp: number; udp: number; kad: number };
+        amule: { tcp: number; udp: number };
         transmission: { peer: number };
         slskd: { peer: number };
       }>(`${config.public.apiBase}/api/ports`);
@@ -53,13 +52,6 @@ export function usePortStatus() {
         {
           label: "aMule ED2K",
           port: data.amule.udp,
-          proto: "UDP",
-          checkable: false,
-          open: data.checks[data.amule.tcp] ?? null,
-        },
-        {
-          label: "aMule KAD",
-          port: data.amule.kad,
           proto: "UDP",
           checkable: false,
           open: data.checks[data.amule.tcp] ?? null,

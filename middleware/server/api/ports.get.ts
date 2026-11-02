@@ -62,8 +62,8 @@ export default defineEventHandler(async (event) => {
   ]);
 
   const tcpPorts = [
-    Number(cfg.amuleEd2kTcpPort) || 16881,
-    Number(cfg.transmissionPeerPort) || 16884,
+    Number(cfg.amuleEd2kTcpPort) || 4662,
+    Number(cfg.transmissionPeerPort) || 51413,
     Number(cfg.slskdListenPort) || 50300,
   ];
 
@@ -83,12 +83,11 @@ export default defineEventHandler(async (event) => {
     publicIp,
     checks,
     amule: {
-      tcp: Number(cfg.amuleEd2kTcpPort) || 16881,
-      udp: Number(cfg.amuleEd2kUdpPort) || 16882,
-      kad: Number(cfg.amuleKadUdpPort) || 16883,
+      tcp: Number(cfg.amuleEd2kTcpPort) || 4662,
+      udp: Number(cfg.amuleEd2kUdpPort) || 4672,
     },
     transmission: {
-      peer: Number(cfg.transmissionPeerPort) || 16884,
+      peer: Number(cfg.transmissionPeerPort) || 51413,
     },
     slskd: {
       peer: Number(cfg.slskdListenPort) || 50300,

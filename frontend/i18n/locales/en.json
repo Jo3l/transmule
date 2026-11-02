@@ -709,7 +709,10 @@
     "less": "Less",
     "more": "More",
     "about": "About",
-    "splitToggle": "Toggle split"
+    "splitToggle": "Toggle split",
+    "reposInstallAll": "Install all plugins from this repository",
+    "reposAllInstalled": "All plugins from this repository are already installed",
+    "reposInstallAllDone": "{count} plugin(s) installed"
   },
   "themes": {
     "tron": {
@@ -1609,5 +1612,44 @@
     "recentMissingHint": "{count} recent episodes not downloaded from season {season}",
     "nothingPending": "No aired episodes pending download",
     "noResultsFor": "No releases found for {query}"
+  },
+  "setupWizard": {
+    "title": "Setup wizard",
+    "stepOf": "Step {current} of {total}",
+    "back": "Back",
+    "skip": "Skip",
+    "finish": "Finish",
+    "close": "Close",
+    "restart": "Run the setup wizard again",
+    "statusDone": "Already done — you can skip this step",
+    "starOnGithub": "Star TransMule on GitHub",
+    "integrations": {
+      "title": "Metadata providers",
+      "body": "The planner and the cover artwork need an API key from TMDB or TVDB. Both are free: register, create the key and paste it here.",
+      "point1": "Create a free account at themoviedb.org → Settings → API",
+      "point2": "Paste the key in Settings → Integrations and save; TVDB works as a fallback",
+      "action": "Open integrations"
+    },
+    "providers": {
+      "title": "Install the default plugins",
+      "body": "Plugins add browse and search sources (movies, shows, anime, torrent indexes). The official ones come from the TransMule repository.",
+      "point1": "Add the official TransMule repository",
+      "point2": "Press the ⬇ button on the repository to install every plugin in one click",
+      "action": "Open providers"
+    },
+    "ports": {
+      "title": "Check your open ports",
+      "body": "P2P works best when your router forwards the P2P ports to this machine. This step only checks them — forwarding is up to your router.",
+      "point1": "eD2K TCP + UDP and the BitTorrent peer port",
+      "point2": "Without forwarding, aMule stays in LowID and downloads are slower",
+      "action": "Check the ports"
+    },
+    "about": {
+      "title": "That's it",
+      "body": "TransMule is free and open source. If it is useful to you, a star on GitHub helps other people find it.",
+      "point1": "You can run this wizard again from Settings → About",
+      "point2": "Settings → Ports re-checks your ports whenever you want",
+      "action": "Open About"
+    }
   }
 }

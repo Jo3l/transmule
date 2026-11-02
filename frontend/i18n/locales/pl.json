@@ -697,7 +697,10 @@
     },
     "contributionsInLastYear": "contributions in the last year",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "reposInstallAll": "Zainstaluj wszystkie wtyczki z tego repozytorium",
+    "reposAllInstalled": "Wszystkie wtyczki z tego repozytorium są już zainstalowane",
+    "reposInstallAllDone": "Zainstalowano wtyczki: {count}"
   },
   "themes": {
     "tron": {
@@ -1519,5 +1522,44 @@
     "language": "Language",
     "languageAny": "Any",
     "noResultsFor": "Brak release'ów dla {query}"
+  },
+  "setupWizard": {
+    "title": "Kreator konfiguracji",
+    "stepOf": "Krok {current} z {total}",
+    "back": "Wstecz",
+    "skip": "Pomiń",
+    "finish": "Zakończ",
+    "close": "Zamknij",
+    "restart": "Uruchom kreator konfiguracji ponownie",
+    "statusDone": "Już zrobione — możesz pominąć ten krok",
+    "starOnGithub": "Daj gwiazdkę TransMule na GitHubie",
+    "integrations": {
+      "title": "Dostawcy metadanych",
+      "body": "Planer i okładki potrzebują klucza API z TMDB lub TVDB. Oba są darmowe: zarejestruj się, utwórz klucz i wklej go tutaj.",
+      "point1": "Załóż darmowe konto na themoviedb.org → Ustawienia → API",
+      "point2": "Wklej klucz w Ustawienia → Integracje i zapisz; TVDB działa jako zapas",
+      "action": "Otwórz integracje"
+    },
+    "providers": {
+      "title": "Zainstaluj domyślne wtyczki",
+      "body": "Wtyczki dodają źródła przeglądania i wyszukiwania (filmy, seriale, anime, indeksy torrentów). Oficjalne pochodzą z repozytorium TransMule.",
+      "point1": "Dodaj oficjalne repozytorium TransMule",
+      "point2": "Kliknij przycisk ⬇ przy repozytorium, aby zainstalować wszystkie wtyczki jednym kliknięciem",
+      "action": "Otwórz dostawców"
+    },
+    "ports": {
+      "title": "Sprawdź otwarte porty",
+      "body": "P2P działa najlepiej, gdy router przekierowuje porty P2P na ten komputer. Ten krok tylko je sprawdza — przekierowanie zależy od routera.",
+      "point1": "eD2K TCP + UDP oraz port peerów BitTorrent",
+      "point2": "Bez przekierowania aMule pozostaje w LowID, a pobieranie zwalnia",
+      "action": "Sprawdź porty"
+    },
+    "about": {
+      "title": "To wszystko",
+      "body": "TransMule jest darmowy i open source. Jeśli jest przydatny, gwiazdka na GitHubie pomaga innym go znaleźć.",
+      "point1": "Kreator możesz uruchomić ponownie w Ustawienia → O programie",
+      "point2": "Ustawienia → Porty ponownie sprawdzi porty w dowolnym momencie",
+      "action": "Otwórz O programie"
+    }
   }
 }

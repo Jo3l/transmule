@@ -245,6 +245,16 @@ export default {
             <span class="repo-url has-text-grey is-size-7 ml-2" v-if="repo.name">{{ repo.url }}</span>
             <div class="repo-header-actions ml-auto">
               <SButton
+                v-if="isAdmin"
+                variant="success"
+                size="sm"
+                :loading="repoInstallingAll === repo.id"
+                :disabled="repoInstallingAll !== null && repoInstallingAll !== repo.id"
+                :title="$t('settings.reposInstallAll')"
+                @click.stop="onInstallAllRepoPlugins(repo)"
+               icon="mdi-download-multiple">
+              </SButton>
+              <SButton
                 variant="default"
                 size="sm"
                 :loading="repoRefreshing === repo.id"
@@ -462,6 +472,7 @@ const repoAdding = ref(false);
 const officialRepoAdding = ref(false);
 const repoRefreshing = ref<number | null>(null);
 const repoInstalling = ref<string | null>(null);
+const repoInstallingAll = ref<number | null>(null);
 const expandedRepos = ref<Record<number, boolean>>({});
 const repoPluginsData = ref<Record<number, RepoPluginsResult | null>>({});
 const repoPluginsError = ref<Record<number, string>>({});
@@ -558,6 +569,47 @@ async function onInstallRepoPlugin(rp: RepoPluginEntry) {
     addToast(err?.data?.statusMessage || err?.message || t("settings.reposInstallError"), "error");
   } finally {
     repoInstalling.value = null;
+  }
+}
+
+/**
+ * Install/update every plugin in a repository in one go — the "one click" path
+ * the setup wizard points at for the official TransMule plugins.
+ */
+async function onInstallAllRepoPlugins(repo: { id: number; url: string }) {
+  if (repoInstallingAll.value !== null) return;
+  repoInstallingAll.value = repo.id;
+  try {
+    if (!repoPluginsData.value[repo.id]) await loadRepoPlugins(repo.id);
+    const pending = (repoPluginsData.value[repo.id]?.plugins ?? []).filter(
+      (p) => !p.installed || p.hasUpdate,
+    );
+    if (!pending.length) {
+      addToast(t("settings.reposAllInstalled"), "info");
+      return;
+    }
+    let installed = 0;
+    for (const rp of pending) {
+      repoInstalling.value = rp.id;
+      try {
+        await installFromUrl(rp.url);
+        installed++;
+      } catch {
+        // Keep going: one broken plugin must not abort the whole batch.
+      }
+    }
+    addToast(
+      installed > 0
+        ? t("settings.reposInstallAllDone", { count: installed })
+        : t("settings.reposInstallError"),
+      installed > 0 ? "success" : "error",
+      7000,
+    );
+    await loadProviderList();
+    await loadRepoPlugins(repo.id);
+  } finally {
+    repoInstalling.value = null;
+    repoInstallingAll.value = null;
   }
 }
 

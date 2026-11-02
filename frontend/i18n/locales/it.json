@@ -697,7 +697,10 @@
     },
     "contributionsInLastYear": "contributions in the last year",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "reposInstallAll": "Installa tutti i plugin di questo repository",
+    "reposAllInstalled": "Tutti i plugin di questo repository sono già installati",
+    "reposInstallAllDone": "{count} plugin installati"
   },
   "themes": {
     "tron": {
@@ -1519,5 +1522,44 @@
     "language": "Language",
     "languageAny": "Any",
     "noResultsFor": "Nessun release per {query}"
+  },
+  "setupWizard": {
+    "title": "Procedura guidata di configurazione",
+    "stepOf": "Passo {current} di {total}",
+    "back": "Indietro",
+    "skip": "Salta",
+    "finish": "Fine",
+    "close": "Chiudi",
+    "restart": "Esegui di nuovo la procedura guidata",
+    "statusDone": "Già fatto — puoi saltare questo passo",
+    "starOnGithub": "Metti una stella a TransMule su GitHub",
+    "integrations": {
+      "title": "Provider di metadati",
+      "body": "Il planner e le copertine richiedono una chiave API di TMDB o TVDB. Sono entrambe gratuite: registrati, crea la chiave e incollala qui.",
+      "point1": "Crea un account gratuito su themoviedb.org → Impostazioni → API",
+      "point2": "Incolla la chiave in Impostazioni → Integrazioni e salva; TVDB resta come fallback",
+      "action": "Apri integrazioni"
+    },
+    "providers": {
+      "title": "Installa i plugin predefiniti",
+      "body": "I plugin aggiungono fonti di esplorazione e ricerca (film, serie, anime, indici torrent). Quelli ufficiali arrivano dal repository di TransMule.",
+      "point1": "Aggiungi il repository ufficiale di TransMule",
+      "point2": "Premi il pulsante ⬇ del repository per installare tutti i plugin in un clic",
+      "action": "Apri provider"
+    },
+    "ports": {
+      "title": "Controlla le porte aperte",
+      "body": "Il P2P rende meglio se il router inoltra le porte P2P a questa macchina. Questo passo le controlla soltanto; l'inoltro dipende dal router.",
+      "point1": "eD2K TCP + UDP e la porta peer di BitTorrent",
+      "point2": "Senza inoltro aMule resta in LowID e i download rallentano",
+      "action": "Controlla le porte"
+    },
+    "about": {
+      "title": "Tutto qui",
+      "body": "TransMule è libero e open source. Se ti è utile, una stella su GitHub aiuta altre persone a trovarlo.",
+      "point1": "Puoi riavviare questa procedura da Impostazioni → Informazioni",
+      "point2": "Impostazioni → Porte ricontrolla le porte quando vuoi",
+      "action": "Apri Informazioni"
+    }
   }
 }

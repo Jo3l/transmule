@@ -96,6 +96,13 @@
         <div v-else class="has-text-grey is-size-7">{{ $t("settings.loading") }}</div>
       </div>
     </div>
+
+    <!-- Re-run the first-time setup wizard (works even when everything is configured) -->
+    <div class="about-wizard-row">
+      <SButton variant="default" size="sm" icon="mdi-rocket-launch-outline" @click="restartWizard">
+        {{ $t("setupWizard.restart") }}
+      </SButton>
+    </div>
   </div>
 </template>
 
@@ -103,6 +110,13 @@
 import { init as initSceneAbout } from "~/assets/scenes/scene-about.js";
 
 const { t } = useI18n();
+
+const setupWizard = useSetupWizard();
+
+/** Reopen the first-run wizard even if everything is already configured. */
+function restartWizard(): void {
+  setupWizard.start(0);
+}
 
 const route = useRoute();
 const isAboutTab = computed(() => route.hash === "#about");
@@ -407,5 +421,11 @@ function langColor(lang: string): string {
 
 .gh-view-btn:hover {
   background: var(--s-table-hover-bg, rgba(128, 128, 128, 0.08));
+}
+
+.about-wizard-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
 }
 </style>

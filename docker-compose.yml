@@ -3,17 +3,23 @@
 # and the frontend.
 #
 # Usage:
-#   cp .env.example .env        # edit passwords / paths
+#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+#
+#   …or by hand (no repository needed):
+#   curl -fsSLo .env https://raw.githubusercontent.com/Jo3l/transmule/main/.env.example
 #   docker compose up -d        # start all services
 #   docker compose logs -f      # follow logs
 #
-# Ports exposed to host:
-#   3001  → App (Nuxt SPA + API via nginx)
-#   16881 → aMule TCP (ED2K)       — configurable via AMULE_ED2K_TCP_PORT
-#   16882 → aMule UDP (ED2K)       — configurable via AMULE_ED2K_UDP_PORT
-#   16883 → aMule UDP (Kademlia)   — configurable via AMULE_KAD_UDP_PORT
-#   16884 → Transmission peer port — configurable via TRANSMISSION_PEER_PORT
-#   50300 → slskd Soulseek P2P     — configurable via SLSKD_P2P_PORT
+# The file is self-contained: it only needs the official images and the
+# directories in .env. No host-side helper scripts are mounted, so it can be
+# pasted as-is into Unraid (Compose Manager) or Synology (Container Manager).
+#
+# Ports exposed to host (all host-side values are overridable in .env):
+#   3001  → App (Nuxt SPA + API via nginx)  — TRANSMULE_PORT
+#   4662  → aMule TCP (ED2K)                — AMULE_ED2K_TCP_PORT
+#   4672  → aMule UDP (ED2K + Kademlia)     — AMULE_ED2K_UDP_PORT
+#   51413 → Transmission peer               — TRANSMISSION_PEER_PORT
+#   50300 → slskd Soulseek P2P              — SLSKD_P2P_PORT
 #
 # Internal only (Docker network, not exposed to host):
 #   4712  → aMule EC protocol (accessible by app container)
@@ -25,20 +31,21 @@
 
 services:
   # ── aMule daemon ────────────────────────────────────────────────────────────
+  # Uses the image's own ports (4662/tcp, 4672/udp); Kad shares the UDP socket
+  # with eD2K, so one UDP mapping is enough. Directories and the EC password
+  # come from the environment below — the image writes them into amule.conf on
+  # first boot.
   amule:
     image: ${AMULE_IMAGE:-ngosang/amule:latest}
     container_name: transmule-amule
     restart: unless-stopped
     ports:
-      - "${AMULE_ED2K_TCP_PORT:-16881}:16881" # ED2K TCP
-      - "${AMULE_ED2K_UDP_PORT:-16882}:16882/udp" # ED2K UDP
-      - "${AMULE_KAD_UDP_PORT:-16883}:16883/udp" # Kademlia
+      - "${AMULE_ED2K_TCP_PORT:-4662}:4662" # ED2K TCP
+      - "${AMULE_ED2K_UDP_PORT:-4672}:4672/udp" # ED2K UDP + Kademlia
     volumes:
       - amule-config:/home/amule/.aMule
       - ${DOWNLOAD_DIR:-./downloads}:/downloads
       - ${INCOMPLETE_DIR:-./incomplete}:/incomplete
-      - ./docker/amule:/amule-init:ro
-    entrypoint: ["sh", "/amule-init/wrap-entrypoint.sh"]
     environment:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
@@ -57,15 +64,14 @@ services:
     container_name: transmule-transmission
     restart: unless-stopped
     ports:
-      - "${TRANSMISSION_PEER_PORT:-16884}:16884" # Peer TCP
-      - "${TRANSMISSION_PEER_PORT:-16884}:16884/udp" # Peer UDP
+      - "${TRANSMISSION_PEER_PORT:-51413}:51413" # Peer TCP
+      - "${TRANSMISSION_PEER_PORT:-51413}:51413/udp" # Peer UDP
     expose:
       - "9091" # Transmission RPC — internal only (middleware)
     volumes:
       - transmission-config:/config
       - ${DOWNLOAD_DIR:-./downloads}:/downloads
       - ${INCOMPLETE_DIR:-./incomplete}:/incomplete
-      - ./docker/transmission/custom-cont-init.d:/custom-cont-init.d:ro
     environment:
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
@@ -123,7 +129,7 @@ services:
     container_name: transmule-app
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "${TRANSMULE_PORT:-3001}:3001"
     volumes:
       - ${DATA_DIR:-./data}:/app/data
       - ${DOWNLOAD_DIR:-./downloads}:/downloads:rw
@@ -139,12 +145,12 @@ services:
       NITRO_PYLOAD_USERNAME: ${PYLOAD_USER:-pyload}
       NITRO_PYLOAD_PASSWORD: ${PYLOAD_PASSWORD:-pyload}
       NITRO_SLSKD_URL: http://slskd:5030
-      NITRO_JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-string}
+      NITRO_JWT_SECRET: ${JWT_SECRET:-}
       NITRO_DOWNLOADS_DIR: /downloads
-      NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-16881}
-      NITRO_AMULE_ED2K_UDP_PORT: ${AMULE_ED2K_UDP_PORT:-16882}
-      NITRO_AMULE_KAD_UDP_PORT: ${AMULE_KAD_UDP_PORT:-16883}
-      NITRO_TRANSMISSION_PEER_PORT: ${TRANSMISSION_PEER_PORT:-16884}
+      NITRO_AMULE_ED2K_TCP_PORT: ${AMULE_ED2K_TCP_PORT:-4662}
+      NITRO_AMULE_ED2K_UDP_PORT: ${AMULE_ED2K_UDP_PORT:-4672}
+      NITRO_TRANSMISSION_PEER_PORT: ${TRANSMISSION_PEER_PORT:-51413}
+      NITRO_SLSKD_LISTEN_PORT: ${SLSKD_P2P_PORT:-50300}
     depends_on:
       - amule
       - transmission

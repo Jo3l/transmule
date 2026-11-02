@@ -40,6 +40,11 @@
     <LazySToastContainer />
     <PlannerSetupDialog />
 
+    <!-- ── First-run setup wizard (floating) ── -->
+    <ClientOnly>
+      <SetupWizard />
+    </ClientOnly>
+
     <!-- ── Webamp — mounted here so it persists across route changes ── -->
     <ClientOnly>
       <Webamp v-if="webampTrack" :key="webampKey" :track="webampTrack" />

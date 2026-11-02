@@ -709,7 +709,10 @@
     "webampSkinsGuideBefore": "Explora skins en",
     "webampSkinsGuideAfter": "Busca una skin que te guste, copia la url y pégala a continuación para instalar.",
     "webamp": "Webamp",
-    "splitToggle": "Alternar división"
+    "splitToggle": "Alternar división",
+    "reposInstallAll": "Instalar todos los plugins de este repositorio",
+    "reposAllInstalled": "Ya están instalados todos los plugins de este repositorio",
+    "reposInstallAllDone": "{count} plugin(s) instalados"
   },
   "themes": {
     "tron": {
@@ -1616,5 +1619,44 @@
     "recentMissingHint": "{count} episodios recientes sin descargar de la temporada {season}",
     "nothingPending": "No hay episodios emitidos pendientes de descargar",
     "noResultsFor": "No se encontraron releases para {query}"
+  },
+  "setupWizard": {
+    "title": "Asistente de configuración",
+    "stepOf": "Paso {current} de {total}",
+    "back": "Atrás",
+    "skip": "Saltar",
+    "finish": "Terminar",
+    "close": "Cerrar",
+    "restart": "Volver a ejecutar el asistente de configuración",
+    "statusDone": "Ya está hecho: puedes saltar este paso",
+    "starOnGithub": "Dale una estrella a TransMule en GitHub",
+    "integrations": {
+      "title": "Proveedores de metadatos",
+      "body": "El planificador y las carátulas necesitan una API key de TMDB o TVDB. Las dos son gratis: regístrate, crea la clave y pégala aquí.",
+      "point1": "Crea una cuenta gratis en themoviedb.org → Ajustes → API",
+      "point2": "Pega la clave en Ajustes → Integraciones y guarda; TVDB queda como respaldo",
+      "action": "Abrir integraciones"
+    },
+    "providers": {
+      "title": "Instala los plugins por defecto",
+      "body": "Los plugins añaden fuentes de exploración y búsqueda (películas, series, anime, índices de torrents). Los oficiales vienen del repositorio de TransMule.",
+      "point1": "Añade el repositorio oficial de TransMule",
+      "point2": "Pulsa el botón ⬇ del repositorio para instalar todos los plugins de una vez",
+      "action": "Abrir proveedores"
+    },
+    "ports": {
+      "title": "Comprueba los puertos abiertos",
+      "body": "El P2P funciona mejor si tu router redirige los puertos P2P a esta máquina. Este paso solo los comprueba; la redirección depende de tu router.",
+      "point1": "eD2K TCP + UDP y el puerto de pares de BitTorrent",
+      "point2": "Sin redirección, aMule se queda en LowID y las descargas van más lentas",
+      "action": "Comprobar los puertos"
+    },
+    "about": {
+      "title": "Eso es todo",
+      "body": "TransMule es libre y gratuito. Si te resulta útil, una estrella en GitHub ayuda a que más gente lo encuentre.",
+      "point1": "Puedes volver a lanzar este asistente en Ajustes → Acerca de",
+      "point2": "Ajustes → Puertos vuelve a comprobar los puertos cuando quieras",
+      "action": "Abrir Acerca de"
+    }
   }
 }

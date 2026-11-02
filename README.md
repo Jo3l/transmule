@@ -25,15 +25,14 @@
   </p>
 
   <p align="center">
-    <a href="#-features">Features</a> •
-    <a href="#-quick-start">Quick Start</a> •
-    <a href="#-screenshots">Screenshots</a> •
-    <a href="#-architecture">Architecture</a> •
-    <a href="#-plugin-system">Plugins</a> •
-    <a href="#-comparison">Comparison</a> •
-    <a href="#-environment-variables">Configuration</a> •
-    <a href="#-development">Development</a> •
-    <a href="#-faq--troubleshooting">FAQ</a>
+    <a href="#install">Install</a> •
+    <a href="#features">Features</a> •
+    <a href="#quick-start">Quick Start</a> •
+    <a href="#architecture">Architecture</a> •
+    <a href="#plugin-system">Plugins</a> •
+    <a href="#environment-variables">Configuration</a> •
+    <a href="#development">Development</a> •
+    <a href="#faq--troubleshooting">FAQ</a>
   </p>
 
   <p align="center">
@@ -49,6 +48,16 @@
 ---
 
 > **TransMule** is a modern, self-hosted web interface that unifies four download ecosystems — **aMule** (ED2K/Kademlia), **Transmission** (BitTorrent), **Slskd** (Soulseek) and **pyLoad NG** (direct/one-click hosting) — into a single dashboard. Deployed via Docker Compose, it works on any architecture (x86_64 and ARM64) and includes a built-in file manager with remote storage mounts, media preview, archive utilities, extensible plugin system, multi-user auth, and full i18n support. All in one container with a single `docker compose up -d`. Its built-in **media planner** tracks the TV shows and movies you follow across ED2K, Soulseek and BitTorrent, with **Plex integration** to know exactly which episodes you already have.
+
+## Install
+
+Paste this in a terminal on the machine that will run TransMule. That's the whole install: **no `git clone`, no `.env` to edit by hand, no extra steps.**
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+```
+
+The only prerequisite is Docker with the Compose v2 plugin. The script verifies it, asks a few questions with sensible defaults, generates its own secrets and starts the stack. Details and flags: [Quick Start](#quick-start).
 
 <br>
 
@@ -125,48 +134,86 @@
 
 ## Quick Start
 
-### Prerequisites
-- **Docker** and **Docker Compose** (v2 or later) installed
-- At least one of: aMule with EC enabled, Transmission with RPC enabled, Slskd running, pyLoad NG running
+### Requirements
 
-### 1. Clone and configure
+- **Docker** and **Docker Compose** (v2 or later) — that's all. No `git`, no Node.js, no `.env` to write by hand.
+- Free host ports: `3001`, `4662`, `4672`, `51413`, `50300`. If one is busy the installer moves to the next free one.
 
-```bash
-git clone https://github.com/Jo3l/transmule.git
-cd transmule
-cp .env.example .env
-```
+### Install — one command
 
-Edit `.env` — at minimum set your aMule EC password and a JWT secret:
-
-```env
-AMULE_GUI_PASSWORD=your_amule_password
-JWT_SECRET=change-this-to-a-long-random-string
-PYLOAD_USER=pyload
-PYLOAD_PASSWORD=pyload
-```
-
-### 2. Start all services
+Open a terminal on the machine that will run TransMule and paste this. Installing is nothing more than that.
 
 ```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+```
+
+No `git clone`, and nothing to download or configure by hand: the script fetches the two files it needs (`docker-compose.yml` and `.env.example`) into the install folder, so there is no repository checkout to keep around.
+
+It runs as a wizard: it first checks Docker (>= 20.10) and Docker Compose (>= 2.0) and the daemon, then asks — step by step, with defaults — where to install, where to keep completed and in-progress downloads, the web port and the timezone. Nothing is written until you confirm. Then it generates a `.env` with random secrets, picks free host ports, creates the download folders with the right ownership, and either starts the five containers (waiting until the web UI answers) or leaves everything ready to run — your choice at the last question.
+
+Re-running it upgrades an existing install (the `.env` and `data/` are preserved), so the same command is also the update command. `curl … | sh` works too; it then reads the questions from `/dev/tty`.
+
+Besides the `.env` and the folders, the installer applies the **one-time service configuration** and then forgets about it: Transmission gets its download/incomplete folders, RPC and peer port; aMule gets the image's internal ports, so no helper script has to run on every container start. Both live in the Docker volumes from then on.
+
+Useful flags: `--dir DIR`, `--downloads DIR`, `--incomplete DIR`, `--port N`, `--ref TAG`, `--platform NAME`, `--no-start`, `--dry-run`, `-y` (unattended). Run `install.sh --help` for the full list.
+
+### NAS: Unraid and Synology
+
+The installer detects the platform and adapts the defaults:
+
+| Platform | Install dir | `PUID`/`PGID` |
+|----------|-------------|---------------|
+| Unraid | `/mnt/user/appdata/transmule` | `99` / `100` |
+| Synology DSM | `/volume1/docker/transmule` | your user (or `1026`/`100` as root) |
+| Anything else | `./transmule` | your user |
+
+`docker-compose.yml` is self-contained — it mounts no host-side helper scripts — so it can also be pasted as-is into **Unraid → Compose Manager** or **Synology → Container Manager** with a `.env`. In that case you skip the one-time normalization (Transmission keeps its default `/downloads/complete` folder and aMule uses its own ports); everything else is configured from the web UI.
+
+On Unraid the installer needs a working `docker compose` in the terminal, which means the **Compose Manager** plugin (Community Apps → search "Compose Manager"). To paste the file by hand instead: create `/boot/config/plugins/compose.manager/projects/transmule/`, drop `docker-compose.yml` and a `.env` there (with `PUID=99`, `PGID=100`, paths under `/mnt/user/…` and a random `JWT_SECRET`), then **Docker → Compose Manager → transmule → Up**.
+
+### Ports to forward
+
+Forward these on your router, otherwise P2P stays degraded:
+
+| Host port | Protocol | Service | `.env` variable |
+|-----------|----------|---------|-----------------|
+| `3001` | TCP | Web UI + API | `TRANSMULE_PORT` |
+| `4662` | TCP | aMule eD2K | `AMULE_ED2K_TCP_PORT` |
+| `4672` | UDP | aMule eD2K + Kademlia | `AMULE_ED2K_UDP_PORT` |
+| `51413` | TCP + UDP | Transmission peers | `TRANSMISSION_PEER_PORT` |
+| `50300` | TCP | Soulseek (slskd) | `SLSKD_P2P_PORT` |
+
+Without the eD2K ports aMule stays in **LowID** and downloads are slower. The installer moves to free ports when these are taken; **Settings → Ports** in the app checks whichever ports are in use. Only `3001` is really exposed: the Nitro API listens on `127.0.0.1:3000` inside the app container and nginx proxies `/api/*` and `/_scalar` to it.
+
+### Install without the script (optional)
+
+If you would rather not run a remote script — for example to paste the stack into a NAS UI — you only need two files. Still no repository:
+
+```bash
+mkdir -p transmule && cd transmule
+curl -fsSLO https://raw.githubusercontent.com/Jo3l/transmule/main/docker-compose.yml
+curl -fsSLo .env https://raw.githubusercontent.com/Jo3l/transmule/main/.env.example
 docker compose up -d
 ```
 
-This starts five containers:
-- **app** — TransMule UI + API (nginx + Nitro, single container via supervisord)
-- **amule** — aMule daemon (ED2K/Kademlia)
-- **transmission** — BitTorrent client
-- **slskd** — Soulseek client
-- **pyload** — Direct download manager
+`.env` already ships with working defaults (`PUID`/`PGID`, folders, ports); adjust the paths and the user/group IDs to match your host — and leave `JWT_SECRET` empty to have the app generate and store one on first start.
 
-### 3. Open the dashboard
+The trade-off of this path: it skips the **one-time service configuration** the installer applies, so Transmission keeps its default `/downloads/complete` folder and aMule its own ports. That is harmless — both can be changed from the web UI afterwards.
+
+Then open **http://localhost:3001**; on first run you will be prompted to create an admin account.
 
 | URL | What you get |
 |-----|--------------|
 | [http://localhost:3001](http://localhost:3001) | TransMule dashboard |
 | [http://localhost:3001/_scalar](http://localhost:3001/_scalar) | Interactive API docs |
 
-On first run you will be prompted to create an admin account.
+The five containers this starts:
+
+- **app** — TransMule UI + API (nginx + Nitro, single container via supervisord)
+- **amule** — aMule daemon (ED2K/Kademlia)
+- **transmission** — BitTorrent client
+- **slskd** — Soulseek client
+- **pyload** — Direct download manager
 
 ### ARM64 / Raspberry Pi
 
@@ -245,9 +292,14 @@ TransMule has a **runtime plugin system** in JavaScript. Upload a `.js` file via
 | `DOWNLOAD_DIR` | `./downloads` | Completed downloads host path |
 | `INCOMPLETE_DIR` | `./incomplete` | In-progress downloads host path |
 | `DATA_DIR` | `./data` | Middleware SQLite database directory |
+| `TRANSMULE_PORT` | `3001` | Host port for the web UI + API |
+| `AMULE_ED2K_TCP_PORT` | `4662` | Host port for aMule eD2K (TCP) |
+| `AMULE_ED2K_UDP_PORT` | `4672` | Host port for aMule eD2K + Kademlia (UDP) |
+| `TRANSMISSION_PEER_PORT` | `51413` | Host port for BitTorrent peers (TCP + UDP) |
+| `SLSKD_P2P_PORT` | `50300` | Host port for Soulseek (TCP) |
 | `AMULE_GUI_PASSWORD` | — | aMule EC protocol password (port 4712) |
 | `TRANSMISSION_USER` / `TRANSMISSION_PASS` | _(empty)_ | Transmission RPC credentials |
-| `JWT_SECRET` | `change-me` | Secret for signing JWT tokens (auto-generated if empty) |
+| `JWT_SECRET` | _(auto)_ | Secret for signing JWT tokens. Leave it empty and the app generates one on first start, kept in `DATA_DIR/.jwt_secret` |
 | `SLSKD_USERNAME` / `SLSKD_PASSWORD` | — | Soulseek credentials (configured via UI — optional in .env) |
 | `PYLOAD_USER` / `PYLOAD_PASSWORD` | `pyload` | pyLoad NG credentials |
 | `TRANSMULE_APP_IMAGE` | `ghcr.io/jo3l/transmule:latest` | Optional app image override |
@@ -265,6 +317,15 @@ TransMule has a **runtime plugin system** in JavaScript. Upload a `.js` file via
 ### Requirements
 - Node.js 20+
 - Docker (for back-end services: aMule, Transmission, pyLoad)
+
+### Source checkout
+
+Development is the only reason to clone the repository — installing does not need it:
+
+```bash
+git clone https://github.com/Jo3l/transmule.git
+cd transmule
+```
 
 ### Setup
 
@@ -308,7 +369,8 @@ docker build -t transmule:dev .
 - Default credentials are `pyload` / `pyload` — configure via `PYLOAD_USER` / `PYLOAD_PASSWORD`
 
 ### "Port 3001 is already in use"
-- Change the host port in `docker-compose.yml` under `app.ports` (e.g. `"4000:3001"`)
+- Re-run the installer and answer a different web port (or pass `--port 4000`) — it repoints the stack without touching your data
+- Manually: set `TRANSMULE_PORT=4000` in `.env` and `docker compose up -d`
 
 ### "File permission errors"
 - Ensure `PUID` and `PGID` in `.env` match your host user's IDs
@@ -318,7 +380,18 @@ docker build -t transmule:dev .
 - Go to **Transmission → Torrent Search** in the sidebar
 - Search, select results, and click the download button — the torrent is sent directly to Transmission
 
+### "Do I need to clone the repository or install Node.js?"
+No. Installing is a single command (`sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"`): it downloads the compose file and the env template into the install folder itself. Node.js and the repository checkout are only needed if you want to run TransMule from source (see [Development](#development)).
+
 ### "How do I update TransMule?"
+Re-run the same install command — it detects the existing install, keeps `.env` and `data/`, refreshes the compose file and pulls the new image.
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+```
+
+Without the script:
+
 ```bash
 docker compose pull app
 docker compose up -d app

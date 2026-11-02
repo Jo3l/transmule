@@ -697,7 +697,10 @@
     },
     "contributionsInLastYear": "contributions in the last year",
     "less": "Less",
-    "more": "More"
+    "more": "More",
+    "reposInstallAll": "Bu depodaki tüm eklentileri kur",
+    "reposAllInstalled": "Bu depodaki tüm eklentiler zaten kurulu",
+    "reposInstallAllDone": "{count} eklenti kuruldu"
   },
   "themes": {
     "tron": {
@@ -1519,5 +1522,44 @@
     "language": "Language",
     "languageAny": "Any",
     "noResultsFor": "{query} için sonuç bulunamadı"
+  },
+  "setupWizard": {
+    "title": "Kurulum sihirbazı",
+    "stepOf": "Adım {current} / {total}",
+    "back": "Geri",
+    "skip": "Atla",
+    "finish": "Bitir",
+    "close": "Kapat",
+    "restart": "Kurulum sihirbazını yeniden çalıştır",
+    "statusDone": "Zaten yapıldı — bu adımı atlayabilirsin",
+    "starOnGithub": "TransMule'a GitHub'da yıldız ver",
+    "integrations": {
+      "title": "Meta veri sağlayıcıları",
+      "body": "Planlayıcı ve kapak görselleri için TMDB veya TVDB API anahtarı gerekir. İkisi de ücretsiz: kaydol, anahtarı oluştur ve buraya yapıştır.",
+      "point1": "themoviedb.org üzerinde ücretsiz hesap aç → Ayarlar → API",
+      "point2": "Anahtarı Ayarlar → Entegrasyonlar bölümüne yapıştır ve kaydet; TVDB yedek olarak çalışır",
+      "action": "Entegrasyonları aç"
+    },
+    "providers": {
+      "title": "Varsayılan eklentileri kur",
+      "body": "Eklentiler göz atma ve arama kaynakları ekler (filmler, diziler, anime, torrent dizinleri). Resmî olanlar TransMule deposundan gelir.",
+      "point1": "Resmî TransMule deposunu ekle",
+      "point2": "Depodaki ⬇ düğmesine basarak tüm eklentileri tek tıkla kur",
+      "action": "Sağlayıcıları aç"
+    },
+    "ports": {
+      "title": "Açık portları denetle",
+      "body": "P2P, yönlendirici P2P portlarını bu makineye yönlendirdiğinde en iyi çalışır. Bu adım yalnızca denetler; yönlendirme yönlendiriciye bağlıdır.",
+      "point1": "eD2K TCP + UDP ve BitTorrent eş portu",
+      "point2": "Yönlendirme olmadan aMule LowID'de kalır ve indirmeler yavaşlar",
+      "action": "Portları denetle"
+    },
+    "about": {
+      "title": "Hepsi bu",
+      "body": "TransMule özgür ve açık kaynak. İşine yarıyorsa GitHub'da bir yıldız başkalarının da bulmasına yardımcı olur.",
+      "point1": "Bu sihirbazı Ayarlar → Hakkında bölümünden yeniden çalıştırabilirsin",
+      "point2": "Ayarlar → Portlar portları istediğin zaman yeniden denetler",
+      "action": "Hakkında'yı aç"
+    }
   }
 }

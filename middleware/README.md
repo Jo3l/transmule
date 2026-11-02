@@ -2,6 +2,8 @@
 
 A [Nitro](https://nitro.unjs.io/) REST API server that bridges the TransMule frontend with aMule, Transmission and pyLoad NG.
 
+> **Just want to run TransMule?** You do not need this package: the whole stack installs with a single command and no `git clone` — see the [main README](../README.md#install). This document is for working on the middleware itself.
+
 - Talks to **aMule** via its binary EC (External Connector) protocol on port 4712 — no dependency on aMule's PHP web server
 - Talks to **Transmission** via its JSON-RPC API
 - Talks to **pyLoad NG** via its HTTP API
@@ -32,8 +34,10 @@ NITRO_AMULE_PORT=4712
 NITRO_AMULE_PASSWORD=your_ec_password
 NITRO_TRANSMISSION_URL=http://127.0.0.1:9091/transmission/rpc
 NITRO_PYLOAD_URL=http://127.0.0.1:8000
-NITRO_JWT_SECRET=change-me
+NITRO_JWT_SECRET=
 ```
+
+`NITRO_JWT_SECRET` can stay empty: the server generates a random one on first start and persists it next to the SQLite database (`.jwt_secret`). In production, shipped placeholders (`change-me`, `change-me-to-a-random-string`) are replaced the same way.
 
 | Variable                      | Default                                      | Description                         |
 | ----------------------------- | -------------------------------------------- | ----------------------------------- |
