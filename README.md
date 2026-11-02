@@ -26,6 +26,8 @@
 
   <p align="center">
     <a href="#install">Install</a> •
+    <a href="docs/manual-install.md">Manual install</a> •
+    <a href="#nas-unraid-and-synology">Unraid</a> •
     <a href="#features">Features</a> •
     <a href="#quick-start">Quick Start</a> •
     <a href="#architecture">Architecture</a> •
@@ -51,13 +53,28 @@
 
 ## Install
 
-Paste this in a terminal on the machine that will run TransMule. That's the whole install: **no `git clone`, no `.env` to edit by hand, no extra steps.**
+Download the installer from a **release tag**, read it, run it pinned to that same tag — what you run is what you reviewed. No `git clone`, and no `.env` to edit by hand.
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+REL=v1.182
+BASE="https://raw.githubusercontent.com/Jo3l/transmule/$REL"
+
+curl -fsSLo install.sh "$BASE/install.sh"
+less install.sh                  # optional: read it before running it
+sh install.sh --ref "$REL"       # --ref keeps the compose/env it fetches on the same tag
+```
+
+`install.sh` is plain POSIX sh: version checks, `.env` generation, folder creation and the first `up`. `--ref` matters — without it the script fetches `docker-compose.yml` and `.env.example` from `main`, which moves. Replace `v1.182` with any tag from the [releases page](https://github.com/Jo3l/transmule/tags).
+
+In a hurry, the same release in a single line:
+
+```bash
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/v1.182/install.sh)" install --ref v1.182
 ```
 
 The only prerequisite is Docker with the Compose v2 plugin. The script verifies it, asks a few questions with sensible defaults, generates its own secrets and starts the stack. Details and flags: [Quick Start](#quick-start).
+
+Prefer to run no script at all? **[Manual installation](docs/manual-install.md)** does every step by hand — the `.env`, the folders, permissions, the one-time service configuration and updates by tag.
 
 <br>
 
@@ -141,19 +158,24 @@ The only prerequisite is Docker with the Compose v2 plugin. The script verifies 
 
 ### Install — one command
 
-Open a terminal on the machine that will run TransMule and paste this. Installing is nothing more than that.
+Open a terminal on the machine that will run TransMule. Download the installer from a tagged release, read it if you like, and run it against that same tag:
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+REL=v1.182
+BASE="https://raw.githubusercontent.com/Jo3l/transmule/$REL"
+
+curl -fsSLo install.sh "$BASE/install.sh"
+less install.sh
+sh install.sh --ref "$REL"
 ```
 
-No `git clone`, and nothing to download or configure by hand: the script fetches the two files it needs (`docker-compose.yml` and `.env.example`) into the install folder, so there is no repository checkout to keep around.
+No `git clone`, and nothing to download or configure by hand: the script fetches the two files it needs (`docker-compose.yml` and `.env.example`) into the install folder, so there is no repository checkout to keep around. Add `--dry-run` to see what it would do without writing anything.
 
 It runs as a wizard: it first checks Docker (>= 20.10) and Docker Compose (>= 2.0) and the daemon, then asks — step by step, with defaults — where to install, where to keep completed and in-progress downloads, the web port and the timezone. Nothing is written until you confirm. Then it generates a `.env` with random secrets, picks free host ports, creates the download folders with the right ownership, and either starts the five containers (waiting until the web UI answers) or leaves everything ready to run — your choice at the last question.
 
-Re-running it upgrades an existing install (the `.env` and `data/` are preserved), so the same command is also the update command. `curl … | sh` works too; it then reads the questions from `/dev/tty`.
+Re-running it upgrades an existing install (the `.env` and `data/` are preserved), so the same command is also the update command — with the tag of the release you want. `curl … | sh` works too (the questions are then read from `/dev/tty`), and `-y` runs it unattended.
 
-Besides the `.env` and the folders, the installer applies the **one-time service configuration** and then forgets about it: Transmission gets its download/incomplete folders, RPC and peer port; aMule gets the image's internal ports, so no helper script has to run on every container start. Both live in the Docker volumes from then on.
+Besides the `.env` and the folders, the installer applies the **one-time service configuration** and then forgets about it: Transmission gets its download/incomplete folders, RPC and peer port; aMule gets the image's internal ports, so no helper script has to run on every container start. Both live in the Docker volumes from then on. [Manual installation](docs/manual-install.md) documents both, and how to apply them yourself.
 
 Useful flags: `--dir DIR`, `--downloads DIR`, `--incomplete DIR`, `--port N`, `--ref TAG`, `--platform NAME`, `--no-start`, `--dry-run`, `-y` (unattended). Run `install.sh --help` for the full list.
 
@@ -169,7 +191,7 @@ The installer detects the platform and adapts the defaults:
 
 `docker-compose.yml` is self-contained — it mounts no host-side helper scripts — so it can also be pasted as-is into **Unraid → Compose Manager** or **Synology → Container Manager** with a `.env`. In that case you skip the one-time normalization (Transmission keeps its default `/downloads/complete` folder and aMule uses its own ports); everything else is configured from the web UI.
 
-On Unraid the installer needs a working `docker compose` in the terminal, which means the **Compose Manager** plugin (Community Apps → search "Compose Manager"). To paste the file by hand instead: create `/boot/config/plugins/compose.manager/projects/transmule/`, drop `docker-compose.yml` and a `.env` there (with `PUID=99`, `PGID=100`, paths under `/mnt/user/…` and a random `JWT_SECRET`), then **Docker → Compose Manager → transmule → Up**.
+On Unraid the installer detects the **Docker Compose Manager** plugin and installs the stack into its projects folder (`/boot/config/plugins/compose.manager/projects/transmule/`), so it appears in *Docker → Compose* with its Update Stack and autostart buttons; downloads go to `/mnt/user/downloads` and the database to `/mnt/user/appdata/transmule`. Without the plugin it falls back to `/mnt/user/appdata/transmule`. **[`docs/unraid-compose-manager.md`](docs/unraid-compose-manager.md)** is the full walkthrough, including the by-hand path (drop the two files in the stack folder and press *Compose Up*).
 
 ### Ports to forward
 
@@ -187,18 +209,24 @@ Without the eD2K ports aMule stays in **LowID** and downloads are slower. The in
 
 ### Install without the script (optional)
 
-If you would rather not run a remote script — for example to paste the stack into a NAS UI — you only need two files. Still no repository:
+The whole stack is two files — `docker-compose.yml` and a `.env` — and it brings itself up with `docker compose up -d`. **[`docs/manual-install.md`](docs/manual-install.md) is the step-by-step guide**: pinned download, every `.env` value explained, folder ownership, the one-time service configuration, updates by tag, backups and troubleshooting.
+
+The short version, for reference:
 
 ```bash
-mkdir -p transmule && cd transmule
-curl -fsSLO https://raw.githubusercontent.com/Jo3l/transmule/main/docker-compose.yml
-curl -fsSLo .env https://raw.githubusercontent.com/Jo3l/transmule/main/.env.example
+REL=v1.182
+BASE="https://raw.githubusercontent.com/Jo3l/transmule/$REL"
+
+mkdir -p ~/transmule && cd ~/transmule
+curl -fsSLO "$BASE/docker-compose.yml"
+curl -fsSLo .env "$BASE/.env.example"
+# edit PUID/PGID, TZ, the three paths and the two secrets (the manual has the exact sed lines)
 docker compose up -d
 ```
 
 `.env` already ships with working defaults (`PUID`/`PGID`, folders, ports); adjust the paths and the user/group IDs to match your host — and leave `JWT_SECRET` empty to have the app generate and store one on first start.
 
-The trade-off of this path: it skips the **one-time service configuration** the installer applies, so Transmission keeps its default `/downloads/complete` folder and aMule its own ports. That is harmless — both can be changed from the web UI afterwards.
+The trade-off of this path: it skips the **one-time service configuration** the installer applies, so Transmission keeps its default `/downloads/complete` folder and aMule its own ports. That is harmless — both can be changed afterwards, and the manual shows how.
 
 Then open **http://localhost:3001**; on first run you will be prompted to create an admin account.
 
@@ -381,21 +409,25 @@ docker build -t transmule:dev .
 - Search, select results, and click the download button — the torrent is sent directly to Transmission
 
 ### "Do I need to clone the repository or install Node.js?"
-No. Installing is a single command (`sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"`): it downloads the compose file and the env template into the install folder itself. Node.js and the repository checkout are only needed if you want to run TransMule from source (see [Development](#development)).
+No. Installing is one command — download the installer from a tagged release and run it against that tag (see [Install](#install)): it pulls the compose file and the env template into the install folder itself. Node.js and the repository checkout are only needed if you want to run TransMule from source (see [Development](#development)).
 
 ### "How do I update TransMule?"
-Re-run the same install command — it detects the existing install, keeps `.env` and `data/`, refreshes the compose file and pulls the new image.
+Re-run the installer with the tag of the new release — it detects the existing install, keeps `.env` and `data/`, refreshes the compose file and pulls the new image.
 
 ```bash
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+REL=v1.182                      # the release you are moving to
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/$REL/install.sh)" install --ref "$REL"
 ```
 
-Without the script:
+Without the script (see [updating by hand](docs/manual-install.md#9-updating-by-hand)):
 
 ```bash
 docker compose pull app
 docker compose up -d app
 ```
+
+### "How do I know I'm running a reviewed release?"
+Every command in this README points at a tag (`v1.182`), and `install.sh --ref v1.182` fetches the compose file and the env template from that same tag instead of `main`. To keep the images fixed too, pin the app image in `.env` to a digest — `TRANSMULE_APP_IMAGE=ghcr.io/jo3l/transmule@sha256:<digest>`, printed by `docker buildx imagetools inspect ghcr.io/jo3l/transmule:latest` — or to the `sha-<commit>` tag CI publishes; the service images work the same way (see [Environment Variables](#environment-variables)).
 
 ### "Where are my downloads stored?"
 - Completed downloads → `./downloads/` (on the host)

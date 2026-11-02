@@ -3,7 +3,17 @@
 # Prepares the whole environment (compose, .env with real secrets, download
 # folders) and starts the stack. No git needed on the machine.
 #
-#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+# Pinned, reviewed install (recommended) — download the script from a release
+# tag, read it, then run it with --ref so the compose file and the .env template
+# come from that same tag instead of the moving main branch:
+#
+#   REL=v1.182
+#   curl -fsSLo install.sh https://raw.githubusercontent.com/Jo3l/transmule/$REL/install.sh
+#   less install.sh
+#   sh install.sh --ref "$REL"
+#
+# One-liner form (same behaviour, no reading first):
+#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/v1.182/install.sh)" install --ref v1.182
 #
 # That form (sh -c) keeps the terminal free for the wizard: the script asks
 # step by step for the install folder, the download folders, the web port and
@@ -22,10 +32,14 @@
 #                                                          on Synology)
 #   --downloads DIR    Completed downloads                 (default <dir>/downloads)
 #   --incomplete DIR   In-progress downloads               (default <dir>/incomplete)
+#   --data DIR         Database + settings folder          (default <dir>/data; Unraid:
+#                                                          /mnt/user/appdata/transmule)
 #   --port N           Web UI port                         (default 3001, or the
 #                                                          first free one above
 #                                                          it when taken)
-#   --ref REF          Branch or tag to install            (default main)
+#   --ref REF          Branch or tag to install            (default main; pass the
+#                                                          tag you downloaded
+#                                                          this script from)
 #   --src DIR          Install from a local checkout instead of GitHub
 #   --platform NAME    Force platform: generic|unraid|synology
 #   --puid N/--pgid N  Container UID/GID                   (default current user;
@@ -51,6 +65,7 @@ PLATFORM=""
 DIR=""
 DOWNLOADS=""
 INCOMPLETE=""
+DATA_ARG=""
 APP_PORT=""
 PUID=""
 PGID=""
@@ -74,10 +89,13 @@ Usage: install.sh [options]
   --dir DIR          Install folder                      (default ./transmule)
   --downloads DIR    Completed downloads                 (default <dir>/downloads)
   --incomplete DIR   In-progress downloads               (default <dir>/incomplete)
+  --data DIR         Database + settings                 (default <dir>/data; Unraid:
+                                                        /mnt/user/appdata/transmule)
   --port N           Web UI port                         (default 3001, or the
                                                           first free one above
                                                           it when taken)
-  --ref REF          Branch or tag to install            (default main)
+  --ref REF          Branch or tag to install            (default main; pass the
+                                                          release tag of this script)
   --src DIR          Install from a local checkout instead of GitHub
   --platform NAME    Force platform: generic|unraid|synology
   --puid N/--pgid N  Container UID/GID                   (default current user)
@@ -95,6 +113,7 @@ while [ $# -gt 0 ]; do
     --dir)        DIR="$2"; shift 2 ;;
     --downloads)  DOWNLOADS="$2"; shift 2 ;;
     --incomplete) INCOMPLETE="$2"; shift 2 ;;
+    --data)       DATA_ARG="$2"; shift 2 ;;
     --port)       APP_PORT="$2"; shift 2 ;;
     --ref)        REF="$2"; shift 2 ;;
     --src)        SRC_DIR="$2"; shift 2 ;;
@@ -113,6 +132,7 @@ done
 # Which values were passed explicitly (so an upgrade can respect them)
 DOWNLOADS_ARG="$DOWNLOADS"
 INCOMPLETE_ARG="$INCOMPLETE"
+DATA_ARG="${DATA_ARG:-}"
 PORT_ARG="$APP_PORT"
 
 # ── Terminal for the prompts when the script arrives through a pipe ───────────
@@ -306,6 +326,9 @@ case "$PLATFORM_NAME" in
     DIR_DEFAULT="/mnt/user/appdata/transmule"
     PUID_DEFAULT=99
     PGID_DEFAULT=100
+    # Downloads belong on the array, never next to the stack files (the flash)
+    DOWNLOADS_DEFAULT="/mnt/user/downloads"
+    INCOMPLETE_DEFAULT="/mnt/user/downloads/.incomplete"
     ;;
   synology)
     PLATFORM_LABEL="Synology DSM"
@@ -323,6 +346,34 @@ case "$PLATFORM_NAME" in
     die "Unknown platform: $PLATFORM_NAME (use generic, unraid or synology)"
     ;;
 esac
+
+# ── Unraid: the Docker Compose Manager plugin ─────────────────────────────────
+# The plugin lists every directory under its projects folder that holds a
+# docker-compose.yml (php/compose_manager_main.php scans the folder) and drives
+# each one with `docker compose -f … -p <stack>`. Installing there — instead of
+# appdata — makes the stack show up in Docker → Compose with its Update Stack
+# and autostart buttons, and keeps the same project and volume names.
+# (defaults may already be set by the platform case above — keep them)
+COMPOSE_PROJECTS_ROOT=""
+: "${DOWNLOADS_DEFAULT:=}"
+: "${INCOMPLETE_DEFAULT:=}"
+: "${DATA_DEFAULT:=}"
+
+if [ "$PLATFORM_NAME" = "unraid" ]; then
+  _cm_root="${COMPOSE_MANAGER_PLUGIN_ROOT:-/usr/local/emhttp/plugins/compose.manager}"
+  _cm_cfg="/boot/config/plugins/compose.manager/compose.manager.cfg"
+  _cm_projects="/boot/config/plugins/compose.manager/projects"
+  if [ -f "$_cm_cfg" ]; then
+    _v=$(sed -n 's/^PROJECTS_FOLDER=//p' "$_cm_cfg" | tail -n1 | tr -d '"')
+    [ -n "$_v" ] && _cm_projects="$_v"
+  fi
+  if [ -d "$_cm_root" ] || [ -f /boot/config/plugins/compose.manager/compose.manager.plg ]; then
+    COMPOSE_PROJECTS_ROOT="$_cm_projects"
+    DIR_DEFAULT="$COMPOSE_PROJECTS_ROOT/transmule"
+    # The SQLite database belongs in appdata, not on the USB stick either
+    DATA_DEFAULT="/mnt/user/appdata/transmule"
+  fi
+fi
 
 # A normal user always wins: their own UID/GID, whatever the platform
 if [ "$(id -u)" -ne 0 ]; then
@@ -430,13 +481,14 @@ if [ "$UPGRADE" -eq 1 ]; then
   fi
   DATA=$(get_env DATA_DIR "$ENV_FILE")
   DATA="${DATA:-$DIR/data}"
+  [ -n "$DATA_ARG" ] && DATA="$DATA_ARG"
   TZ_DEFAULT=$(get_env TZ "$ENV_FILE")
   TZ_DEFAULT="${TZ_DEFAULT:-$(detect_tz)}"
 else
-  if [ -z "$DOWNLOADS" ]; then DOWNLOADS="$DIR/downloads"; fi
-  if [ -z "$INCOMPLETE" ]; then INCOMPLETE="$DIR/incomplete"; fi
+  if [ -z "$DOWNLOADS" ]; then DOWNLOADS="${DOWNLOADS_DEFAULT:-$DIR/downloads}"; fi
+  if [ -z "$INCOMPLETE" ]; then INCOMPLETE="${INCOMPLETE_DEFAULT:-$DIR/incomplete}"; fi
   if [ -z "$APP_PORT" ]; then APP_PORT=3001; fi
-  DATA="$DIR/data"
+  DATA="${DATA_ARG:-${DATA_DEFAULT:-$DIR/data}}"
   TZ_DEFAULT=$(detect_tz)
 fi
 
@@ -464,11 +516,27 @@ say "  Data (DB + settings)   : $DATA"
 say "  Web port               : $APP_PORT"
 say "  Timezone               : $TZ_VALUE"
 say "  UID/GID                : $PUID/$PGID"
+say "  Release                : $REF"
+if [ -n "$COMPOSE_PROJECTS_ROOT" ]; then
+  say "  Compose Manager        : yes — the stack appears in Docker → Compose"
+fi
 if [ "$UPGRADE" -eq 1 ]; then
   say "  Mode                   : UPGRADE (keeps .env and data)"
 else
   say "  Mode                   : fresh install"
 fi
+if [ "$REF" = "main" ]; then
+  say ""
+  say "  ! main is a moving branch. To install exactly what you reviewed,"
+  say "    re-run with the release tag:  --ref v1.182"
+fi
+
+case "$DIR" in
+  /boot/*)
+    warn "Stack files live on the USB flash (vfat): only compose + .env go there;"
+    warn "downloads and the database stay on the array (see the paths above)."
+    ;;
+esac
 
 # ── 3. Host ports ─────────────────────────────────────────────────────────────
 if [ "$UPGRADE" -eq 1 ]; then
@@ -588,6 +656,10 @@ if [ "$UPGRADE" -eq 1 ]; then
     set_env INCOMPLETE_DIR "$INCOMPLETE" "$ENV_FILE"
     ok "INCOMPLETE_DIR → $INCOMPLETE"
   fi
+  if [ -n "$DATA_ARG" ]; then
+    set_env DATA_DIR "$DATA" "$ENV_FILE"
+    ok "DATA_DIR → $DATA"
+  fi
   if grep -q '^AMULE_GUI_PASSWORD=change' "$ENV_FILE"; then
     set_env AMULE_GUI_PASSWORD "$(gen_secret 12)" "$ENV_FILE"
     ok "AMULE_GUI_PASSWORD was the sample one: regenerated"
@@ -614,7 +686,8 @@ else
   set_env AMULE_GUI_PASSWORD "$(gen_secret 12)" "$ENV_FILE.tmp"
 
   mv "$ENV_FILE.tmp" "$ENV_FILE"
-  chmod 600 "$ENV_FILE"
+  # The flash (vfat) has no file modes: never let that abort the install
+  chmod 600 "$ENV_FILE" 2>/dev/null || true
   ok "Secrets generated (JWT and aMule password)"
   ok "pyLoad credentials left alone: pyload/pyload (pyLoad's own defaults)"
 fi
@@ -800,6 +873,11 @@ say "        UDP $ED2K_UDP   (eD2K and Kad share the same UDP port)"
 say "      Settings → Ports checks whether they are open."
 say "   4. Optional: TMDB/TVDB keys and the Plex token under"
 say "      Settings → Integrations (planner and artwork)."
+if [ -n "$COMPOSE_PROJECTS_ROOT" ]; then
+  say "   5. Optional: turn on autostart for the stack in Docker → Compose;"
+  say "      the plugin starts it with the array (restart: unless-stopped"
+  say "      already covers crashes)."
+fi
 say ""
 say "  For backups: $DATA and $DOWNLOADS"
 say "  Management: cd $DIR && $COMPOSE ps | logs -f | restart | down"

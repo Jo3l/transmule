@@ -3,12 +3,15 @@
 # and the frontend.
 #
 # Usage:
-#   sh -c "$(curl -fsSL https://raw.githubusercontent.com/Jo3l/transmule/main/install.sh)"
+#   Installer: fetch install.sh from a release tag, read it, run it with
+#   --ref <tag> so the files it pulls match the script:
+#   https://github.com/Jo3l/transmule#install
 #
-#   …or by hand (no repository needed):
-#   curl -fsSLo .env https://raw.githubusercontent.com/Jo3l/transmule/main/.env.example
+#   …or by hand, both files from the same tag (no repository needed):
+#   docker-compose.yml + .env.example → .env, then:
 #   docker compose up -d        # start all services
 #   docker compose logs -f      # follow logs
+#   Step-by-step: https://github.com/Jo3l/transmule/blob/main/docs/manual-install.md
 #
 # The file is self-contained: it only needs the official images and the
 # directories in .env. No host-side helper scripts are mounted, so it can be
