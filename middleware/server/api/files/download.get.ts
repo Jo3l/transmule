@@ -1,4 +1,7 @@
 import { existsSync, statSync, createReadStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+import type { Readable } from "node:stream";
+import type { H3Event } from "h3";
 import { basename } from "node:path";
 import { resolveVirtualPath, smbDownloadStream } from "../../utils/remoteMounts";
 
@@ -9,10 +12,22 @@ defineRouteMeta({
     parameters: [
       { name: "path", in: "query", required: true },
       { name: "token", in: "query" },
+      { name: "download", in: "query", description: "1 forces an attachment, including audio" },
     ],
     responses: { 200: {}, 206: {}, 416: {}, 404: {} },
   },
 });
+
+/** Backpressure and stream teardown when the browser cancels/disconnects. */
+async function sendDownloadStream(event: H3Event, stream: Readable, cleanup?: () => void) {
+  try {
+    await pipeline(stream, event.node.res);
+  } catch (error: any) {
+    if (error.code !== "ERR_STREAM_PREMATURE_CLOSE") throw error;
+  } finally {
+    cleanup?.();
+  }
+}
 
 /** MIME types for common audio formats (enables proper Content-Type for streaming). */
 function getMimeType(filename: string): string {
@@ -27,6 +42,15 @@ function getMimeType(filename: string): string {
     m4a: "audio/mp4",
   };
   return mimes[ext] || "application/octet-stream";
+}
+
+/** ASCII fallback plus RFC 5987 UTF-8 filename (RFC 6266). */
+function attachmentDisposition(filename: string): string {
+  const fallback = filename.replace(/[^\x20-\x7e]|["\\]/g, "_");
+  const encoded = encodeURIComponent(filename).replace(/[!'()*]/g, (c) =>
+    `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`;
 }
 
 /**
@@ -64,7 +88,10 @@ function parseRange(
 
 export default defineEventHandler(async (event) => {
   requireUser(event);
-  const { path = "" } = getQuery(event);
+  const { path = "", download } = getQuery(event);
+  const forceDownload = download === "1";
+  setHeader(event, "Cache-Control", "private, no-store");
+  setHeader(event, "X-Content-Type-Options", "nosniff");
   if (!path) throw createError({ statusCode: 400, statusMessage: "path is required" });
 
   const relPath = String(path);
@@ -73,15 +100,15 @@ export default defineEventHandler(async (event) => {
 
   if (resolved.type === "smb") {
     // SMB: full download only (smbclient "get" lacks offset/range support)
-    const { stream, fileSize } = smbDownloadStream(resolved.config, resolved.subPath);
+    const { stream, fileSize, destroy } = smbDownloadStream(resolved.config, resolved.subPath);
     const filename = basename(relPath.replace(/\\/g, "/"));
-    const mimeType = getMimeType(filename);
+    const mimeType = forceDownload ? "application/octet-stream" : getMimeType(filename);
     setHeader(event, "Content-Type", mimeType);
     if (mimeType === "application/octet-stream") {
-      setHeader(event, "Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+      setHeader(event, "Content-Disposition", attachmentDisposition(filename));
     }
     if (fileSize) setHeader(event, "Content-Length", String(fileSize));
-    return sendStream(event, stream as any);
+    return sendDownloadStream(event, stream, destroy);
   }
 
   // Local file
@@ -92,7 +119,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Cannot download a directory" });
 
   const filename = basename(resolved.absPath);
-  const mimeType = getMimeType(filename);
+  const mimeType = forceDownload ? "application/octet-stream" : getMimeType(filename);
   const isAudio = mimeType !== "application/octet-stream";
 
   // Always advertise range support for local files
@@ -108,10 +135,10 @@ export default defineEventHandler(async (event) => {
       setHeader(event, "Content-Range", `bytes ${range.start}-${range.end}/${st.size}`);
       setHeader(event, "Content-Length", String(length));
       if (!isAudio) {
-        setHeader(event, "Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+        setHeader(event, "Content-Disposition", attachmentDisposition(filename));
       }
       setResponseStatus(event, 206);
-      return sendStream(
+      return sendDownloadStream(
         event,
         createReadStream(resolved.absPath, { start: range.start, end: range.end }),
       );
@@ -123,8 +150,8 @@ export default defineEventHandler(async (event) => {
 
   // Full file (no Range header)
   if (!isAudio) {
-    setHeader(event, "Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    setHeader(event, "Content-Disposition", attachmentDisposition(filename));
   }
   setHeader(event, "Content-Length", String(st.size));
-  return sendStream(event, createReadStream(resolved.absPath));
+  return sendDownloadStream(event, createReadStream(resolved.absPath));
 });
