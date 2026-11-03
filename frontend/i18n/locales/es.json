@@ -24,7 +24,8 @@
     "loadFailed": "Error al cargar los datos",
     "login": "Inicio de sesión",
     "configuration": "Configuración",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "close": "Cerrar"
   },
   "nav": {
     "downloads": "Descargas",
@@ -1658,6 +1659,47 @@
       "point1": "Puedes volver a lanzar este asistente en Ajustes → Acerca de",
       "point2": "Ajustes → Puertos vuelve a comprobar los puertos cuando quieras",
       "action": "Abrir Acerca de"
+    }
+  },
+  "share": {
+    "menuLabel": "Enviar a dispositivo…",
+    "title": "Compartir por QR",
+    "itemsSelected": "{count} elementos seleccionados",
+    "expiry": "Caducidad",
+    "expiry1h": "1 hora",
+    "expiry24h": "1 día",
+    "expiry7d": "1 semana",
+    "useCode": "Proteger con código",
+    "codeHint": "El código no va dentro del QR: hay que teclearlo en la página para ver el contenido.",
+    "generate": "Generar enlace",
+    "regenerate": "Regenerar",
+    "revoke": "Revocar enlace",
+    "revoked": "Enlace revocado",
+    "error": "No se pudo crear el enlace",
+    "scan": "Escanea el QR o abre el enlace en el otro dispositivo",
+    "url": "Enlace",
+    "urlCopied": "Enlace copiado",
+    "code": "Código",
+    "codeCopied": "Código copiado",
+    "expiresAt": "Caduca el",
+    "localhostWarning": "Estás en localhost: este enlace solo funcionará en esta máquina.",
+    "public": {
+      "send": "Recibir archivo",
+      "codeTitle": "Introduce el código",
+      "codeHint": "Escribe el código de 6 caracteres que te han dado junto con el enlace.",
+      "codePlaceholder": "ABC123",
+      "open": "Abrir",
+      "badCode": "El código tiene 6 caracteres",
+      "wrongCode": "Código incorrecto",
+      "locked": "Demasiados intentos. Espera unos minutos.",
+      "gone": "Este enlace ha caducado o se ha revocado",
+      "notFound": "Este enlace no existe",
+      "unavailable": "No se pudo cargar el contenido",
+      "enterCode": "Introduce el código para ver el contenido",
+      "empty": "Carpeta vacía",
+      "download": "Descargar",
+      "loading": "Cargando…",
+      "expiresAt": "Caduca el"
     }
   }
 }

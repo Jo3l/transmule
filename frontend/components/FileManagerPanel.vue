@@ -506,6 +506,13 @@
           <span class="mdi mdi-download mr-2" />{{ $t("fileManager.download") }}
         </button>
         <button
+          v-if="canShare"
+          class="fmp-ctx-item fmp-ctx-item--accent"
+          @click="emitSharePaths()"
+        >
+          <span class="mdi mdi-qrcode mr-2" />{{ $t("share.menuLabel") }}
+        </button>
+        <button
           v-if="!ctxIsMulti && ctxMenu.item && !isRootItem"
           class="fmp-ctx-item"
           :disabled="readOnlyActive"
@@ -703,6 +710,7 @@ const emit = defineEmits<{
   "webamp-tracks": [tracks: { url: string; metaData: { artist: string; title: string } }[]];
   "download-file": [name: string];
   "smart-rename-paths": [paths: string[]];
+  "share-paths": [paths: string[]];
   "upload-files": [files: File[]];
   "unmount-item": [item: FileItem];
 }>();
@@ -804,6 +812,10 @@ const ctxMenu = ref<{ visible: boolean; x: number; y: number; item: FileItem | n
   item: null,
 });
 const ctxIsMulti = computed(() => selectedItems.size > 1);
+/** Root rows, read-only mounts and while renaming are not shareable. */
+const canShare = computed(
+  () => Boolean(ctxMenu.value.item) && !isRootItem.value && !readOnlyActive.value,
+);
 const isRootItem = computed(
   () => ctxMenu.value.item?.homeFolder || ctxMenu.value.item?.isRemoteMount,
 );
@@ -909,6 +921,14 @@ function getSelectedMp3Tracks() {
 
 function getSelectedPaths(): string[] {
   return Array.from(selectedItems).map((name) => childPath(name));
+}
+
+/** Share the current selection (or the right-clicked item) as a QR link. */
+function emitSharePaths() {
+  const item = ctxMenu.value.item;
+  const paths = ctxIsMulti ? getSelectedPaths() : item ? [childPath(item.name)] : [];
+  hideCtxMenu();
+  if (paths.length) emit("share-paths", paths);
 }
 
 // ── Mobile ─────────────────────────────────────────────────────────────────

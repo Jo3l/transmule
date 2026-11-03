@@ -19,6 +19,8 @@ const routeSource = transpile(fs.readFileSync(new URL('../server/api/files/downl
   .replace(/^import[^;]+;/gm, '').replace('export default', 'globalThis.handler =');
 const authSource = transpile(fs.readFileSync(new URL('../server/middleware/02.user-auth.ts', import.meta.url), 'utf8'))
   .replace('export default', 'globalThis.authHandler =');
+const streamSource = transpile(fs.readFileSync(new URL('../server/utils/file-stream.ts', import.meta.url), 'utf8'))
+  .replace(/^import[^;]+;/gm, '').replace(/^export /gm, '');
 const resolverTail = transpile(fs.readFileSync(new URL('../server/utils/remoteMounts.ts', import.meta.url), 'utf8'))
   .split('export function resolveVirtualPath')[1];
 async function digest(file) {
@@ -59,6 +61,7 @@ test('real HTTP download route streams large original bytes, authenticates and s
   });
   runInContext(`function resolveVirtualPath${resolverTail}`, context);
   runInContext(authSource, context);
+  runInContext(streamSource, context);
   runInContext(routeSource, context);
   const app = h3.createApp();
   app.use(context.authHandler);

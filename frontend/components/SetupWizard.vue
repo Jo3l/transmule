@@ -375,6 +375,12 @@ watch(step, () => {
     left: 0.5rem;
     bottom: 0.5rem;
     width: auto;
+    /* Never taller than the visible viewport; it covers the page it is meant
+       to guide you through, and a fixed card with `overflow: hidden` had no
+       way to reach the buttons on short screens. */
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 }
 </style>

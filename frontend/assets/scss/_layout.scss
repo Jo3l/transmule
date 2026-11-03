@@ -47,6 +47,12 @@
     flex: 1;
     overflow: hidden;
     background: color-mix(in srgb, var(--s-bg-sidebar) 80%, transparent);
+
+    @media (max-width: 768px) {
+      /* On mobile the drawer floats over the page instead of sitting beside
+         it, so the 80% tint let page content show through the menu. */
+      background: var(--s-bg-sidebar);
+    }
   }
 
   .sidebar-brand {
@@ -100,6 +106,8 @@
     /* Enable momentum / native touch scroll on iOS & Android */
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
+    /* Keep a swipe inside the drawer from scrolling the page behind it. */
+    overscroll-behavior: contain;
 
     .menu-list {
       list-style: none;
@@ -240,7 +248,11 @@
   .app-sidebar {
     position: fixed;
     z-index: 100;
+    /* 100vh includes the mobile browser chrome, which hides the last menu
+       items behind it with no way to scroll a fixed element. dvh tracks the
+       visible viewport. */
     height: 100vh;
+    height: 100dvh;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     &.is-open {

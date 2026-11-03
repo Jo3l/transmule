@@ -386,7 +386,7 @@
           </SFormItem>
           <template v-if="privacy.blocklistEnabled">
             <SFormItem :label="$t('transmission.privacy.blocklistUrl')">
-              <SInput v-model="privacy.blocklistUrl" placeholder="https://..." class="mw-400" />
+              <SInput v-model="privacy.blocklistUrl" :placeholder="BLOCKLIST_URL_HINT" class="mw-400" />
             </SFormItem>
             <SFormItem :label="$t('transmission.privacy.blocklistSize')">
               <span
@@ -481,6 +481,9 @@ import type { TabPaneDef } from "~/components/s/STabs.vue";
 
 const { apiFetch, showToast } = useApi();
 const { transmissionRunning } = useServiceGuard();
+// Literal `://` inside a component attribute breaks vue-tsc 3.x (see amule/settings.vue).
+const BLOCKLIST_URL_HINT = "https://...";
+
 const { t } = useI18n();
 const { trackersText, savingTrackers, loadTrackers, saveTrackers } = useTrackers();
 const route = useRoute();

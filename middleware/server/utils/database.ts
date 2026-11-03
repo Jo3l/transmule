@@ -77,6 +77,24 @@ function _initSchema(db: DatabaseSync): void {
       PRIMARY KEY (plugin_id, key)
     );
 
+    -- ─── File shares (QR / link delivery) ───────────────────────────────────
+    CREATE TABLE IF NOT EXISTS shares (
+      id         TEXT PRIMARY KEY,            -- 10 chars, used to list/revoke
+      token_hash TEXT NOT NULL UNIQUE,        -- sha256(token) hex
+      code_hash  TEXT,                        -- bcrypt of the 6-char code; NULL = no code
+      kind       TEXT NOT NULL,               -- 'file' | 'folder' | 'selection'
+      label      TEXT NOT NULL,
+      roots      TEXT NOT NULL,               -- JSON array of virtual paths
+      created_by TEXT,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,               -- ISO 8601
+      downloads  INTEGER NOT NULL DEFAULT 0,
+      revoked    INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_shares_expires ON shares(expires_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_shares_code
+      ON shares(code_hash) WHERE code_hash IS NOT NULL;
+
     -- ─── Planner schema ─────────────────────────────────────────────────────
     CREATE TABLE IF NOT EXISTS planner_subscriptions (
       id                  INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -3,6 +3,9 @@
  * Also detects first-run (no users) and redirects to /setup.
  */
 export default defineNuxtRouteMiddleware(async (to) => {
+  // Public share pages (QR delivery) never require a session.
+  if (to.path === "/s" || to.path.startsWith("/s/")) return;
+
   // On auth pages, make sure the user is on the correct one
   if (to.path === "/login" || to.path === "/setup") {
     try {

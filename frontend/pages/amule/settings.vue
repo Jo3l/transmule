@@ -309,7 +309,7 @@
             <SInput
               v-model="form.servers.updateUrl"
               class="mw-500"
-              placeholder="http://peerates.net/servers.met"
+              :placeholder="SERVERS_MET_URL"
             />
             <p class="is-size-7 has-text-grey mt-1">{{ $t("amuleSettings.updateUrlHelp") }}</p>
           </SFormItem>
@@ -516,6 +516,11 @@ interface AmulePreferences {
   servers: PrefsServers;
   security: PrefsSecurity;
 }
+
+// Literal `://` inside a component attribute breaks vue-tsc 3.x (the virtual
+// file is emitted unquoted and the rest of the line becomes a comment), so the
+// placeholder lives in the script and is bound.
+const SERVERS_MET_URL = "http://peerates.net/servers.met";
 
 const { t } = useI18n();
 const { apiFetch } = useApi();

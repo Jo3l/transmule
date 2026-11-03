@@ -110,6 +110,18 @@ Prefer to run no script at all? **[Manual installation](docs/manual-install.md)*
 | **Archive utilities** | Compress files into zip/tar/tar.gz/tar.bz2/tar.xz (with optional password for zip), extract uploaded archives, smart rename media files |
 | **Media preview** | In-browser image viewer, video player with streaming, and text editor for quick inspection |
 
+### Share to Device (QR)
+
+Pick any file or folder in the file manager, right-click → **Send to device…**, and TransMule hands you a QR code plus a link.
+
+- The link points at the host you are already browsing, so it works over LAN or through your reverse proxy with no extra configuration.
+- Expiry can be **1 hour, 1 day or 1 week** (24 h by default).
+- Optionally protected by a **6-character code**. The code is never inside the QR: the receiving device types it on the page before the contents (even the file names) are revealed.
+- Folders are **listed, not zipped** — every file is its own download, and local/SMB mounts behave identically.
+- Links are revocable at any time and stop working immediately.
+
+If your reverse proxy uses HTTP Basic auth, the browser will ask for it when the link is opened, exactly as when you browse the app. Files are streamed with `Range` support (resumable) for local storage; SMB downloads stream but cannot be resumed yet.
+
 ### Plugin System
 | Feature | Description |
 |---------|-------------|

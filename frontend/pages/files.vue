@@ -148,6 +148,7 @@
             @play-in-webamp="onPanelPlayInWebamp"
             @open-comic="onPanelOpenComic"
             @download-file="onPanelDownloadFile"
+            @share-paths="onPanelSharePaths"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
             @unmount-item="onPanelUnmountItem"
@@ -181,6 +182,7 @@
             @play-in-webamp="onPanelPlayInWebamp"
             @open-comic="onPanelOpenComic"
             @download-file="onPanelDownloadFile"
+            @share-paths="onPanelSharePaths"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
             @unmount-item="onPanelUnmountItem"
@@ -212,6 +214,7 @@
             @play-in-webamp="onPanelPlayInWebamp"
             @open-comic="onPanelOpenComic"
             @download-file="onPanelDownloadFile"
+            @share-paths="onPanelSharePaths"
             @smart-rename-paths="onPanelSmartRenamePaths"
             @upload-files="onPanelUploadFiles"
             @unmount-item="onPanelUnmountItem"
@@ -485,6 +488,9 @@
       </template>
     </div>
   </Teleport>
+
+  <!-- ── Share dialog (QR / link) ────────────────────────────────────── -->
+  <ShareDialog v-model="showShareDialog" :paths="sharePaths" />
 
   <!-- ── Move / Copy dialog (FolderPickerDialog compartido) ──────────── -->
   <FolderPickerDialog
@@ -1049,6 +1055,15 @@ const showTransferDialog = ref(false);
 const transferMode = ref<"move" | "copy">("move");
 const transferSources = ref<string[]>([]);
 const transferDest = ref("");
+
+// ── Share dialog state ───────────────────────────────────────────────
+const showShareDialog = ref(false);
+const sharePaths = ref<string[]>([]);
+
+function onPanelSharePaths(paths: string[]) {
+  sharePaths.value = paths;
+  showShareDialog.value = true;
+}
 
 // ── Overwrite confirm dialog state ─────────────────────────────────
 const showOverwriteDialog = ref(false);
@@ -2296,6 +2311,18 @@ loadDirNow();
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+/* Below 768px `.app-layout` is `display: block` (so the body can scroll on long
+   pages), which means `.app-content` no longer stretches and this page's
+   `height: 100%` resolves against an auto height — the panel collapsed to a
+   ~120px sliver and its internal scroller became unusable. Give it the visible
+   viewport minus the topbar (40px) and the content padding (2.5rem) instead. */
+@media (max-width: 768px) {
+  .fm-page {
+    height: auto;
+    min-height: calc(100dvh - 40px - 2.5rem);
+  }
 }
 
 

@@ -1204,6 +1204,11 @@
     background-color: #06090a;
     background-image: radial-gradient(120% 80% at 50% -10%, #101a1e 0%, #06090a 60%);
     background-attachment: fixed;
+    @media (max-width: 768px) {
+      /* A fixed background on <body> is a known scroll killer on mobile
+         Safari: it forces the whole page into a background layer. */
+      background-attachment: scroll;
+    }
   }
 
   /* ─ Scrollbars ─ */

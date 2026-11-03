@@ -24,7 +24,8 @@
     "loadFailed": "Failed to load data",
     "login": "Login",
     "configuration": "Configuration",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "nav": {
     "downloads": "Downloads",
@@ -1651,6 +1652,47 @@
       "point1": "You can run this wizard again from Settings → About",
       "point2": "Settings → Ports re-checks your ports whenever you want",
       "action": "Open About"
+    }
+  },
+  "share": {
+    "menuLabel": "Send to device…",
+    "title": "Share via QR",
+    "itemsSelected": "{count} selected items",
+    "expiry": "Expires in",
+    "expiry1h": "1 hour",
+    "expiry24h": "1 day",
+    "expiry7d": "1 week",
+    "useCode": "Protect with a code",
+    "codeHint": "The code is not inside the QR: it has to be typed on the page to reveal the contents.",
+    "generate": "Generate link",
+    "regenerate": "Regenerate",
+    "revoke": "Revoke link",
+    "revoked": "Link revoked",
+    "error": "Could not create the link",
+    "scan": "Scan the QR or open the link on the other device",
+    "url": "Link",
+    "urlCopied": "Link copied",
+    "code": "Code",
+    "codeCopied": "Code copied",
+    "expiresAt": "Expires",
+    "localhostWarning": "You are on localhost: this link will only work on this machine.",
+    "public": {
+      "send": "Receive a file",
+      "codeTitle": "Enter the code",
+      "codeHint": "Type the 6-character code you were given with the link.",
+      "codePlaceholder": "ABC123",
+      "open": "Open",
+      "badCode": "The code has 6 characters",
+      "wrongCode": "Wrong code",
+      "locked": "Too many attempts. Wait a few minutes.",
+      "gone": "This link has expired or was revoked",
+      "notFound": "This link does not exist",
+      "unavailable": "The contents could not be loaded",
+      "enterCode": "Enter the code to see the contents",
+      "empty": "Empty folder",
+      "download": "Download",
+      "loading": "Loading…",
+      "expiresAt": "Expires"
     }
   }
 }

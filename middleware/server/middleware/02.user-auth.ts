@@ -20,6 +20,9 @@ export default defineEventHandler((event) => {
   ];
   if (publicRoutes.some((r) => path === r)) return;
 
+  // Public share surface: the handlers validate their own token/ticket.
+  if (path.startsWith("/api/share/public/")) return;
+
   // Allow public access to skin files (Webamp loads them internally without auth)
   if (path.startsWith("/api/webamp/skins/") && ["GET", "HEAD"].includes(getMethod(event) || "")) return;
 

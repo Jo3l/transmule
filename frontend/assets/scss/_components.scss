@@ -794,7 +794,11 @@ textarea.s-input {
   box-shadow: var(--s-shadow-lg);
   max-width: 90vw;
   max-height: 85vh;
-  overflow: auto;
+  /* The body scrolls, not the whole dialog: header and footer stay reachable
+     even when the content is taller than the viewport. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   animation: s-scale-in 0.15s;
   .s-dialog__header {
     display: flex;
@@ -804,6 +808,7 @@ textarea.s-input {
     border-bottom: 1px solid var(--s-border);
     font-weight: 600;
     font-size: 1rem;
+    flex: 0 0 auto;
   }
   .s-dialog__close {
     background: none;
@@ -818,6 +823,7 @@ textarea.s-input {
   }
   .s-dialog__body {
     padding: 1.25rem;
+    overflow-y: auto;
   }
   .s-dialog__footer {
     padding: 0.75rem 1.25rem;
@@ -825,6 +831,7 @@ textarea.s-input {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;
+    flex: 0 0 auto;
   }
 }
 
@@ -843,6 +850,8 @@ textarea.s-input {
 
 .s-toast {
   pointer-events: auto;
+  /* A long message used to overflow the right edge of a phone screen. */
+  max-width: min(400px, calc(100vw - 1rem));
   padding: 0.65rem 1.25rem;
   border-radius: var(--s-radius);
   font-size: 0.875rem;
@@ -854,7 +863,7 @@ textarea.s-input {
   max-width: 400px;
   cursor: pointer;
   &.s-toast--persistent {
-    max-width: 480px;
+    max-width: min(480px, calc(100vw - 1rem));
     cursor: default;
     .s-toast__body {
       white-space: pre-line;
