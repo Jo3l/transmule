@@ -4,6 +4,7 @@
   "private": true,
   "description": "REST API middleware for aMule web interface — handles session management, request queuing, CORS, and provides a clean REST API with Swagger/Scalar documentation",
   "scripts": {
+    "test:torrent-upload": "node tests/torrent-upload.test.mjs",
     "dev": "nitropack dev",
     "build": "nitropack build",
     "preview": "node .output/server/index.mjs",

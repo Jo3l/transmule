@@ -301,6 +301,15 @@
       "cancel": "İptal"
     },
     "addTorrentDialog": {
+      "magnetTab": "Magnet / URL",
+      "fileTab": "Torrent dosyası",
+      "fileLabel": ".torrent dosyası seçin",
+      "fileHelp": "En fazla 5 MiB. Transmission için yapılandırılmış indirme dizinini kullanır.",
+      "invalidFile": "Geçerli bir .torrent dosyası seçin.",
+      "tooLarge": "Torrent dosyası 5 MiB sınırını aşıyor.",
+      "success": "Torrent eklendi.",
+      "duplicate": "Bu torrent zaten Transmission içinde mevcut.",
+      "uploadError": "Torrent yüklenemedi. Bağlantıyı ve Transmission durumunu kontrol edip tekrar deneyin.",
       "title": "Torrent Ekle",
       "label": "Mıknatıs / URL (her satıra bir tane)",
       "placeholder": "magnet:?xt=urn:btih:...\nmagnet:?xt=urn:btih:...",

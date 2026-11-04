@@ -301,6 +301,15 @@
       "cancel": "Cancelar"
     },
     "addTorrentDialog": {
+      "magnetTab": "Magnet / URL",
+      "fileTab": "Arquivo torrent",
+      "fileLabel": "Selecionar arquivo .torrent",
+      "fileHelp": "Máximo de 5 MiB. Usa o diretório de download configurado no Transmission.",
+      "invalidFile": "Selecione um arquivo .torrent válido.",
+      "tooLarge": "O arquivo torrent excede 5 MiB.",
+      "success": "Torrent adicionado.",
+      "duplicate": "Este torrent já está no Transmission.",
+      "uploadError": "Não foi possível enviar o torrent. Verifique a conexão e o Transmission e tente novamente.",
       "title": "Adicionar Torrent",
       "label": "Magnet / URL (um por linha)",
       "placeholder": "magnet:?xt=urn:btih:...\nmagnet:?xt=urn:btih:...",

@@ -1441,24 +1441,45 @@
 
     <!-- Add Torrent dialog -->
     <SDialog v-model="showAddTorrent" :title="$t('downloads.addTorrentDialog.title')" width="500px">
-      <SFormItem :label="$t('downloads.addTorrentDialog.label')">
-        <SInput
-          v-model="torrentForm.url"
-          type="textarea"
-          :placeholder="$t('downloads.addTorrentDialog.placeholder')"
-          :rows="3"
-        />
-      </SFormItem>
+      <STabs v-model="torrentInputMode" :panes="[
+        { name: 'magnet', label: $t('downloads.addTorrentDialog.magnetTab') },
+        { name: 'file', label: $t('downloads.addTorrentDialog.fileTab') },
+      ]">
+        <SFormItem v-if="torrentInputMode === 'magnet'" :label="$t('downloads.addTorrentDialog.label')">
+          <SInput
+            v-model="torrentForm.url"
+            type="textarea"
+            :placeholder="$t('downloads.addTorrentDialog.placeholder')"
+            :rows="3"
+            :disabled="addingTorrent"
+          />
+        </SFormItem>
+        <SFormItem v-else :label="$t('downloads.addTorrentDialog.fileLabel')">
+          <input
+            id="torrent-file"
+            type="file"
+            :aria-label="$t('downloads.addTorrentDialog.fileLabel')"
+            accept=".torrent,application/x-bittorrent"
+            :disabled="addingTorrent"
+            aria-describedby="torrent-file-help"
+            style="max-width: 100%; color: inherit; font: inherit"
+            @change="selectTorrentFile"
+          >
+          <p id="torrent-file-help">{{ $t('downloads.addTorrentDialog.fileHelp') }}</p>
+          <p v-if="torrentFile">{{ torrentFile.name }}</p>
+        </SFormItem>
+      </STabs>
       <SCheckbox
         v-model="torrentForm.paused"
+        :disabled="addingTorrent"
         :label="$t('downloads.addTorrentDialog.addPaused')"
         class="mb-3"
       />
       <template #footer>
-        <SButton @click="showAddTorrent = false">{{
+        <SButton :disabled="addingTorrent" @click="showAddTorrent = false">{{
           $t("downloads.addTorrentDialog.cancel")
         }}</SButton>
-        <SButton variant="primary" :loading="addingTorrent" @click="addTorrent">{{
+        <SButton variant="primary" :loading="addingTorrent" :disabled="torrentInputMode === 'file' ? !torrentFile : !torrentForm.url.trim()" @click="addTorrent">{{
           $t("downloads.addTorrentDialog.add")
         }}</SButton>
       </template>
@@ -1674,6 +1695,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, shallowRef, watch } from "vue";
 import type { STableColumn } from "~/components/s/STable.vue";
 import type { TabPaneDef } from "~/components/s/STabs.vue";
 
@@ -1881,6 +1903,27 @@ const addingLink = ref(false);
 const showAddTorrent = ref(false);
 const torrentForm = reactive({ url: "", paused: false });
 const addingTorrent = ref(false);
+const torrentInputMode = ref("magnet");
+const torrentFile = shallowRef<globalThis.File | null>(null);
+watch(showAddTorrent, (open) => {
+  if (!open) torrentFile.value = null;
+});
+
+function selectTorrentFile(event: globalThis.Event) {
+  const input = event.target as globalThis.HTMLInputElement;
+  const file = input.files?.[0];
+  torrentFile.value = null;
+  if (!file) return;
+  if (!/\.torrent$/i.test(file.name) || !file.size) {
+    addToast(t("downloads.addTorrentDialog.invalidFile"), "error");
+    input.value = "";
+  } else if (file.size > 5 * 1024 * 1024) {
+    addToast(t("downloads.addTorrentDialog.tooLarge"), "error");
+    input.value = "";
+  } else {
+    torrentFile.value = file;
+  }
+}
 const showAddPyload = ref(false);
 const pyloadForm = reactive({ name: "", links: "" });
 const addingPyload = ref(false);
@@ -2803,6 +2846,34 @@ async function addPyloadPackage() {
 }
 
 async function addTorrent() {
+  if (addingTorrent.value) return;
+  if (torrentInputMode.value === "file") {
+    const file = torrentFile.value;
+    if (!file) return;
+    addingTorrent.value = true;
+    try {
+      const result = await apiFetch<{ duplicate: boolean }>(
+        `/api/transmission/upload?filename=${encodeURIComponent(file.name)}&paused=${torrentForm.paused}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-bittorrent" },
+          body: file,
+          retry: 0,
+        },
+      );
+      addToast(t(`downloads.addTorrentDialog.${result.duplicate ? "duplicate" : "success"}`), result.duplicate ? "info" : "success");
+      torrentForm.paused = false;
+      showAddTorrent.value = false;
+      await refresh();
+    } catch (err: any) {
+      const status = err?.response?.status || err?.statusCode;
+      const key = status === 413 ? "tooLarge" : [400, 415].includes(status) ? "invalidFile" : "uploadError";
+      addToast(t(`downloads.addTorrentDialog.${key}`), "error");
+    } finally {
+      addingTorrent.value = false;
+    }
+    return;
+  }
   const urls = torrentForm.url
     .split(/\n/)
     .map((l) => l.trim())

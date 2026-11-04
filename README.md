@@ -85,7 +85,7 @@ Prefer to run no script at all? **[Manual installation](docs/manual-install.md)*
 |---------|-------------|
 | **Unified dashboard** | All downloads — aMule files, BitTorrent transfers, Soulseek downloads and pyLoad packages — in one sortable, filterable table with mobile card layout |
 | **aMule integration** | Browse and search the ED2K/Kademlia network, manage downloads, view chunk availability, sources, friends, connected servers, KAD status and full preferences |
-| **Transmission integration** | Add torrents via magnet link or URL, control downloads, inspect peers/trackers/files, configure network and speed limits |
+| **Transmission integration** | Add torrents via magnet link, URL or local `.torrent` file, control downloads, inspect peers/trackers/files, configure network and speed limits |
 | **Slskd integration** | Search the Soulseek network, download files, browse user shares, chat in rooms and private messages, manage transfers |
 | **pyLoad NG integration** | Add direct-download (DDL) packages, monitor link extraction status, stop/restart/delete packages with full queue management |
 | **Torrent search** | Search multiple torrent indexes directly from the UI with live streaming results — extensible via plugins |
@@ -417,6 +417,10 @@ docker build -t transmule:dev .
 - Run `id` on the host to check: `id -u` (UID), `id -g` (GID)
 
 ### "How do I add a torrent?"
+- On **Downloads**, click **Add Torrent**. Choose **Magnet / URL** (one per line) or **Torrent file** to open the native file picker.
+- Local files must be valid `.torrent` metainfo, up to **5 MiB**. **Add paused** works with either option. Transmission uses its configured download directory and reports existing torrents without adding a second copy.
+- Uploads require your normal TransMule login. Files are validated in memory and forwarded through the existing Transmission RPC connection; no server-side source file or upload directory is needed.
+- For isolated tests and endpoint details, see [Torrent file uploads](docs/torrent-file-upload.md).
 - Go to **Transmission → Torrent Search** in the sidebar
 - Search, select results, and click the download button — the torrent is sent directly to Transmission
 

@@ -377,7 +377,7 @@ export class TransmissionRPCClient {
     downloadDir?: string;
     paused?: boolean;
     labels?: string[];
-  }): Promise<{ id: number; name: string; hashString: string } | null> {
+  }): Promise<{ id: number; name: string; hashString: string; duplicate?: boolean } | null> {
     const params: any = {};
     if (opts.filename) params.filename = opts.filename;
     if (opts.metainfo) params.metainfo = opts.metainfo;
@@ -392,6 +392,7 @@ export class TransmissionRPCClient {
       id: added.id,
       name: added.name,
       hashString: added.hashString,
+      duplicate: !!result["torrent-duplicate"],
     };
   }
 
