@@ -1,9 +1,10 @@
 {
   "name": "transmule",
-  "version": "1.183",
+  "version": "1.184",
   "private": true,
   "description": "TransMule — unified download manager with custom theming",
   "scripts": {
+    "test:torrent-upload": "node tests/torrent-upload.test.mjs",
     "dev": "nuxt dev",
     "build": "nuxt build",
     "preview": "nuxt preview",

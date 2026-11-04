@@ -301,6 +301,15 @@
       "cancel": "रद्द करें"
     },
     "addTorrentDialog": {
+      "magnetTab": "मैग्नेट / URL",
+      "fileTab": "टोरेंट फ़ाइल",
+      "fileLabel": ".torrent फ़ाइल चुनें",
+      "fileHelp": "अधिकतम 5 MiB। Transmission की कॉन्फ़िगर की गई डाउनलोड डायरेक्टरी का उपयोग होता है।",
+      "invalidFile": "मान्य .torrent फ़ाइल चुनें।",
+      "tooLarge": "टोरेंट फ़ाइल 5 MiB से बड़ी है।",
+      "success": "टोरेंट जोड़ा गया।",
+      "duplicate": "यह टोरेंट पहले से Transmission में है।",
+      "uploadError": "टोरेंट अपलोड नहीं हुआ। कनेक्शन और Transmission जाँचें और फिर प्रयास करें।",
       "title": "टोरेंट जोड़ें",
       "label": "मैग्नेट / URL (प्रति पंक्ति एक)",
       "placeholder": "magnet:?xt=urn:btih:...\nmagnet:?xt=urn:btih:...",

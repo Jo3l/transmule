@@ -301,6 +301,15 @@
       "cancel": "Отмена"
     },
     "addTorrentDialog": {
+      "magnetTab": "Magnet / URL",
+      "fileTab": "Торрент-файл",
+      "fileLabel": "Выберите файл .torrent",
+      "fileHelp": "Максимум 5 МиБ. Используется настроенная папка загрузок Transmission.",
+      "invalidFile": "Выберите корректный файл .torrent.",
+      "tooLarge": "Размер торрент-файла превышает 5 МиБ.",
+      "success": "Торрент добавлен.",
+      "duplicate": "Этот торрент уже есть в Transmission.",
+      "uploadError": "Не удалось загрузить торрент. Проверьте соединение и Transmission и повторите попытку.",
       "title": "Добавить торрент",
       "label": "Magnet / URL (по одному на строку)",
       "placeholder": "magnet:?xt=urn:btih:...\nmagnet:?xt=urn:btih:...",
