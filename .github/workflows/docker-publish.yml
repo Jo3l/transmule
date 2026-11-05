@@ -39,10 +39,13 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE }}
+          # `type=semver` exige X.Y.Z y este repo etiqueta como vX.Y, así que
+          # nunca generaba tag de versión: solo latest y sha-*. `match` toma el
+          # nombre del tag tal cual (v1.185 -> 1.185) y sigue sirviendo si algún
+          # día se pasa a vX.Y.Z.
           tags: |
             type=raw,value=latest
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=v(.*),group=1
             type=sha,prefix=sha-
 
       - name: Build and push
