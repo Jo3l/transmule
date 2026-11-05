@@ -301,9 +301,9 @@
       "cancel": "रद्द करें"
     },
     "addTorrentDialog": {
-      "magnetTab": "मैग्नेट / URL",
-      "fileTab": "टोरेंट फ़ाइल",
-      "fileLabel": ".torrent फ़ाइल चुनें",
+      "fileLabel": "टोरेंट फ़ाइल",
+      "filePick": "फ़ाइल चुनें",
+      "fileClear": "फ़ाइल हटाएँ",
       "fileHelp": "अधिकतम 5 MiB। Transmission की कॉन्फ़िगर की गई डाउनलोड डायरेक्टरी का उपयोग होता है।",
       "invalidFile": "मान्य .torrent फ़ाइल चुनें।",
       "tooLarge": "टोरेंट फ़ाइल 5 MiB से बड़ी है।",

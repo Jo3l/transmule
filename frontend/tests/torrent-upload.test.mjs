@@ -13,13 +13,14 @@ const extract = (start, end) => ts.transpileModule(page.slice(page.indexOf(start
 function fixture(mode = 'file', fetch = async () => ({ duplicate: false })) {
   const calls = [], toasts = [], history = [];
   const ctx = createContext({
-    torrentInputMode: { value: mode }, torrentFile: { value: new File(['fixture'], 'synthetic.torrent') },
+    torrentFile: { value: mode === 'file' ? new File(['fixture'], 'synthetic.torrent') : null },
+    torrentFileInput: { value: null },
     torrentForm: { url: '', paused: true }, addingTorrent: { value: false }, showAddTorrent: { value: true },
     apiFetch: async (...args) => { calls.push(args); return fetch(...args); },
     addToast: (...args) => toasts.push(args), t: key => key,
     refresh: async () => {}, recordDownload: (...args) => history.push(args),
   });
-  runInContext(extract('function selectTorrentFile(', 'const showAddPyload'), ctx);
+  runInContext(extract('function pickTorrentFile(', 'const showAddPyload'), ctx);
   runInContext(extract('async function addTorrent()', '// ── Lifecycle'), ctx);
   return { ctx, calls, toasts, history };
 }
@@ -34,6 +35,17 @@ test('native file validation rejects wrong extension, empty and oversized files'
   const file = { name: 'a.TORRENT', size: 5 * 1024 * 1024 };
   ctx.selectTorrentFile({ target: { files: [file] } });
   assert.equal(ctx.torrentFile.value, file); assert.equal(toasts.length, 3);
+});
+
+test('picker opens the hidden input and clearing resets it so the same file can be re-picked', () => {
+  const { ctx } = fixture();
+  const input = { value: 'C:\\fakepath\\synthetic.torrent', clicks: 0, click() { this.clicks += 1; } };
+  ctx.torrentFileInput.value = input;
+  ctx.pickTorrentFile();
+  assert.equal(input.clicks, 1);
+  ctx.clearTorrentFile();
+  assert.equal(ctx.torrentFile.value, null);
+  assert.equal(input.value, '');
 });
 
 test('file submission uses authenticated API wrapper, binary body and paused flag', async () => {
@@ -79,7 +91,7 @@ test('all supported locales translate every upload message', () => {
   for (const file of readdirSync(new URL('../i18n/locales/', import.meta.url))) {
     if (!file.endsWith('.json')) continue;
     const locale = JSON.parse(readFileSync(new URL('../i18n/locales/' + file, import.meta.url), 'utf8'));
-    for (const key of ['magnetTab', 'fileTab', 'fileLabel', 'fileHelp', 'invalidFile', 'tooLarge', 'success', 'duplicate', 'uploadError']) {
+    for (const key of ['fileLabel', 'filePick', 'fileClear', 'fileHelp', 'invalidFile', 'tooLarge', 'success', 'duplicate', 'uploadError']) {
       assert.ok(locale.downloads.addTorrentDialog[key], `${file}: ${key}`);
     }
   }

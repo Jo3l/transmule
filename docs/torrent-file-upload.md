@@ -1,6 +1,6 @@
 # Adding local torrent files
 
-Open **Add Torrent** on the Downloads page. The existing dialog has **Magnet / URL** and **Torrent file** tabs. Select one local `.torrent` file and optionally enable **Add paused**. Success closes the dialog; an existing torrent produces an informational message. Validation and connection errors keep the file selected so the user can retry.
+Open **Add Torrent** on the Downloads page. The dialog keeps the **Magnet / URL** textarea and adds a **Torrent file** picker underneath it: pick one local `.torrent` and optionally enable **Add paused**. While a file is selected the textarea is disabled (the file wins); clearing the file gives the textarea back. Success closes the dialog; an existing torrent produces an informational message. Validation and connection errors keep the file selected so the user can retry.
 
 The native picker works on desktop and mobile. File selection is restricted to `.torrent`; server validation remains authoritative. Browser MIME guesses are not trusted: the application sends `application/x-bittorrent` explicitly.
 

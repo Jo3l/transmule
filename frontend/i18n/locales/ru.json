@@ -301,9 +301,9 @@
       "cancel": "Отмена"
     },
     "addTorrentDialog": {
-      "magnetTab": "Magnet / URL",
-      "fileTab": "Торрент-файл",
-      "fileLabel": "Выберите файл .torrent",
+      "fileLabel": "Торрент-файл",
+      "filePick": "Выбрать файл",
+      "fileClear": "Убрать файл",
       "fileHelp": "Максимум 5 МиБ. Используется настроенная папка загрузок Transmission.",
       "invalidFile": "Выберите корректный файл .torrent.",
       "tooLarge": "Размер торрент-файла превышает 5 МиБ.",

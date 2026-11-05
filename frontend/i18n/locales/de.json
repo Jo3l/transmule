@@ -301,9 +301,9 @@
       "cancel": "Abbrechen"
     },
     "addTorrentDialog": {
-      "magnetTab": "Magnet / URL",
-      "fileTab": "Torrent-Datei",
-      "fileLabel": ".torrent-Datei auswählen",
+      "fileLabel": "Torrent-Datei",
+      "filePick": "Datei wählen",
+      "fileClear": "Datei entfernen",
       "fileHelp": "Maximal 5 MiB. Verwendet das konfigurierte Downloadverzeichnis von Transmission.",
       "invalidFile": "Wähle eine gültige .torrent-Datei.",
       "tooLarge": "Die Torrent-Datei überschreitet 5 MiB.",

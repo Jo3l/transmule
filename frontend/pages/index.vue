@@ -1441,34 +1441,49 @@
 
     <!-- Add Torrent dialog -->
     <SDialog v-model="showAddTorrent" :title="$t('downloads.addTorrentDialog.title')" width="500px">
-      <STabs v-model="torrentInputMode" :panes="[
-        { name: 'magnet', label: $t('downloads.addTorrentDialog.magnetTab') },
-        { name: 'file', label: $t('downloads.addTorrentDialog.fileTab') },
-      ]">
-        <SFormItem v-if="torrentInputMode === 'magnet'" :label="$t('downloads.addTorrentDialog.label')">
-          <SInput
-            v-model="torrentForm.url"
-            type="textarea"
-            :placeholder="$t('downloads.addTorrentDialog.placeholder')"
-            :rows="3"
-            :disabled="addingTorrent"
-          />
-        </SFormItem>
-        <SFormItem v-else :label="$t('downloads.addTorrentDialog.fileLabel')">
-          <input
-            id="torrent-file"
-            type="file"
-            :aria-label="$t('downloads.addTorrentDialog.fileLabel')"
-            accept=".torrent,application/x-bittorrent"
-            :disabled="addingTorrent"
-            aria-describedby="torrent-file-help"
-            style="max-width: 100%; color: inherit; font: inherit"
-            @change="selectTorrentFile"
+      <SFormItem :label="$t('downloads.addTorrentDialog.label')">
+        <SInput
+          v-model="torrentForm.url"
+          type="textarea"
+          :placeholder="$t('downloads.addTorrentDialog.placeholder')"
+          :rows="3"
+          :disabled="addingTorrent || !!torrentFile"
+        />
+      </SFormItem>
+      <SFormItem :label="$t('downloads.addTorrentDialog.fileLabel')">
+        <SButton
+          variant="secondary"
+          size="sm"
+          icon="mdi-upload"
+          :disabled="addingTorrent"
+          @click="pickTorrentFile"
+        >
+          {{ $t("downloads.addTorrentDialog.filePick") }}
+        </SButton>
+        <span v-if="torrentFile" class="torrent-file">
+          <span class="mdi mdi-file-document-outline" />
+          <span class="torrent-file__name">{{ torrentFile.name }}</span>
+          <button
+            type="button"
+            class="torrent-file__clear"
+            :aria-label="$t('downloads.addTorrentDialog.fileClear')"
+            :title="$t('downloads.addTorrentDialog.fileClear')"
+            @click="clearTorrentFile"
           >
-          <p id="torrent-file-help">{{ $t('downloads.addTorrentDialog.fileHelp') }}</p>
-          <p v-if="torrentFile">{{ torrentFile.name }}</p>
-        </SFormItem>
-      </STabs>
+            <span class="mdi mdi-close" />
+          </button>
+        </span>
+        <p class="torrent-file__help is-size-7 has-text-grey">{{
+          $t("downloads.addTorrentDialog.fileHelp")
+        }}</p>
+        <input
+          ref="torrentFileInput"
+          type="file"
+          class="hidden"
+          accept=".torrent,application/x-bittorrent"
+          @change="selectTorrentFile"
+        />
+      </SFormItem>
       <SCheckbox
         v-model="torrentForm.paused"
         :disabled="addingTorrent"
@@ -1479,9 +1494,12 @@
         <SButton :disabled="addingTorrent" @click="showAddTorrent = false">{{
           $t("downloads.addTorrentDialog.cancel")
         }}</SButton>
-        <SButton variant="primary" :loading="addingTorrent" :disabled="torrentInputMode === 'file' ? !torrentFile : !torrentForm.url.trim()" @click="addTorrent">{{
-          $t("downloads.addTorrentDialog.add")
-        }}</SButton>
+        <SButton
+          variant="primary"
+          :loading="addingTorrent"
+          :disabled="!torrentFile && !torrentForm.url.trim()"
+          @click="addTorrent"
+        >{{ $t("downloads.addTorrentDialog.add") }}</SButton>
       </template>
     </SDialog>
     <SDialog v-model="showAddPyload" :title="$t('downloads.addPyloadDialog.title')" width="520px">
@@ -1903,11 +1921,21 @@ const addingLink = ref(false);
 const showAddTorrent = ref(false);
 const torrentForm = reactive({ url: "", paused: false });
 const addingTorrent = ref(false);
-const torrentInputMode = ref("magnet");
 const torrentFile = shallowRef<globalThis.File | null>(null);
+const torrentFileInput = ref<HTMLInputElement | null>(null);
 watch(showAddTorrent, (open) => {
-  if (!open) torrentFile.value = null;
+  if (!open) clearTorrentFile();
 });
+
+/** Opens the native picker through the hidden input (SButton has no file mode). */
+function pickTorrentFile() {
+  torrentFileInput.value?.click();
+}
+
+function clearTorrentFile() {
+  torrentFile.value = null;
+  if (torrentFileInput.value) torrentFileInput.value.value = "";
+}
 
 function selectTorrentFile(event: globalThis.Event) {
   const input = event.target as globalThis.HTMLInputElement;
@@ -2847,9 +2875,9 @@ async function addPyloadPackage() {
 
 async function addTorrent() {
   if (addingTorrent.value) return;
-  if (torrentInputMode.value === "file") {
-    const file = torrentFile.value;
-    if (!file) return;
+  // A selected file wins over the textarea (which stays disabled while it is set).
+  const file = torrentFile.value;
+  if (file) {
     addingTorrent.value = true;
     try {
       const result = await apiFetch<{ duplicate: boolean }>(
@@ -2862,6 +2890,7 @@ async function addTorrent() {
         },
       );
       addToast(t(`downloads.addTorrentDialog.${result.duplicate ? "duplicate" : "success"}`), result.duplicate ? "info" : "success");
+      torrentForm.url = "";
       torrentForm.paused = false;
       showAddTorrent.value = false;
       await refresh();
@@ -3251,5 +3280,43 @@ onUnmounted(() => {
   color: var(--s-text-muted);
   flex-shrink: 0;
   margin-top: 1px;
+}
+/* Add-torrent dialog: file chip + help under the URL textarea. Inside
+   .s-form-item__content, which is already flex with 0.5rem gap. */
+.torrent-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.15rem 0.3rem 0.15rem 0.45rem;
+  border: 1px solid var(--s-border);
+  border-radius: var(--s-radius);
+  background: var(--s-bg-surface);
+  color: var(--s-text-secondary);
+  font-size: 0.8rem;
+}
+.torrent-file__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.torrent-file__clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--s-text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.torrent-file__clear:hover {
+  color: var(--s-text);
+}
+.torrent-file__help {
+  flex-basis: 100%;
+  margin: 0;
 }
 </style>

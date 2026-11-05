@@ -301,9 +301,9 @@
       "cancel": "İptal"
     },
     "addTorrentDialog": {
-      "magnetTab": "Magnet / URL",
-      "fileTab": "Torrent dosyası",
-      "fileLabel": ".torrent dosyası seçin",
+      "fileLabel": "Torrent dosyası",
+      "filePick": "Dosya seç",
+      "fileClear": "Dosyayı kaldır",
       "fileHelp": "En fazla 5 MiB. Transmission için yapılandırılmış indirme dizinini kullanır.",
       "invalidFile": "Geçerli bir .torrent dosyası seçin.",
       "tooLarge": "Torrent dosyası 5 MiB sınırını aşıyor.",

@@ -301,9 +301,9 @@
       "cancel": "Annulla"
     },
     "addTorrentDialog": {
-      "magnetTab": "Magnet / URL",
-      "fileTab": "File torrent",
-      "fileLabel": "Seleziona un file .torrent",
+      "fileLabel": "File torrent",
+      "filePick": "Scegli file",
+      "fileClear": "Rimuovi file",
       "fileHelp": "Massimo 5 MiB. Usa la cartella di download configurata in Transmission.",
       "invalidFile": "Seleziona un file .torrent valido.",
       "tooLarge": "Il file torrent supera 5 MiB.",

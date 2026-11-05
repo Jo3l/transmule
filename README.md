@@ -417,7 +417,7 @@ docker build -t transmule:dev .
 - Run `id` on the host to check: `id -u` (UID), `id -g` (GID)
 
 ### "How do I add a torrent?"
-- On **Downloads**, click **Add Torrent**. Choose **Magnet / URL** (one per line) or **Torrent file** to open the native file picker.
+- On **Downloads**, click **Add Torrent**. Paste magnets/URLs (one per line) in the textarea, or pick a local `.torrent` with the **Torrent file** button below it — while a file is selected it takes precedence over the text.
 - Local files must be valid `.torrent` metainfo, up to **5 MiB**. **Add paused** works with either option. Transmission uses its configured download directory and reports existing torrents without adding a second copy.
 - Uploads require your normal TransMule login. Files are validated in memory and forwarded through the existing Transmission RPC connection; no server-side source file or upload directory is needed.
 - For isolated tests and endpoint details, see [Torrent file uploads](docs/torrent-file-upload.md).
