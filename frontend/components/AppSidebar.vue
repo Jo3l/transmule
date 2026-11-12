@@ -39,6 +39,11 @@
               <span class="mdi mdi-magnify"></span> {{ $t("search.globalSearch") }}
             </NuxtLink>
           </li>
+          <li v-if="showChatLink">
+            <NuxtLink to="/chat" @click="$emit('close')">
+              <span class="mdi mdi-forum"></span> {{ $t("nav.chat") }}
+            </NuxtLink>
+          </li>
           <li>
             <NuxtLink to="/files" @click="$emit('close')">
               <span class="mdi mdi-folder-multiple"></span> {{ $t("nav.files") }}
@@ -415,6 +420,10 @@ onMounted(async () => {
     // silencioso
   }
 
+  // Soulseek chat availability (top-level Chat entry)
+  await probeChatAccess();
+  chatProbeTimer = setInterval(probeChatAccess, 60_000);
+
   // Expand the section matching the current route
   expandSectionForRoute(useRoute().path);
 });
@@ -439,4 +448,35 @@ const pyloadDisabled = computed(
 const slskdDisabled = computed(
   () => loaded.value && services.value !== null && !services.value.slskd.running,
 );
+
+// ── Soulseek chat availability ────────────────────────────
+// The top-level "Chat" entry only shows when the Soulseek service is running
+// AND the chat is actually usable (slskd connected and logged in to the server).
+const { apiFetch } = useApi();
+const chatAccessible = ref(false);
+let chatProbeTimer: ReturnType<typeof setInterval> | null = null;
+
+async function probeChatAccess() {
+  if (slskdDisabled.value) {
+    chatAccessible.value = false;
+    return;
+  }
+  try {
+    const data = await apiFetch<{ state?: { isLoggedIn?: boolean } | null }>(
+      "/api/slskd/server",
+    );
+    chatAccessible.value = data?.state?.isLoggedIn === true;
+  } catch {
+    chatAccessible.value = false;
+  }
+}
+
+const showChatLink = computed(() => !slskdDisabled.value && chatAccessible.value);
+
+// Stopping the service from the dropdown hides the entry right away
+watch(slskdDisabled, () => probeChatAccess());
+
+onUnmounted(() => {
+  if (chatProbeTimer) clearInterval(chatProbeTimer);
+});
 </script>

@@ -9,6 +9,9 @@
       >
         <slot :name="`tab-${pane.name}`">{{ pane.label }}</slot>
       </button>
+      <div v-if="$slots.actions" class="s-tabs__actions">
+        <slot name="actions" />
+      </div>
     </div>
     <div class="s-tabs__content">
       <slot />

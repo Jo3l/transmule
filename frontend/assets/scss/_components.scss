@@ -725,6 +725,13 @@ textarea.s-input {
     border-bottom: 2px solid var(--s-border);
     gap: 0;
   }
+  .s-tabs__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+    padding: 0 0.25rem;
+  }
   .s-tabs__tab {
     padding: 0.6rem 1rem;
     font-size: 0.85rem;
