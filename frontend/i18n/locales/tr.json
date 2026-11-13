@@ -1361,7 +1361,7 @@
     "actionError": "Action failed",
     "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
     "credentials": "Credentials",
-    "accountSettings": "Soulseek hesabı",
+    "accountSettings": "Kullanıcı adını değiştir",
     "accountSettingsHelp": "Kullanıcı adı ve parolayı değiştir",
     "log": "Log",
     "usernamePlaceholder": "your Soulseek username",

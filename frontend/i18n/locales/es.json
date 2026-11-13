@@ -1451,7 +1451,7 @@
     },
     "settingsDescription": "Introduce tus credenciales de Soulseek para buscar y descargar.",
     "credentials": "Credenciales",
-    "accountSettings": "Cuenta de Soulseek",
+    "accountSettings": "Cambiar nombre de usuario",
     "accountSettingsHelp": "Cambiar usuario y contraseña",
     "log": "Registro",
     "usernamePlaceholder": "tu usuario de Soulseek",

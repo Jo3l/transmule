@@ -4,7 +4,10 @@
     <STabs v-model="activeTabId" :panes="tabPanes">
       <!-- Tab labels with prefix + close button (skip for rooms tab) -->
       <template v-for="tab in closableTabs" :key="tab.id" #[`tab-${tab.id}`]>
-        <span class="tab-label-wrap" @contextmenu.prevent.stop="onTabContextmenu($event, tab)">
+        <span
+          class="tab-label-wrap"
+          @contextmenu.prevent.stop="!isPinned(tab) && onTabContextmenu($event, tab)"
+        >
           <span v-if="tab.type === 'room'" class="tab-prefix tab-prefix-room">#</span>
           <span v-else-if="tab.type === 'user'" class="tab-prefix tab-prefix-user">@</span>
           <span
@@ -13,6 +16,7 @@
           />
           <span class="tab-label-text">{{ tab.label }}</span>
           <button
+            v-if="!isPinned(tab)"
             class="tab-close-btn"
             @click.stop="closeTab(tab.id)"
             :title="$t('slskd.closeTab')"
@@ -30,7 +34,7 @@
         <SButton
           v-if="isAdmin"
           size="sm"
-          variant="text"
+          variant="secondary"
           icon="mdi-account-key"
           :title="$t('slskd.accountSettingsHelp')"
           @click="openAccountSettings"
@@ -40,7 +44,7 @@
       </template>
 
       <!-- ── Rooms list tab (permanent, first) ─────────────────── -->
-      <STabPane name="_rooms" :active="activeTabId === '_rooms'">
+      <STabPane v-if="!standalone" name="_rooms" :active="activeTabId === '_rooms'">
         <div id="page-slskd-rooms">
           <div class="mb-3 flex-row gap-sm align-items-center">
             <SInput v-model="roomQuery" :placeholder="$t('search.filter')" class="mw-300">
@@ -423,7 +427,7 @@
     </STabs>
 
     <!-- Empty state -->
-    <div v-if="tabs.length === 0" class="has-text-centered py-5 has-text-grey">
+    <div v-if="tabs.length === 0 && !standalone" class="has-text-centered py-5 has-text-grey">
       <span class="mdi mdi-message-text-outline icon-lg" />
       <p class="mt-2">
         {{ $t("slskd.chatPlaceholder", "Selecciona un canal desde la vista de canales") }}
@@ -519,7 +523,7 @@ const { apiFetch, showToast } = useApi();
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
-const props = defineProps<{ focusChannel?: string }>();
+const props = defineProps<{ focusChannel?: string; standalone?: boolean }>();
 const auth = useAuth();
 const isAdmin = computed(() => auth.user.value?.isAdmin === true);
 // Soulseek account shown in the message list and in the tab-strip shortcut
@@ -534,16 +538,28 @@ interface ChatTab {
 }
 
 const tabs = ref<ChatTab[]>([]);
-const activeTabId = ref("_rooms"); // default to rooms tab
+const activeTabId = ref(props.standalone ? "" : "_rooms"); // default to rooms tab
 
-// Rooms tab is always present
+// Rooms tab is always present except in a standalone single-channel view
 const ROOMS_TAB: ChatTab = { type: "_rooms", id: "_rooms", label: "" };
-tabs.value.push(ROOMS_TAB);
+if (!props.standalone) tabs.value.push(ROOMS_TAB);
 
 const closableTabs = computed(() => tabs.value.filter((t) => t.id !== "_rooms"));
 
+// In standalone mode the focused channel is pinned: closing it would leave the
+// page with no chat at all.
+function isPinned(tab: ChatTab): boolean {
+  return (
+    !!props.standalone &&
+    !!props.focusChannel &&
+    tab.id === nextTabId("room", props.focusChannel)
+  );
+}
+
 const tabPanes = computed(() => {
-  const panes = [{ name: "_rooms", label: $t("slskd.rooms", "Canales") }];
+  const panes: { name: string; label: string }[] = props.standalone
+    ? []
+    : [{ name: "_rooms", label: $t("slskd.rooms", "Canales") }];
   tabs.value.forEach((tb) => {
     if (tb.id !== "_rooms") panes.push({ name: tb.id, label: tb.label });
   });
@@ -945,7 +961,7 @@ function restoreBrowseTabs() {
 async function closeTab(tabId: string) {
   if (tabId === "_rooms") return; // never close the rooms tab
   const tab = tabs.value.find((t) => t.id === tabId);
-  if (!tab) return;
+  if (!tab || isPinned(tab)) return;
   const wasBrowse = tab.type === "files";
 
   // Close server-side FIRST so a refresh won't bring the tab back.
@@ -1429,57 +1445,66 @@ async function loadSlskdAccount() {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // 0. Fetch available rooms for the rooms tab
-  fetchRoomsList();
   loadSlskdAccount();
 
-  // 1. Restore already-joined rooms from slskd
-  try {
-    const joined = await apiFetch<string[]>("/api/slskd/rooms/joined");
-    if (Array.isArray(joined)) {
-      joined.forEach((name) => {
-        if (!name) return;
-        const id = nextTabId("room", name);
-        if (tabs.value.find((t) => t.id === id)) return;
-        tabs.value.push({ type: "room", id, label: name });
-        roomMessages.value[id] = [];
-        roomUsers.value[id] = [];
-        if (!activeTabId.value) activeTabId.value = id;
-        fetchRoomData(id, name);
-        pollTimers[id] = setInterval(() => fetchRoomData(id, name), 3000);
-      });
-    }
-  } catch {
-    /* silent */
-  }
+  if (!props.standalone) {
+    // 0. Fetch available rooms for the rooms tab
+    fetchRoomsList();
 
-  // 2. Restore open user conversations from slskd
-  try {
-    const conversations = await apiFetch<any[]>("/api/slskd/conversations");
-    if (Array.isArray(conversations) && conversations.length > 0) {
-      conversations.forEach((conv: any) => {
-        const username = conv.username;
-        if (!username) return;
-        const id = nextTabId("user", username);
-        if (tabs.value.find((t) => t.id === id)) return;
-        tabs.value.push({ type: "user", id, label: username });
-        userMessages.value[id] = [];
-        userInfo.value[id] = null;
-        loadingUserInfo.value[id] = true;
-        if (!activeTabId.value) activeTabId.value = id;
-        fetchUserInfo(id, username);
-        fetchUserMessages(id, username);
-        pollTimers[id] = setInterval(() => fetchUserMessages(id, username), 3000);
-      });
+    // 1. Restore already-joined rooms from slskd
+    try {
+      const joined = await apiFetch<string[]>("/api/slskd/rooms/joined");
+      if (Array.isArray(joined)) {
+        joined.forEach((name) => {
+          if (!name) return;
+          const id = nextTabId("room", name);
+          if (tabs.value.find((t) => t.id === id)) return;
+          tabs.value.push({ type: "room", id, label: name });
+          roomMessages.value[id] = [];
+          roomUsers.value[id] = [];
+          if (!activeTabId.value) activeTabId.value = id;
+          fetchRoomData(id, name);
+          pollTimers[id] = setInterval(() => fetchRoomData(id, name), 3000);
+        });
+      }
+    } catch {
+      /* silent */
     }
-  } catch {
-    /* silent */
+
+    // 2. Restore open user conversations from slskd
+    try {
+      const conversations = await apiFetch<any[]>("/api/slskd/conversations");
+      if (Array.isArray(conversations) && conversations.length > 0) {
+        conversations.forEach((conv: any) => {
+          const username = conv.username;
+          if (!username) return;
+          const id = nextTabId("user", username);
+          if (tabs.value.find((t) => t.id === id)) return;
+          tabs.value.push({ type: "user", id, label: username });
+          userMessages.value[id] = [];
+          userInfo.value[id] = null;
+          loadingUserInfo.value[id] = true;
+          if (!activeTabId.value) activeTabId.value = id;
+          fetchUserInfo(id, username);
+          fetchUserMessages(id, username);
+          pollTimers[id] = setInterval(() => fetchUserMessages(id, username), 3000);
+        });
+      }
+    } catch {
+      /* silent */
+    }
   }
 
   // 3. Restore browse tabs from session (persistent across refresh)
-  restoreBrowseTabs();
+  if (!props.standalone) restoreBrowseTabs();
 
-  // 4. Check hash for a specific tab (overrides all of the above)
+  // 4. Standalone views always keep their focused channel open (it is pinned)
+  if (props.standalone && props.focusChannel) {
+    const focusId = nextTabId("room", props.focusChannel);
+    if (!tabs.value.find((t) => t.id === focusId)) addRoom(props.focusChannel);
+  }
+
+  // 5. Check hash for a specific tab (overrides the default focus)
   const hash = route.hash?.replace(/^#/, "");
   if (hash) {
     const decoded = decodeURIComponent(hash);
@@ -1500,7 +1525,7 @@ onMounted(async () => {
     } else {
       addRoom(decoded);
     }
-  } else if (props.focusChannel) {
+  } else if (props.focusChannel && !props.standalone) {
     // Entry point dedicated to a channel (e.g. /chat → #Transmule)
     addRoom(props.focusChannel);
   }

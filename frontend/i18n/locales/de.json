@@ -1361,7 +1361,7 @@
     "actionError": "Verbindung konnte nicht umgeschaltet werden",
     "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
     "credentials": "Credentials",
-    "accountSettings": "Soulseek-Konto",
+    "accountSettings": "Benutzername ändern",
     "accountSettingsHelp": "Benutzername und Passwort ändern",
     "log": "Log",
     "usernamePlaceholder": "your Soulseek username",

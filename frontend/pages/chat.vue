@@ -1,3 +1,6 @@
 <template>
-  <SlskdChatView focus-channel="Transmule" />
+  <SlskdChatView
+    focus-channel="Transmule"
+    standalone
+  />
 </template>

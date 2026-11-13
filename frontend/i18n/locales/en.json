@@ -1380,7 +1380,7 @@
     "refresh": "Refresh",
     "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
     "credentials": "Credentials",
-    "accountSettings": "Soulseek account",
+    "accountSettings": "Change username",
     "accountSettingsHelp": "Change username and password",
     "log": "Log",
     "usernamePlaceholder": "your Soulseek username",

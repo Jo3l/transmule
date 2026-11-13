@@ -1361,7 +1361,7 @@
     "actionError": "Impossibile cambiare connessione",
     "settingsDescription": "Enter your Soulseek network credentials to enable searching and downloading.",
     "credentials": "Credentials",
-    "accountSettings": "Account Soulseek",
+    "accountSettings": "Cambia nome utente",
     "accountSettingsHelp": "Cambia nome utente e password",
     "log": "Log",
     "usernamePlaceholder": "your Soulseek username",
